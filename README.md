@@ -6,6 +6,6 @@ The scene is a minimal controller test space with no text interface or level flo
 The 320×180 pixel frame uses integer scaling; use a Game View of at least 320×180.
 `PhaseTerrain` and `PhaseMovingPlatform` are reusable Inspector components.
 
-Use Unity CLI with the included Pipeline package for live Editor work.
+Development uses **Unity CLI + Unity Pipeline** against a running Editor.
 See [development and verification](Documentation/Development.md) and
 [movement attribution](Documentation/ThirdPartyNotices.md).

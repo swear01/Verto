@@ -8,7 +8,7 @@ public static class PhaseSandboxBuilder
     [MenuItem("PHASE/Create minimal sandbox")]
     public static void Create()
     {
-        if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
         EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         var root = new GameObject("PHASE"); var sandbox = root.AddComponent<PhaseSandbox>();
         var camera = new GameObject("Camera").AddComponent<Camera>();

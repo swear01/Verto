@@ -1,8 +1,14 @@
 # Development
 
 Use the official Unity CLI and the project's `com.unity.pipeline` package to drive
-a resident Unity **6000.4.7f1** Editor. In agent terminals, `--wait` keeps the Editor
+a resident Unity **6000.4.7f1** GUI Editor. Scene construction, tests, input checks,
+captures and Console inspection all run through the live Pipeline connection.
+Do not use direct Editor `-batchmode` / `-executeMethod` invocations or cold
+`unity run` / `unity test` jobs for this workflow. Fix a failed Pipeline connection
+before continuing. In agent terminals, `--wait` keeps the Editor
 attached to the terminal session; run subsequent commands in another terminal.
+Keep Unity's completed URP material-upgrade record in version control; resetting
+it can reopen a startup confirmation dialog and block Pipeline commands.
 
 ```sh
 unity open . --editor-version 6000.4.7f1 --wait
@@ -21,6 +27,10 @@ unity command run_tests -- --mode playmode --filter SandboxTests --async_tests t
 unity command test_status
 ```
 
+To recreate the sandbox, call its existing builder through the connected Editor:
+`unity command eval 'PhaseSandboxBuilder.Create();'`. Save any intentional scene
+edits first; the builder preserves Unity's unsaved-scene confirmation.
+
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 17 Editor cases and one Play Mode case.
 The three immutable reference files cover 40 movement/action/climb traces.
@@ -32,9 +42,11 @@ restores the prior settings and removes its test keyboard. It requires no game
 code changes or domain reload.
 
 ```sh
+unity command open_scene -- --path Assets/Scenes/PhaseSandbox.unity
 unity command eval 'UnityEngine.Application.runInBackground = true;'
 unity command editor_play
 unity status --until-ready --json
+unity command eval 'UnityEngine.Application.runInBackground = true;'
 unity command wait_for -- --condition '{"member":"UnityEngine.Time.frameCount","op":"changed"}' --timeout_s 10
 unity command wait_for -- --condition '{"findType":"Phase.PhaseSandbox","member":"Controller.time","op":"changed"}' --timeout_s 10
 unity command run_script -- --file Verification/LiveInput.cs --entry LiveInput.Run
