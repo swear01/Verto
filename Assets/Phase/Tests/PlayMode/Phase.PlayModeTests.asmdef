@@ -1,0 +1,1 @@
+{"name":"Phase.PlayModeTests","references":["Phase.Runtime","Unity.InputSystem","Unity.InputSystem.TestFramework"],"optionalUnityReferences":["TestAssemblies"]}
