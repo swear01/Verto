@@ -153,6 +153,7 @@ function character(buffer) {
     await page.keyboard.press('Enter');
     const dialog = page.locator('#controls');
     const binding = i => page.locator(`#bindings button[data-action="${i}"]`);
+    const reset = i => page.locator(`#bindings button[data-reset="${i}"]`);
     const paused = await canvas.screenshot();
     await page.keyboard.press('ArrowRight', { delay: 180 });
     assert.deepEqual(await canvas.screenshot(), paused, 'Settings did not pause the game');
@@ -201,8 +202,30 @@ function character(buffer) {
     await page.keyboard.press('l', { delay: 180 });
     assert((await capture('controls-reload-moved')).x > reloaded.x + 12, 'Reload did not apply saved bindings to Unity');
     await page.locator('#controls-toggle').click();
-    await page.locator('#controls-reset').click();
+    await binding(5).click(); await page.keyboard.press('z');
+    await reset(4).click();
+    assert.match(await page.locator('#controls-status').innerText(), /預設鍵已用於衝刺/);
+    assert.equal(await binding(4).innerText(), 'J', 'Conflicting restore must preserve the old binding');
+    assert.equal(await binding(5).innerText(), 'Z', 'Restore cannot change a different action');
+    await binding(5).click(); await page.keyboard.press('k');
+    await binding(4).click(); await reset(4).click();
     assert.equal(await binding(4).innerText(), 'Z / Space');
+    assert(await reset(4).isDisabled(), 'Default action has no restore work');
+    assert.equal(await binding(1).innerText(), 'L');
+    assert.equal(await binding(5).innerText(), 'K');
+    assert.equal(await binding(6).innerText(), 'H');
+    assert(await reset(1).isEnabled());
+    await page.reload();
+    await page.locator('#controls-toggle').waitFor({ state: 'visible', timeout: 120000 });
+    await canvas.click();
+    let restoreReady;
+    for (let i = 0; i < 40; i++) { restoreReady = await capture('controls-restore-ready'); if (restoreReady) break; await page.waitForTimeout(250); }
+    assert(restoreReady, 'Player pixels missing after individual restore reload');
+    await page.locator('#controls-toggle').click();
+    assert.equal(await binding(4).innerText(), 'Z / Space', 'Individual restore must persist');
+    assert.equal(await binding(1).innerText(), 'L', 'Other overrides must persist');
+    assert.equal(await binding(5).innerText(), 'K');
+    assert.equal(await binding(6).innerText(), 'H');
     await page.keyboard.press('Escape');
     await page.waitForTimeout(200);
     const resetBefore = await capture('controls-reset-before');
@@ -223,7 +246,8 @@ function character(buffer) {
     await page.keyboard.press('j', { delay: 90 });
     assert((await capture('controls-storage-jumped')).y < storageBefore.y - 12, 'Storage failure must preserve session bindings');
     await page.evaluate(() => { Storage.prototype.setItem = window.savedSetItem; });
-    await page.locator('#controls-toggle').click(); await page.locator('#controls-reset').click(); await page.locator('#controls-close').click();
+    await page.locator('#controls-toggle').click(); await reset(4).click(); await page.locator('#controls-close').click();
+    result.perActionReset = true;
     result.customControls = true;
     assert.deepEqual(result.errors, []); assert.deepEqual(result.warnings, []); assert.deepEqual(result.failedRequests, []);
     const failedPage = await browser.newPage();
@@ -237,6 +261,7 @@ function character(buffer) {
   } catch (error) {
     result.passed = false;
     result.failure = String(error);
+    result.stack = error.stack;
     process.exitCode = 1;
   } finally {
     fs.writeFileSync(path.join(reports, 'browser.json'), JSON.stringify(result, null, 2));
