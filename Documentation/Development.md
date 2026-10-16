@@ -69,3 +69,18 @@ The controller uses native pixels, Y down, a 60 Hz accumulator, 8×11 collision
 pixel coordinates with Y negated; platform nodes and spawn use screen coordinates.
 The saved sandbox and test fixtures contain no exits, progression or player text.
 Movement, dash aiming and climb directions accept arrow keys or WASD.
+
+## CI
+
+GitHub Actions runs the production `PhaseController.cs` and the same 17
+`ControllerTests` on .NET 10, including the 40 immutable reference traces.
+The test fixture parser uses Json.NET, already included by Unity Pipeline.
+The hosted runner requires no Unity license or repository secrets.
+
+```sh
+dotnet test Verification/ControllerTests.csproj --configuration Release
+```
+
+CI uploads TRX test results on pull requests and pushes to `main`.
+Unity scene, keyboard and rendering checks remain live CLI/Pipeline checks;
+they are not covered by this hosted controller job.

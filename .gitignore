@@ -112,3 +112,8 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+!Verification/ControllerTests.csproj
+/Verification/bin/
+/Verification/obj/
+/TestResults/
