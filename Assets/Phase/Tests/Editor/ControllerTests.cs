@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using NUnit.Framework;
+using Newtonsoft.Json;
 using Phase;
-using UnityEngine;
 
 public class ControllerTests
 {
@@ -20,7 +20,7 @@ public class ControllerTests
     [TestCase("climb")]
     public void ImmutableReferenceTraces(string name)
     {
-        var f = JsonUtility.FromJson<Fixture>(File.ReadAllText("Assets/Phase/Tests/Fixtures/reference-" + name + ".json"));
+        var f = JsonConvert.DeserializeObject<Fixture>(File.ReadAllText("Assets/Phase/Tests/Fixtures/reference-" + name + ".json"));
         foreach (var c in f.cases)
         {
             var blocks = new List<Block>();
