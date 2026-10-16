@@ -13,9 +13,14 @@ public class PixelTests
     [Test]
     public void RoomSlideKeepsPixelsAndJoinsBothDirections()
     {
-        var from = new Color32[320 * 180]; var to = new Color32[from.Length];
-        for (int i = 0; i < from.Length; i++) { from[i] = new Color32(10, (byte)(i % 320), 0, 255); to[i] = new Color32(20, (byte)(i % 320), 0, 255); }
+        foreach (int width in new[] { 83,320,427 }) CheckSlide(width);
+    }
+    static void CheckSlide(int width)
+    {
+        var from = new Color32[width * 180]; var to = new Color32[from.Length];
+        for (int i = 0; i < from.Length; i++) { from[i] = new Color32(10, (byte)(i % width), 0, 255); to[i] = new Color32(20, (byte)(i % width), 0, 255); }
         var pixels = new PhasePixels();
+        pixels.SetView(width,0);
         try
         {
             foreach (int direction in new[] { -1, 1 })
@@ -24,13 +29,35 @@ public class PixelTests
                 pixels.Slide(from, to, 1, direction); CollectionAssert.AreEqual(to, pixels.Texture.GetPixels32());
                 pixels.Slide(from, to, .5, direction);
                 var frame = pixels.Texture.GetPixels32();
-                for (int y = 0; y < 180; y++) for (int x = 0; x < 320; x++)
+                int shift=(int)Math.Floor(width*.5+.5);
+                for (int y = 0; y < 180; y++) for (int x = 0; x < width; x++)
                 {
-                    int source = x + 160 * direction;
-                    var expected = source >= 0 && source < 320 ? from[y * 320 + source] : to[y * 320 + source - 320 * direction];
-                    Assert.That(frame[y * 320 + x], Is.EqualTo(expected));
+                    int source = x + shift * direction;
+                    var expected = source >= 0 && source < width ? from[y * width + source] : to[y * width + source - width * direction];
+                    Assert.That(frame[y * width + x], Is.EqualTo(expected));
                 }
             }
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
+    [Test]
+    public void AdaptiveViewPreservesArtAndFillsExtendedTerrain()
+    {
+        var s=new PhaseController(new[] {new Block(0,160,320,24),new Block(240,80,8,80)},120,149);s.flash=0;
+        var pixels=new PhasePixels();
+        try
+        {
+            pixels.Draw(s); var original=pixels.Texture.GetPixels32();
+            pixels.SetView(83,95);pixels.Draw(s);var narrow=pixels.Texture.GetPixels32();
+            for(int y=0;y<180;y++)for(int x=0;x<83;x++)Assert.That(narrow[y*83+x],Is.EqualTo(original[y*320+x+95]),"camera crop keeps native pixels");
+            s.ResizeRoom(427);pixels.SetView(427,0);pixels.Draw(s);
+            Color32 floor=pixels.Texture.GetPixel(400,19);
+            Assert.That((floor.r,floor.g,floor.b),Is.EqualTo(((byte)169,(byte)184,(byte)197)),"connected stone floor reaches the wide edge");
+            Assert.That(pixels.Texture.GetPixel(400,140).a,Is.EqualTo(1));
+            pixels.SetView(320,0);s.ResizeRoom(320);pixels.Draw(s);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32(),"resizing back restores the original room");
+            Assert.That(PhaseSandbox.ViewWidth(390,844),Is.EqualTo(83)); Assert.That(PhaseSandbox.ViewWidth(2560,1080),Is.EqualTo(427));
+            Assert.That(PhaseSandbox.ViewOrigin(83,320,160),Is.EqualTo(122)); Assert.That(PhaseSandbox.ViewOrigin(83,320,315),Is.EqualTo(237));
         }
         finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
     }

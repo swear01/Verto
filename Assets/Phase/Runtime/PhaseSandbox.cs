@@ -16,6 +16,7 @@ namespace Phase
         public Texture2D Frame => pixels?.Texture;
         PhasePixels pixels;
         Sprite sprite;
+        SpriteRenderer surface;
         double accumulator;
         bool jumpQueued, dashQueued, transitioning;
         public const float TransitionDuration = .18f;
@@ -46,29 +47,47 @@ namespace Phase
             Controller = new PhaseController(GetComponentsInChildren<PhaseTerrain>().Select(t => t.CreateBlock()), spawn.x, spawn.y, platform != null ? platform.CreatePlatform() : null);
             Controller.exitLeft = !string.IsNullOrEmpty(leftScene);
             Controller.exitRight = !string.IsNullOrEmpty(rightScene);
-            if (traveler != null && gameObject.scene.name == arrivalScene)
+            bool arriving = traveler != null && gameObject.scene.name == arrivalScene;
+            int width = arriving && travelFrame != null ? travelFrame.Length / 180 : ViewWidth(Screen.width, Screen.height);
+            Controller.ResizeRoom(width);
+            if (arriving)
             {
                 Controller.EnterFrom(traveler, arrivalDirection);
-                departingFrame = travelFrame; transitionDirection = arrivalDirection;
+                if (travelFrame?.Length == width * 180) departingFrame = travelFrame;
+                transitionDirection = arrivalDirection;
             }
             ClearTravel();
             pixels = new PhasePixels();
+            pixels.SetView(width, ViewOrigin(width, Controller.Width, Controller.player.x));
             pixels.Draw(Controller);
             if (departingFrame != null)
             {
                 arrivingFrame = Frame.GetPixels32();
                 pixels.Slide(departingFrame, arrivingFrame, 0, transitionDirection);
             }
-            var surface = new GameObject("Pixel surface"); surface.transform.SetParent(transform);
-            surface.transform.position = new Vector3(160, -90, 0);
-            sprite = Sprite.Create(Frame, new Rect(0, 0, 320, 180), new Vector2(.5f, .5f), 1, 0, SpriteMeshType.FullRect);
-            var renderer = surface.AddComponent<SpriteRenderer>(); renderer.sprite = sprite; renderer.sharedMaterial = pixelMaterial;
-            ResizeCamera();
+            var go = new GameObject("Pixel surface"); go.transform.SetParent(transform);
+            surface = go.AddComponent<SpriteRenderer>(); surface.sharedMaterial = pixelMaterial;
+            UpdateSurface();
+        }
+        void UpdateSurface()
+        {
+            if (sprite != null) Destroy(sprite);
+            sprite = Sprite.Create(Frame, new Rect(0, 0, pixels.Width, 180), new Vector2(.5f, .5f), 1, 0, SpriteMeshType.FullRect);
+            surface.sprite = sprite; surface.transform.position = new Vector3(pixels.Width / 2f, -90, 0);
+            pixelCamera.rect = new Rect(0, 0, 1, 1);
+            pixelCamera.aspect = pixels.Width / 180f;
+            pixelCamera.transform.position = new Vector3(pixels.Width / 2f, -90, -10);
         }
         void ResizeCamera()
         {
-            var viewport = Viewport(Screen.width, Screen.height);
-            pixelCamera.pixelRect = new Rect(viewport.x, Screen.height - viewport.y - viewport.height, viewport.width, viewport.height);
+            int width = ViewWidth(Screen.width, Screen.height);
+            if (width != pixels.Width)
+            {
+                Controller.ResizeRoom(width);
+                departingFrame = arrivingFrame = null;
+                pixels.SetView(width, ViewOrigin(width, Controller.Width, Controller.player.x));
+                pixels.Draw(Controller); UpdateSurface();
+            }
         }
         void Update()
         {
@@ -101,6 +120,7 @@ namespace Phase
                 accumulator -= PhaseController.Dt;
                 if (Controller.ExitDirection != 0) { Travel(Controller.ExitDirection); break; }
             }
+            pixels.SetView(pixels.Width, ViewOrigin(pixels.Width, Controller.Width, Controller.player.x));
             pixels.Draw(Controller);
         }
         void Travel(int direction)
@@ -110,7 +130,7 @@ namespace Phase
             {
                 Debug.LogError($"Room scene is missing from the build: {destination}");
                 if (direction < 0) Controller.exitLeft = false; else Controller.exitRight = false;
-                Controller.player.x = direction < 0 ? 0 : 320 - Controller.player.w;
+                Controller.player.x = direction < 0 ? 0 : Controller.Width - Controller.player.w;
                 return;
             }
             traveler = Controller; arrivalScene = destination; arrivalDirection = direction;
@@ -152,11 +172,9 @@ namespace Phase
             keys = next;
             jumpQueued = dashQueued = false; accumulator = 0;
         }
-        public static Rect Viewport(int width, int height)
-        {
-            int scale = Mathf.Max(1, Mathf.Min(width / 320, height / 180));
-            return new Rect(Mathf.Floor((width - 320 * scale) / 2f), Mathf.Floor((height - 180 * scale) / 2f), 320 * scale, 180 * scale);
-        }
+        public static int ViewWidth(int width, int height) => Mathf.Max(1, Mathf.RoundToInt(180f * width / Mathf.Max(1, height)));
+        public static int ViewOrigin(int width, int roomWidth, double playerX)
+            => Mathf.Clamp((int)Math.Floor(playerX + 4 - width / 2.0), 0, Mathf.Max(0, roomWidth - width));
         void OnDestroy() { if (sprite != null) Destroy(sprite); pixels?.Dispose(); }
     }
 }

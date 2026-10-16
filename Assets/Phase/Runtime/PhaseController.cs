@@ -63,15 +63,25 @@ namespace Phase
         public int phase, jumps, dashes, deaths;
         public double time, flash, freeze, respawn;
         public bool exitLeft, exitRight;
-        public int ExitDirection => respawn > 0 ? 0 : exitLeft && player.x < 0 ? -1 : exitRight && player.x + player.w > 320 ? 1 : 0;
-        bool WithinSides(double x, double w) => (exitLeft || x >= 0) && (exitRight || x + w <= 320);
+        public int Width { get; private set; } = 320;
+        public int ExitDirection => respawn > 0 ? 0 : exitLeft && player.x < 0 ? -1 : exitRight && player.x + player.w > Width ? 1 : 0;
+        bool WithinSides(double x, double w) => (exitLeft || x >= 0) && (exitRight || x + w <= Width);
+
+        public void ResizeRoom(int width)
+        {
+            width = Math.Max(320, width);
+            if (width == Width) return;
+            foreach (var block in blocks) if (block.x == 0 && block.w == Width) block.w = width;
+            Width = width;
+            player.x = Math.Min(player.x, Width - player.w);
+        }
 
         public void EnterFrom(PhaseController previous, int direction)
         {
             player = previous.player; phase = previous.phase; time = previous.time;
             jumps = previous.jumps; dashes = previous.dashes; deaths = previous.deaths;
             freeze = previous.freeze; flash = previous.flash;
-            player.x = direction > 0 ? 0 : 320 - player.w;
+            player.x = direction > 0 ? 0 : Width - player.w;
             player.wall = player.hopX = player.forceX = 0;
             player.wallLock = player.retention = player.slide = 0;
             player.climbing = player.hopMover = player.dashRide = false;
@@ -355,7 +365,7 @@ namespace Phase
                     if (!corrected) { p.x = vx > 0 ? b.x - p.w : b.x + b.w; if (p.retention <= 0) { p.retained = p.vx; p.retention = .06; } p.vx = 0; p.dashAttack = 0; hitX = true; }
                 }
                 if (!exitLeft) p.x = Math.Max(0, p.x);
-                if (!exitRight) p.x = Math.Min(320 - p.w, p.x);
+                if (!exitRight) p.x = Math.Min(Width - p.w, p.x);
             }
             p.remY += p.vy * dt; int moveY = PixelRound(p.remY); p.remY -= moveY;
             bool hitY = false;

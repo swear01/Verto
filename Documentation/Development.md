@@ -34,9 +34,9 @@ To recreate the sandbox, call its existing builder through the connected Editor:
 edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 21 controller cases, one 48-frame art
-comparison, one bidirectional pixel-slide test, and three Play Mode cases, including
-custom bindings, pause/release gating and room persistence.
+starting the next test run. There are 22 controller cases, one 48-frame art
+comparison, one bidirectional pixel-slide test, one adaptive-view test, and three
+Play Mode cases, including custom bindings, pause/release gating and room persistence.
 The three immutable reference files cover 40 movement/action/climb traces.
 Production steps at 1/60 s; reference replays use the recorded 0.0166667 s.
 
@@ -83,7 +83,7 @@ Web players can replace these bindings through the settings button.
 
 ## CI
 
-GitHub Actions runs the production `PhaseController.cs` and the same 21
+GitHub Actions runs the production `PhaseController.cs` and the same 22
 `ControllerTests` on .NET 10, including the 40 immutable reference traces.
 The test fixture parser uses Json.NET, already included by Unity Pipeline.
 The hosted runner requires no Unity license or repository secrets.
@@ -97,3 +97,8 @@ Unity scene, keyboard and rendering checks remain live CLI/Pipeline checks;
 they are not covered by this hosted controller job. The separate
 [Web build and preview](Web.md) workflow runs them through a licensed GUI runner
 and deploys only after browser verification. It requires owner setup before use.
+
+The view fills the Game View at every aspect: 180 native pixels high, variable
+width. Full-width terrain and room edges expand above 320 pixels; narrower views
+follow the player within a 320-pixel room. Resize preserves controller state and
+rebuilds the pixel surface/cache; resizing during a slide completes its handoff.

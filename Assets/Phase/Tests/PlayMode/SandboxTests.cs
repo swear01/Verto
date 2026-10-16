@@ -64,7 +64,7 @@ public class SandboxTests : InputTestFixture
         yield return SceneManager.LoadSceneAsync("PhaseSandbox");
         var sandbox=Object.FindAnyObjectByType<PhaseSandbox>();Assert.That(sandbox,Is.Not.Null);
         yield return null;
-        Assert.That(sandbox.Frame.width,Is.EqualTo(320));Assert.That(sandbox.Frame.height,Is.EqualTo(180));Assert.That(sandbox.Frame.filterMode,Is.EqualTo(FilterMode.Point));
+        Assert.That(sandbox.Frame.width,Is.EqualTo(PhaseSandbox.ViewWidth(Screen.width,Screen.height)));Assert.That(sandbox.Frame.height,Is.EqualTo(180));Assert.That(sandbox.Frame.filterMode,Is.EqualTo(FilterMode.Point));
         var k=InputSystem.AddDevice<Keyboard>();
         try
         {
@@ -87,7 +87,7 @@ public class SandboxTests : InputTestFixture
             Assert.That(sandbox.Controller.dashes,Is.EqualTo(1));Assert.That(sandbox.Controller.phase,Is.EqualTo(1));
             Assert.That(Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None),Is.Empty);
             Assert.That(Object.FindObjectsByType<TextMesh>(FindObjectsSortMode.None),Is.Empty);
-            var r=PhaseSandbox.Viewport(1000,600);Assert.That(r.width,Is.EqualTo(960));Assert.That(r.height,Is.EqualTo(540));
+            Assert.That(sandbox.pixelCamera.rect,Is.EqualTo(new Rect(0,0,1,1)),"camera fills the Game View");
             LogAssert.NoUnexpectedReceived();
             string path=System.Environment.GetEnvironmentVariable("PHASE_CAPTURE_PATH");
             if(!string.IsNullOrEmpty(path))
@@ -103,8 +103,8 @@ public class SandboxTests : InputTestFixture
                 try
                 {
                     rendered.LoadImage(File.ReadAllBytes(screen));
-                    var viewport=PhaseSandbox.Viewport(rendered.width,rendered.height);
-                    int scale=(int)viewport.width/320;
+                    var viewport=sandbox.pixelCamera.pixelRect;
+                    int scale=Mathf.Max(1,(int)viewport.width/sandbox.Frame.width);
                     Color32 expected=sandbox.Frame.GetPixel(0,179);
                     for(int y=0;y<scale;y++)for(int x=0;x<scale;x++)
                     {
@@ -131,7 +131,7 @@ public class SandboxTests : InputTestFixture
             InputSystem.QueueStateEvent(k,new KeyboardState(Key.LeftArrow));
             yield return new WaitForSeconds(.1f);
             Assert.That(SceneManager.GetActiveScene().name,Is.EqualTo("PhaseSandbox"));Assert.That(sandbox.Controller.player.x,Is.Zero);
-            var p=sandbox.Controller.player;p.x=311;p.y=100;p.vx=90;p.vy=-30;p.dash=0;p.stamina=63;
+            var p=sandbox.Controller.player;p.x=sandbox.Controller.Width-9;p.y=100;p.vx=90;p.vy=-30;p.dash=0;p.stamina=63;
             sandbox.Controller.phase=2;
             InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow));
             double deadline=Time.realtimeSinceStartupAsDouble+5;
@@ -159,10 +159,10 @@ public class SandboxTests : InputTestFixture
             File.WriteAllBytes("TestResults/Web/transition-arrived.png", sandbox.Frame.EncodeToPNG());
             yield return new WaitForSeconds(.15f);
             Assert.That(SceneManager.GetActiveScene().name,Is.EqualTo("PhaseRoom2"));
-            p.x=312;p.y=149;p.vx=90;p.vy=0;
+            p.x=sandbox.Controller.Width-8;p.y=149;p.vx=90;p.vy=0;
             InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow));
             yield return new WaitForSeconds(.1f);
-            Assert.That(SceneManager.GetActiveScene().name,Is.EqualTo("PhaseRoom2"));Assert.That(p.x,Is.EqualTo(312));
+            Assert.That(SceneManager.GetActiveScene().name,Is.EqualTo("PhaseRoom2"));Assert.That(p.x,Is.EqualTo(sandbox.Controller.Width-8));
             InputSystem.QueueStateEvent(k,new KeyboardState());p.x=32;p.y=200;
             yield return new WaitForSeconds(.4f);
             Assert.That(SceneManager.GetActiveScene().name,Is.EqualTo("PhaseRoom2"));

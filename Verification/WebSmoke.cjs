@@ -26,6 +26,8 @@ function character(buffer) {
   const image = PNG.sync.read(buffer);
   let xSum = 0, ySum = 0, count = 0;
   for (let y = 0; y < image.height; y++) for (let x = 0; x < image.width; x++) {
+    // Toolbar icons share the cloak color in full-viewport captures.
+    if (y < 80 && x > image.width - 140) continue;
     const i = (y * image.width + x) * 4;
     if (Math.abs(image.data[i] - 234) < 4 && Math.abs(image.data[i + 1] - 223) < 4 && Math.abs(image.data[i + 2] - 197) < 4) {
       xSum += x; ySum += y; count++;
@@ -43,7 +45,7 @@ function character(buffer) {
     assert.equal((await fetch(url + '..%2Fpackage.json')).status, 404);
     browser = await chromium.launch({ channel: 'chromium', headless: true });
     result.browser = browser.version();
-    const page = await browser.newPage({ viewport: { width: 1100, height: 800 }, deviceScaleFactor: 1 });
+    const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
     page.on('console', message => {
       if (message.type() === 'error') result.errors.push(message.text());
       if (message.type() === 'warning') result.warnings.push(message.text());
@@ -84,13 +86,13 @@ function character(buffer) {
     await page.keyboard.down('ArrowRight');
     await page.keyboard.down('ArrowUp');
     await page.keyboard.down('c');
-    const wallAt = (buffer, x) => {
+    const wallAt = (buffer, x, viewWidth = 320) => {
       const image = PNG.sync.read(buffer);
-      const scale = image.width / 320;
+      const scale = image.width / viewWidth;
       const i = (Math.floor(((x < 160 ? 96 : 80) + .5) * image.height / 180) * image.width + Math.floor((x + .5) * scale)) * 4;
       return Array.from(image.data.subarray(i, i + 3));
     };
-    const isWall = (frame, x) => wallAt(frame, x).every((value, i) => Math.abs(value - [169, 184, 197][i]) <= 2);
+    const isWall = (frame, x, viewWidth) => wallAt(frame, x, viewWidth).every((value, i) => Math.abs(value - [169, 184, 197][i]) <= 2);
     let crossed = false;
     for (let i = 0; i < 65; i++) {
       await page.waitForTimeout(180);
@@ -128,23 +130,44 @@ function character(buffer) {
     assert(crossed, 'Left screen edge did not return to the first room');
     result.edgeTransitions = true;
     await page.screenshot({ path: path.join(reports, 'browser.png') });
-    await page.setViewportSize({ width: 800, height: 600 });
-    await page.waitForTimeout(200);
-    const bounds = await canvas.boundingBox();
-    assert.equal(bounds.width, 800);
-    assert.equal(bounds.height, 450);
-    result.aspectFit = true;
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.waitForTimeout(200);
-    const narrow = await canvas.boundingBox();
-    assert.equal(narrow.width, 390);
-    assert(Math.abs(narrow.height - 390 * 180 / 320) < .1);
-    await page.screenshot({ path: path.join(reports, 'narrow-browser.png') });
-    result.narrowLayout = true;
+    for (const [width,height,name] of [[800,600,'square-browser'],[2560,1080,'ultrawide-browser'],[844,390,'landscape-browser'],[390,844,'narrow-browser']]) {
+      await page.setViewportSize({width,height}); await page.waitForTimeout(300);
+      const bounds=await canvas.boundingBox();
+      assert.deepEqual([bounds.x,bounds.y,bounds.width,bounds.height],[0,0,width,height], 'Canvas must fill the viewport');
+      assert.deepEqual(await canvas.evaluate(c=>[c.width,c.height]),[Math.round(180*width/height),180]);
+      const frame=await canvas.screenshot(); const image=PNG.sync.read(frame);
+      for (const [x,y] of [[8,8],[width-9,height-9]]) {
+        const i=(y*image.width+x)*4;
+        assert.notDeepEqual(Array.from(image.data.subarray(i,i+3)),[16,26,43],'Game pixels must replace page margins');
+      }
+      await page.screenshot({path:path.join(reports,name+'.png')});
+    }
+    await page.keyboard.press('ArrowLeft',{delay:800}); await page.waitForTimeout(100);
+    const followed=await capture('portrait-follow');
+    assert(followed && followed.x>390*.25 && followed.x<390*.75,'Portrait camera must follow the player');
+    result.portraitFollow=true; result.adaptiveViewport=true; result.narrowLayout=true;
+    await page.setViewportSize({width:2560,height:1080}); await page.waitForTimeout(300);
+    await page.keyboard.press('ArrowRight',{delay:1600}); await page.waitForTimeout(100);
+    const extended=await capture('wide-extended-floor');
+    assert(extended && extended.x>2560*320/427 && extended.y>1080*.75,'Wide floor must be playable beyond the original room');
+    await page.keyboard.down('ArrowRight');
+    crossed=false;
+    for(let i=0;i<30;i++) {
+      await page.waitForTimeout(100); const frame=await canvas.screenshot(); const player=character(frame);
+      if(player && player.x<2560*.2 && isWall(frame,82,427)){crossed=true;break;}
+    }
+    await page.keyboard.up('ArrowRight'); assert(crossed,'Wide right edge did not load the next room');
+    await page.keyboard.down('ArrowLeft'); crossed=false;
+    for(let i=0;i<30;i++) {
+      await page.waitForTimeout(100); const frame=await canvas.screenshot(); const player=character(frame);
+      if(player && player.x>2560*.85 && isWall(frame,242,427)){crossed=true;break;}
+    }
+    await page.keyboard.up('ArrowLeft'); assert(crossed,'Wide return must arrive at the extended edge');
+    result.wideRoomTravel=true;
     assert.deepEqual(result.errors, [], 'Browser errors');
     assert.deepEqual(result.warnings, [], 'Browser warnings');
     assert.deepEqual(result.failedRequests, [], 'Failed network requests');
-    await page.setViewportSize({ width: 1100, height: 800 });
+    await page.setViewportSize({ width: 1280, height: 720 });
     await page.reload();
     await page.locator('#controls-toggle').waitFor({ state: 'visible', timeout: 120000 });
     await canvas.click();
@@ -174,7 +197,7 @@ function character(buffer) {
     await page.screenshot({ path: path.join(reports, 'controls-narrow.png') });
     const panel = await dialog.boundingBox();
     assert(panel.x >= 0 && panel.x + panel.width <= 390, 'Settings overflow narrow viewport');
-    await page.setViewportSize({ width: 1100, height: 800 });
+    await page.setViewportSize({ width: 1280, height: 720 });
     await page.locator('#controls-close').click();
     await page.waitForTimeout(150);
     const start = await capture('controls-start');
@@ -257,11 +280,12 @@ function character(buffer) {
     await page.waitForFunction(() => document.fullscreenElement === document.documentElement);
     await page.waitForTimeout(250);
     assert.equal(await page.locator('#fullscreen-toggle').getAttribute('aria-label'), '退出全螢幕');
-    assert.deepEqual(await canvas.evaluate(c => [c.width, c.height]), [320, 180], 'Fullscreen must preserve the native render target');
+    const native=await canvas.evaluate(c=>[c.width,c.height]);
+    const size=await page.evaluate(()=>[innerWidth,innerHeight]);
+    assert.deepEqual(native,[Math.round(180*size[0]/size[1]),180],'Fullscreen keeps adaptive native pixels');
     const full = await canvas.boundingBox();
     const viewport = await page.evaluate(() => [innerWidth, innerHeight]);
-    assert(Math.abs(full.width / full.height - 16 / 9) < .01);
-    assert(Math.abs(full.width - viewport[0]) < 1 || Math.abs(full.height - viewport[1]) < 1, 'Fullscreen leaves unnecessary padding');
+    assert.deepEqual([full.x,full.y,full.width,full.height],[0,0,...viewport],'Fullscreen must fill both axes');
     await page.screenshot({ path: path.join(reports, 'fullscreen.png') });
     await page.locator('#controls-toggle').click(); assert(await dialog.isVisible());
     await page.locator('#controls-close').click();
