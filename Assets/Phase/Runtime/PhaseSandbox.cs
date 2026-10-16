@@ -18,7 +18,13 @@ namespace Phase
         Sprite sprite;
         double accumulator;
         bool jumpQueued, dashQueued, transitioning;
+        public const float TransitionDuration = .18f;
+        public bool InTransition => transitioning || departingFrame != null;
+        Color32[] departingFrame, arrivingFrame;
+        float transitionElapsed = -1;
+        int transitionDirection;
         static PhaseController traveler;
+        static Color32[] travelFrame;
         static string arrivalScene;
         static int arrivalDirection;
         static readonly Key[][] defaultKeys = {
@@ -32,7 +38,7 @@ namespace Phase
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetSession() { ClearTravel(); keys = defaultKeys; controlsOpen = releaseControls = false; }
-        static void ClearTravel() { traveler = null; arrivalScene = null; arrivalDirection = 0; }
+        static void ClearTravel() { traveler = null; travelFrame = null; arrivalScene = null; arrivalDirection = 0; }
 
         void Awake()
         {
@@ -40,10 +46,19 @@ namespace Phase
             Controller = new PhaseController(GetComponentsInChildren<PhaseTerrain>().Select(t => t.CreateBlock()), spawn.x, spawn.y, platform != null ? platform.CreatePlatform() : null);
             Controller.exitLeft = !string.IsNullOrEmpty(leftScene);
             Controller.exitRight = !string.IsNullOrEmpty(rightScene);
-            if (traveler != null && gameObject.scene.name == arrivalScene) Controller.EnterFrom(traveler, arrivalDirection);
+            if (traveler != null && gameObject.scene.name == arrivalScene)
+            {
+                Controller.EnterFrom(traveler, arrivalDirection);
+                departingFrame = travelFrame; transitionDirection = arrivalDirection;
+            }
             ClearTravel();
             pixels = new PhasePixels();
             pixels.Draw(Controller);
+            if (departingFrame != null)
+            {
+                arrivingFrame = Frame.GetPixels32();
+                pixels.Slide(departingFrame, arrivingFrame, 0, transitionDirection);
+            }
             var surface = new GameObject("Pixel surface"); surface.transform.SetParent(transform);
             surface.transform.position = new Vector3(160, -90, 0);
             sprite = Sprite.Create(Frame, new Rect(0, 0, 320, 180), new Vector2(.5f, .5f), 1, 0, SpriteMeshType.FullRect);
@@ -64,6 +79,15 @@ namespace Phase
             {
                 jumpQueued = dashQueued = false; accumulator = 0;
                 if (!controlsOpen && (k == null || !k.anyKey.isPressed)) releaseControls = false;
+                return;
+            }
+            if (departingFrame != null)
+            {
+                jumpQueued = dashQueued = false; accumulator = 0;
+                transitionElapsed = transitionElapsed < 0 ? 0 : transitionElapsed + Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(transitionElapsed / TransitionDuration);
+                pixels.Slide(departingFrame, arrivingFrame, 1 - Math.Pow(1 - t, 3), transitionDirection);
+                if (t >= 1) departingFrame = arrivingFrame = null;
                 return;
             }
             var input = ReadControls(k);
@@ -90,6 +114,7 @@ namespace Phase
                 return;
             }
             traveler = Controller; arrivalScene = destination; arrivalDirection = direction;
+            pixels.Draw(Controller, false); travelFrame = Frame.GetPixels32();
             transitioning = true;
             SceneManager.LoadSceneAsync(destination);
         }

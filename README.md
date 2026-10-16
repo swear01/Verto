@@ -7,7 +7,9 @@ The two test rooms connect at the first room’s right edge and the second room�
 left edge. Cross to continue from the opposite side; the game view has no explanatory text.
 In the Web preview, the top-right settings button lets you customize keyboard bindings.
 
-The 320×180 pixel frame uses integer scaling; use a Game View of at least 320×180.
+The 320×180 pixel frame uses point sampling. Web fits the window at 16:9 and has a
+fullscreen button; native Editor Game Views keep integer scaling. Room travel uses
+a quick horizontal slide.
 `PhaseTerrain` and `PhaseMovingPlatform` are reusable Inspector components.
 
 Development uses **Unity CLI + Unity Pipeline** against a running Editor.

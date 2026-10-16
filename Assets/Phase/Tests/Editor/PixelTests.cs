@@ -11,6 +11,31 @@ public class PixelTests
     public class Frame { public string name; public double time; public int phase; public int[] blocked; public Player player; }
 
     [Test]
+    public void RoomSlideKeepsPixelsAndJoinsBothDirections()
+    {
+        var from = new Color32[320 * 180]; var to = new Color32[from.Length];
+        for (int i = 0; i < from.Length; i++) { from[i] = new Color32(10, (byte)(i % 320), 0, 255); to[i] = new Color32(20, (byte)(i % 320), 0, 255); }
+        var pixels = new PhasePixels();
+        try
+        {
+            foreach (int direction in new[] { -1, 1 })
+            {
+                pixels.Slide(from, to, 0, direction); CollectionAssert.AreEqual(from, pixels.Texture.GetPixels32());
+                pixels.Slide(from, to, 1, direction); CollectionAssert.AreEqual(to, pixels.Texture.GetPixels32());
+                pixels.Slide(from, to, .5, direction);
+                var frame = pixels.Texture.GetPixels32();
+                for (int y = 0; y < 180; y++) for (int x = 0; x < 320; x++)
+                {
+                    int source = x + 160 * direction;
+                    var expected = source >= 0 && source < 320 ? from[y * 320 + source] : to[y * 320 + source - 320 * direction];
+                    Assert.That(frame[y * 320 + x], Is.EqualTo(expected));
+                }
+            }
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
+    [Test]
     public void PublishedDemoArtMatchesAllPosesFacingsDashStatesAndPhases()
     {
         var reference=JsonConvert.DeserializeObject<Reference>(File.ReadAllText("Verification/ArtReference.json"));
