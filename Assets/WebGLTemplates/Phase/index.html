@@ -12,12 +12,38 @@
     canvas:focus-visible { outline: 2px solid #79c9ff; outline-offset: -2px; }
     progress, #error { position: absolute; max-width: 80vw; color: #c0d4e8; }
     progress { width: 160px; accent-color: #79c9ff; }
+    body, button { font: 16px/1.5 system-ui, sans-serif; color: #eadfc5; }
+    button { min-height: 44px; padding: 8px 16px; border: 1px solid #697d8e; border-radius: 4px; background: #1d2b3d; cursor: pointer; }
+    button:hover { background: #314254; }
+    button:focus-visible { outline: 2px solid #79c9ff; outline-offset: 3px; }
+    button:disabled { opacity: .5; cursor: default; }
+    .icon { width: 44px; padding: 10px; }
+    .icon svg { display: block; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; }
+    #controls-toggle { position: absolute; top: 16px; right: 16px; }
+    dialog { box-sizing: border-box; width: min(400px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); margin: auto; padding: 24px; overflow: auto; border: 1px solid #697d8e; border-radius: 4px; color: #eadfc5; background: #101a2b; }
+    dialog::backdrop { background: #0b0f16cc; }
+    dialog header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    h1 { margin: 0; font-size: 22px; }
+    #bindings { display: grid; gap: 8px; }
+    .binding { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .binding button { min-width: 164px; }
+    .binding button[aria-pressed="true"] { border-color: #ffb24d; color: #ffb24d; }
+    #controls-status { min-height: 48px; margin: 16px 0; color: #c0d4e8; }
+    ::selection { color: #101a2b; background: #79c9ff; }
   </style>
 </head>
 <body>
   <canvas id="unity-canvas" width="960" height="540" tabindex="0" aria-label="PHASE 遊戲畫面"></canvas>
   <progress id="loading" max="1" value="0" aria-label="載入遊戲"></progress>
   <p id="error" role="alert" hidden></p>
+  <button id="controls-toggle" class="icon" aria-label="鍵位設定" title="鍵位設定" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18M8 3v6M16 9v6M8 15v6"/></svg></button>
+  <dialog id="controls" aria-labelledby="controls-title">
+    <header><h1 id="controls-title">鍵位設定</h1><button id="controls-close" class="icon" aria-label="返回遊戲"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+    <div id="bindings"></div>
+    <p id="controls-status" role="status" aria-live="polite"></p>
+    <button id="controls-reset">恢復預設</button>
+  </dialog>
+  <script src="controls.js"></script>
   <script src="webgl-compat.js"></script>
   <script src="Build/{{{ LOADER_FILENAME }}}"></script>
   <script>
@@ -48,8 +74,9 @@
       productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
       devicePixelRatio: 1,
       showBanner: (message, type) => type === 'error' ? failed(message) : console.warn(message)
-    }, value => loading.value = value).then(() => {
+    }, value => loading.value = value).then(instance => {
       loading.hidden = true;
+      setupControls(instance, canvas);
       canvas.focus();
     }).catch(failed);
   </script>

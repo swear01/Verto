@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -20,8 +21,17 @@ namespace Phase
         static PhaseController traveler;
         static string arrivalScene;
         static int arrivalDirection;
+        static readonly Key[][] defaultKeys = {
+            new[] { Key.LeftArrow, Key.A }, new[] { Key.RightArrow, Key.D },
+            new[] { Key.UpArrow, Key.W }, new[] { Key.DownArrow, Key.S },
+            new[] { Key.Z, Key.Space }, new[] { Key.X }, new[] { Key.C, Key.LeftShift, Key.RightShift }
+        };
+        static Key[][] keys = defaultKeys;
+        static bool controlsOpen, releaseControls;
+        [Serializable] public sealed class KeyOverrides { public string[] keys; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetSession() { ClearTravel(); keys = defaultKeys; controlsOpen = releaseControls = false; }
         static void ClearTravel() { traveler = null; arrivalScene = null; arrivalDirection = 0; }
 
         void Awake()
@@ -50,9 +60,15 @@ namespace Phase
             if (transitioning) return;
             ResizeCamera();
             var k = Keyboard.current;
+            if (controlsOpen || releaseControls)
+            {
+                jumpQueued = dashQueued = false; accumulator = 0;
+                if (!controlsOpen && (k == null || !k.anyKey.isPressed)) releaseControls = false;
+                return;
+            }
             var input = ReadControls(k);
-            jumpQueued |= k != null && (k.zKey.wasPressedThisFrame || k.spaceKey.wasPressedThisFrame);
-            dashQueued |= k != null && k.xKey.wasPressedThisFrame;
+            jumpQueued |= Pressed(k, 4, true);
+            dashQueued |= Pressed(k, 5, true);
             accumulator += Time.deltaTime;
             while (accumulator >= PhaseController.Dt)
             {
@@ -83,12 +99,33 @@ namespace Phase
         {
             if (k == null) return default;
             return new Controls {
-                x = (k.rightArrowKey.isPressed || k.dKey.isPressed ? 1 : 0) - (k.leftArrowKey.isPressed || k.aKey.isPressed ? 1 : 0),
-                y = (k.downArrowKey.isPressed || k.sKey.isPressed ? 1 : 0) - (k.upArrowKey.isPressed || k.wKey.isPressed ? 1 : 0),
-                jumpHeld = k.zKey.isPressed || k.spaceKey.isPressed,
-                dashHeld = k.xKey.isPressed,
-                grab = k.cKey.isPressed || k.leftShiftKey.isPressed || k.rightShiftKey.isPressed
+                x = (Pressed(k, 1) ? 1 : 0) - (Pressed(k, 0) ? 1 : 0),
+                y = (Pressed(k, 3) ? 1 : 0) - (Pressed(k, 2) ? 1 : 0),
+                jumpHeld = Pressed(k, 4), dashHeld = Pressed(k, 5), grab = Pressed(k, 6)
             };
+        }
+        static bool Pressed(Keyboard k, int action, bool edge = false) => k != null && keys[action].Any(key => edge ? k[key].wasPressedThisFrame : k[key].isPressed);
+        public void SetControlsOpen(string value) { controlsOpen = value == "true"; releaseControls = true; }
+        public void ConfigureControls(string json)
+        {
+            KeyOverrides map;
+            try { map = JsonUtility.FromJson<KeyOverrides>(json); }
+            catch (ArgumentException) { return; }
+            if (map?.keys == null || map.keys.Length != defaultKeys.Length) return;
+            var next = new Key[defaultKeys.Length][];
+            for (int i = 0; i < next.Length; i++)
+            {
+                if (map.keys[i] == "") { next[i] = defaultKeys[i]; continue; }
+                if (!Enum.TryParse(map.keys[i], out Key key) || !Enum.IsDefined(typeof(Key), key) ||
+                    key == Key.None || key == Key.Escape || key == Key.Tab || (int)key >= Keyboard.KeyCount ||
+                    key == Key.LeftCtrl || key == Key.RightCtrl || key == Key.LeftAlt || key == Key.RightAlt ||
+                    key == Key.LeftMeta || key == Key.RightMeta) return;
+                next[i] = new[] { key };
+            }
+            var all = next.SelectMany(action => action).ToArray();
+            if (all.Distinct().Count() != all.Length) return;
+            keys = next;
+            jumpQueued = dashQueued = false; accumulator = 0;
         }
         public static Rect Viewport(int width, int height)
         {

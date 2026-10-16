@@ -35,7 +35,7 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 21 controller cases, one 48-frame art
-comparison, and two Play Mode cases.
+comparison, and three Play Mode cases, including custom bindings, pause/release gating and room persistence.
 The three immutable reference files cover 40 movement/action/climb traces.
 Production steps at 1/60 s; reference replays use the recorded 0.0166667 s.
 
@@ -77,7 +77,8 @@ velocity, jump/dash state and counters. Empty links keep the side closed. Both
 scenes must be in Build Settings and in the Web build's explicit scene list.
 Deaths respawn in the current room. Top/bottom behavior and immutable reference
 fixtures stay unchanged; there is no player text.
-Movement, dash aiming and climb directions accept arrow keys or WASD.
+Default movement, dash aiming and climb bindings accept arrow keys or WASD.
+Web players can replace these bindings through the settings button.
 
 ## CI
 
