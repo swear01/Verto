@@ -5,21 +5,30 @@ a resident Unity **6000.4.7f1** GUI Editor. Scene construction, tests, input che
 captures and Console inspection all run through the live Pipeline connection.
 Do not use direct Editor `-batchmode` / `-executeMethod` invocations or cold
 `unity run` / `unity test` jobs for this workflow. Fix a failed Pipeline connection
-before continuing. In agent terminals, `--wait` keeps the Editor
-attached to the terminal session; run subsequent commands in another terminal.
+before continuing. Reuse the connected Editor instead of reopening it.
 Keep Unity's completed URP material-upgrade record in version control; resetting
 it can reopen a startup confirmation dialog and block Pipeline commands.
+On macOS, launch a new agent Editor hidden and without activating it:
 
 ```sh
-unity open . --editor-version 6000.4.7f1 --wait
+open -g -j -n -a /Applications/Unity/Hub/Editor/6000.4.7f1/Unity.app --args -projectPath "$PWD"
 ```
+
+This macOS launch only controls window activation; all Editor operations below
+use the official Unity CLI and Pipeline. `unity open` currently has no background
+launch option. Do not activate Unity or restore another app after stealing focus.
+Modal startup dialogs still require attention; report them instead of foregrounding
+the Editor. The dedicated CI runner may continue using `unity open --wait`.
 
 Run from the project directory, or pass `--project-path` to target it explicitly.
 Discover the connected package's command parameters with `unity command --query`.
 
 ```sh
 unity status --until-ready --json
-unity command set_autotick
+unity command set_autotick -- --interval_ms 16
+unity command run_script -- --file Verification/BackgroundEditor.cs --entry BackgroundEditor.Run
+unity command recompile -- --focus false
+unity command recompile_status
 unity command open_scene -- --path Assets/Scenes/PhaseSandbox.unity
 unity command run_tests -- --mode editor --filter ControllerTests --async_tests true
 unity command test_status
@@ -40,10 +49,22 @@ Play Mode cases, including custom bindings, pause/release gating and room persis
 The three immutable reference files cover 40 movement/action/climb traces.
 Production steps at 1/60 s; reference replays use the recorded 0.0166667 s.
 
+Before tests or live Play checks, `BackgroundEditor.Run` sets every existing
+Game/Simulator view to Play Unfocused. This is an Editor layout preference, not
+a game setting; Unity’s public `SetPlayModeFocused(false)` maximizes the view
+instead. The script fails if the installed Editor API changes or no view exists.
+Never pass `--focus true` to `recompile` or call `editor_focus`. Wait for a
+successful `recompile_status` before tests; a connection drop during domain reload
+is not a reason to activate the Editor.
+Auto-tick keeps the unfocused Editor responsive and survives recompiles; disable
+it after verification with `unity command set_autotick -- --enable false`.
+
 For a live input check, enter Play mode and run the verification script. It queues
 keyboard events on the player loop and temporarily permits unfocused input, then
 restores the prior settings and removes its test keyboard. It requires no game
-code changes or domain reload.
+code changes or domain reload. Its virtual keyboard does not send keys to your
+foreground application. The screen capture command reads the Game View render
+target directly; it does not need the Unity window on screen.
 
 ```sh
 unity command open_scene -- --path Assets/Scenes/PhaseSandbox.unity
