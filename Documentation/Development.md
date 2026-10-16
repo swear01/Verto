@@ -23,6 +23,8 @@ unity command set_autotick
 unity command open_scene -- --path Assets/Scenes/PhaseSandbox.unity
 unity command run_tests -- --mode editor --filter ControllerTests --async_tests true
 unity command test_status
+unity command run_tests -- --mode editor --filter PixelTests --async_tests true
+unity command test_status
 unity command run_tests -- --mode playmode --filter SandboxTests --async_tests true
 unity command test_status
 ```
@@ -32,7 +34,8 @@ To recreate the sandbox, call its existing builder through the connected Editor:
 edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 21 Editor cases and two Play Mode cases.
+starting the next test run. There are 21 controller cases, one 48-frame art
+comparison, and two Play Mode cases.
 The three immutable reference files cover 40 movement/action/climb traces.
 Production steps at 1/60 s; reference replays use the recorded 0.0166667 s.
 
