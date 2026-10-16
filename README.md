@@ -7,9 +7,10 @@ The two test rooms connect at the first room’s right edge and the second room�
 left edge. Cross to continue from the opposite side; the game view has no explanatory text.
 In the Web preview, the top-right settings button lets you customize keyboard bindings.
 
-The 320×180 pixel frame uses point sampling. Web fits the window at 16:9 and has a
-fullscreen button; native Editor Game Views keep integer scaling. Room travel uses
-a quick horizontal slide.
+The pixel view fills the window at any aspect ratio, keeping 180 native pixels
+high with point sampling. Wide rooms extend the quarry and walkable floor; narrow
+views follow the player. Web has a fullscreen button, and room travel uses a quick
+horizontal slide.
 `PhaseTerrain` and `PhaseMovingPlatform` are reusable Inspector components.
 
 Development uses **Unity CLI + Unity Pipeline** against a running Editor.

@@ -11,7 +11,9 @@ namespace Phase
         static readonly string[] Edges = { "b35c70", "4d91b3", "56a271", "697d8e" };
         const string Ink = "0b0f16";
         static readonly Dictionary<string, Color32> colors = new Dictionary<string, Color32>();
-        readonly Color32[] buffer = new Color32[320 * 180];
+        Color32[] buffer = new Color32[320 * 180];
+        public int Width => Texture.width;
+        public int OriginX { get; private set; }
         readonly Dictionary<(string, int, int, int, bool), Bitmap> sprites = new Dictionary<(string, int, int, int, bool), Bitmap>();
         readonly Dictionary<(int, int), int> cells = new Dictionary<(int, int), int>();
         readonly Dictionary<string, Color32[]> terrain = new Dictionary<string, Color32[]>();
@@ -21,6 +23,17 @@ namespace Phase
         public Texture2D Texture { get; }
         public PhasePixels()
         { Texture = new Texture2D(320, 180, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, name = "PHASE 320x180" }; }
+        public void SetView(int width, int origin)
+        {
+            if (width == Width && origin == OriginX) return;
+            if (width != Width)
+            {
+                if (!Texture.Reinitialize(width, 180)) throw new InvalidOperationException("Cannot resize PHASE pixel surface");
+                buffer = new Color32[width * 180];
+                terrainBlocks = null;
+            }
+            OriginX = origin; backdrop = null; terrain.Clear();
+        }
         public static Color Hex(string hex) { ColorUtility.TryParseHtmlString("#" + hex, out var c); return c; }
         static Color32 Color(string hex)
         {
@@ -31,8 +44,9 @@ namespace Phase
         static Color32 Mix(Color32 a, Color32 b, double k) => new Color32((byte)Round(a.r + (b.r - a.r) * k), (byte)Round(a.g + (b.g - a.g) * k), (byte)Round(a.b + (b.b - a.b) * k), 255);
         void Put(int x, int y, Color32 c, double alpha = 1)
         {
-            if (x < 0 || x >= 320 || y < 0 || y >= 180 || c.a == 0) return;
-            int i = (179 - y) * 320 + x;
+            x -= OriginX;
+            if (x < 0 || x >= Width || y < 0 || y >= 180 || c.a == 0) return;
+            int i = (179 - y) * Width + x;
             buffer[i] = alpha >= 1 ? c : Mix(buffer[i], c, alpha);
         }
         void Rect(double x, double y, double w, double h, string color, double alpha = 1) => Rect(x, y, w, h, Color(color), alpha);
@@ -40,7 +54,7 @@ namespace Phase
         {
             int left = Round(x), top = Round(y);
             for (int py = Math.Max(0, top); py < Math.Min(180, top + h); py++)
-                for (int px = Math.Max(0, left); px < Math.Min(320, left + w); px++) Put(px, py, color, alpha);
+                for (int px = Math.Max(OriginX, left); px < Math.Min(OriginX + Width, left + w); px++) Put(px, py, color, alpha);
         }
         static uint Hash(int x, int y)
         { unchecked { uint h = (uint)(x * 73856093) ^ (uint)(y * 19349663); h = (h ^ (h >> 13)) * 1274126177; return h ^ (h >> 16); } }
@@ -50,8 +64,8 @@ namespace Phase
             var bands = new[] { "0a1018", "0c131d", "0e1520", "101a26", "121e2b" };
             for (int i = 0; i < bands.Length; i++)
             {
-                Rect(0, i * 36, 320, 36, bands[i]);
-                if (i > 0) for (int y = i * 36 - 2; y < i * 36; y++) for (int x = y & 1; x < 320; x += 2) Rect(x, y, 1, 1, bands[i]);
+                Rect(OriginX, i * 36, Width, 36, bands[i]);
+                if (i > 0) for (int y = i * 36 - 2; y < i * 36; y++) for (int x = OriginX / 2 * 2 + (y & 1); x < OriginX + Width; x += 2) Rect(x, y, 1, 1, bands[i]);
             }
             for (int y = -11; y <= 11; y++) for (int x = -11; x <= 11; x++)
             {
@@ -65,7 +79,9 @@ namespace Phase
                 if (i % 5 == 2) { Rect(x - 1, y, 3, 1, "26364a"); Rect(x, y - 1, 1, 3, "26364a"); Rect(x, y, 1, 1, "4a5d74"); }
                 else Rect(x, y, 1, 1, i % 3 != 0 ? "2a394c" : "3c4e64");
             }
-            for (int x = 0; x < 320; x += 4)
+            for (int x = 320; x < OriginX + Width; x += 18)
+                Rect(x, 12 + (int)(Hash(x, 0) % 50), 1, 1, "2a394c");
+            for (int x = OriginX / 4 * 4; x < OriginX + Width; x += 4)
             {
                 int y = 2 * Round((104 + 9 * Math.Sin(x * .021) + 6 * Math.Sin(x * .057 + 1.3) + 3 * Math.Sin(x * .13 + .4)) / 2);
                 Rect(x, y, 4, 180 - y, "152131"); Rect(x, y, 4, 1, "1b293b");
@@ -79,7 +95,12 @@ namespace Phase
             }
             Rect(26, Hill(29) - 30, 24, 3, "0f1722"); Rect(26, Hill(29) - 30, 24, 1, "162030");
             Rect(246, Hill(249) - 26, 26, 3, "0f1722"); Rect(246, Hill(249) - 26, 26, 1, "162030");
-            for (int x = 0; x < 320; x += 2) { int y = Hill(x); Rect(x, y, 2, 180 - y, "0b111a"); Rect(x, y, 2, 1, "111a26"); }
+            for (int x = 340; x < OriginX + Width; x += 48)
+            {
+                int top = Hill(x + 3) - 18 - (int)(Hash(x, 1) % 20);
+                Rect(x, top, 6, 160 - top, "0f1722"); Rect(x - 1, top, 8, 1, "162030");
+            }
+            for (int x = OriginX / 2 * 2; x < OriginX + Width; x += 2) { int y = Hill(x); Rect(x, y, 2, 180 - y, "0b111a"); Rect(x, y, 2, 1, "111a26"); }
             backdrop = (Color32[])buffer.Clone();
         }
         static int Hill(int x) => Round(146 + 5 * Math.Sin(x * .031 + 2) + 3 * Math.Sin(x * .09));
@@ -241,16 +262,16 @@ namespace Phase
             foreach (var t in s.trails) Blit(Sprite("dash", s.player.facing, t.phase, 0, true), Round(t.x) - 2, Round(t.y) - 3, t.life * 2);
             if (playerVisible && s.respawn <= 0) DrawPlayer(s.player, s.time, s.phase);
             foreach (var p in s.particles) Rect(p.x, p.y, 1, 1, p.phase < 0 ? "dce7ee" : Highlights[p.phase], Math.Min(1, p.life * 3));
-            if (s.flash > 0) Rect(0, 0, 320, 180, Highlights[s.phase], s.flash * .3);
+            if (s.flash > 0) Rect(OriginX, 0, Width, 180, Highlights[s.phase], s.flash * .3);
             Texture.SetPixels32(buffer); Texture.Apply(false);
         }
         public void Slide(Color32[] from, Color32[] to, double progress, int direction)
         {
-            int shift = Round(320 * Math.Max(0, Math.Min(1, progress))) * direction;
-            for (int y = 0; y < 180; y++) for (int x = 0; x < 320; x++)
+            int shift = Round(Width * Math.Max(0, Math.Min(1, progress))) * direction;
+            for (int y = 0; y < 180; y++) for (int x = 0; x < Width; x++)
             {
-                int source = x + shift, row = y * 320;
-                buffer[row + x] = source >= 0 && source < 320 ? from[row + source] : to[row + source - direction * 320];
+                int source = x + shift, row = y * Width;
+                buffer[row + x] = source >= 0 && source < Width ? from[row + source] : to[row + source - direction * Width];
             }
             Texture.SetPixels32(buffer); Texture.Apply(false);
         }

@@ -43,6 +43,22 @@ public class ControllerTests
     static void Ticks(PhaseController s, int count, Controls input = default)
     { for (int i = 0; i < count; i++) { var a = input; a.jump &= i == 0; a.dash &= i == 0; s.Step(a); } }
     [Test]
+    public void AdaptiveRoomExtendsFloorAndEdgesWithoutResettingState()
+    {
+        var s = new PhaseController(new[] { new Block(0,160,320,24), new Block(240,80,8,80) },32,149);
+        var player = s.player; s.phase = 2; s.jumps = 3; player.stamina = 63;
+        s.ResizeRoom(427);
+        Assert.That(s.blocks[0].w,Is.EqualTo(427)); Assert.That(s.blocks[1].x,Is.EqualTo(240));
+        player.x=400; Ticks(s,2); Assert.That(player.grounded,Is.True,"extended floor has collision");
+        player.stamina=63;
+        s.exitRight=true; player.x=420; Assert.That(s.ExitDirection,Is.EqualTo(1));
+        var next = new PhaseController(new[] { new Block(0,160,320,24) },32,149);
+        next.ResizeRoom(427); next.EnterFrom(s,-1); Assert.That(next.player.x,Is.EqualTo(419));
+        s.ResizeRoom(83);
+        Assert.That(s.Width,Is.EqualTo(320)); Assert.That(player.x,Is.EqualTo(312)); Assert.That(s.blocks[0].w,Is.EqualTo(320));
+        Assert.That(s.player,Is.SameAs(player)); Assert.That(s.phase,Is.EqualTo(2)); Assert.That(s.jumps,Is.EqualTo(3)); Assert.That(player.stamina,Is.EqualTo(63));
+    }
+    [Test]
     public void JumpCyclesOnceAndDashKeepsColor()
     {
         var s = Arena(); Ticks(s,1,new Controls { jump=true,jumpHeld=true }); Assert.That(s.phase,Is.EqualTo(1));

@@ -22,12 +22,15 @@ move, Space/Z jumps, X dashes, and C/Shift grabs. Cross the first room’s right
 edge to continue, or the second room’s left edge to return. Room changes use a
 0.18-second horizontal pixel slide; input/physics pause until it finishes.
 Touch controls are not provided.
-The render target stays 320×180 with point/pixelated sampling. The game fits the
-window at 16:9 using the largest available scale; different screen aspect ratios
-retain necessary letterboxing. The top-right fullscreen button enters/exits browser
-fullscreen and remains available alongside keyboard settings. Fullscreen needs a
-user click and browser/iframe permission; denied requests show a recovery message.
-Loading failures remain visible.
+The canvas fills the entire viewport. Native render height stays 180 pixels; width
+tracks the actual aspect ratio with point/pixelated sampling. Wide rooms extend
+procedural sky, quarry and full-width floor collision, including their right exit.
+Narrow views follow the player inside the existing minimum 320-pixel room. Resizing
+preserves movement/color state and clamps positions within a shortened room;
+resizing during a slide completes the handoff safely. Fixed obstacles and movers
+retain their world coordinates. The top-right fullscreen button includes keyboard
+settings. Fullscreen needs a user click and browser/iframe permission; denied
+requests show a recovery message. Loading failures remain visible.
 
 The top-right settings button opens keyboard bindings and pauses the game. Select
 an action, then press one key; Esc cancels capture or closes settings. Overrides
@@ -52,10 +55,11 @@ the warning.
 ## Enable automatic builds and online play
 
 `Web build and preview` runs only on `main`, after push or manual dispatch.
-It uses Unity CLI + live Pipeline for 23 Editor tests, three Play Mode tests and
+It uses Unity CLI + live Pipeline for 25 Editor tests, three Play Mode tests and
 the Web build, then verifies browser rendering, keyboard input, both scene-edge
-transitions, resizing, visible load failures, and absence of browser errors/warnings. Only a passing
-build is uploaded and deployed. `web-verification` contains the reports/captures.
+transitions, adaptive view/portrait follow/wide-floor travel, resizing, visible
+load failures, and absence of browser errors/warnings. Only a passing build is
+uploaded and deployed. `web-verification` contains the reports/captures.
 
 The repository owner must complete this setup first:
 
@@ -77,3 +81,7 @@ GitHub-hosted controller/compatibility checks still run on pull requests and
 References: [Unity Web deployment](https://docs.unity3d.com/6000.4/Documentation/Manual/webgl-deploying.html),
 [runner registration](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners),
 [Pages publishing](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
+
+Rendering reference: [Unity Web canvas sizing](https://docs.unity.com/en-us/engine/6000.0/manual/platform-specific/webgl/develop/canvas-size).
+The template keeps automatic sizing disabled and sets the native backing width
+explicitly on resize; CSS covers the full viewport.
