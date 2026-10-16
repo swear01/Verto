@@ -53,7 +53,7 @@ def main():
     if status.get("unityVersion") != "6000.4.7f1":
         raise RuntimeError(f"Expected Unity 6000.4.7f1, got {status.get('unityVersion')}")
     command("set_autotick")
-    for mode, test_filter, expected in [("editor", "ControllerTests", 17), ("playmode", "SandboxTests", 1)]:
+    for mode, test_filter, expected in [("editor", "ControllerTests", 21), ("playmode", "SandboxTests", 2)]:
         wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)
         command("run_tests", "--", "--mode", mode, "--filter", test_filter, "--async_tests")
         result = wait("test_status", lambda r: r.get("status") == "completed", 300)
@@ -65,7 +65,7 @@ def main():
     wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)
     command("open_scene", "--", "--path", "Assets/Scenes/PhaseSandbox.unity")
     queued = command("build", "--", "--target", "WebGL", "--outputPath", str(args.output.resolve()),
-                     "--scenes", '["Assets/Scenes/PhaseSandbox.unity"]', "--confirm")
+                     "--scenes", '["Assets/Scenes/PhaseSandbox.unity","Assets/Scenes/PhaseRoom2.unity"]', "--confirm")
     if queued.get("status") != "queued":
         raise RuntimeError(f"Build was not queued: {queued}")
     result = wait("build_status", lambda r: r.get("status") == "completed" and r.get("buildId") == queued["buildId"], 1200)

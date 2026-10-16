@@ -71,4 +71,52 @@ public class SandboxTests : InputTestFixture
         }
         finally { InputSystem.RemoveDevice(k); }
     }
+    [UnityTest]
+    public IEnumerator ConnectedEdgesLoadBothScenesAndRespawnLocally()
+    {
+        yield return SceneManager.LoadSceneAsync("PhaseSandbox");
+        var k=InputSystem.AddDevice<Keyboard>();
+        try
+        {
+            var sandbox=Object.FindAnyObjectByType<PhaseSandbox>();
+            sandbox.Controller.player.x=0;sandbox.Controller.player.vx=-90;
+            InputSystem.QueueStateEvent(k,new KeyboardState(Key.LeftArrow));
+            yield return new WaitForSeconds(.1f);
+            Assert.That(SceneManager.GetActiveScene().name,Is.EqualTo("PhaseSandbox"));Assert.That(sandbox.Controller.player.x,Is.Zero);
+            var p=sandbox.Controller.player;p.x=311;p.y=100;p.vx=90;p.vy=-30;p.dash=0;p.stamina=63;
+            sandbox.Controller.phase=2;
+            InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow));
+            double deadline=Time.realtimeSinceStartupAsDouble+5;
+            while(SceneManager.GetActiveScene().name!="PhaseRoom2"&&Time.realtimeSinceStartupAsDouble<deadline)yield return null;
+            Assert.That(SceneManager.GetActiveScene().name,Is.EqualTo("PhaseRoom2"));
+            InputSystem.QueueStateEvent(k,new KeyboardState());
+            sandbox=Object.FindAnyObjectByType<PhaseSandbox>();
+            Assert.That(sandbox.Controller.player,Is.SameAs(p));Assert.That(sandbox.Controller.phase,Is.EqualTo(2));
+            Assert.That(p.x,Is.LessThan(32));Assert.That(p.y,Is.LessThan(110));Assert.That(p.dash,Is.Zero);Assert.That(p.stamina,Is.EqualTo(63));
+            yield return new WaitForSeconds(.15f);
+            Assert.That(SceneManager.GetActiveScene().name,Is.EqualTo("PhaseRoom2"));
+            p.x=312;p.y=149;p.vx=90;p.vy=0;
+            InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow));
+            yield return new WaitForSeconds(.1f);
+            Assert.That(SceneManager.GetActiveScene().name,Is.EqualTo("PhaseRoom2"));Assert.That(p.x,Is.EqualTo(312));
+            InputSystem.QueueStateEvent(k,new KeyboardState());p.x=32;p.y=200;
+            yield return new WaitForSeconds(.4f);
+            Assert.That(SceneManager.GetActiveScene().name,Is.EqualTo("PhaseRoom2"));
+            Assert.That(sandbox.Controller.deaths,Is.EqualTo(1));Assert.That(sandbox.Controller.player.x,Is.EqualTo(sandbox.spawn.x));
+            p=sandbox.Controller.player;p.x=1;p.y=100;p.vx=-90;p.vy=-30;p.dash=0;
+            sandbox.Controller.phase=1;
+            InputSystem.QueueStateEvent(k,new KeyboardState(Key.LeftArrow));
+            deadline=Time.realtimeSinceStartupAsDouble+5;
+            while(SceneManager.GetActiveScene().name!="PhaseSandbox"&&Time.realtimeSinceStartupAsDouble<deadline)yield return null;
+            Assert.That(SceneManager.GetActiveScene().name,Is.EqualTo("PhaseSandbox"));
+            InputSystem.QueueStateEvent(k,new KeyboardState());
+            sandbox=Object.FindAnyObjectByType<PhaseSandbox>();
+            Assert.That(sandbox.Controller.player,Is.SameAs(p));Assert.That(p.x,Is.GreaterThan(280));
+            Assert.That(sandbox.Controller.phase,Is.EqualTo(1));Assert.That(p.dash,Is.Zero);Assert.That(sandbox.Controller.deaths,Is.EqualTo(1));
+            Assert.That(Object.FindObjectsByType<PhaseSandbox>(FindObjectsSortMode.None).Length,Is.EqualTo(1));
+            LogAssert.NoUnexpectedReceived();
+        }
+        finally { InputSystem.RemoveDevice(k); }
+    }
+
 }

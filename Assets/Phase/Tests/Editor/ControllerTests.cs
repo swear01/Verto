@@ -134,4 +134,41 @@ public class ControllerTests
         var s=Arena();s.player.x=192;s.player.vx=90;Ticks(s,1,new Controls { x=1 });Assert.That(s.player.remX,Is.Zero);
         Ticks(s,1,new Controls { x=-1 });Assert.That(s.player.x,Is.EqualTo(192));
     }
+    [TestCase(-1)] [TestCase(1)]
+    public void OnlyConnectedEdgesAllowCrossing(int direction)
+    {
+        foreach (bool open in new[] { false, true })
+        {
+            var s=Arena();s.exitLeft=open&&direction<0;s.exitRight=open&&direction>0;
+            s.player.x=direction<0?0:312;s.player.vx=direction*90;
+            Ticks(s,1,new Controls { x=direction });
+            Assert.That(s.ExitDirection,Is.EqualTo(open?direction:0));
+            Assert.That(s.player.x,open?(direction<0?Is.LessThan(0):Is.GreaterThan(312)):Is.EqualTo(direction<0?0:312));
+            s.player.y=200;Ticks(s,1);
+            Assert.That(s.deaths,Is.EqualTo(1));Assert.That(s.ExitDirection,Is.Zero,"death takes priority over travel");
+        }
+        var ride=new PhaseController(Array.Empty<Block>(),direction<0?0:312,61,
+            new MovingPlatform(new[] { new[] { direction<0?-16.0:296,72 },new[] { direction<0?-32.0:312,72 } },48,8));
+        ride.exitLeft=direction<0;ride.exitRight=direction>0;
+        Ticks(ride,1,new Controls { x=direction,dash=true });Ticks(ride,6,new Controls { x=direction });
+        Assert.That(ride.ExitDirection,Is.EqualTo(direction));Assert.That(ride.deaths,Is.Zero,"platform can carry through an open edge");
+    }
+    [TestCase(-1)] [TestCase(1)]
+    public void ArrivalKeepsAirDashAndColorWithoutOldWallContact(int direction)
+    {
+        var source=Arena();var p=source.player;p.y=67;p.vx=direction*240;p.vy=-120;
+        p.dash=0;p.dashTime=.1;p.stamina=63;p.ducking=true;p.h=6;
+        p.climbing=p.hopMover=p.dashRide=true;p.wall=p.hopX=p.forceX=1;p.wallLock=p.retention=.1;
+        source.phase=2;source.jumps=4;source.dashes=3;source.deaths=1;source.time=12;
+        var next=Arena();next.EnterFrom(source,direction);
+        Assert.That(next.player.x,Is.EqualTo(direction>0?0:312));Assert.That(next.player.y,Is.EqualTo(67));
+        Assert.That((next.player.vx,next.player.vy,next.player.dash,next.player.dashTime,next.player.stamina),Is.EqualTo((direction*240.0,-120.0,0,.1,63.0)));
+        Assert.That((next.phase,next.jumps,next.dashes,next.deaths,next.time),Is.EqualTo((2,4,3,1,12.0)));
+        Assert.That(next.player.ducking,Is.True);Assert.That(next.player.h,Is.EqualTo(6));Assert.That(next.player.grounded,Is.False);
+        Assert.That(next.player.climbing||next.player.hopMover||next.player.dashRide,Is.False);
+        Assert.That(next.player.wall+next.player.hopX+next.player.forceX+next.player.wallLock+next.player.retention,Is.Zero);
+        Assert.That(next.ExitDirection,Is.Zero,"arrival does not bounce back");
+        next.Reset();Assert.That(next.player.x,Is.EqualTo(67));Assert.That(next.phase,Is.Zero);
+    }
+
 }

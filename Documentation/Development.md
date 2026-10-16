@@ -32,7 +32,7 @@ To recreate the sandbox, call its existing builder through the connected Editor:
 edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 17 Editor cases and one Play Mode case.
+starting the next test run. There are 21 Editor cases and two Play Mode cases.
 The three immutable reference files cover 40 movement/action/climb traces.
 Production steps at 1/60 s; reference replays use the recorded 0.0166667 s.
 
@@ -67,12 +67,18 @@ script must return `passed`. Inspect the capture's returned `savedPath`: Pipelin
 The controller uses native pixels, Y down, a 60 Hz accumulator, 8×11 collision
 (8×6 crouched), and X then Y pixel stepping. Terrain transforms use Unity X/Y as
 pixel coordinates with Y negated; platform nodes and spawn use screen coordinates.
-The saved sandbox and test fixtures contain no exits, progression or player text.
+`PhaseSandbox.rightScene` links to `PhaseRoom2`; its `leftScene` returns to the
+sandbox. Crossing an assigned horizontal edge loads that scene asynchronously,
+places the player at the opposite edge at the same height, and carries color,
+velocity, jump/dash state and counters. Empty links keep the side closed. Both
+scenes must be in Build Settings and in the Web build's explicit scene list.
+Deaths respawn in the current room. Top/bottom behavior and immutable reference
+fixtures stay unchanged; there is no player text.
 Movement, dash aiming and climb directions accept arrow keys or WASD.
 
 ## CI
 
-GitHub Actions runs the production `PhaseController.cs` and the same 17
+GitHub Actions runs the production `PhaseController.cs` and the same 21
 `ControllerTests` on .NET 10, including the 40 immutable reference traces.
 The test fixture parser uses Json.NET, already included by Unity Pipeline.
 The hosted runner requires no Unity license or repository secrets.
