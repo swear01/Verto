@@ -1,0 +1,34 @@
+# Movement references
+
+PHASE controller and pixel art are ported from the local three-color HTML prototype
+(SHA-256 `263b80ae0014b042603f5ec44b6a42b3216142b6e6ad25e1978d5ac8be598934`).
+No commercial game art or music is included.
+
+Movement behavior was informed by [Celeste Player.cs](https://github.com/NoelFB/Celeste/blob/1b0ce45c75e05649ae91b44a8bb6b196684e4352/Source/Player/Player.cs).
+Its MIT notice is preserved below. The existing immutable reference fixtures come
+from [celeste-next-gym](https://github.com/std-microblock/celeste-next-gym/tree/2e133ef7803c2f74b6914a477393218f2b9abaef),
+whose Cargo workspace declares MIT. No Rust runtime or game assets are vendored.
+The fixtures identify their revision and generator; they are a source-informed
+subset, not proof of full Celeste parity.
+
+MIT License
+
+Copyright (c) 2018 Noel Berry
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
