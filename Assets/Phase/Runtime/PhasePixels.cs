@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Phase
@@ -6,111 +7,242 @@ namespace Phase
     public sealed class PhasePixels : IDisposable
     {
         public static readonly string[] Highlights = { "ff8f91", "79c9ff", "78d892", "a9b8c5", "e7ce76" };
-        static readonly string[] Fills = { "833e54", "356487", "316d4a", "3c4a57", "6f603c" };
-        static readonly string[] Edges = { "b35c70", "4d91b3", "56a271", "697d8e", "b09a53" };
+        static readonly string[] Fills = { "833e54", "356487", "316d4a", "3c4a57" };
+        static readonly string[] Edges = { "b35c70", "4d91b3", "56a271", "697d8e" };
+        const string Ink = "0b0f16";
+        static readonly Dictionary<string, Color32> colors = new Dictionary<string, Color32>();
         readonly Color32[] buffer = new Color32[320 * 180];
+        readonly Dictionary<(string, int, int, int, bool), Bitmap> sprites = new Dictionary<(string, int, int, int, bool), Bitmap>();
+        readonly Dictionary<(int, int), int> cells = new Dictionary<(int, int), int>();
+        readonly Dictionary<string, Color32[]> terrain = new Dictionary<string, Color32[]>();
+        List<Block> terrainBlocks;
+        int terrainBlockCount;
+        Color32[] backdrop;
         public Texture2D Texture { get; }
         public PhasePixels()
         { Texture = new Texture2D(320, 180, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, name = "PHASE 320x180" }; }
         public static Color Hex(string hex) { ColorUtility.TryParseHtmlString("#" + hex, out var c); return c; }
-        void Rect(double x, double y, double w, double h, string color, double alpha = 1)
+        static Color32 Color(string hex)
         {
-            Color32 c = Hex(color); int left = (int)Math.Floor(x + .5), top = (int)Math.Floor(y + .5);
+            if (!colors.TryGetValue(hex, out var c)) colors[hex] = c = Hex(hex);
+            return c;
+        }
+        static int Round(double v) => (int)Math.Floor(v + .5);
+        static Color32 Mix(Color32 a, Color32 b, double k) => new Color32((byte)Round(a.r + (b.r - a.r) * k), (byte)Round(a.g + (b.g - a.g) * k), (byte)Round(a.b + (b.b - a.b) * k), 255);
+        void Put(int x, int y, Color32 c, double alpha = 1)
+        {
+            if (x < 0 || x >= 320 || y < 0 || y >= 180 || c.a == 0) return;
+            int i = (179 - y) * 320 + x;
+            buffer[i] = alpha >= 1 ? c : Mix(buffer[i], c, alpha);
+        }
+        void Rect(double x, double y, double w, double h, string color, double alpha = 1) => Rect(x, y, w, h, Color(color), alpha);
+        void Rect(double x, double y, double w, double h, Color32 color, double alpha = 1)
+        {
+            int left = Round(x), top = Round(y);
             for (int py = Math.Max(0, top); py < Math.Min(180, top + h); py++)
-                for (int px = Math.Max(0, left); px < Math.Min(320, left + w); px++)
+                for (int px = Math.Max(0, left); px < Math.Min(320, left + w); px++) Put(px, py, color, alpha);
+        }
+        static uint Hash(int x, int y)
+        { unchecked { uint h = (uint)(x * 73856093) ^ (uint)(y * 19349663); h = (h ^ (h >> 13)) * 1274126177; return h ^ (h >> 16); } }
+        void Background()
+        {
+            if (backdrop != null) { Array.Copy(backdrop, buffer, buffer.Length); return; }
+            var bands = new[] { "0a1018", "0c131d", "0e1520", "101a26", "121e2b" };
+            for (int i = 0; i < bands.Length; i++)
+            {
+                Rect(0, i * 36, 320, 36, bands[i]);
+                if (i > 0) for (int y = i * 36 - 2; y < i * 36; y++) for (int x = y & 1; x < 320; x += 2) Rect(x, y, 1, 1, bands[i]);
+            }
+            for (int y = -11; y <= 11; y++) for (int x = -11; x <= 11; x++)
+            {
+                if (x * x + y * y > 110) continue;
+                Rect(262 + x, 34 + y, 1, 1, (x + 4) * (x + 4) + (y + 3) * (y + 3) <= 86 ? "162131" : x * x + y * y > 86 ? "24344a" : "1d2b3d");
+            }
+            var stars = new[] { (18,14),(47,30),(71,9),(103,22),(131,41),(150,12),(178,27),(204,8),(221,44),(240,17),(292,12),(307,46),(86,52),(12,58),(164,60),(283,66) };
+            for (int i = 0; i < stars.Length; i++)
+            {
+                var (x,y) = stars[i];
+                if (i % 5 == 2) { Rect(x - 1, y, 3, 1, "26364a"); Rect(x, y - 1, 1, 3, "26364a"); Rect(x, y, 1, 1, "4a5d74"); }
+                else Rect(x, y, 1, 1, i % 3 != 0 ? "2a394c" : "3c4e64");
+            }
+            for (int x = 0; x < 320; x += 4)
+            {
+                int y = 2 * Round((104 + 9 * Math.Sin(x * .021) + 6 * Math.Sin(x * .057 + 1.3) + 3 * Math.Sin(x * .13 + .4)) / 2);
+                Rect(x, y, 4, 180 - y, "152131"); Rect(x, y, 4, 1, "1b293b");
+            }
+            foreach (var pillar in new[] { (26,6,30,1),(44,6,30,1),(96,5,18,0),(150,6,40,1),(204,5,14,0),(246,6,26,1),(264,6,26,1),(300,5,20,0) })
+            {
+                var (x,w,h,cap) = pillar; int top = Hill(x + 3) - h;
+                Rect(x, top, w, h + 4, "0f1722");
+                if (cap != 0) { Rect(x - 1, top, w + 2, 2, "0f1722"); Rect(x - 1, top, w + 2, 1, "162030"); }
+                else { Rect(x + 1, top - 2, 2, 2, "0f1722"); Rect(x, top, 1, 1, "162030"); }
+            }
+            Rect(26, Hill(29) - 30, 24, 3, "0f1722"); Rect(26, Hill(29) - 30, 24, 1, "162030");
+            Rect(246, Hill(249) - 26, 26, 3, "0f1722"); Rect(246, Hill(249) - 26, 26, 1, "162030");
+            for (int x = 0; x < 320; x += 2) { int y = Hill(x); Rect(x, y, 2, 180 - y, "0b111a"); Rect(x, y, 2, 1, "111a26"); }
+            backdrop = (Color32[])buffer.Clone();
+        }
+        static int Hill(int x) => Round(146 + 5 * Math.Sin(x * .031 + 2) + 3 * Math.Sin(x * .09));
+        // shortcut: Same-count terrain edits need a revision when live terrain editing is supported.
+        void Terrain(PhaseController s)
+        {
+            if (terrainBlocks != s.blocks || terrainBlockCount != s.blocks.Count)
+            {
+                terrainBlocks = s.blocks; terrainBlockCount = s.blocks.Count; cells.Clear(); terrain.Clear();
+                foreach (var b in s.blocks) for (int y = (int)b.y; y < b.y + b.h; y += 8) for (int x = (int)b.x; x < b.x + b.w; x += 8) cells[(x,y)] = b.phase;
+            }
+            var blocked = new List<int>(s.blocked); blocked.Sort();
+            string key = s.phase + "|" + string.Join(",", blocked);
+            if (terrain.TryGetValue(key, out var cached)) { Array.Copy(cached, buffer, buffer.Length); return; }
+            Background();
+            for (int i = 0; i < s.blocks.Count; i++)
+            {
+                var b = s.blocks[i]; int color = b.phase < 0 ? 3 : b.phase;
+                Color32 cap = Color(Highlights[color]), rim = Color(Edges[color]), body = Color(Fills[color]);
+                Color32 lift = Mix(body, rim, .45), dim = Mix(body, Color("000000"), .14), seam = Mix(body, Color("000000"), .4), deep = Mix(body, Color("000000"), .58);
+                bool active = (b.phase < 0 || b.phase == s.phase) && !s.blocked.Contains(i), deferred = s.blocked.Contains(i);
+                for (int Y = (int)b.y; Y < b.y + b.h; Y += 8) for (int X = (int)b.x; X < b.x + b.w; X += 8)
                 {
-                    int index = (179 - py) * 320 + px;
-                    buffer[index] = alpha >= 1 ? c : (Color32)Color.Lerp(buffer[index], c, (float)alpha);
+                    bool Neighbor(int dx, int dy) => cells.TryGetValue((X + dx * 8, Y + dy * 8), out var kind) && kind == b.phase;
+                    bool u = Neighbor(0,-1), d = Neighbor(0,1), l = Neighbor(-1,0), r = Neighbor(1,0);
+                    if (!active)
+                    {
+                        Rect(X, Y, 8, 8, body, deferred ? .3 : .12);
+                        double alpha = deferred ? .95 : .62;
+                        for (int n = 0; n < 8; n++)
+                        {
+                            bool dx = deferred || ((X + n) & 3) < 2 || n == 0 || n == 7, dy = deferred || ((Y + n) & 3) < 2 || n == 0 || n == 7;
+                            if (!u && dx) Rect(X + n, Y, 1, 1, cap, alpha);
+                            if (!d && dx) Rect(X + n, Y + 7, 1, 1, rim, alpha);
+                            if (!l && dy) Rect(X, Y + n, 1, 1, rim, alpha);
+                            if (!r && dy) Rect(X + 7, Y + n, 1, 1, rim, alpha);
+                        }
+                        continue;
+                    }
+                    for (int y = 0; y < 8; y++)
+                    {
+                        int course = (Y + y) >> 2, row = (Y + y) & 3;
+                        if (row == 3) { Rect(X, Y + y, 8, 1, seam); continue; }
+                        for (int x = 0; x < 8; x++)
+                        {
+                            int wx = X + x + (course & 1) * 4, brick = wx >> 3, along = wx & 7;
+                            bool joint = along == 7 && Hash(brick, course * 7 + 3) % 3 != 0;
+                            Rect(X + x, Y + y, 1, 1, joint ? seam : row == 0 && along < 2 ? lift : Hash(brick, course) % 5 == 0 ? dim : body);
+                        }
+                    }
+                    int top = u ? 0 : 2;
+                    if (!u) { Rect(X, Y, 8, 1, cap); Rect(X, Y + 1, 8, 1, rim); }
+                    if (!d) Rect(X, Y + 7, 8, 1, deep);
+                    if (!l) { Rect(X, Y + top, 1, 8 - top, rim); if (!d) Rect(X, Y + 7, 1, 1, seam); }
+                    if (!r) { Rect(X + 7, Y + top, 1, 8 - top, seam); if (!d) Rect(X + 7, Y + 7, 1, 1, deep); }
+                    if (!u && !l) Rect(X, Y, 1, 1, rim);
+                    if (!u && !r) { Rect(X + 7, Y, 1, 1, rim); Rect(X + 7, Y + 1, 1, 1, lift); }
+                    if (u && l && !Neighbor(-1,-1)) Rect(X, Y, 1, 1, seam);
+                    if (u && r && !Neighbor(1,-1)) Rect(X + 7, Y, 1, 1, seam);
+                    if (u && d && l && r && Hash(X,Y) % 11 == 0) { Rect(X + 2, Y + 1, 1, 1, seam); Rect(X + 3, Y + 2, 1, 1, seam); Rect(X + 3, Y + 4, 1, 1, deep); }
                 }
-        }
-        void Polygon(string color, params Vector2Int[] points)
-        {
-            for (int y = 0; y < 180; y++) for (int x = 0; x < 320; x++)
-            {
-                bool inside = false;
-                for (int i = 0, j = points.Length - 1; i < points.Length; j = i++)
-                    if ((points[i].y > y) != (points[j].y > y) && x < (points[j].x - points[i].x) * (y - points[i].y) / (double)(points[j].y - points[i].y) + points[i].x) inside = !inside;
-                if (inside) buffer[(179 - y) * 320 + x] = Hex(color);
             }
+            if (terrain.Count > 12) terrain.Clear();
+            terrain[key] = (Color32[])buffer.Clone();
         }
-        // Cache the static backdrop; animated foreground stays on the source pixel grid.
-        readonly Color32[][] backdrops = new Color32[2][];
-        void Background(int phase, double time)
+        sealed class Bitmap { public int width, height; public Color32[] pixels; }
+        static Bitmap Paint(string[] rows, Dictionary<char,Color32> palette, bool flip = false, bool outline = false)
         {
-            int palette = phase == 0 ? 0 : 1;
-            if (backdrops[palette] != null) Array.Copy(backdrops[palette], buffer, buffer.Length);
-            else
+            int w = rows[0].Length, h = rows.Length;
+            var image = new Bitmap { width = w + 2, height = h + 1, pixels = new Color32[(w + 2) * (h + 1)] };
+            Color32 At(int x, int y) => x >= 0 && x < w && y >= 0 && y < h && palette.TryGetValue(rows[y][flip ? w - 1 - x : x], out var c) ? c : default;
+            for (int y = -1; y < h; y++) for (int x = -1; x <= w; x++)
             {
-            for (int y = 0; y < 180; y++)
-            {
-                Color top = Hex("101a2b"), middle = Hex(palette == 0 ? "1b3047" : "29283c"), bottom = Hex("131e2c");
-                Color32 row = y < 117 ? Color.Lerp(top, middle, y / 117f) : Color.Lerp(middle, bottom, (y - 117) / 63f);
-                for (int x = 0; x < 320; x++) buffer[(179 - y) * 320 + x] = row;
+                Color32 c = At(x,y);
+                if (c.a == 0 && outline && (At(x-1,y).a != 0 || At(x+1,y).a != 0 || At(x,y-1).a != 0 || At(x,y+1).a != 0)) c = Color(Ink);
+                image.pixels[(y + 1) * image.width + x + 1] = c;
             }
-            for (int i = 0; i < 65; i++) Rect((i * 137 + 37) % 320, (i * i * 19) % 103, 1, 1, "c0d4e8", .4);
-            Rect(255, 28, 10, 14, "c2cfbd"); Rect(252, 26, 10, 12, "142034");
-            Polygon("1c2b3f", new Vector2Int(0,120),new Vector2Int(27,90),new Vector2Int(49,105),new Vector2Int(90,52),new Vector2Int(127,98),new Vector2Int(143,79),new Vector2Int(183,118),new Vector2Int(210,76),new Vector2Int(250,107),new Vector2Int(289,70),new Vector2Int(320,103),new Vector2Int(320,180),new Vector2Int(0,180));
-            Polygon("314254",new Vector2Int(63,83),new Vector2Int(90,52),new Vector2Int(117,84),new Vector2Int(99,73),new Vector2Int(91,77),new Vector2Int(83,69),new Vector2Int(77,78));
-            Polygon("22394c",new Vector2Int(0,140),new Vector2Int(23,117),new Vector2Int(55,137),new Vector2Int(80,110),new Vector2Int(103,130),new Vector2Int(141,94),new Vector2Int(183,141),new Vector2Int(214,118),new Vector2Int(252,137),new Vector2Int(287,110),new Vector2Int(320,133),new Vector2Int(320,180),new Vector2Int(0,180));
-            Polygon("182c3c",new Vector2Int(0,150),new Vector2Int(47,133),new Vector2Int(83,151),new Vector2Int(123,129),new Vector2Int(164,154),new Vector2Int(208,140),new Vector2Int(250,154),new Vector2Int(297,134),new Vector2Int(320,143),new Vector2Int(320,180),new Vector2Int(0,180));
-            Rect(39,99,9,42,"1a2a3c"); Rect(37,97,12,3,"293e50"); Rect(40,103,1,30,"2a3e50"); Rect(43,89,2,8,"273c4f");
-            Rect(273,92,11,49,"182b3b"); Rect(272,90,14,3,"2a4050"); Rect(276,96,1,35,"2a4050");
-            backdrops[palette] = (Color32[])buffer.Clone();
-            }
-            for (int i = 0; i < 14; i++) Rect((i * 193 + time * (1 + i % 3)) % 327,130 + Math.Sin(time * .6 + i) * 23,1,1,"d9edb7",.2);
+            return image;
         }
-        void Terrain(Block b, int color, bool active, double alpha = .32)
+        void Blit(Bitmap image, int x, int y, double alpha = 1)
         {
-            for (double y = b.y; y < b.y + b.h; y += 8) for (double x = b.x; x < b.x + b.w; x += 8)
+            for (int py = 0; py < image.height; py++) for (int px = 0; px < image.width; px++) Put(x + px, y + py, image.pixels[py * image.width + px], alpha);
+        }
+        static readonly Bitmap moverTile = Paint(new[] { "TTTTTTTT","hRbbbbRh","hbbbbbbs","hbhhhhbs","hbhsshbs","hbbbbbbs","hRbbbbRs","ssssssss" }, new Dictionary<char, Color32> { ['T']=Color("f2dc8a"),['R']=Color("e7ce76"),['b']=Color("6f603c"),['h']=Color("8f7c47"),['s']=Color("4b4129") });
+        void Mover(MovingPlatform m)
+        {
+            for (int i = 0; i < (m.returns ? 1 : m.nodes.Length); i++)
             {
-                if (active)
+                var a = m.nodes[i]; var b = m.nodes[(i + 1) % m.nodes.Length];
+                double length = Math.Max(Math.Abs(b[0] - a[0]), Math.Abs(b[1] - a[1]));
+                for (int n = 0; n < length; n++) if (n % 4 < 2)
                 {
-                    Rect(x,y,8,8,Fills[color]); Rect(x,y,8,1,Highlights[color]); Rect(x,y+7,8,1,Edges[color]);
-                    if (color == 4) Rect(x+2,y+3,4,2,"8f7c47");
-                    else { Rect(x,y+1,1,6,Edges[color]); Rect(x+3,y+3,2,1,Edges[color]); Rect(x+6,y+5,1,1,Edges[color]); }
+                    double x = a[0] + m.w / 2 + (b[0] - a[0]) * n / length, y = a[1] + m.h / 2 + (b[1] - a[1]) * n / length;
+                    if (a[1] == b[1]) Rect(x, y - 1, 1, 2, "e0c569", .25);
+                    else if (a[0] == b[0]) Rect(x - 1, y, 2, 1, "e0c569", .25);
+                    else Rect(x, y, 1, 1, "e0c569", .5);
                 }
-                else
-                { Rect(x,y,8,1,Highlights[color],alpha); Rect(x,y+7,8,1,Highlights[color],alpha); Rect(x,y,1,8,Highlights[color],alpha); Rect(x+7,y,1,8,Highlights[color],alpha); Rect(x+3,y+3,1,1,Highlights[color],alpha); }
             }
+            foreach (var n in m.nodes) Rect(n[0] + m.w / 2 - 1, n[1] + 2, 3, 3, "e0c569", .5);
+            Rect(m.x - 1, m.y - 1, m.w + 2, m.h + 2, Ink);
+            for (double y = m.y; y < m.y + m.h; y += 8) for (double x = m.x; x < m.x + m.w; x += 8) Blit(moverTile, Round(x) - 1, Round(y) - 1);
+        }
+        // Frames and palette are ported verbatim from the user's published Wick renderer.
+        static readonly Dictionary<string,string[]> Frames = new Dictionary<string,string[]> {
+            ["idle"] = new[] { "..cc......","..dcc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcffefef.",".dccffff..","..kkkkk...",".dccccccc.",".dcccccdc.",".ssssssss.","..bb..bb..","..bb..bb.." },
+            ["blink"] = new[] { "..cc......","..dcc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcffffff.",".dccfefe..","..kkkkk...",".dccccccc.",".dcccccdc.",".ssssssss.","..bb..bb..","..bb..bb.." },
+            ["run0"] = new[] { "...cc.....","...dcc....","..dccccc..","..dcccccc.","..dccfffff","..dcffefef","..dccffff.","...kkkkk..",".dcccccccd","ddccccccc.",".ssssssss.",".bb...BB..","bb.....BB." },
+            ["run1"] = new[] { "...dcc....","..dccccc..","..dcccccc.","..dccfffff","..dcffefef","..dccffff.","...kkkkk..",".dccccccd.",".dcccccdc.",".ssssssss.",".bbbBB....",".bb.BB....","....BB...." },
+            ["run2"] = new[] { "...cc.....","...dcc....","..dccccc..","..dcccccc.","..dccfffff","..dcffefef","..dccffff.","...kkkkk..",".dccccccc.","dddcccccc.",".ssssssss.",".BB...bb..","BB.....bb." },
+            ["run3"] = new[] { "...dcc....","..dccccc..","..dcccccc.","..dccfffff","..dcffefef","..dccffff.","...kkkkk..",".dccccccd.",".dcccccdc.",".ssssssss.",".BBBbb....",".BB.bb....","....bb...." },
+            ["jump"] = new[] { "..........","ccc.......",".dcccccc..",".dccccccc.",".dccfffff.",".dcffefef.",".dccffff..","..kkkkk...","ddccccccdd",".dccccccc.",".ssssssss.","..bb.BB...","..b...B..." },
+            ["fall"] = new[] { "...cc.....","...cc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcffefef.",".dccffff..","d.kkkkk..d","ddccccccdd",".dccccccc.","ssssssssss","..bb..BB..","..b....B.." },
+            ["dash"] = new[] { "..........","ccc.......",".ddccccc..","..dcccccc.","..dccfffff","..dcffefef","..dccffff.","...kkkkk..",".dcccccccd","ddccccccc.","ssssss....","bbb...BB..","......BB.." },
+            ["climb0"] = new[] { "..cc....d.","..dcc...d.",".dccccc.d.",".dccccccd.",".dcccfffd.",".dccffefd.",".dcccfff..","..kkkkkk..",".dccccccd.",".dcccccdd.",".ssssss...","..bb.bbb..","..bb......" },
+            ["climb1"] = new[] { "..cc......","..dcc.....",".dccccc...",".dccccccd.",".dcccfffd.",".dccffefd.",".dcccfffd.","..kkkkkkd.",".dccccccd.",".dcccccc..",".ssssss...","..BBB.bb..","......bb.." },
+            ["duck"] = new[] { "..........","..cc......",".dcccccc..",".dccfffff.",".dcffefef.","..kkkkkk..","sdcccccccs",".bbssssbb." },
+        };
+        static readonly string[][] Scarf = { new[] { "5a6578","414a5a" }, new[] { "ffb24d","d5732b" } };
+        Bitmap Sprite(string pose, int facing, int phase, int dash, bool silhouette = false)
+        {
+            var key = (pose, facing, phase, dash, silhouette);
+            if (sprites.TryGetValue(key, out var image)) return image;
+            var palette = new Dictionary<char,Color32> { ['c']=Color("eadfc5"),['d']=Color("b3a386"),['s']=Color("7d6e5c"),['f']=Color("1a1f2c"),['b']=Color("453c59"),['B']=Color("2c263b"),['e']=Color(Highlights[phase]),['k']=Color(Scarf[dash][0]) };
+            if (silhouette) foreach (char k in "cdsfbBek") palette[k] = Color(Highlights[phase]);
+            return sprites[key] = Paint(Frames[pose], palette, facing < 0, !silhouette);
+        }
+        static string Pose(Player p, double t)
+        {
+            if (p.climbing) return p.climbMove != 0 && (int)Math.Floor(t * (p.climbMove < 0 ? 8 : 11)) % 2 != 0 ? "climb1" : "climb0";
+            if (p.dashTime > 0) return p.dx != 0 ? "dash" : p.dy < 0 ? "jump" : "fall";
+            if (p.ducking) return "duck";
+            if (!p.grounded) return p.vy < 0 ? "jump" : "fall";
+            if (Math.Abs(p.vx) > 7) return "run" + (int)Math.Floor(t * 12) % 4;
+            return t % 3.4 < .14 ? "blink" : "idle";
+        }
+        void DrawPlayer(Player p, double t, int phase)
+        {
+            string name = Pose(p,t); var rows = Frames[name];
+            int x = Round(p.x), feet = Round(p.y + p.h) + (p.climbing && p.stamina <= 20 && (int)Math.Floor(t * 8) % 2 != 0 ? 1 : 0);
+            int ky = Array.FindIndex(rows, r => r.Contains("k")), kx = rows[ky].IndexOf('k'), facing = p.facing, dash = p.dash != 0 ? 1 : 0, length = dash != 0 ? 5 : 3;
+            int ax = facing > 0 ? x + kx - 1 : x + 8 - kx, ay = feet - rows.Length + ky;
+            bool still = p.climbing || name == "duck" || (p.grounded && Math.Abs(p.vx) <= 7);
+            var segments = new (int x, int y, int h)[length];
+            for (int i = 1; i <= length; i++)
+            {
+                double dy = name == "dash" ? 0 : still ? i * (dash != 0 ? .6 : 1) : i * (dash != 0 ? .15 : .7) + (p.vy > 0 ? -i * .35 : p.vy < 0 ? i * .25 : 0);
+                if (name != "dash") dy += still ? Math.Sin(t * 3 + i) * .3 : Math.Sin(t * 14 - i * 1.2) * .8 * i / length;
+                segments[i - 1] = (p.climbing ? ax - facing * (int)Math.Ceiling(i / 2.0) : ax - facing * i, ay + Round(dy), i <= 2 ? 2 : 1);
+            }
+            foreach (var q in segments) Rect(q.x, q.y - 1, 1, q.h + 2, Ink);
+            var end = segments[length - 1]; Rect(end.x - facing, end.y, 1, end.h, Ink);
+            for (int i = 0; i < length; i++) { var q = segments[i]; Rect(q.x, q.y, 1, q.h, Scarf[dash][i == length - 1 ? 1 : 0]); }
+            Blit(Sprite(name, facing, phase, dash), x - 2, feet - rows.Length - 1);
         }
         public void Draw(PhaseController s)
         {
-            Background(s.phase, s.time);
-            for (int i = 0; i < s.blocks.Count; i++)
-            { var b = s.blocks[i]; Terrain(b, b.phase < 0 ? 3 : b.phase, (b.phase < 0 || b.phase == s.phase) && !s.blocked.Contains(i), s.blocked.Contains(i) ? .55 : .32); }
-            if (s.mover != null)
-            {
-                var m = s.mover;
-                for (int i = 0; i < (m.returns ? 1 : m.nodes.Length); i++)
-                {
-                    var a = m.nodes[i]; var b = m.nodes[(i + 1) % m.nodes.Length];
-                    double length = Math.Max(Math.Abs(b[0] - a[0]), Math.Abs(b[1] - a[1]));
-                    for (int n = 0; n < length; n++) if (n % 4 < 2) Rect(a[0] + m.w / 2 + (b[0] - a[0]) * n / length,a[1] + m.h / 2 + (b[1] - a[1]) * n / length,1,1,"e0c569",.5);
-                }
-                foreach (var n in m.nodes) Rect(n[0] + m.w / 2 - 1,n[1] + 2,3,3,"e0c569",.5);
-                Terrain(m, 4, true);
-            }
-            foreach (var t in s.trails) Rect(t.x,t.y,8,11,Highlights[t.phase],t.life*2);
-            if (s.respawn <= 0) DrawPlayer(s.player, s.time);
-            foreach (var p in s.particles) Rect(p.x,p.y,1,1,p.phase < 0 ? "dce7ee" : Highlights[p.phase],Math.Min(1,p.life*3));
-            if (s.flash > 0) Rect(0,0,320,180,Highlights[s.phase],s.flash*.3);
+            Terrain(s);
+            if (s.mover != null) Mover(s.mover);
+            foreach (var t in s.trails) Blit(Sprite("dash", s.player.facing, t.phase, 0, true), Round(t.x) - 2, Round(t.y) - 3, t.life * 2);
+            if (s.respawn <= 0) DrawPlayer(s.player, s.time, s.phase);
+            foreach (var p in s.particles) Rect(p.x, p.y, 1, 1, p.phase < 0 ? "dce7ee" : Highlights[p.phase], Math.Min(1, p.life * 3));
+            if (s.flash > 0) Rect(0, 0, 320, 180, Highlights[s.phase], s.flash * .3);
             Texture.SetPixels32(buffer); Texture.Apply(false);
-        }
-        void DrawPlayer(Player p, double time)
-        {
-            int x = (int)Math.Floor(p.x+.5), feet = (int)Math.Floor(p.y+p.h+.5), y = feet - (p.ducking ? 8 : 15);
-            string hair = p.dash != 0 ? "e9a0a4" : "7cbfe2";
-            int run = p.grounded && Math.Abs(p.vx)>7 ? (int)Math.Floor(Math.Sin(time*23)+.5) : 0;
-            if (p.climbing)
-            {
-                int step = p.climbMove != 0 ? (int)Math.Floor(Math.Sin(time*(p.climbMove<0?12:18))+.5) : 0;
-                bool tired = p.stamina<=20 && (int)Math.Floor(time*8)%2!=0;
-                Rect(x+1,y+1,7,4,tired?"ff8f91":hair); Rect(x+1,y+4,6,3,"f2d7b5"); Rect(x+1,y+7,6,5,"80b9b8");
-                Rect(x+(p.facing>0?6:0),y+3+step,2,5,"f2d7b5"); Rect(x+1,feet-4+step,2,3,"343f53"); Rect(x+5,feet-4-step,2,3,"343f53"); return;
-            }
-            Rect(x+(p.facing>0?-3:7),y+7,4,2,hair); Rect(x+1,y,7,4,hair); Rect(x,y+3,7,4,"f2d7b5"); Rect(x+(p.facing>0?6:1),y+4,1,1,"243043");
-            Rect(x+1,y+7,7,p.ducking?1:5,"80b9b8"); if (!p.ducking) Rect(x,y+8,2,4,"718b91");
-            Rect(x+1,feet-3+run,2,3-run,"343f53"); Rect(x+5,feet-3-run,2,3+run,"343f53");
         }
         public void Dispose() { UnityEngine.Object.Destroy(Texture); }
     }

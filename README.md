@@ -11,6 +11,6 @@ The 320×180 pixel frame uses integer scaling; use a Game View of at least 320×
 
 Development uses **Unity CLI + Unity Pipeline** against a running Editor.
 See [development and verification](Documentation/Development.md) and
-[movement attribution](Documentation/ThirdPartyNotices.md).
+[art direction](DESIGN.md) and [movement attribution](Documentation/ThirdPartyNotices.md).
 
 For browser play, [build the Web preview or enable Web CI/Pages](Documentation/Web.md).

@@ -53,15 +53,15 @@ def main():
     if status.get("unityVersion") != "6000.4.7f1":
         raise RuntimeError(f"Expected Unity 6000.4.7f1, got {status.get('unityVersion')}")
     command("set_autotick")
-    for mode, test_filter, expected in [("editor", "ControllerTests", 21), ("playmode", "SandboxTests", 2)]:
+    for mode, test_filter, expected in [("editor", "ControllerTests", 21), ("editor", "PixelTests", 1), ("playmode", "SandboxTests", 2)]:
         wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)
         command("run_tests", "--", "--mode", mode, "--filter", test_filter, "--async_tests")
         result = wait("test_status", lambda r: r.get("status") == "completed", 300)
-        save(mode, result)
+        save("pixels" if test_filter == "PixelTests" else mode, result)
         summary = result["summary"]
         if summary.get("total") != expected or summary.get("passed") != expected:
             raise RuntimeError(f"{mode}: expected {expected} passing tests, got {summary}")
-        print(f"{mode}: {expected} passed", flush=True)
+        print(f"{test_filter}: {expected} passed", flush=True)
     wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)
     command("open_scene", "--", "--path", "Assets/Scenes/PhaseSandbox.unity")
     queued = command("build", "--", "--target", "WebGL", "--outputPath", str(args.output.resolve()),

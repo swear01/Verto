@@ -27,7 +27,7 @@ function character(buffer) {
   let xSum = 0, ySum = 0, count = 0;
   for (let y = 0; y < image.height; y++) for (let x = 0; x < image.width; x++) {
     const i = (y * image.width + x) * 4;
-    if (Math.abs(image.data[i] - 242) < 4 && Math.abs(image.data[i + 1] - 215) < 4 && Math.abs(image.data[i + 2] - 181) < 4) {
+    if (Math.abs(image.data[i] - 234) < 4 && Math.abs(image.data[i + 1] - 223) < 4 && Math.abs(image.data[i + 2] - 197) < 4) {
       xSum += x; ySum += y; count++;
     }
   }
@@ -86,10 +86,10 @@ function character(buffer) {
     const wallAt = (buffer, x) => {
       const image = PNG.sync.read(buffer);
       const scale = image.width / 320;
-      const i = (Math.floor(122 * scale) * image.width + Math.floor(x * scale)) * 4;
+      const i = (Math.floor((x < 160 ? 96 : 80) * scale) * image.width + Math.floor(x * scale)) * 4;
       return Array.from(image.data.subarray(i, i + 3));
     };
-    const isWall = (frame, x) => wallAt(frame, x).every((value, i) => Math.abs(value - [60, 74, 87][i]) <= 2);
+    const isWall = (frame, x) => wallAt(frame, x).every((value, i) => Math.abs(value - [169, 184, 197][i]) <= 2);
     let crossed = false;
     for (let i = 0; i < 65; i++) {
       await page.waitForTimeout(180);
