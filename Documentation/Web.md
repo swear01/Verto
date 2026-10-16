@@ -21,8 +21,17 @@ Open <http://127.0.0.1:8765/>. Click the canvas for keyboard focus: arrows/WASD
 move, Space/Z jumps, X dashes, and C/Shift grabs. Cross the first room’s right
 edge to continue, or the second room’s left edge to return.
 Touch controls are not provided.
-The page shows only the game, with integer scaling from 320×180; the browser
+The game keeps integer scaling from 320×180; the browser
 viewport must be at least 320×180. Loading failures remain visible.
+
+The top-right settings button opens keyboard bindings and pauses the game. Select
+an action, then press one key; Esc cancels capture or closes settings. Overrides
+replace that action's default aliases. Duplicate keys and browser modifier shortcuts
+are rejected. Changes apply immediately and are stored on this browser/origin;
+blocked storage displays a warning while keeping the current session usable.
+Release held keys after closing settings to resume. Restore defaults resets all
+seven actions. Bindings survive room travel.
+The settings interface lives in the Web page; the game view stays free of prose.
 
 The custom `Phase` template uses gzip with Unity's decompression fallback, so a
 static host does not need custom `Content-Encoding` headers. The 2D renderer has
@@ -36,7 +45,7 @@ the warning.
 ## Enable automatic builds and online play
 
 `Web build and preview` runs only on `main`, after push or manual dispatch.
-It uses Unity CLI + live Pipeline for 22 Editor tests, two Play Mode tests and
+It uses Unity CLI + live Pipeline for 22 Editor tests, three Play Mode tests and
 the Web build, then verifies browser rendering, keyboard input, both scene-edge
 transitions, resizing, visible load failures, and absence of browser errors/warnings. Only a passing
 build is uploaded and deployed. `web-verification` contains the reports/captures.

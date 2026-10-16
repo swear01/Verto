@@ -4,7 +4,8 @@
 
 Unity **6000.4.7f1**. Open `Assets/Scenes/PhaseSandbox.unity` and press Play.
 The two test rooms connect at the first room’s right edge and the second room’s
-left edge. Cross to continue from the opposite side; there is no text interface.
+left edge. Cross to continue from the opposite side; the game view has no explanatory text.
+In the Web preview, the top-right settings button lets you customize keyboard bindings.
 
 The 320×180 pixel frame uses integer scaling; use a Game View of at least 320×180.
 `PhaseTerrain` and `PhaseMovingPlatform` are reusable Inspector components.

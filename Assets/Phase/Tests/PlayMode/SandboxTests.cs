@@ -11,6 +11,53 @@ using UnityEngine.TestTools;
 public class SandboxTests : InputTestFixture
 {
     [UnityTest]
+    public IEnumerator CustomControlsPauseValidationAndRoomTravel()
+    {
+        yield return SceneManager.LoadSceneAsync("PhaseSandbox");
+        var sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
+        var k = InputSystem.AddDevice<Keyboard>();
+        const string defaults = "{\"keys\":[\"\",\"\",\"\",\"\",\"\",\"\",\"\"]}";
+        try
+        {
+            sandbox.ConfigureControls("{\"keys\":[\"\",\"L\",\"\",\"\",\"J\",\"K\",\"H\"]}");
+            InputSystem.QueueStateEvent(k, new KeyboardState(Key.RightArrow, Key.Z, Key.X, Key.C));
+            yield return null;
+            var input = PhaseSandbox.ReadControls(k);
+            Assert.That((input.x, input.jumpHeld, input.dashHeld, input.grab), Is.EqualTo((0, false, false, false)));
+            sandbox.SetControlsOpen("true");
+            double time = sandbox.Controller.time;
+            InputSystem.QueueStateEvent(k, new KeyboardState(Key.J));
+            yield return new WaitForSeconds(.1f);
+            Assert.That(sandbox.Controller.time, Is.EqualTo(time));
+            sandbox.SetControlsOpen("false");
+            yield return new WaitForSeconds(.1f);
+            Assert.That(sandbox.Controller.time, Is.EqualTo(time), "held capture key cannot leak into gameplay");
+            InputSystem.QueueStateEvent(k, new KeyboardState()); yield return null; yield return null;
+            sandbox.Controller.Reset();
+            InputSystem.QueueStateEvent(k, new KeyboardState(Key.J));
+            yield return new WaitForSeconds(.05f);
+            Assert.That(sandbox.Controller.jumps, Is.EqualTo(1));
+            InputSystem.QueueStateEvent(k, new KeyboardState(Key.K, Key.UpArrow, Key.H));
+            yield return new WaitForSeconds(.1f);
+            Assert.That(sandbox.Controller.dashes, Is.EqualTo(1));
+            Assert.That(PhaseSandbox.ReadControls(k).grab, Is.True);
+            foreach (string invalid in new[] { "{}", "{\"keys\":[null]}", "{\"keys\":[\"\",\"L\",\"\",\"\",\"L\",\"K\",\"H\"]}", "{\"keys\":[\"\",\"Escape\",\"\",\"\",\"J\",\"K\",\"H\"]}" }) sandbox.ConfigureControls(invalid);
+            InputSystem.QueueStateEvent(k, new KeyboardState(Key.L)); yield return null;
+            Assert.That(PhaseSandbox.ReadControls(k).x, Is.EqualTo(1), "invalid overrides are atomic");
+            InputSystem.QueueStateEvent(k, new KeyboardState());
+            yield return SceneManager.LoadSceneAsync("PhaseRoom2");
+            InputSystem.QueueStateEvent(k, new KeyboardState(Key.L)); yield return null;
+            Assert.That(PhaseSandbox.ReadControls(k).x, Is.EqualTo(1), "bindings survive room loading");
+        }
+        finally
+        {
+            var current = Object.FindAnyObjectByType<PhaseSandbox>();
+            if (current != null) { current.ConfigureControls(defaults); current.SetControlsOpen("false"); }
+            InputSystem.RemoveDevice(k);
+        }
+    }
+
+    [UnityTest]
     public IEnumerator SceneKeyboardPixelFrameAndNoText()
     {
         yield return SceneManager.LoadSceneAsync("PhaseSandbox");
