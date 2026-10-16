@@ -68,3 +68,4 @@ The controller uses native pixels, Y down, a 60 Hz accumulator, 8×11 collision
 (8×6 crouched), and X then Y pixel stepping. Terrain transforms use Unity X/Y as
 pixel coordinates with Y negated; platform nodes and spawn use screen coordinates.
 The saved sandbox and test fixtures contain no exits, progression or player text.
+Movement, dash aiming and climb directions accept arrow keys or WASD.

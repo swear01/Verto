@@ -20,6 +20,13 @@ public class SandboxTests : InputTestFixture
         var k=InputSystem.AddDevice<Keyboard>();
         try
         {
+            foreach(var move in new[] { (key:Key.W,x:0,y:-1), (key:Key.A,x:-1,y:0), (key:Key.S,x:0,y:1), (key:Key.D,x:1,y:0) })
+            {
+                InputSystem.QueueStateEvent(k,new KeyboardState(move.key));
+                yield return null;
+                var controls=PhaseSandbox.ReadControls(k);
+                Assert.That((controls.x,controls.y),Is.EqualTo((move.x,move.y)),move.key.ToString());
+            }
             double before=sandbox.Controller.player.x;
             InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow));
             yield return new WaitForSeconds(.25f);

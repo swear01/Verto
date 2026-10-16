@@ -55,8 +55,8 @@ namespace Phase
         {
             if (k == null) return default;
             return new Controls {
-                x = (k.rightArrowKey.isPressed ? 1 : 0) - (k.leftArrowKey.isPressed ? 1 : 0),
-                y = (k.downArrowKey.isPressed ? 1 : 0) - (k.upArrowKey.isPressed ? 1 : 0),
+                x = (k.rightArrowKey.isPressed || k.dKey.isPressed ? 1 : 0) - (k.leftArrowKey.isPressed || k.aKey.isPressed ? 1 : 0),
+                y = (k.downArrowKey.isPressed || k.sKey.isPressed ? 1 : 0) - (k.upArrowKey.isPressed || k.wKey.isPressed ? 1 : 0),
                 jumpHeld = k.zKey.isPressed || k.spaceKey.isPressed,
                 dashHeld = k.xKey.isPressed,
                 grab = k.cKey.isPressed || k.leftShiftKey.isPressed || k.rightShiftKey.isPressed
