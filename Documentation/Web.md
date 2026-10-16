@@ -29,8 +29,10 @@ an action, then press one key; Esc cancels capture or closes settings. Overrides
 replace that action's default aliases. Duplicate keys and browser modifier shortcuts
 are rejected. Changes apply immediately and are stored on this browser/origin;
 blocked storage displays a warning while keeping the current session usable.
-Release held keys after closing settings to resume. Restore defaults resets all
-seven actions. Bindings survive room travel.
+Release held keys after closing settings to resume. Each action has its own Restore
+button; it resets only that action and is disabled when already at its defaults.
+If another action uses a default key, the message names that action and asks you to
+change it first. Other bindings are preserved. Bindings survive room travel.
 The settings interface lives in the Web page; the game view stays free of prose.
 
 The custom `Phase` template uses gzip with Unity's decompression fallback, so a

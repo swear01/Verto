@@ -19,12 +19,25 @@ function setupControls(instance, canvas) {
   try { const saved = JSON.parse(localStorage.getItem(storageKey)); if (valid(saved)) overrides = saved; } catch {}
   const send = () => instance.SendMessage('PHASE', 'ConfigureControls', JSON.stringify({ keys: overrides }));
   const pause = open => instance.SendMessage('PHASE', 'SetControlsOpen', String(open));
+  const resets = [];
   const buttons = labels.map((label, i) => {
     const row = document.createElement('div'); row.className = 'binding';
     const text = document.createElement('span'); text.textContent = label;
-    const button = document.createElement('button'); button.dataset.action = i;
+    const button = document.createElement('button'); button.className = 'key'; button.dataset.action = i;
     button.addEventListener('click', () => { pending = i; render(); status.textContent = '按下新鍵，Esc 取消。'; });
-    row.append(text, button); document.getElementById('bindings').append(row); return button;
+    const reset = document.createElement('button'); reset.className = 'restore'; reset.dataset.reset = i; reset.textContent = '還原';
+    reset.setAttribute('aria-label', `恢復${label}預設鍵位`); reset.title = `恢復${label}預設鍵位`;
+    reset.addEventListener('click', () => {
+      pending = -1; render();
+      const candidate = [...overrides]; candidate[i] = '';
+      if (!valid(candidate)) {
+        const conflict = overrides.findIndex((key, j) => j !== i && (key ? [key] : defaults[j]).some(key => defaults[i].includes(key)));
+        status.textContent = `預設鍵已用於${labels[conflict]}，請先修改該動作。`; return;
+      }
+      overrides = candidate; render(); save();
+    });
+    resets.push(reset);
+    row.append(text, button, reset); document.getElementById('bindings').append(row); return button;
   });
   function render() {
     buttons.forEach((button, i) => {
@@ -32,6 +45,7 @@ function setupControls(instance, canvas) {
       button.textContent = pending === i ? '按下新鍵…' : keys.map(key => names[key] || key.replace('Digit', '')).join(' / ');
       button.setAttribute('aria-label', `修改${labels[i]}鍵，目前 ${keys.map(key => names[key] || key).join('、')}`);
       button.setAttribute('aria-pressed', String(pending === i));
+      resets[i].disabled = overrides[i] === '';
     });
   }
   function save() {
@@ -62,7 +76,6 @@ function setupControls(instance, canvas) {
     if (!valid(candidate)) { status.textContent = '此鍵已用於其他動作，請換一個鍵。'; return; }
     overrides = candidate; pending = -1; render(); save();
   }, true);
-  document.getElementById('controls-reset').addEventListener('click', () => { overrides = labels.map(() => ''); pending = -1; render(); save(); });
   addEventListener('blur', () => pause(true));
   addEventListener('focus', () => pause(dialog.open));
   send(); render(); toggle.hidden = false;
