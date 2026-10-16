@@ -80,6 +80,52 @@ function character(buffer) {
     await page.keyboard.up('ArrowRight');
     result.dashed = await capture('dashed');
     assert(result.dashed && result.dashed.x > result.jumped.x + 30, 'X did not dash');
+    await page.keyboard.down('ArrowRight');
+    await page.keyboard.down('ArrowUp');
+    await page.keyboard.down('c');
+    const wallAt = (buffer, x) => {
+      const image = PNG.sync.read(buffer);
+      const scale = image.width / 320;
+      const i = (Math.floor(122 * scale) * image.width + Math.floor(x * scale)) * 4;
+      return Array.from(image.data.subarray(i, i + 3));
+    };
+    const isWall = (frame, x) => wallAt(frame, x).every((value, i) => Math.abs(value - [60, 74, 87][i]) <= 2);
+    let crossed = false;
+    for (let i = 0; i < 65; i++) {
+      await page.waitForTimeout(180);
+      const frame = await canvas.screenshot();
+      const player = character(frame);
+      result.edgeApproach = { player, leftWall: wallAt(frame, 82), rightWall: wallAt(frame, 242) };
+      if (i === 64) fs.writeFileSync(path.join(reports, 'edge-forward-final.png'), frame);
+      if (player && isWall(frame, 82)) {
+        result.nextRoom = player;
+        fs.writeFileSync(path.join(reports, 'next-room.png'), frame);
+        crossed = true;
+        break;
+      }
+    }
+    await page.keyboard.up('ArrowRight');
+    await page.keyboard.up('ArrowUp');
+    await page.keyboard.up('c');
+    assert(crossed, 'Right screen edge did not load the second room');
+    await page.waitForTimeout(150);
+    assert(isWall(await canvas.screenshot(), 82), 'Arrival bounced back');
+    await page.keyboard.down('ArrowLeft');
+    crossed = false;
+    for (let i = 0; i < 30; i++) {
+      await page.waitForTimeout(100);
+      const frame = await canvas.screenshot();
+      const player = character(frame);
+      if (player && player.x > 820 && isWall(frame, 242)) {
+        result.returnedRoom = player;
+        fs.writeFileSync(path.join(reports, 'returned-room.png'), frame);
+        crossed = true;
+        break;
+      }
+    }
+    await page.keyboard.up('ArrowLeft');
+    assert(crossed, 'Left screen edge did not return to the first room');
+    result.edgeTransitions = true;
     await page.screenshot({ path: path.join(reports, 'browser.png') });
     await page.setViewportSize({ width: 800, height: 600 });
     await page.waitForTimeout(200);

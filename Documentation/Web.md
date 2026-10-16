@@ -1,7 +1,7 @@
 # Web preview
 
 [Play online](https://phase-gamejam1-20261016.swear01.chatgpt.site). This is a
-manually published build of `be7f1bc`; automatic CI/Pages still needs the owner
+manually published two-room preview; automatic CI/Pages still needs the owner
 setup below.
 
 Unity **6000.4.7f1**, Web Build Support and Unity CLI are required. Open the GUI
@@ -18,7 +18,9 @@ python3 -m http.server 8765 --bind 127.0.0.1 --directory Builds/Web
 ```
 
 Open <http://127.0.0.1:8765/>. Click the canvas for keyboard focus: arrows/WASD
-move, Space/Z jumps, X dashes, and C/Shift grabs. Touch controls are not provided.
+move, Space/Z jumps, X dashes, and C/Shift grabs. Cross the first room’s right
+edge to continue, or the second room’s left edge to return.
+Touch controls are not provided.
 The page shows only the game, with integer scaling from 320×180; the browser
 viewport must be at least 320×180. Loading failures remain visible.
 
@@ -34,9 +36,9 @@ the warning.
 ## Enable automatic builds and online play
 
 `Web build and preview` runs only on `main`, after push or manual dispatch.
-It uses Unity CLI + live Pipeline for 17 Editor tests, one Play Mode test and
-the Web build, then verifies browser rendering, keyboard input, resizing,
-visible load failures, and absence of browser errors/warnings. Only a passing
+It uses Unity CLI + live Pipeline for 21 Editor tests, two Play Mode tests and
+the Web build, then verifies browser rendering, keyboard input, both scene-edge
+transitions, resizing, visible load failures, and absence of browser errors/warnings. Only a passing
 build is uploaded and deployed. `web-verification` contains the reports/captures.
 
 The repository owner must complete this setup first:

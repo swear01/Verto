@@ -9,11 +9,25 @@ public static class PhaseSandboxBuilder
     public static void Create()
     {
         if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+        CreateRoom(false);
+        CreateRoom(true);
+        EditorBuildSettings.scenes = new[] {
+            new EditorBuildSettingsScene("Assets/Scenes/PhaseSandbox.unity", true),
+            new EditorBuildSettingsScene("Assets/Scenes/PhaseRoom2.unity", true)
+        };
+        EditorSceneManager.OpenScene("Assets/Scenes/PhaseSandbox.unity");
+        PlayerSettings.defaultScreenWidth = 960; PlayerSettings.defaultScreenHeight = 540;
+        PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
+        AssetDatabase.SaveAssets();
+    }
+    static void CreateRoom(bool second)
+    {
         EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         var root = new GameObject("PHASE"); var sandbox = root.AddComponent<PhaseSandbox>();
         var camera = new GameObject("Camera").AddComponent<Camera>();
         camera.transform.position = new Vector3(160, -90, -10); camera.orthographic = true; camera.orthographicSize = 90;
         sandbox.pixelCamera = camera;
+        if (second) sandbox.leftScene = "PhaseSandbox"; else sandbox.rightScene = "PhaseRoom2";
         const string materialPath = "Assets/Phase/PixelSurface.mat";
         var material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
         if (material == null)
@@ -24,18 +38,14 @@ public static class PhaseSandboxBuilder
         sandbox.pixelMaterial = material;
         camera.clearFlags = CameraClearFlags.SolidColor; camera.backgroundColor = Color.black;
         Add(root, "Floor", 0, 160, 320, 24, -1);
-        Add(root, "Climb wall", 240, 80, 8, 80, -1);
-        Add(root, "Red", 48, 136, 24, 8, 0);
-        Add(root, "Blue", 88, 120, 24, 8, 1);
-        Add(root, "Green", 128, 104, 24, 8, 2);
+        Add(root, "Climb wall", second ? 80 : 240, second ? 96 : 80, 8, second ? 64 : 80, -1);
+        Add(root, "Red", second ? 120 : 48, second ? 128 : 136, 24, 8, 0);
+        Add(root, "Blue", second ? 160 : 88, second ? 112 : 120, 24, 8, 1);
+        Add(root, "Green", second ? 200 : 128, second ? 96 : 104, 24, 8, 2);
         var platform = new GameObject("Yellow platform"); platform.transform.SetParent(root.transform);
         var mover = platform.AddComponent<PhaseMovingPlatform>();
-        mover.nodes = new[] { new Vector2Int(160, 144), new Vector2Int(192, 144) }; mover.returns = true;
-        EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), "Assets/Scenes/PhaseSandbox.unity");
-        EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene("Assets/Scenes/PhaseSandbox.unity", true) };
-        PlayerSettings.defaultScreenWidth = 960; PlayerSettings.defaultScreenHeight = 540;
-        PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
-        AssetDatabase.SaveAssets();
+        mover.nodes = second ? new[] { new Vector2Int(248, 144), new Vector2Int(280, 144) } : new[] { new Vector2Int(160, 144), new Vector2Int(192, 144) }; mover.returns = true;
+        EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), second ? "Assets/Scenes/PhaseRoom2.unity" : "Assets/Scenes/PhaseSandbox.unity");
     }
     static void Add(GameObject root, string name, int x, int y, int w, int h, int phase)
     {

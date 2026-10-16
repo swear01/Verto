@@ -1,6 +1,7 @@
 using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 
 namespace Phase
 {
@@ -8,18 +9,29 @@ namespace Phase
     {
         public Camera pixelCamera;
         public Material pixelMaterial;
+        public string leftScene, rightScene;
         public Vector2Int spawn = new Vector2Int(32, 149);
         public PhaseController Controller { get; private set; }
         public Texture2D Frame => pixels?.Texture;
         PhasePixels pixels;
         Sprite sprite;
         double accumulator;
-        bool jumpQueued, dashQueued;
+        bool jumpQueued, dashQueued, transitioning;
+        static PhaseController traveler;
+        static string arrivalScene;
+        static int arrivalDirection;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ClearTravel() { traveler = null; arrivalScene = null; arrivalDirection = 0; }
 
         void Awake()
         {
             var platform = GetComponentInChildren<PhaseMovingPlatform>();
             Controller = new PhaseController(GetComponentsInChildren<PhaseTerrain>().Select(t => t.CreateBlock()), spawn.x, spawn.y, platform != null ? platform.CreatePlatform() : null);
+            Controller.exitLeft = !string.IsNullOrEmpty(leftScene);
+            Controller.exitRight = !string.IsNullOrEmpty(rightScene);
+            if (traveler != null && gameObject.scene.name == arrivalScene) Controller.EnterFrom(traveler, arrivalDirection);
+            ClearTravel();
             pixels = new PhasePixels();
             pixels.Draw(Controller);
             var surface = new GameObject("Pixel surface"); surface.transform.SetParent(transform);
@@ -35,6 +47,7 @@ namespace Phase
         }
         void Update()
         {
+            if (transitioning) return;
             ResizeCamera();
             var k = Keyboard.current;
             var input = ReadControls(k);
@@ -46,8 +59,23 @@ namespace Phase
                 input.jump = jumpQueued; input.dash = dashQueued;
                 Controller.Step(input); jumpQueued = dashQueued = false;
                 accumulator -= PhaseController.Dt;
+                if (Controller.ExitDirection != 0) { Travel(Controller.ExitDirection); break; }
             }
             pixels.Draw(Controller);
+        }
+        void Travel(int direction)
+        {
+            string destination = direction < 0 ? leftScene : rightScene;
+            if (!Application.CanStreamedLevelBeLoaded(destination))
+            {
+                Debug.LogError($"Room scene is missing from the build: {destination}");
+                if (direction < 0) Controller.exitLeft = false; else Controller.exitRight = false;
+                Controller.player.x = direction < 0 ? 0 : 320 - Controller.player.w;
+                return;
+            }
+            traveler = Controller; arrivalScene = destination; arrivalDirection = direction;
+            transitioning = true;
+            SceneManager.LoadSceneAsync(destination);
         }
         void OnApplicationFocus(bool focused)
         { if (!focused) jumpQueued = dashQueued = false; }

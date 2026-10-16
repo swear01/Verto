@@ -62,6 +62,21 @@ namespace Phase
         public MovingPlatform mover;
         public int phase, jumps, dashes, deaths;
         public double time, flash, freeze, respawn;
+        public bool exitLeft, exitRight;
+        public int ExitDirection => respawn > 0 ? 0 : exitLeft && player.x < 0 ? -1 : exitRight && player.x + player.w > 320 ? 1 : 0;
+        bool WithinSides(double x, double w) => (exitLeft || x >= 0) && (exitRight || x + w <= 320);
+
+        public void EnterFrom(PhaseController previous, int direction)
+        {
+            player = previous.player; phase = previous.phase; time = previous.time;
+            jumps = previous.jumps; dashes = previous.dashes; deaths = previous.deaths;
+            freeze = previous.freeze; flash = previous.flash;
+            player.x = direction > 0 ? 0 : 320 - player.w;
+            player.wall = player.hopX = player.forceX = 0;
+            player.wallLock = player.retention = player.slide = 0;
+            player.climbing = player.hopMover = player.dashRide = false;
+            player.grounded = player.vy >= 0 && OnGround(player, Solid());
+        }
 
         public PhaseController(IEnumerable<Block> blocks, double spawnX, double spawnY, MovingPlatform platform = null)
         {
@@ -197,7 +212,7 @@ namespace Phase
                 if (rider || clinger) { p.x += dx / steps; p.y += dy / steps; }
                 else if (Overlap(p, m))
                 { if (dx > 0) p.x = m.x + m.w; else if (dx < 0) p.x = m.x - p.w; else if (dy > 0) p.y = m.y + m.h; else if (dy < 0) p.y = m.y - p.h; }
-                if (walls.Any(b => Overlap(p, b)) || p.x < 0 || p.x + p.w > 320) { Kill(); break; }
+                if (walls.Any(b => Overlap(p, b)) || !WithinSides(p.x, p.w)) { Kill(); break; }
             }
             if (t >= 1) { m.moving = false; if (m.returns && m.index == 1) m.hold = .2; }
             return dx;
@@ -339,7 +354,8 @@ namespace Phase
                             if (!Collides(p, solids, 0, offset * sign)) { p.y += offset * sign; corrected = true; break; }
                     if (!corrected) { p.x = vx > 0 ? b.x - p.w : b.x + b.w; if (p.retention <= 0) { p.retained = p.vx; p.retention = .06; } p.vx = 0; p.dashAttack = 0; hitX = true; }
                 }
-                p.x = Math.Max(0, Math.Min(320 - p.w, p.x));
+                if (!exitLeft) p.x = Math.Max(0, p.x);
+                if (!exitRight) p.x = Math.Min(320 - p.w, p.x);
             }
             p.remY += p.vy * dt; int moveY = PixelRound(p.remY); p.remY -= moveY;
             bool hitY = false;
@@ -354,7 +370,7 @@ namespace Phase
                         {
                             if (p.vx * sign < 0) continue;
                             double x = p.x + offset * sign;
-                            if (x >= 0 && x + p.w <= 320 && !Collides(p, solids, offset * sign)) { p.x = x; corrected = true; break; }
+                            if (WithinSides(x, p.w) && !Collides(p, solids, offset * sign)) { p.x = x; corrected = true; break; }
                         }
                     if (!corrected)
                     {
