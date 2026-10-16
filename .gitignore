@@ -116,4 +116,6 @@ InitTestScene*.unity*
 !Verification/ControllerTests.csproj
 /Verification/bin/
 /Verification/obj/
+/Verification/node_modules/
+/Verification/__pycache__/
 /TestResults/
