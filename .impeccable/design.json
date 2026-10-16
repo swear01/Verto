@@ -1,42 +1,52 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-16T20:48:00+08:00",
+  "generatedAt": "2026-10-16T16:22:44+00:00",
   "title": "PHASE 美術",
   "extensions": {
     "colorMeta": {
-      "ink": { "role": "neutral", "displayName": "外框墨色" },
-      "cloak-light": { "role": "neutral", "displayName": "斗篷骨白" },
-      "cloak-shade": { "role": "neutral", "displayName": "斗篷暗面" },
-      "cloak-hem": { "role": "neutral", "displayName": "斗篷下襬" },
-      "face": { "role": "neutral", "displayName": "暗臉" },
-      "phase-red": { "displayName": "紅相位" },
-      "phase-blue": { "displayName": "藍相位" },
-      "phase-green": { "displayName": "綠相位" },
-      "stone-neutral": { "role": "neutral", "displayName": "常駐石材亮頂" },
-      "scarf-ready": { "displayName": "可衝刺圍巾琥珀" },
-      "scarf-ready-shade": { "displayName": "可衝刺圍巾暗面" },
-      "scarf-spent": { "displayName": "用盡衝刺圍巾石板灰" },
-      "scarf-spent-shade": { "displayName": "用盡衝刺圍巾暗面" },
-      "brass-highlight": { "displayName": "黃銅平台亮頂" },
-      "night-top": { "role": "neutral", "displayName": "夜空頂色" },
-      "night-bottom": { "role": "neutral", "displayName": "夜空底色" }
+      "ink": {"role": "neutral", "displayName": "外框墨色"},
+      "cloak-light": {"role": "neutral", "displayName": "斗篷骨白"},
+      "cloak-shade": {"role": "neutral", "displayName": "斗篷暗面"},
+      "cloak-hem": {"role": "neutral", "displayName": "斗篷下襬"},
+      "face": {"role": "neutral", "displayName": "暗臉"},
+      "phase-red": {"displayName": "紅相位"},
+      "phase-blue": {"displayName": "藍相位"},
+      "phase-green": {"displayName": "綠相位"},
+      "stone-neutral": {"role": "neutral", "displayName": "常駐石材亮頂"},
+      "scarf-ready": {"displayName": "可衝刺圍巾琥珀"},
+      "scarf-ready-shade": {"displayName": "可衝刺圍巾暗面"},
+      "scarf-spent": {"displayName": "用盡衝刺圍巾石板灰"},
+      "scarf-spent-shade": {"displayName": "用盡衝刺圍巾暗面"},
+      "brass-highlight": {"displayName": "黃銅平台亮頂"},
+      "night-top": {"role": "neutral", "displayName": "夜空頂色"},
+      "night-bottom": {"role": "neutral", "displayName": "夜空底色"}
     },
     "shadows": [],
     "motion": [
-      { "name": "run", "value": "12 fps", "purpose": "以既有控制器時間循環四格跑步姿勢。" },
-      { "name": "blink", "value": "3.4s", "purpose": "待機眨眼週期，前 0.14 秒使用眨眼姿勢。" },
-      { "name": "climb-up", "value": "8 fps", "purpose": "向上攀爬時交替兩格姿勢。" },
-      { "name": "climb-down", "value": "11 fps", "purpose": "向下攀爬時交替兩格姿勢。" }
+      {"name": "run", "value": "12 fps", "purpose": "以既有控制器時間循環四格跑步姿勢。"},
+      {"name": "blink", "value": "3.4s", "purpose": "待機眨眼週期，前 0.14 秒使用眨眼姿勢。"},
+      {"name": "climb-up", "value": "8 fps", "purpose": "向上攀爬時交替兩格姿勢。"},
+      {"name": "climb-down", "value": "11 fps", "purpose": "向下攀爬時交替兩格姿勢。"},
+      {"name": "room-slide", "value": "0.18s; 1 - (1 - t)^3", "purpose": "沿行進方向以整數像素水平滑動兩個房間快照，不混色；離開快照不畫玩家，抵達動畫結束前凍結物理與輸入。"}
     ]
   },
-  "components": [],
+  "components": [
+    {
+      "name": "Web 全螢幕按鈕",
+      "kind": "button",
+      "description": "與鍵位設定並排，切換整頁全螢幕；可存取名稱與圖示隨實際狀態更新，失敗時提供另開分頁重試提示。",
+      "html": "<button class=\"ds-fullscreen\" aria-label=\"進入全螢幕\" title=\"進入全螢幕\" aria-pressed=\"false\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5\"/></svg></button>",
+      "css": ".ds-fullscreen { width: 44px; min-height: 44px; padding: 10px; border: 1px solid #697d8e; border-radius: 4px; background: #1d2b3d; color: #eadfc5; cursor: pointer; } .ds-fullscreen svg { display: block; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; } .ds-fullscreen:hover { background: #314254; } .ds-fullscreen:focus-visible { outline: 2px solid #79c9ff; outline-offset: 3px; } .ds-fullscreen:disabled { opacity: .5; cursor: default; }"
+    }
+  ],
   "narrative": {
     "northStar": "月夜的染色採石場",
     "overview": "忠實沿用使用者 PHASE demo 的 Wick、連接石材、黃銅平台與靜止夜景。主要色彩 tokens 位於 DESIGN.md frontmatter，完整調色盤與混色規則以 Assets/Phase/Runtime/PhasePixels.cs 為準。",
-    "keyCharacteristics": ["320×180 原生像素、8×8 地形格", "Point 取樣、整數倍置中放大", "眼睛表示相位、圍巾表示衝刺", "背景靜止且低於主體亮度"],
+    "keyCharacteristics": ["320×180 原生像素、8×8 地形格", "Point 取樣；Web 最大 16:9 pixelated CSS 放大，原生 Editor 整數倍置中", "眼睛表示相位、圍巾表示衝刺", "背景靜止且低於主體亮度"],
     "rules": [
-      { "name": "相位與衝刺分開表示", "body": "眼睛使用相位色；可衝刺時圍巾為琥珀色、長 5 格，用盡後為石板灰、長 3 格並下垂。", "section": "colors" },
-      { "name": "像素層次", "body": "同色石格連接為錯縫磚，露出邊緣才畫亮頂與暗底；夜景保持靜止。", "section": "elevation" }
+      {"name": "相位與衝刺分開表示", "body": "眼睛使用相位色；可衝刺時圍巾為琥珀色、長 5 格，用盡後為石板灰、長 3 格並下垂。", "section": "colors"},
+      {"name": "像素層次", "body": "同色石格連接為錯縫磚，露出邊緣才畫亮頂與暗底；夜景保持靜止。", "section": "elevation"},
+      {"name": "房間滑動", "body": "房間沿行進方向以 0.18 秒 cubic ease-out 水平滑動；位移取整數像素，不混色或重複繪製玩家，抵達動畫結束前凍結物理與輸入。", "section": "components"}
     ],
     "dos": ["保留既有兩個房間、碰撞物理與左右邊緣出口。", "地形快取以相位與 blocked 集合區分；清單身分或數量改變時失效。"],
     "donts": ["不加入遊戲說明文字、尖刺、傳送門、HUD 或關卡戰役。", "不把來源 PNG 作為 Player 素材；美術由執行時程式繪製，未生成或下載產品圖像、字型。", "不假設原地修改既有方塊內容會使地形快取失效。"]

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.IO;
+using System.Linq;
 using NUnit.Framework;
 using Phase;
 using UnityEngine;
@@ -140,6 +141,22 @@ public class SandboxTests : InputTestFixture
             sandbox=Object.FindAnyObjectByType<PhaseSandbox>();
             Assert.That(sandbox.Controller.player,Is.SameAs(p));Assert.That(sandbox.Controller.phase,Is.EqualTo(2));
             Assert.That(p.x,Is.LessThan(32));Assert.That(p.y,Is.LessThan(110));Assert.That(p.dash,Is.Zero);Assert.That(p.stamina,Is.EqualTo(63));
+            Assert.That(sandbox.InTransition, Is.True);
+            double frozen = sandbox.Controller.time;
+            var start = sandbox.Frame.GetPixels32();
+            Directory.CreateDirectory("TestResults/Web");
+            File.WriteAllBytes("TestResults/Web/transition-start.png", sandbox.Frame.EncodeToPNG());
+            deadline=Time.realtimeSinceStartupAsDouble+5;
+            while(sandbox.InTransition && Time.realtimeSinceStartupAsDouble<deadline)
+            {
+                Assert.That(sandbox.Controller.time, Is.EqualTo(frozen), "movement freezes during the slide");
+                if (!start.SequenceEqual(sandbox.Frame.GetPixels32()))
+                    File.WriteAllBytes("TestResults/Web/transition-mid.png", sandbox.Frame.EncodeToPNG());
+                yield return null;
+            }
+            Assert.That(sandbox.InTransition, Is.False);
+            CollectionAssert.AreNotEqual(start, sandbox.Frame.GetPixels32(), "slide reaches the arriving room");
+            File.WriteAllBytes("TestResults/Web/transition-arrived.png", sandbox.Frame.EncodeToPNG());
             yield return new WaitForSeconds(.15f);
             Assert.That(SceneManager.GetActiveScene().name,Is.EqualTo("PhaseRoom2"));
             p.x=312;p.y=149;p.vx=90;p.vy=0;

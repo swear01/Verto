@@ -63,6 +63,7 @@ function character(buffer) {
       await page.waitForTimeout(250);
     }
     assert(result.initial, 'Player pixels did not render');
+    await page.screenshot({ path: path.join(reports, 'desktop-browser.png') });
     await page.keyboard.down('ArrowRight');
     await page.waitForTimeout(180);
     await page.keyboard.up('ArrowRight');
@@ -86,7 +87,7 @@ function character(buffer) {
     const wallAt = (buffer, x) => {
       const image = PNG.sync.read(buffer);
       const scale = image.width / 320;
-      const i = (Math.floor((x < 160 ? 96 : 80) * scale) * image.width + Math.floor(x * scale)) * 4;
+      const i = (Math.floor(((x < 160 ? 96 : 80) + .5) * image.height / 180) * image.width + Math.floor((x + .5) * scale)) * 4;
       return Array.from(image.data.subarray(i, i + 3));
     };
     const isWall = (frame, x) => wallAt(frame, x).every((value, i) => Math.abs(value - [169, 184, 197][i]) <= 2);
@@ -97,7 +98,7 @@ function character(buffer) {
       const player = character(frame);
       result.edgeApproach = { player, leftWall: wallAt(frame, 82), rightWall: wallAt(frame, 242) };
       if (i === 64) fs.writeFileSync(path.join(reports, 'edge-forward-final.png'), frame);
-      if (player && isWall(frame, 82)) {
+      if (player && player.x < PNG.sync.read(frame).width * .2 && isWall(frame, 82)) {
         result.nextRoom = player;
         fs.writeFileSync(path.join(reports, 'next-room.png'), frame);
         crossed = true;
@@ -116,7 +117,7 @@ function character(buffer) {
       await page.waitForTimeout(100);
       const frame = await canvas.screenshot();
       const player = character(frame);
-      if (player && player.x > 820 && isWall(frame, 242)) {
+      if (player && player.x > PNG.sync.read(frame).width * .85 && isWall(frame, 242)) {
         result.returnedRoom = player;
         fs.writeFileSync(path.join(reports, 'returned-room.png'), frame);
         crossed = true;
@@ -130,14 +131,14 @@ function character(buffer) {
     await page.setViewportSize({ width: 800, height: 600 });
     await page.waitForTimeout(200);
     const bounds = await canvas.boundingBox();
-    assert.equal(bounds.width, 640);
-    assert.equal(bounds.height, 360);
-    result.integerResize = true;
+    assert.equal(bounds.width, 800);
+    assert.equal(bounds.height, 450);
+    result.aspectFit = true;
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForTimeout(200);
     const narrow = await canvas.boundingBox();
-    assert.equal(narrow.width, 320);
-    assert.equal(narrow.height, 180);
+    assert.equal(narrow.width, 390);
+    assert(Math.abs(narrow.height - 390 * 180 / 320) < .1);
     await page.screenshot({ path: path.join(reports, 'narrow-browser.png') });
     result.narrowLayout = true;
     assert.deepEqual(result.errors, [], 'Browser errors');
@@ -148,6 +149,8 @@ function character(buffer) {
     await page.locator('#controls-toggle').waitFor({ state: 'visible', timeout: 120000 });
     await canvas.click();
     for (let i = 0; i < 40 && !(await capture('controls-initial')); i++) await page.waitForTimeout(250);
+    await page.keyboard.press('Tab');
+    assert.equal(await page.locator('#fullscreen-toggle').evaluate(button => button === document.activeElement), true);
     await page.keyboard.press('Tab');
     assert.equal(await page.locator('#controls-toggle').evaluate(button => button === document.activeElement), true);
     await page.keyboard.press('Enter');
@@ -250,6 +253,27 @@ function character(buffer) {
     result.perActionReset = true;
     result.customControls = true;
     assert.deepEqual(result.errors, []); assert.deepEqual(result.warnings, []); assert.deepEqual(result.failedRequests, []);
+    await page.locator('#fullscreen-toggle').click();
+    await page.waitForFunction(() => document.fullscreenElement === document.documentElement);
+    await page.waitForTimeout(250);
+    assert.equal(await page.locator('#fullscreen-toggle').getAttribute('aria-label'), '退出全螢幕');
+    assert.deepEqual(await canvas.evaluate(c => [c.width, c.height]), [320, 180], 'Fullscreen must preserve the native render target');
+    const full = await canvas.boundingBox();
+    const viewport = await page.evaluate(() => [innerWidth, innerHeight]);
+    assert(Math.abs(full.width / full.height - 16 / 9) < .01);
+    assert(Math.abs(full.width - viewport[0]) < 1 || Math.abs(full.height - viewport[1]) < 1, 'Fullscreen leaves unnecessary padding');
+    await page.screenshot({ path: path.join(reports, 'fullscreen.png') });
+    await page.locator('#controls-toggle').click(); assert(await dialog.isVisible());
+    await page.locator('#controls-close').click();
+    await page.locator('#fullscreen-toggle').click();
+    await page.waitForFunction(() => !document.fullscreenElement && document.getElementById('fullscreen-toggle').getAttribute('aria-label') === '進入全螢幕');
+    assert.equal(await page.locator('#fullscreen-toggle').getAttribute('aria-label'), '進入全螢幕');
+    await page.evaluate(() => { document.documentElement.requestFullscreen = () => Promise.reject(new Error('denied')); });
+    await page.locator('#fullscreen-toggle').click();
+    await page.locator('#display-error').waitFor({ state: 'visible' });
+    assert.match(await page.locator('#display-error').innerText(), /獨立分頁/);
+    await page.screenshot({ path: path.join(reports, 'fullscreen-denied.png') });
+    result.fullscreen = true;
     const failedPage = await browser.newPage();
     await failedPage.route('**/Build/*.data.unityweb', route => route.abort());
     await failedPage.goto(url);

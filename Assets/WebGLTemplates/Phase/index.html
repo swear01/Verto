@@ -20,6 +20,8 @@
     .icon { width: 44px; padding: 10px; }
     .icon svg { display: block; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; }
     #controls-toggle { position: absolute; top: 16px; right: 16px; }
+    #fullscreen-toggle { position: absolute; top: 16px; right: 72px; }
+    #display-error { position: absolute; bottom: 16px; max-width: 80vw; padding: 8px 16px; background: #101a2b; }
     dialog { box-sizing: border-box; width: min(400px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); margin: auto; padding: 24px; overflow: auto; border: 1px solid #697d8e; border-radius: 4px; color: #eadfc5; background: #101a2b; }
     dialog::backdrop { background: #0b0f16cc; }
     dialog header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
@@ -34,9 +36,11 @@
   </style>
 </head>
 <body>
-  <canvas id="unity-canvas" width="960" height="540" tabindex="0" aria-label="PHASE 遊戲畫面"></canvas>
+  <canvas id="unity-canvas" width="320" height="180" tabindex="0" aria-label="PHASE 遊戲畫面"></canvas>
   <progress id="loading" max="1" value="0" aria-label="載入遊戲"></progress>
   <p id="error" role="alert" hidden></p>
+  <p id="display-error" role="alert" hidden></p>
+  <button id="fullscreen-toggle" class="icon" aria-label="進入全螢幕" title="進入全螢幕" aria-pressed="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
   <button id="controls-toggle" class="icon" aria-label="鍵位設定" title="鍵位設定" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18M8 3v6M16 9v6M8 15v6"/></svg></button>
   <dialog id="controls" aria-labelledby="controls-title">
     <header><h1 id="controls-title">鍵位設定</h1><button id="controls-close" class="icon" aria-label="返回遊戲"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
@@ -50,7 +54,7 @@
     const canvas = document.getElementById('unity-canvas');
     const loading = document.getElementById('loading');
     function resize() {
-      const scale = Math.max(1, Math.floor(Math.min(innerWidth / 320, innerHeight / 180)));
+      const scale = Math.min(innerWidth / 320, innerHeight / 180);
       canvas.style.width = `${320 * scale}px`;
       canvas.style.height = `${180 * scale}px`;
     }
@@ -62,6 +66,24 @@
       console.error(message);
     }
     addEventListener('resize', resize);
+    const fullscreen = document.getElementById('fullscreen-toggle');
+    fullscreen.addEventListener('click', async () => {
+      const error = document.getElementById('display-error'); error.hidden = true;
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await document.documentElement.requestFullscreen();
+      } catch {
+        error.textContent = '無法切換全螢幕，請在獨立分頁開啟遊戲後再試。'; error.hidden = false;
+      }
+    });
+    document.addEventListener('fullscreenchange', () => {
+      const active = !!document.fullscreenElement;
+      fullscreen.setAttribute('aria-pressed', String(active));
+      fullscreen.title = active ? '退出全螢幕' : '進入全螢幕';
+      fullscreen.setAttribute('aria-label', fullscreen.title);
+      fullscreen.querySelector('path').setAttribute('d', active ? 'M3 8h5V3m8 0v5h5M8 21v-5H3m13 5v-5h5' : 'M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5');
+      resize(); canvas.focus();
+    });
     canvas.addEventListener('pointerdown', () => canvas.focus());
     resize();
     createUnityInstance(canvas, {
@@ -73,10 +95,12 @@
       productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
       productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
       devicePixelRatio: 1,
+      matchWebGLToCanvasSize: false,
       showBanner: (message, type) => type === 'error' ? failed(message) : console.warn(message)
     }, value => loading.value = value).then(instance => {
       loading.hidden = true;
       setupControls(instance, canvas);
+      fullscreen.hidden = false;
       canvas.focus();
     }).catch(failed);
   </script>

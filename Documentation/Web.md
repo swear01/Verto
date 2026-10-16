@@ -19,10 +19,15 @@ python3 -m http.server 8765 --bind 127.0.0.1 --directory Builds/Web
 
 Open <http://127.0.0.1:8765/>. Click the canvas for keyboard focus: arrows/WASD
 move, Space/Z jumps, X dashes, and C/Shift grabs. Cross the first room’s right
-edge to continue, or the second room’s left edge to return.
+edge to continue, or the second room’s left edge to return. Room changes use a
+0.18-second horizontal pixel slide; input/physics pause until it finishes.
 Touch controls are not provided.
-The game keeps integer scaling from 320×180; the browser
-viewport must be at least 320×180. Loading failures remain visible.
+The render target stays 320×180 with point/pixelated sampling. The game fits the
+window at 16:9 using the largest available scale; different screen aspect ratios
+retain necessary letterboxing. The top-right fullscreen button enters/exits browser
+fullscreen and remains available alongside keyboard settings. Fullscreen needs a
+user click and browser/iframe permission; denied requests show a recovery message.
+Loading failures remain visible.
 
 The top-right settings button opens keyboard bindings and pauses the game. Select
 an action, then press one key; Esc cancels capture or closes settings. Overrides
@@ -47,7 +52,7 @@ the warning.
 ## Enable automatic builds and online play
 
 `Web build and preview` runs only on `main`, after push or manual dispatch.
-It uses Unity CLI + live Pipeline for 22 Editor tests, three Play Mode tests and
+It uses Unity CLI + live Pipeline for 23 Editor tests, three Play Mode tests and
 the Web build, then verifies browser rendering, keyboard input, both scene-edge
 transitions, resizing, visible load failures, and absence of browser errors/warnings. Only a passing
 build is uploaded and deployed. `web-verification` contains the reports/captures.

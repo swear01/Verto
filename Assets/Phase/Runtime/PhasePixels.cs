@@ -234,14 +234,24 @@ namespace Phase
             for (int i = 0; i < length; i++) { var q = segments[i]; Rect(q.x, q.y, 1, q.h, Scarf[dash][i == length - 1 ? 1 : 0]); }
             Blit(Sprite(name, facing, phase, dash), x - 2, feet - rows.Length - 1);
         }
-        public void Draw(PhaseController s)
+        public void Draw(PhaseController s, bool playerVisible = true)
         {
             Terrain(s);
             if (s.mover != null) Mover(s.mover);
             foreach (var t in s.trails) Blit(Sprite("dash", s.player.facing, t.phase, 0, true), Round(t.x) - 2, Round(t.y) - 3, t.life * 2);
-            if (s.respawn <= 0) DrawPlayer(s.player, s.time, s.phase);
+            if (playerVisible && s.respawn <= 0) DrawPlayer(s.player, s.time, s.phase);
             foreach (var p in s.particles) Rect(p.x, p.y, 1, 1, p.phase < 0 ? "dce7ee" : Highlights[p.phase], Math.Min(1, p.life * 3));
             if (s.flash > 0) Rect(0, 0, 320, 180, Highlights[s.phase], s.flash * .3);
+            Texture.SetPixels32(buffer); Texture.Apply(false);
+        }
+        public void Slide(Color32[] from, Color32[] to, double progress, int direction)
+        {
+            int shift = Round(320 * Math.Max(0, Math.Min(1, progress))) * direction;
+            for (int y = 0; y < 180; y++) for (int x = 0; x < 320; x++)
+            {
+                int source = x + shift, row = y * 320;
+                buffer[row + x] = source >= 0 && source < 320 ? from[row + source] : to[row + source - direction * 320];
+            }
             Texture.SetPixels32(buffer); Texture.Apply(false);
         }
         public void Dispose() { UnityEngine.Object.Destroy(Texture); }
