@@ -83,4 +83,6 @@ dotnet test Verification/ControllerTests.csproj --configuration Release
 
 CI uploads TRX test results on pull requests and pushes to `main`.
 Unity scene, keyboard and rendering checks remain live CLI/Pipeline checks;
-they are not covered by this hosted controller job.
+they are not covered by this hosted controller job. The separate
+[Web build and preview](Web.md) workflow runs them through a licensed GUI runner
+and deploys only after browser verification. It requires owner setup before use.
