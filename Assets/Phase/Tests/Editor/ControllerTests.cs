@@ -109,11 +109,11 @@ public class ControllerTests
         Ticks(room,20);Assert.That(room.player.x,Is.EqualTo(32));Assert.That(room.phase,Is.Zero);Assert.That(room.player.stamina,Is.EqualTo(110));
         var mover=new MovingPlatform(new[]{new[]{72.0,72},new[]{216.0,72}},48,8);
         var red=new Spike(104,56,16,SpikeDirection.Left,1);
-        room=new PhaseController(Array.Empty<Block>(),88,61,mover,spikes:new[]{red});
-        room.mover.fromX=72;room.mover.fromY=72;room.mover.index=1;room.mover.duration=.3;room.mover.moving=true;
+        room=new PhaseController(Array.Empty<Block>(),88,61,new[]{mover},spikes:new[]{red});
+        room.movers[0].fromX=72;room.movers[0].fromY=72;room.movers[0].index=1;room.movers[0].duration=.3;room.movers[0].moving=true;
         for(int i=0;i<30&&room.deaths==0;i++)room.Step(new Controls());
         Assert.That(room.deaths,Is.EqualTo(1),"platform carry checks the complete swept path");
-        Ticks(room,20);Assert.That(room.mover.x,Is.EqualTo(72));Assert.That(room.mover.moving,Is.False);
+        Ticks(room,20);Assert.That(room.movers[0].x,Is.EqualTo(72));Assert.That(room.movers[0].moving,Is.False);
         room=new PhaseController(Array.Empty<Block>(),32,40,spikes:new[]{new Spike(40,40,16,SpikeDirection.Left,1)});
         room.player.grounded=false;room.player.dashTime=.3;room.player.vx=240;room.player.dx=1;
         room.Step(new Controls(),.1);Assert.That(room.deaths,Is.EqualTo(1),"an in-progress dash crossing the complete strip cannot tunnel");
@@ -289,7 +289,7 @@ public class ControllerTests
     static PhaseController Board(bool returns=false, int direction=1)
     {
         double from=direction>0?72:216,to=direction>0?216:72;
-        return new PhaseController(Array.Empty<Block>(),from+16,61,new MovingPlatform(new[] { new[] {from,72.0},new[] {to,72.0} },48,8,returns));
+        return new PhaseController(Array.Empty<Block>(),from+16,61,new[]{new MovingPlatform(new[] { new[] {from,72.0},new[] {to,72.0} },48,8,returns)});
     }
     [Test]
     public void PlatformCarryArrivalAndJumpCancellation()
@@ -297,17 +297,177 @@ public class ControllerTests
         foreach(int direction in new[] {-1,1}) foreach(bool returns in new[] {false,true})
         {
             var s=Board(returns,direction);Ticks(s,1,new Controls { x=direction,dash=true });
-            for(int i=0;i<14;i++){Ticks(s,1,new Controls { x=direction });Assert.That(s.player.x-s.mover.x,Is.EqualTo(16));Assert.That(s.player.y+s.player.h,Is.EqualTo(s.mover.y));}
+            for(int i=0;i<14;i++){Ticks(s,1,new Controls { x=direction });Assert.That(s.player.x-s.movers[0].x,Is.EqualTo(16));Assert.That(s.player.y+s.player.h,Is.EqualTo(s.movers[0].y));}
             Assert.That(s.phase,Is.Zero);Assert.That(s.deaths,Is.Zero);
         }
-        var ride=Board(true);ride.mover.x=208;ride.player.x=224;Ticks(ride,1,new Controls { x=1,dash=true });
-        for(int i=0;i<14;i++){Ticks(ride,1,new Controls { x=1 });Assert.That(ride.player.x-ride.mover.x,Is.EqualTo(16));}
-        Assert.That(ride.mover.moving,Is.False);
+        var ride=Board(true);ride.movers[0].x=208;ride.player.x=224;Ticks(ride,1,new Controls { x=1,dash=true });
+        for(int i=0;i<14;i++){Ticks(ride,1,new Controls { x=1 });Assert.That(ride.player.x-ride.movers[0].x,Is.EqualTo(16));}
+        Assert.That(ride.movers[0].moving,Is.False);
         ride=Board();Ticks(ride,1,new Controls { x=1,dash=true });Ticks(ride,6,new Controls { x=1 });Ticks(ride,1,new Controls { x=1,jump=true,jumpHeld=true });
-        Assert.That(ride.phase,Is.EqualTo(1));Assert.That(ride.player.y+ride.player.h,Is.LessThan(ride.mover.y));Assert.That(ride.player.x-ride.mover.x,Is.GreaterThan(16));
-        ride=Board();Ticks(ride,1,new Controls { x=-1,dash=true });Ticks(ride,8,new Controls { x=-1 });Assert.That(ride.player.x-ride.mover.x,Is.LessThan(16));
-        ride=Board();Ticks(ride,1,new Controls { x=1,y=-1,dash=true });Ticks(ride,8,new Controls { x=1,y=-1 });Assert.That(ride.player.y+ride.player.h,Is.LessThan(ride.mover.y));
-        ride=Board();Ticks(ride,1,new Controls { x=1,dash=true });while(ride.player.dashTime>0)Ticks(ride,1,new Controls { x=1 });double offset=ride.player.x-ride.mover.x;Ticks(ride,4,new Controls { x=1 });Assert.That(ride.player.x-ride.mover.x,Is.GreaterThan(offset));
+        Assert.That(ride.phase,Is.EqualTo(1));Assert.That(ride.player.y+ride.player.h,Is.LessThan(ride.movers[0].y));Assert.That(ride.player.x-ride.movers[0].x,Is.GreaterThan(16));
+        ride=Board();Ticks(ride,1,new Controls { x=-1,dash=true });Ticks(ride,8,new Controls { x=-1 });Assert.That(ride.player.x-ride.movers[0].x,Is.LessThan(16));
+        ride=Board();Ticks(ride,1,new Controls { x=1,y=-1,dash=true });Ticks(ride,8,new Controls { x=1,y=-1 });Assert.That(ride.player.y+ride.player.h,Is.LessThan(ride.movers[0].y));
+        ride=Board();Ticks(ride,1,new Controls { x=1,dash=true });while(ride.player.dashTime>0)Ticks(ride,1,new Controls { x=1 });double offset=ride.player.x-ride.movers[0].x;Ticks(ride,4,new Controls { x=1 });Assert.That(ride.player.x-ride.movers[0].x,Is.GreaterThan(offset));
+    }
+    [TestCase(-1)] [TestCase(1)]
+    public void VerticalReturnPlatformCarriesRidersInBothDirections(int direction)
+    {
+        double from=direction<0?144:80,to=direction<0?80:144;
+        var s=new PhaseController(Array.Empty<Block>(),96,from-11,
+            new[]{new MovingPlatform(new[]{new[]{80.0,from},new[]{80.0,to}},48,8,true)});
+        s.Step(new Controls{x=1,dash=true});
+        s.player=new Player(96,from-11);s.freeze=0;
+        for(int i=0;i<14;i++)
+        {
+            s.Step(default);
+            Assert.That(double.IsNaN(s.movers[0].y)||double.IsInfinity(s.movers[0].y),Is.False);
+            Assert.That(s.player.y+s.player.h,Is.EqualTo(s.movers[0].y));
+            Assert.That(s.player.x,Is.EqualTo(96));
+        }
+        Assert.That(s.movers[0].y,Is.EqualTo(to));
+        Ticks(s,100);
+        Assert.That(s.movers[0].y,Is.EqualTo(from));Assert.That(s.player.y+s.player.h,Is.EqualTo(from));
+        Assert.That(s.deaths,Is.Zero);
+    }
+    [TestCase(false)] [TestCase(true)]
+    public void MultiplePlatformsRespondToOneDashAndRespawnIndependently(bool returns)
+    {
+        var platforms=new[]{
+            new MovingPlatform(new[]{new[]{32.0,128},new[]{96.0,128}},32,8,returns),
+            new MovingPlatform(new[]{new[]{208.0,144},new[]{208.0,80}},32,8,returns)
+        };
+        var s=new PhaseController(new[]{new Block(0,176,320,8)},144,165,platforms);
+        Assert.That(s.Solid().Count,Is.EqualTo(3));
+        s.Step(new Controls{x=1,dash=true});Ticks(s,24);
+        Assert.That(s.dashes,Is.EqualTo(1));Assert.That(s.movers.Length,Is.EqualTo(2));
+        Assert.That((s.movers[0].x,s.movers[0].y),Is.EqualTo((96d,128d)));
+        Assert.That((s.movers[1].x,s.movers[1].y),Is.EqualTo((208d,80d)));
+        var previous=s.movers;s.player.y=200;s.Step(default);Ticks(s,20);
+        Assert.That(s.deaths,Is.EqualTo(1));
+        for(int i=0;i<2;i++)
+        {
+            Assert.That(s.movers[i],Is.Not.SameAs(previous[i]));
+            Assert.That((s.movers[i].x,s.movers[i].y),Is.EqualTo((platforms[i].x,platforms[i].y)));
+            Assert.That(s.movers[i].pending,Is.Zero);Assert.That(s.movers[i].moving,Is.False);
+        }
+    }
+    [Test]
+    public void SecondaryPlatformDefersNewlySolidPhaseTerrain()
+    {
+        var s=new PhaseController(new[]{new Block(0,176,320,8),new Block(208,80,32,8,1)},144,165,
+            new[]{new MovingPlatform(new[]{new[]{32.0,128},new[]{96.0,128}},32,8),
+                new MovingPlatform(new[]{new[]{208.0,144},new[]{208.0,80}},32,8)});
+        s.Step(new Controls{x=1,dash=true});Ticks(s,24);s.Step(new Controls{jump=true});
+        Assert.That(s.phase,Is.EqualTo(1));Assert.That(s.blocked.Contains(1),Is.True);
+        s.movers[1].x=248;s.Step(default);Assert.That(s.blocked.Contains(1),Is.False);
+    }
+    [TestCase(false)] [TestCase(true)]
+    public void SecondaryVerticalPlatformChecksCrushAndSpikeSweeps(bool spike)
+    {
+        var ceiling=spike?Array.Empty<Block>():new[]{new Block(64,80,96,8)};
+        var hazards=spike?new[]{new Spike(80,96,48,SpikeDirection.Down)}:Array.Empty<Spike>();
+        var s=new PhaseController(ceiling,96,133,
+            new[]{new MovingPlatform(new[]{new[]{240.0,144},new[]{272.0,144}},24,8),
+                new MovingPlatform(new[]{new[]{80.0,144},new[]{80.0,80}},48,8,true)},spikes:hazards);
+        s.Step(new Controls{x=1,dash=true});s.player=new Player(96,133);s.freeze=0;
+        for(int i=0;i<20&&s.deaths==0;i++)s.Step(default);
+        Assert.That(s.deaths,Is.EqualTo(1));Assert.That(s.respawn,Is.GreaterThan(0));
+        Ticks(s,20);Assert.That(s.movers[1].y,Is.EqualTo(144));
+    }
+    [Test]
+    public void ClimbHopTracksOnlyTheAttachedPlatform()
+    {
+        var s=new PhaseController(Array.Empty<Block>(),72,110,
+            new[]{new MovingPlatform(new[]{new[]{240.0,112},new[]{304.0,112}},16,8),
+                new MovingPlatform(new[]{new[]{80.0,112},new[]{80.0,80}},32,8)});
+        foreach(var m in s.movers){m.pending=1;}
+        s.player.hopPlatform=s.movers[1];s.player.wallLock=.1;s.player.grounded=false;
+        s.Step(default);
+        Assert.That(s.movers[0].x,Is.GreaterThan(240));Assert.That(s.movers[1].y,Is.LessThan(112));
+        Assert.That(s.player.x,Is.EqualTo(72),"unrelated horizontal motion cannot carry a hop on the second platform");
+    }
+    [Test]
+    public void AdjacentPlatformsCarryAStraddlingRiderOnlyOnce()
+    {
+        var s=new PhaseController(Array.Empty<Block>(),108,133,
+            new[]{new MovingPlatform(new[]{new[]{80.0,144},new[]{144.0,144}},32,8),
+                new MovingPlatform(new[]{new[]{112.0,144},new[]{176.0,144}},32,8)});
+        foreach(var m in s.movers)m.pending=1;
+        s.Step(default);
+        Assert.That(s.player.x-108,Is.EqualTo(s.movers[0].x-80));
+        Assert.That(s.movers[1].x,Is.GreaterThan(112));Assert.That(s.deaths,Is.Zero);
+    }
+    [TestCase(-1)] [TestCase(1)]
+    public void AdjacentVerticalPlatformsMoveTogetherWithoutCrushingTheirRider(int direction)
+    {
+        double from=direction<0?144:80,to=direction<0?80:144;
+        var s=new PhaseController(Array.Empty<Block>(),108,from-11,
+            new[]{new MovingPlatform(new[]{new[]{80.0,from},new[]{80.0,to}},32,8),
+                new MovingPlatform(new[]{new[]{112.0,from},new[]{112.0,to}},32,8)});
+        foreach(var m in s.movers)m.pending=1;
+        for(int i=0;i<20;i++)
+        {
+            s.Step(default);
+            Assert.That(s.deaths,Is.Zero,"same-direction platforms cannot crush a rider across their seam");
+            Assert.That(s.movers[0].y,Is.EqualTo(s.movers[1].y));
+            Assert.That(s.player.y+s.player.h,Is.EqualTo(s.movers[0].y));
+        }
+        Assert.That(s.movers[0].y,Is.EqualTo(to));
+    }
+    [Test]
+    public void UnequalVerticalPlatformsKeepTheRiderOnTheHighestSupportInEitherOrder()
+    {
+        foreach(var ends in new[]{new[]{144.0,112},new[]{16.0,48},new[]{144.0,80}})foreach(bool reverse in new[]{false,true})
+        {
+            var platforms=new[]{new MovingPlatform(new[]{new[]{80.0,80},new[]{80.0,ends[0]}},32,8),
+                new MovingPlatform(new[]{new[]{112.0,80},new[]{112.0,ends[1]}},32,8)};
+            if(reverse)Array.Reverse(platforms);
+            var s=new PhaseController(Array.Empty<Block>(),108,69,platforms);
+            foreach(var m in s.movers)m.pending=1;
+            for(int i=0;i<20;i++)
+            {
+                s.Step(default);
+                Assert.That(s.deaths,Is.Zero,"support selection cannot depend on hierarchy order or relative speed");
+                Assert.That(s.player.y+s.player.h,Is.EqualTo(Math.Min(s.movers[0].y,s.movers[1].y)));
+            }
+        }
+    }
+    [Test]
+    public void SameDirectionPlatformCrushCannotPushThroughTheOtherPlatform()
+    {
+        foreach(bool horizontal in new[]{false,true})
+        {
+            var platforms=horizontal?
+                new[]{new MovingPlatform(new[]{new[]{16.0,80},new[]{80.0,80}},64,8),
+                    new MovingPlatform(new[]{new[]{96.0,80},new[]{128.0,80}},64,8)}:
+                new[]{new MovingPlatform(new[]{new[]{80.0,64},new[]{80.0,32}},64,8),
+                    new MovingPlatform(new[]{new[]{80.0,88},new[]{80.0,24}},64,8)};
+            var s=new PhaseController(Array.Empty<Block>(),horizontal?80:96,horizontal?80:77,platforms);
+            foreach(var m in s.movers)m.pending=1;
+            for(int i=0;i<10&&s.deaths==0;i++)s.Step(default);
+            Assert.That(s.deaths,Is.EqualTo(1),"same-direction crush must not teleport the player through a platform");
+        }
+    }
+    [Test]
+    public void DescendingPlatformLeavesSharedFixedFloorSupportInPlace()
+    {
+        foreach(double x in new[]{24.0,28,32})
+        {
+            var s=new PhaseController(new[]{new Block(32,144,32,16)},x,133,
+                new[]{new MovingPlatform(new[]{new[]{0.0,144},new[]{0.0,160}},32,8)});
+            s.movers[0].pending=1;Ticks(s,20);
+            Assert.That(s.deaths,Is.Zero,"a platform moving away cannot drag a shared rider through fixed floor");
+            Assert.That(s.movers[0].y,Is.EqualTo(160));
+            Assert.That(s.player.y+s.player.h,Is.EqualTo(x==24?160:144));
+        }
+    }
+    [Test]
+    public void ReturnRoutesRejectZeroLengthDiagonalAndNonFiniteNodes()
+    {
+        Assert.Throws<ArgumentException>(()=>new MovingPlatform(new[]{new[]{80.0,80},new[]{80.0,80}},32,8,true));
+        Assert.Throws<ArgumentException>(()=>new MovingPlatform(new[]{new[]{80.0,80},new[]{88.0,88}},32,8,true));
+        Assert.Throws<ArgumentException>(()=>new MovingPlatform(new[]{new[]{80.0,80},new[]{80.0,double.NaN}},32,8));
+        Assert.Throws<ArgumentException>(()=>new MovingPlatform(null,32,8));
     }
     [TestCase(-1,-1)] [TestCase(0,-1)] [TestCase(1,-1)] [TestCase(-1,0)]
     [TestCase(1,0)] [TestCase(-1,1)] [TestCase(0,1)] [TestCase(1,1)]
@@ -339,7 +499,7 @@ public class ControllerTests
             Assert.That(s.deaths,Is.EqualTo(1));Assert.That(s.ExitDirection,Is.Zero,"death takes priority over travel");
         }
         var ride=new PhaseController(Array.Empty<Block>(),direction<0?0:312,61,
-            new MovingPlatform(new[] { new[] { direction<0?-16.0:296,72 },new[] { direction<0?-32.0:312,72 } },48,8));
+            new[]{new MovingPlatform(new[] { new[] { direction<0?-16.0:296,72 },new[] { direction<0?-32.0:312,72 } },48,8)});
         ride.exitLeft=direction<0;ride.exitRight=direction>0;
         Ticks(ride,1,new Controls { x=direction,dash=true });Ticks(ride,6,new Controls { x=direction });
         Assert.That(ride.ExitDirection,Is.EqualTo(direction));Assert.That(ride.deaths,Is.Zero,"platform can carry through an open edge");
@@ -349,14 +509,14 @@ public class ControllerTests
     {
         var source=Arena();var p=source.player;p.y=67;p.vx=direction*240;p.vy=-120;
         p.dash=0;p.dashTime=.1;p.stamina=63;p.ducking=true;p.h=6;
-        p.climbing=p.hopMover=p.dashRide=true;p.wall=p.hopX=p.forceX=1;p.wallLock=p.retention=.1;
+        p.climbing=true;p.hopPlatform=p.dashPlatform=new MovingPlatform(new[]{new[]{0.0,16},new[]{8.0,16}},8,8);p.wall=p.hopX=p.forceX=1;p.wallLock=p.retention=.1;
         source.phase=2;source.jumps=4;source.dashes=3;source.deaths=1;source.time=12;
         var next=Arena();next.EnterFrom(source,direction);
         Assert.That(next.player.x,Is.EqualTo(direction>0?0:312));Assert.That(next.player.y,Is.EqualTo(67));
         Assert.That((next.player.vx,next.player.vy,next.player.dash,next.player.dashTime,next.player.stamina),Is.EqualTo((direction*240.0,-120.0,0,.1,63.0)));
         Assert.That((next.phase,next.jumps,next.dashes,next.deaths,next.time),Is.EqualTo((2,4,3,1,12.0)));
         Assert.That(next.player.ducking,Is.True);Assert.That(next.player.h,Is.EqualTo(6));Assert.That(next.player.grounded,Is.False);
-        Assert.That(next.player.climbing||next.player.hopMover||next.player.dashRide,Is.False);
+        Assert.That(next.player.climbing||next.player.hopPlatform!=null||next.player.dashPlatform!=null,Is.False);
         Assert.That(next.player.wall+next.player.hopX+next.player.forceX+next.player.wallLock+next.player.retention,Is.Zero);
         Assert.That(next.ExitDirection,Is.Zero,"arrival does not bounce back");
         next.Reset();Assert.That(next.player.x,Is.EqualTo(67));Assert.That(next.phase,Is.Zero);

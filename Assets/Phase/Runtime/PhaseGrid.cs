@@ -8,7 +8,7 @@ namespace Phase
         public const int CellSize = 8;
         PhaseSandbox sandbox;
         PhaseTerrain[] terrain;
-        PhaseMovingPlatform mover;
+        PhaseMovingPlatform[] movers;
         PhaseClimbGear[] gears;
         public static Vector3 Snap(Component owner, Vector3 position)
         {
@@ -40,7 +40,7 @@ namespace Phase
         {
             sandbox = GetComponent<PhaseSandbox>();
             terrain = GetComponentsInChildren<PhaseTerrain>();
-            mover = GetComponentInChildren<PhaseMovingPlatform>();
+            movers = GetComponentsInChildren<PhaseMovingPlatform>();
             gears = GetComponentsInChildren<PhaseClimbGear>();
         }
         void LateUpdate()
@@ -48,7 +48,7 @@ namespace Phase
             var controller = sandbox.Controller;
             for (int i = 0; i < terrain.Length; i++)
                 Sync(terrain[i].GetComponent<BoxCollider2D>(), controller.blocks[i], controller.blocks[i].ActiveInPhase(controller.phase) && !controller.blocked.Contains(i));
-            if (mover != null) Sync(mover.GetComponent<BoxCollider2D>(), controller.mover);
+            for (int i = 0; i < movers.Length; i++) Sync(movers[i].GetComponent<BoxCollider2D>(), controller.movers[i]);
             for (int i = 0; i < gears.Length; i++)
             {
                 Sync(gears[i].GetComponent<BoxCollider2D>(), controller.gears[i].wall);

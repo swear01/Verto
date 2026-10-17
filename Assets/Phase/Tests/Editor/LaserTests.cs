@@ -5,6 +5,16 @@ using Phase;
 public class LaserTests
 {
     [Test]
+    public void SecondaryMovingPlatformShieldsUsingItsCurrentPosition()
+    {
+        var down=new Laser(224,8,LaserDirection.Down);
+        var s=new PhaseController(Array.Empty<Block>(),224,100,new[]{
+            new MovingPlatform(new[]{new[]{32.0,80},new[]{64.0,80}},24,8),
+            new MovingPlatform(new[]{new[]{216.0,80},new[]{264.0,80}},32,8)},lasers:new[]{down});
+        Assert.That(s.CheckHazards(),Is.False);
+        s.movers[1].x=264;Assert.That(s.CheckHazards(),Is.True);
+    }
+    [Test]
     public void EveryColorAndDirectionUsesItsPhaseMask()
     {
         foreach (LaserDirection direction in Enum.GetValues(typeof(LaserDirection)))
@@ -69,9 +79,9 @@ public class LaserTests
         Assert.That(s.LaserBeam(side).x,Is.EqualTo(80)); Assert.That(s.CheckHazards(),Is.False,"gear wall also blocks");
         var mover = new MovingPlatform(new[]{new double[]{80,80},new double[]{120,80}},24,8);
         var down = new Laser(88,8,LaserDirection.Down);
-        s = new PhaseController(Array.Empty<Block>(),88,100,mover,lasers:new[]{down});
+        s = new PhaseController(Array.Empty<Block>(),88,100,new[]{mover},lasers:new[]{down});
         Assert.That(s.LaserBeam(down).h,Is.EqualTo(64)); Assert.That(s.CheckHazards(),Is.False);
-        s.mover.x=120; Assert.That(s.CheckHazards(),Is.True,"dash platform's current position controls cover");
+        s.movers[0].x=120; Assert.That(s.CheckHazards(),Is.True,"dash platform's current position controls cover");
     }
 
     [Test]

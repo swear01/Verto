@@ -443,7 +443,7 @@ namespace Phase
             Terrain(s);
             foreach (var gear in s.gears) Gear(gear);
             Spikes(s);
-            if (s.mover != null) Mover(s.mover);
+            foreach (var mover in s.movers) Mover(mover);
             Lasers(s);
             foreach (var t in s.trails) Blit(Sprite("dash", s.player.facing, t.phase, 0, true), Round(t.x) - 2, Round(t.y) - 3, t.life * 2);
             if (playerVisible && s.respawn <= 0) DrawPlayer(s.player, s.time, s.phase);

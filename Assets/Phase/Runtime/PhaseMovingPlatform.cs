@@ -14,8 +14,6 @@ namespace Phase
         {
             if (size.x <= 0 || size.y <= 0 || nodes == null || nodes.Length < 2 || start < 0 || start >= nodes.Length)
                 throw new InvalidOperationException("Platform requires positive size, two nodes and a valid start.");
-            if (returns && (nodes.Length != 2 || nodes[0].x == nodes[1].x || nodes[0].y != nodes[1].y))
-                throw new InvalidOperationException("Return platform requires two distinct horizontal nodes.");
             var shape = PhaseGrid.CreateBox(this, new Vector3(nodes[start].x, -nodes[start].y), size);
             return new MovingPlatform(nodes.Select(n => { var p = PhaseGrid.Snap(this, new Vector3(n.x, -n.y)); return new[] { (double)p.x, -p.y }; }).ToArray(), shape.w, shape.h, returns, start);
         }
