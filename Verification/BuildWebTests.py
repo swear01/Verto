@@ -6,6 +6,11 @@ import BuildWeb
 
 
 class PipelineFailures(unittest.TestCase):
+    def test_release_contains_all_eight_scenes_in_order(self):
+        self.assertEqual(BuildWeb.SCENES, [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(1, 9)])
+        for scene in BuildWeb.SCENES:
+            self.assertTrue((BuildWeb.PROJECT / scene).is_file(), scene)
+
     def test_text_command_result_is_valid(self):
         response = {"success": True, "data": {"result": "Auto-tick enabled"}}
         with patch.object(BuildWeb.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, json.dumps(response))):

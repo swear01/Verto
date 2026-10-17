@@ -152,8 +152,10 @@ Each room uses `checkpointOnEntry`, resetting player color/dash/stamina and
 mechanism positions while preserving elapsed time and action/death counts.
 The original sandbox links retain their momentum/color carry behavior.
 See [room designs and live input verification](Demo.md).
-`BuildWeb.py` verifies these tests but retains its explicit two-sandbox Web build;
-the eight-room Unity demo has not replaced the hosted preview.
+`BuildWeb.py` verifies these tests and builds only `PhaseDemo1` through
+`PhaseDemo8`, in that order. `DemoWebSmoke.cjs` replays keyboard routes through
+the eight Web scenes and checks settings, sizing, fullscreen and loading failure.
+The older `WebSmoke.cjs` remains a verifier for the original two-sandbox build.
 
 ## CI
 
