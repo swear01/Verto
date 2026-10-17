@@ -90,8 +90,10 @@ only after `phase-map-result` reports success. All dialogs share the gameplay pa
 prove native map loading. Verify the native bridge through Pipeline and the final
 built Web Player before publishing.
 `DemoWebSmoke.cjs` checks native selection of all eight rooms, custom-map import
-and play, draft retention, and movement after fullscreen exit. Room 5 synchronizes
-its blue jump, landings and horizontal dash with visible position/eye-color checkpoints.
+and play, draft retention, and movement after fullscreen exit. Room 1 synchronizes its staircase landings, Room 5 its low-ceiling jump/dash, and
+Room 8 its gear lift and ferry stops with visible phase/position checkpoints.
+For an isolated diagnostic, append `--room=1`, `--room=5` or `--room=8` to the
+local verifier command; a calibration report is not a complete release check.
 
 The custom `Phase` template uses gzip with Unity's decompression fallback, so a
 static host does not need custom `Content-Encoding` headers. The 2D renderer has
