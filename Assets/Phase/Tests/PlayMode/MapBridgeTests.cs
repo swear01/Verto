@@ -9,6 +9,13 @@ using UnityEngine.TestTools;
 
 public class MapBridgeTests : InputTestFixture
 {
+    [System.Serializable] sealed class MapData
+    {
+        public string name;
+        public Block[] blocks;
+        public DemoSpike[] spikes;
+        public double spawnX,spawnY;
+    }
     [UnityTest]
     public IEnumerator ImportRejectsUnsafeMapsAtomicallyAndValidMapsRemainPlayable()
     {
@@ -21,14 +28,16 @@ public class MapBridgeTests : InputTestFixture
             "{\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phase\":-1,\"phaseMask\":7}],\"spawnX\":24,\"spawnY\":152,\"movers\":[{}]}",
             "{\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phase\":-1,\"phaseMask\":7}],\"spawnX\":24,\"spawnY\":152,\"gears\":[{}]}"})
         {
-            original.LoadCustomMap(json);Assert.That(original.gameObject.activeSelf,Is.True);
+            original.LoadCustomMap(json);Assert.That(PhaseSandbox.LastMapError,Is.Not.Empty);
+            Assert.That(original.gameObject.activeSelf,Is.True);
             Assert.That(original.Controller,Is.SameAs(controller));
         }
         Assert.That(SceneManager.GetActiveScene().name,Is.EqualTo("PhaseDemo1"));
         var map=new PhaseDemoRoom{name="Custom",spawnX=24,spawnY=152,
             blocks=new[]{new Block(0,168,320,8,phaseMask:7)},
             spikes=new[]{new DemoSpike{x=80,y=160,length=8,direction=SpikeDirection.Up,phaseMask=7}}};
-        original.LoadCustomMap(JsonUtility.ToJson(map));yield return null;
+        original.LoadCustomMap(JsonUtility.ToJson(new MapData { name=map.name,blocks=map.blocks,spikes=map.spikes,spawnX=map.spawnX,spawnY=map.spawnY }));
+        Assert.That(PhaseSandbox.LastMapError,Is.Empty,PhaseSandbox.LastMapError);yield return null;
         var sandbox=Object.FindAnyObjectByType<PhaseSandbox>();
         Assert.That(original==null,Is.True);Assert.That(sandbox.gameObject.name,Is.EqualTo("PHASE"));
         Assert.That(Object.FindObjectsByType<PhaseSandbox>(FindObjectsSortMode.None).Length,Is.EqualTo(1));

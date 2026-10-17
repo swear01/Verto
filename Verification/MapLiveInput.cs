@@ -9,6 +9,13 @@ using UnityEngine.SceneManagement;
 
 public static class MapLiveInput
 {
+    [Serializable] sealed class MapData
+    {
+        public string name;
+        public Block[] blocks;
+        public DemoSpike[] spikes;
+        public double spawnX,spawnY;
+    }
     static async Task Frames(int count)
     {
         int target=Time.frameCount+count;double deadline=Time.realtimeSinceStartupAsDouble+30;
@@ -39,7 +46,8 @@ public static class MapLiveInput
             var map=new PhaseDemoRoom{name="Verification",spawnX=24,spawnY=152,
                 blocks=new[]{new Block(0,168,320,8,phaseMask:7)},
                 spikes=new[]{new DemoSpike{x=96,y=160,length=8,direction=SpikeDirection.Up,phaseMask=7}}};
-            original.LoadCustomMap(JsonUtility.ToJson(map));await Frames(2);
+            original.LoadCustomMap(JsonUtility.ToJson(new MapData { name=map.name,blocks=map.blocks,spikes=map.spikes,spawnX=map.spawnX,spawnY=map.spawnY }));
+            Require(PhaseSandbox.LastMapError=="",PhaseSandbox.LastMapError);await Frames(2);
             var sandbox=UnityEngine.Object.FindAnyObjectByType<PhaseSandbox>();
             Require(original==null&&sandbox!=null&&sandbox.Controller!=old,"Map root was not replaced.");
             Require(UnityEngine.Object.FindObjectsByType<PhaseSandbox>(FindObjectsSortMode.None).Length==1,"Map import left multiple players.");

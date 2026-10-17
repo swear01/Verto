@@ -257,7 +257,11 @@ Web completion dispatches `window` event `phase-map-result` with
 `detail:{success:boolean,message:string}`. Scene success waits for asynchronous
 loading; custom-map success waits for the new root's controller and pixel surface.
 Invalid input preserves the current map and produces a failure callback without
-logging a gameplay error. Controller validation runs in the three `CustomMapTests`;
+logging a gameplay error. `PhaseSandbox.LastMapError` exposes the last failure
+message for native verification and clears on success. Serialize only the supported
+five-field map shape: Unity serializes null nested `PhaseDemoRoom` gear fields as
+empty objects, which the custom-map validator deliberately rejects.
+Controller validation runs in the three `CustomMapTests`;
 `MapBridgeTests` adds one Play Mode import/keyboard/respawn/scene-selection case.
 
 For live verification, enter a demo in Play mode and run

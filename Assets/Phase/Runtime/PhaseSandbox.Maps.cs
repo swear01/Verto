@@ -7,12 +7,14 @@ namespace Phase
 {
     public sealed partial class PhaseSandbox
     {
+        public static string LastMapError { get; private set; } = "";
         [Serializable] sealed class UnsupportedMapMechanisms { public Block[] movers, gears; }
 #if UNITY_WEBGL && !UNITY_EDITOR
         [DllImport("__Internal")] static extern void PhaseMapResult(int success, string message);
 #endif
         static void MapResult(bool success, string message = "")
         {
+            LastMapError = success ? "" : message;
 #if UNITY_WEBGL && !UNITY_EDITOR
             PhaseMapResult(success ? 1 : 0, message);
 #endif
