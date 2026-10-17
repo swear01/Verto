@@ -104,7 +104,13 @@ scenes must be in Build Settings and in the Web build's explicit scene list.
 Deaths respawn in the current room. Top/bottom behavior and immutable reference
 fixtures stay unchanged; there is no player text.
 Default movement, dash aiming and climb bindings accept arrow keys or WASD.
-Web players can replace these bindings through the settings button.
+Web settings expose two independent slots per action; changing one preserves the
+other. Logical `Shift` activates both physical Shift keys. The Web bridge sends
+14 strings to `ConfigureControls`, in left/right/up/down/jump/dash/grab order,
+with two adjacent slots per action; empty strings disable a slot. The native
+validator rejects duplicate physical keys, reserved keys and actions with no key,
+then applies the entire map atomically. Browser storage/migration is described
+in [Web preview](Web.md).
 
 ## CI
 

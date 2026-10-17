@@ -40,14 +40,20 @@ needs a user click and browser/iframe permission; denied requests show a recover
 message. Loading failures remain visible.
 
 The top-right settings button opens keyboard bindings and pauses the game. Select
-an action, then press one key; Esc cancels capture or closes settings. Overrides
-replace that action's default aliases. Duplicate keys and browser modifier shortcuts
+either of an action’s two slots, then press a key; the other slot is preserved.
+Shift is one logical binding that accepts either left or right Shift. Delete clears
+the selected slot; each action must keep at least one key. Esc cancels capture or
+closes settings; Tab cancels capture and moves focus. Duplicate keys and browser modifier shortcuts
 are rejected. Changes apply immediately and are stored on this browser/origin;
 blocked storage displays a warning while keeping the current session usable.
 Release held keys after closing settings to resume. Each action has its own Restore
 button; it resets only that action and is disabled when already at its defaults.
 If another action uses a default key, the message names that action and asks you to
 change it first. Other bindings are preserved. Bindings survive room travel.
+`phase.controls.v2` stores 14 strings (two per action, empty means unused).
+Existing `phase.controls.v1` single overrides migrate into the first slot; untouched
+actions keep both defaults. The old data remains unchanged. Invalid or conflicting
+saved data falls back to defaults with a visible notice.
 The settings interface lives in the Web page; the game view stays free of prose.
 
 The custom `Phase` template uses gzip with Unity's decompression fallback, so a
