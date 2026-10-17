@@ -21,6 +21,8 @@ Open <http://127.0.0.1:8765/>. Click the canvas for keyboard focus: arrows/WASD
 move, Space/Z jumps, X dashes, and C/Shift grabs. Cross the first room’s right
 edge to continue, or the second room’s left edge to return. Room changes use a
 0.18-second horizontal pixel slide; input/physics pause until it finishes.
+The hood and scarf are amber with one dash available and slate gray after use;
+landing refills them. Eye colors continue to indicate phase.
 Touch controls are not provided.
 The canvas fills the entire viewport and always shows at least the original
 320x180 native-pixel play area. Wide views extend horizontally; tall views keep
@@ -57,7 +59,7 @@ the warning.
 ## Enable automatic builds and online play
 
 `Web build and preview` runs only on `main`, after push or manual dispatch.
-It uses Unity CLI + live Pipeline for 26 Editor tests, three Play Mode tests and
+It uses Unity CLI + live Pipeline for 27 Editor tests, three Play Mode tests and
 the Web build, then verifies browser rendering, keyboard input, both scene-edge
 transitions, minimum view/tall-sky extension/wide-floor travel, resizing, visible
 load failures, and absence of browser errors/warnings. Only a passing build is

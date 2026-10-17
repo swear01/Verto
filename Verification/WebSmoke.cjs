@@ -37,6 +37,18 @@ function character(buffer) {
   return count ? { x: xSum / count, y: ySum / count, width: maxX-minX+1, height: maxY-minY+1 } : null;
 }
 
+function dashCharge(buffer, player) {
+  const image=PNG.sync.read(buffer), scale=image.width/320;
+  const count={ready:0,spent:0};
+  for(let y=Math.max(0,Math.floor(player.y-16*scale));y<Math.min(image.height,player.y+4*scale);y++)
+    for(let x=Math.max(0,Math.floor(player.x-10*scale));x<Math.min(image.width,player.x+10*scale);x++) {
+      const i=(y*image.width+x)*4;
+      for(const [key,rgb] of [['ready',[255,178,77]],['spent',[90,101,120]]])
+        if(rgb.every((v,k)=>Math.abs(image.data[i+k]-v)<=2))count[key]++;
+    }
+  return {ready:count.ready/(scale*scale),spent:count.spent/(scale*scale)};
+}
+
 (async () => {
   let browser;
   const result = { errors: [], warnings: [], failedRequests: [] };
@@ -66,6 +78,8 @@ function character(buffer) {
       await page.waitForTimeout(250);
     }
     assert(result.initial, 'Player pixels did not render');
+    result.chargeReady=dashCharge(await canvas.screenshot(),result.initial);
+    assert(result.chargeReady.ready>24,'Available dash must color the whole hood');
     await page.screenshot({ path: path.join(reports, 'desktop-browser.png') });
     await page.keyboard.down('ArrowRight');
     await page.waitForTimeout(180);
@@ -75,15 +89,28 @@ function character(buffer) {
     assert(result.moved && result.moved.x > result.initial.x + 12, 'Right input did not move the player');
     await page.keyboard.down('Space');
     await page.waitForTimeout(90);
-    await page.keyboard.up('Space');
     result.jumped = await capture('jumped');
     assert(result.jumped && result.jumped.y < result.moved.y - 12, 'Space did not jump');
     await page.keyboard.down('ArrowRight');
     await page.keyboard.press('x');
-    await page.waitForTimeout(100);
-    await page.keyboard.up('ArrowRight');
-    result.dashed = await capture('dashed');
+    for(let i=0;i<20;i++) {
+      const buffer=await canvas.screenshot(), player=character(buffer);
+      if(player) {
+        result.dashed=player;result.chargeSpent=dashCharge(buffer,player);
+        if(player.x>result.jumped.x+30 && result.chargeSpent.spent>24 && result.chargeSpent.ready===0) {
+          fs.writeFileSync(path.join(reports,'dashed.png'),buffer);break;
+        }
+      }
+      await page.waitForTimeout(10);
+    }
+    await page.keyboard.up('ArrowRight');await page.keyboard.up('Space');
     assert(result.dashed && result.dashed.x > result.jumped.x + 30, 'X did not dash');
+    assert(result.chargeSpent.spent>24 && result.chargeSpent.ready===0,'Used air dash must show a slate hood');
+    await page.waitForTimeout(650);
+    const landed=await capture('dash-refilled');
+    result.chargeRefilled=dashCharge(await canvas.screenshot(),landed);
+    assert(result.chargeRefilled.ready>24 && result.chargeRefilled.spent===0,'Landing must restore the amber hood');
+    result.dashChargeReadable=true;
     await page.keyboard.down('ArrowRight');
     await page.keyboard.down('ArrowUp');
     await page.keyboard.down('c');
