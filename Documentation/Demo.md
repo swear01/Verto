@@ -64,7 +64,9 @@ through Pipeline, entry `DemoLiveInput.Run`. It queues the room's input on a
 temporary keyboard, stops at the exit landing before crossing the boundary,
 checks advancing frame count/controller time, and saves
 captures to `TestResults/DemoRooms/`. Entry `DemoLiveInput.Advance` walks across
-the exit and checks the next checkpoint. Repeat for all eight rooms. Both methods
+the exit and checks the next checkpoint. Repeat for all eight rooms. In rooms 3, 7 and 8, entry `DemoLiveInput.Bypass`
+replays the saved bypass routes on the same real keyboard and checks that the
+closed gate blocks them with no deaths or mechanism movement. All methods
 restore background/input settings and remove their keyboards. Inspect the Game
 View and Console as described in [Development](Development.md).
 

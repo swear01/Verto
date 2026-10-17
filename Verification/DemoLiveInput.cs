@@ -11,26 +11,32 @@ using UnityEngine.SceneManagement;
 public static class DemoLiveInput
 {
     [Serializable] public sealed class Routes { public Room[] rooms; }
-    [Serializable] public sealed class Room { public Step[] route; public Goal goal; }
+    [Serializable] public sealed class Room { public Step[] route; public Step[][] bypassRoutes; public Goal goal; public string suffix; }
     [Serializable] public sealed class Step { public int frames,x,y; public bool jump,dash,grab; }
     [Serializable] public sealed class Goal { public double x,y,lift; public int phase,jumps,dashes; }
 
-    public static async Task<string> Run()
+    public static Task<string> Run() => RunRoom(false);
+    public static Task<string> Bypass() => RunRoom(true);
+    static async Task<string> RunRoom(bool bypass)
     {
         var sandbox = UnityEngine.Object.FindAnyObjectByType<PhaseSandbox>();
         string scene = SceneManager.GetActiveScene().name;
         if (!Application.isPlaying || sandbox == null || !scene.StartsWith("PhaseDemo") || !int.TryParse(scene.Substring(9),out int number))
             throw new InvalidOperationException("Open an eight-room demo scene in Play mode.");
         var room = Newtonsoft.Json.JsonConvert.DeserializeObject<Routes>(File.ReadAllText("Assets/Phase/DemoRooms.json")).rooms[number-1];
-        var result = new TaskCompletionSource<string>();
-        UnityEngine.Events.UnityAction<Scene,Scene> changed = (a,b) => result.TrySetException(new InvalidOperationException("Route crossed the exit before its landing check: "+scene));
-        SceneManager.activeSceneChanged += changed;
-        try
+        var routes = bypass ? room.bypassRoutes : new[] { room.route };
+        if (routes == null || routes.Length == 0) throw new InvalidOperationException("This room has no recorded bypass routes.");
+        var reports = new System.Collections.Generic.List<string>();
+        for (int i = 0; i < routes.Length; i++)
         {
-            sandbox.StartCoroutine(Check(sandbox,room,number,result));
-            return await result.Task;
+            var result = new TaskCompletionSource<string>();
+            var trial = new Room { route = routes[i], goal = bypass ? null : room.goal, suffix = bypass ? "-bypass-"+(i+1) : "" };
+            UnityEngine.Events.UnityAction<Scene,Scene> changed = (a,b) => result.TrySetException(new InvalidOperationException("Route crossed the exit before its landing check: "+scene));
+            SceneManager.activeSceneChanged += changed;
+            try { sandbox.StartCoroutine(Check(sandbox,trial,number,result)); reports.Add(await result.Task); }
+            finally { SceneManager.activeSceneChanged -= changed; }
         }
-        finally { SceneManager.activeSceneChanged -= changed; }
+        return string.Join("\n", reports);
     }
     static IEnumerator Check(PhaseSandbox sandbox, Room room, int number, TaskCompletionSource<string> result)
     {
@@ -47,10 +53,11 @@ public static class DemoLiveInput
             yield return null;
             keyboard = InputSystem.AddDevice<Keyboard>("PhaseDemoVerification");
             var s = sandbox.Controller; s.Reset();
+            string label = number + room.suffix;
             int deaths = s.deaths, jumps = s.jumps, dashes = s.dashes, frame = Time.frameCount;
             double time = s.time;
             Directory.CreateDirectory("TestResults/DemoRooms");
-            File.WriteAllBytes($"TestResults/DemoRooms/{number}-start.png",sandbox.Frame.EncodeToPNG());
+            File.WriteAllBytes($"TestResults/DemoRooms/{label}-start.png",sandbox.Frame.EncodeToPNG());
             for (int i=0;i<room.route.Length;i++)
             {
                 var step=room.route[i];
@@ -62,11 +69,19 @@ public static class DemoLiveInput
                 for (int n = 0; n < step.frames; n++)
                 {
                     yield return null;
-                    if (i==room.route.Length-1 && s.player.x>=room.goal.x && s.player.grounded && s.player.y+s.player.h==room.goal.y) break;
+                    if (room.goal != null && i==room.route.Length-1 && s.player.x>=room.goal.x && s.player.grounded && s.player.y+s.player.h==room.goal.y) break;
                 }
             }
             InputSystem.QueueStateEvent(keyboard,new KeyboardState());
             var p = s.player; var goal = room.goal;
+            if (goal == null)
+            {
+                if (s.deaths != deaths || s.gears[0].Lift != 0 || p.x+p.w > 80 || Time.frameCount <= frame || s.time <= time)
+                    throw new InvalidOperationException($"Room {label} bypass escaped: x={p.x}, lift={s.gears[0].Lift}, deaths={s.deaths-deaths}");
+                File.WriteAllBytes($"TestResults/DemoRooms/{label}-end.png",sandbox.Frame.EncodeToPNG());
+                string blocked = $"Room {label} blocked: frames={Time.frameCount-frame}, seconds={s.time-time:F3}, x={p.x}, lift=0, deaths=0";
+                File.WriteAllText($"TestResults/DemoRooms/{label}.txt",blocked); result.SetResult(blocked); yield break;
+            }
             if (s.deaths != deaths || p.x < goal.x || p.y + p.h != goal.y || !p.grounded || s.phase != goal.phase ||
                 s.jumps-jumps != goal.jumps || s.dashes-dashes != goal.dashes || (s.gears.Length > 0 && s.gears[0].Lift != goal.lift) ||
                 Time.frameCount <= frame || s.time <= time)
@@ -74,9 +89,9 @@ public static class DemoLiveInput
                 result.TrySetException(new InvalidOperationException($"Room {number}: x={p.x}, feet={p.y+p.h}, phase={s.phase}, jumps={s.jumps-jumps}, dashes={s.dashes-dashes}, deaths={s.deaths-deaths}, lift={(s.gears.Length>0?s.gears[0].Lift:0)}"));
                 yield break;
             }
-            File.WriteAllBytes($"TestResults/DemoRooms/{number}-end.png",sandbox.Frame.EncodeToPNG());
+            File.WriteAllBytes($"TestResults/DemoRooms/{label}-end.png",sandbox.Frame.EncodeToPNG());
             string report = $"Room {number} passed: frames={Time.frameCount-frame}, seconds={s.time-time:F3}, jumps={s.jumps-jumps}, dashes={s.dashes-dashes}, deaths=0";
-            File.WriteAllText($"TestResults/DemoRooms/{number}.txt",report);
+            File.WriteAllText($"TestResults/DemoRooms/{label}.txt",report);
             result.SetResult(report);
         }
         finally
