@@ -189,6 +189,7 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     const custom={name:'Browser native map',blocks:[{x:0,y:168,w:320,h:8,phase:-1,phaseMask:7}],spikes:[{x:200,y:160,length:8,direction:0,phaseMask:7}],spawnX:24,spawnY:152};
     const chooser=page.waitForEvent('filechooser');await page.locator('#map-import').click();
     await (await chooser).setFiles({name:'phase-verification-map.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(custom))});
+    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('phase.map.v1')||'{}').name==='Browser native map');
     const draft=await page.evaluate(()=>localStorage.getItem('phase.map.v1'));
     const beforeCustom=await page.evaluate(()=>window.__nativeMapResults.length);await page.locator('#map-play').click();
     result.customMap={response:await nativeResult(beforeCustom)};await page.locator('#map-editor').waitFor({state:'hidden'});
