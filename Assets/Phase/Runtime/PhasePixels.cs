@@ -217,40 +217,46 @@ namespace Phase
             for (int y = -9; y <= 9; y++) for (int x = -9; x <= 9; x++)
             {
                 double radius = Math.Sqrt(x * x + y * y), theta = Math.Atan2(y, x) - angle;
-                double edge = Math.Cos(theta * 10) > .1 ? 8.5 : 6.5;
+                double edge = Math.Cos(theta * 8) > .35 ? 8.5 : 6.5;
                 if (radius > edge) continue;
-                string color = radius > edge - 1 ? "dce7ee" : radius < 2 ? "dce7ee" :
-                    radius < 4.5 && Math.Abs(Math.Sin(theta * 3)) > .45 ? Ink : "697d8e";
+                string color = radius > edge - 1 ? "646464" : "a0a0a0";
                 Put(cx + x, cy + y, Color(color));
             }
-            Rect(cx, cy, 1, 1, Ink);
+            Rect(cx - 1, cy - 1, 2, 2, "e8e8e8");
+            Rect(cx + Round(4 * Math.Cos(angle)) - 1, cy + Round(4 * Math.Sin(angle)) - 1, 2, 2, "646464");
         }
         void Gear(ClimbGear gear)
         {
             var wall = gear.wall; var platform = gear.platform;
-            int rackX = Round(wall.x + wall.w), cy = Round(platform.y + platform.h + 20);
-            Rect(wall.x + 2, gear.top - 4, wall.w - 4, gear.bottom + wall.h - gear.top + 8, "3c4a57");
+            int rackX = Round(wall.x + wall.w), rackY = Round(platform.y + platform.h), cy = rackY + 12;
+            Rect(wall.x + 2, gear.top - 4, wall.w - 4, gear.bottom + wall.h - gear.top + 8, "444444");
             foreach (double y in new[] { gear.top - 4, gear.bottom + wall.h + 2 })
-                Rect(wall.x - 2, y, wall.w + 4, 2, "dce7ee");
+                Rect(wall.x - 2, y, wall.w + 4, 2, Highlights[3]);
             double left = Math.Min(gear.startX, gear.endX), right = Math.Max(gear.startX, gear.endX) + platform.w;
-            Rect(left, platform.y + 3, right - left, 2, "697d8e");
-            Rect(left - 2, platform.y, 2, platform.h, "dce7ee"); Rect(right, platform.y, 2, platform.h, "dce7ee");
-            Rect(rackX, wall.y, 2, gear.bottom + wall.h - wall.y, "a9b8c5");
-            for (int y = Round(wall.y); y < gear.bottom + wall.h; y += 4) Rect(rackX + 2, y, 2, 2, "dce7ee");
+            Rect(left, platform.y + 3, right - left, 2, "646464");
+            Rect(left - 2, platform.y, 2, platform.h, Highlights[3]); Rect(right, platform.y, 2, platform.h, Highlights[3]);
+            Rect(rackX, wall.y, 2, gear.bottom + wall.h - wall.y, "a0a0a0");
+            for (int y = Round(wall.y); y < gear.bottom + wall.h; y += 6) Rect(rackX + 2, y, 3, 3, "a0a0a0");
             double rackLeft = platform.x - Math.Abs(gear.endX - gear.startX);
-            Rect(platform.x + 4, platform.y + platform.h, 2, cy - 12 - platform.y - platform.h, "a9b8c5");
-            Rect(rackLeft, cy - 12, platform.w + Math.Abs(gear.endX - gear.startX), 2, "a9b8c5");
-            for (int x = Round(rackLeft); x < platform.x + platform.w; x += 4) Rect(x, cy - 10, 2, 2, "dce7ee");
-            for (int i = 0; i < 3; i++) GearWheel(rackX + 11 + i * 16, cy, gear.Lift / 8 * (i == 1 ? -1 : 1) + (i == 1 ? Math.PI / 10 : 0));
+            int rackStart = Math.Max(Round(rackLeft), rackX + 4);
+            Rect(rackStart, rackY, platform.x + platform.w - rackStart, 2, "a0a0a0");
+            for (int x = Round(rackLeft); x < platform.x + platform.w; x += 6)
+                if (x >= rackStart) Rect(x, rackY + 2, 3, 3, "a0a0a0");
+            double angle = gear.Lift * Math.PI / 24;
+            // Only the raised output pinion touches the horizontal rack.
+            GearWheel(rackX + 11, cy + 13, angle);
+            GearWheel(rackX + 26, cy + 13, -angle + Math.PI / 8);
+            GearWheel(rackX + 34, cy, angle + Math.PI / 10);
             foreach (var block in new[] { wall, platform })
             {
                 Rect(block.x - 1, block.y - 1, block.w + 2, block.h + 2, Ink);
-                Rect(block.x, block.y, block.w, block.h, "3c4a57");
-                Rect(block.x, block.y, block.w, 2, "dce7ee");
-                Rect(block.x, block.y + 2, 1, block.h - 2, "a9b8c5");
+                Rect(block.x, block.y, block.w, block.h, Fills[3]);
+                Rect(block.x, block.y, block.w, 2, Highlights[3]);
+                Rect(block.x, block.y + 2, 1, block.h - 2, Edges[3]);
                 for (double y = block.y + 4; y < block.y + block.h - 2; y += 8)
-                    for (double x = block.x + 3; x < block.x + block.w - 2; x += 8) Rect(x, y, 2, 2, "a9b8c5");
+                    for (double x = block.x + 3; x < block.x + block.w - 2; x += 8) Rect(x, y, 2, 2, Edges[3]);
             }
+            Rect(platform.x, rackY, platform.w, 2, "a0a0a0");
         }
         // Original Wick frames; the hood now shares the scarf's dash-charge colors.
         static readonly Dictionary<string,string[]> Frames = new Dictionary<string,string[]> {

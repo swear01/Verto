@@ -10,6 +10,31 @@ public class PixelTests
     public class Reference { public int columns; public Block[] blocks; public Frame[] frames; }
     public class Frame { public string name; public double time; public int phase; public int[] blocked; public Player player; }
 
+    [TestCase(0)] [TestCase(19)] [TestCase(40)]
+    public void GearRackStaysAttachedToThePlatformAcrossTravel(int lift)
+    {
+        var s = new PhaseController(Array.Empty<Block>(), 0, 149, gears: new[] {
+            new ClimbGear(new Block(72,104,8,56),64,new Block(104,104,32,8),144)
+        });
+        var gear = s.gears[0]; gear.wall.y -= lift; gear.platform.x += lift; s.flash = 0;
+        var pixels = new PhasePixels();
+        try
+        {
+            pixels.Draw(s);
+            for (int x = (int)gear.platform.x + 1; x < gear.platform.x + gear.platform.w - 1; x++)
+                for (int y = (int)(gear.platform.y + gear.platform.h) - 1; y <= gear.platform.y + gear.platform.h + 1; y++)
+                {
+                    Color32 pixel = pixels.Texture.GetPixel(x, 179 - y);
+                    Assert.That(pixel.r, Is.GreaterThan(40), $"platform and rack have no background gap at ({x},{y})");
+                }
+            var first = pixels.Texture.GetPixels32(); s.time += 1; pixels.Draw(s);
+            var second = pixels.Texture.GetPixels32();
+            for (int y = 60; y < 166; y++) for (int x = 70; x < 180; x++)
+                Assert.That(second[(179-y)*320+x], Is.EqualTo(first[(179-y)*320+x]), "stationary gears do not animate on their own");
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
     [Test]
     public void RoomSlideKeepsPixelsAndJoinsBothDirections()
     {
