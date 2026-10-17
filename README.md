@@ -1,5 +1,7 @@
 # PHASE
 
+[中文 Wiki：背景、操作、物件與關卡製作](Documentation/Wiki.md)。
+
 [Play the Web preview](https://phase-gamejam1-20261016.swear01.chatgpt.site).
 
 Unity **6000.4.7f1**. Open `Assets/Scenes/PhaseDemo1.unity` and press Play for the
