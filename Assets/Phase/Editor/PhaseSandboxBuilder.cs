@@ -5,6 +5,36 @@ using UnityEngine;
 
 public static class PhaseSandboxBuilder
 {
+    [MenuItem("PHASE/Create gear demo")]
+    public static void CreateGearDemo()
+    {
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+        EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+        var root = new GameObject("PHASE"); var sandbox = root.AddComponent<PhaseSandbox>();
+        var camera = new GameObject("Camera").AddComponent<Camera>();
+        camera.orthographic = true; camera.orthographicSize = 90;
+        camera.clearFlags = CameraClearFlags.SolidColor; camera.backgroundColor = Color.black;
+        sandbox.pixelCamera = camera;
+        sandbox.pixelMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Phase/PixelSurface.mat");
+        Add(root, "Safe approach", 0, 160, 88, 24, -1);
+        Add(root, "Blue recovery", 208, 136, 24, 8, 1);
+        Add(root, "Green landing", 208, 80, 24, 8, 2);
+        Add(root, "Red landing", 256, 56, 24, 8, 0);
+        Add(root, "Rest", 296, 32, 24, 8, -1);
+        var drive = new GameObject("White gear drive"); drive.transform.SetParent(root.transform);
+        drive.transform.position = new Vector3(72, -104, 0);
+        var gear = drive.AddComponent<PhaseClimbGear>();
+        gear.wallSize = new Vector2Int(8, 56); gear.wallTop = 64; gear.platformEndX = 144;
+        var moving = new GameObject("Dash recovery platform"); moving.transform.SetParent(root.transform);
+        var mover = moving.AddComponent<PhaseMovingPlatform>();
+        mover.size = new Vector2Int(24, 8); mover.nodes = new[] { new Vector2Int(232, 112), new Vector2Int(264, 112) }; mover.returns = true;
+        const string path = "Assets/Scenes/PhaseGearDemo.unity";
+        EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), path);
+        var scenes = new System.Collections.Generic.List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
+        if (!scenes.Exists(s => s.path == path)) scenes.Add(new EditorBuildSettingsScene(path, true));
+        EditorBuildSettings.scenes = scenes.ToArray();
+        AssetDatabase.SaveAssets();
+    }
     [MenuItem("PHASE/Create minimal sandbox")]
     public static void Create()
     {

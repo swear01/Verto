@@ -13,6 +13,13 @@ views follow the player. Web has a fullscreen button, and room travel uses a qui
 horizontal slide.
 `PhaseTerrain` and `PhaseMovingPlatform` are reusable Inspector components.
 
+For the climb-driven mechanism demo, open `Assets/Scenes/PhaseGearDemo.unity`
+and press Play. Grab the white wall with C/Shift and climb with Up/Down or W/S:
+the wall carries you vertically while the linked white platform slides horizontally.
+It holds its position when you stop or release. Use jump (Z/Space) to cycle color
+and dash (X) to connect the colored landings. The demo is a separate scene.
+`PhaseClimbGear` exposes the wall travel and platform endpoints in the Inspector.
+
 Development uses **Unity CLI + Unity Pipeline** against a running Editor.
 See [development and verification](Documentation/Development.md) and
 [art direction](DESIGN.md) and [movement attribution](Documentation/ThirdPartyNotices.md).

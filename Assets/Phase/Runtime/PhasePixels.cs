@@ -212,6 +212,46 @@ namespace Phase
             Rect(m.x - 1, m.y - 1, m.w + 2, m.h + 2, Ink);
             for (double y = m.y; y < m.y + m.h; y += 8) for (double x = m.x; x < m.x + m.w; x += 8) Blit(moverTile, Round(x) - 1, Round(y) - 1);
         }
+        void GearWheel(int cx, int cy, double angle)
+        {
+            for (int y = -9; y <= 9; y++) for (int x = -9; x <= 9; x++)
+            {
+                double radius = Math.Sqrt(x * x + y * y), theta = Math.Atan2(y, x) - angle;
+                double edge = Math.Cos(theta * 10) > .1 ? 8.5 : 6.5;
+                if (radius > edge) continue;
+                string color = radius > edge - 1 ? "dce7ee" : radius < 2 ? "dce7ee" :
+                    radius < 4.5 && Math.Abs(Math.Sin(theta * 3)) > .45 ? Ink : "697d8e";
+                Put(cx + x, cy + y, Color(color));
+            }
+            Rect(cx, cy, 1, 1, Ink);
+        }
+        void Gear(ClimbGear gear)
+        {
+            var wall = gear.wall; var platform = gear.platform;
+            int rackX = Round(wall.x + wall.w), cy = Round(platform.y + platform.h + 20);
+            Rect(wall.x + 2, gear.top - 4, wall.w - 4, gear.bottom + wall.h - gear.top + 8, "3c4a57");
+            foreach (double y in new[] { gear.top - 4, gear.bottom + wall.h + 2 })
+                Rect(wall.x - 2, y, wall.w + 4, 2, "dce7ee");
+            double left = Math.Min(gear.startX, gear.endX), right = Math.Max(gear.startX, gear.endX) + platform.w;
+            Rect(left, platform.y + 3, right - left, 2, "697d8e");
+            Rect(left - 2, platform.y, 2, platform.h, "dce7ee"); Rect(right, platform.y, 2, platform.h, "dce7ee");
+            Rect(rackX, wall.y, 2, gear.bottom + wall.h - wall.y, "a9b8c5");
+            for (int y = Round(wall.y); y < gear.bottom + wall.h; y += 4) Rect(rackX + 2, y, 2, 2, "dce7ee");
+            double rackLeft = platform.x - Math.Abs(gear.endX - gear.startX);
+            Rect(platform.x + 4, platform.y + platform.h, 2, cy - 12 - platform.y - platform.h, "a9b8c5");
+            Rect(rackLeft, cy - 12, platform.w + Math.Abs(gear.endX - gear.startX), 2, "a9b8c5");
+            for (int x = Round(rackLeft); x < platform.x + platform.w; x += 4) Rect(x, cy - 10, 2, 2, "dce7ee");
+            for (int i = 0; i < 3; i++) GearWheel(rackX + 11 + i * 16, cy, gear.Lift / 8 * (i == 1 ? -1 : 1) + (i == 1 ? Math.PI / 10 : 0));
+            foreach (var block in new[] { wall, platform })
+            {
+                Rect(block.x - 1, block.y - 1, block.w + 2, block.h + 2, Ink);
+                Rect(block.x, block.y, block.w, block.h, "3c4a57");
+                Rect(block.x, block.y, block.w, 2, "dce7ee");
+                Rect(block.x, block.y + 2, 1, block.h - 2, "a9b8c5");
+                for (double y = block.y + 4; y < block.y + block.h - 2; y += 8)
+                    for (double x = block.x + 3; x < block.x + block.w - 2; x += 8) Rect(x, y, 2, 2, "a9b8c5");
+            }
+        }
         // Frames and palette are ported verbatim from the user's published Wick renderer.
         static readonly Dictionary<string,string[]> Frames = new Dictionary<string,string[]> {
             ["idle"] = new[] { "..cc......","..dcc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcffefef.",".dccffff..","..kkkkk...",".dccccccc.",".dcccccdc.",".ssssssss.","..bb..bb..","..bb..bb.." },
@@ -267,6 +307,7 @@ namespace Phase
         public void Draw(PhaseController s, bool playerVisible = true)
         {
             Terrain(s);
+            foreach (var gear in s.gears) Gear(gear);
             if (s.mover != null) Mover(s.mover);
             foreach (var t in s.trails) Blit(Sprite("dash", s.player.facing, t.phase, 0, true), Round(t.x) - 2, Round(t.y) - 3, t.life * 2);
             if (playerVisible && s.respawn <= 0) DrawPlayer(s.player, s.time, s.phase);

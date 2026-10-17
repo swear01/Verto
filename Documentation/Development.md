@@ -21,6 +21,8 @@ Modal startup dialogs still require attention; report them instead of foreground
 the Editor. The dedicated CI runner may continue using `unity open --wait`.
 
 Run from the project directory, or pass `--project-path` to target it explicitly.
+With multiple Editors open, pass `--project-path <project-root>` on every
+command so a domain reload cannot select another connected project.
 Discover the connected package's command parameters with `unity command --query`.
 
 ```sh
@@ -43,7 +45,7 @@ To recreate the sandbox, call its existing builder through the connected Editor:
 edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 22 controller cases, one 48-frame art
+starting the next test run. There are 24 controller cases, one 48-frame art
 comparison, one bidirectional pixel-slide test, one adaptive-view test, one
 centered-view stone/void extension test, and three
 Play Mode cases, including custom bindings, pause/release gating and room persistence.
@@ -103,9 +105,29 @@ fixtures stay unchanged; there is no player text.
 Default movement, dash aiming and climb bindings accept arrow keys or WASD.
 Web players can replace these bindings through the settings button.
 
+## Climb gear demo
+
+`Assets/Scenes/PhaseGearDemo.unity` is a standalone experiment, with no room links
+or progression. Recreate it through Pipeline with
+`unity command eval 'PhaseSandboxBuilder.CreateGearDemo();'`.
+`PhaseClimbGear` creates a neutral wall and horizontal platform outside the static
+terrain cache. Actual upward/downward climb displacement drives the wall in the
+same direction and the platform between its X endpoints, carrying riders.
+Hanging, release, slipping, blocked climbing and dashing do not drive it.
+Both parts stop at the travel limits or an obstruction; reset/respawn restores
+the authored start positions. White gears and racks are visual only.
+
+Open the demo in the resident Editor, apply `BackgroundEditor.Run`, enter Play,
+then run `Verification/GearLiveInput.cs` via Pipeline `run_script`, entry
+`GearLiveInput.Run`, with CLI `--timeout 90` and script `--timeout_ms 90000`.
+It checks up/down/hold/release
+and replays a complete keyboard route through the white platform, green/red
+landings and resting ledge. Captures go to `TestResults/GearDemo/`; the script
+restores its keyboard, input focus and fixed capture timing settings.
+
 ## CI
 
-GitHub Actions runs the production `PhaseController.cs` and the same 22
+GitHub Actions runs the production `PhaseController.cs` and the same 24
 `ControllerTests` on .NET 10, including the 40 immutable reference traces.
 The test fixture parser uses Json.NET, already included by Unity Pipeline.
 The hosted runner requires no Unity license or repository secrets.

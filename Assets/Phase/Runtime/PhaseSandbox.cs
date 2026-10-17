@@ -45,7 +45,8 @@ namespace Phase
         void Awake()
         {
             var platform = GetComponentInChildren<PhaseMovingPlatform>();
-            Controller = new PhaseController(GetComponentsInChildren<PhaseTerrain>().Select(t => t.CreateBlock()), spawn.x, spawn.y, platform != null ? platform.CreatePlatform() : null);
+            Controller = new PhaseController(GetComponentsInChildren<PhaseTerrain>().Select(t => t.CreateBlock()), spawn.x, spawn.y,
+                platform != null ? platform.CreatePlatform() : null, GetComponentsInChildren<PhaseClimbGear>().Select(g => g.CreateGear()));
             Controller.exitLeft = !string.IsNullOrEmpty(leftScene);
             Controller.exitRight = !string.IsNullOrEmpty(rightScene);
             bool arriving = traveler != null && gameObject.scene.name == arrivalScene;
