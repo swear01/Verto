@@ -8,6 +8,9 @@ Do not use direct Editor `-batchmode` / `-executeMethod` invocations or cold
 before continuing. Reuse the connected Editor instead of reopening it.
 Keep Unity's completed URP material-upgrade record in version control; resetting
 it can reopen a startup confirmation dialog and block Pipeline commands.
+Do not restore the Unity Hub one-time `HubForceResolve.cs` bootstrap. Its delayed
+package resolve and self-deletion can trigger an Editor assembly reload during the
+first Play Mode test run. The Editor resolves the committed package manifest itself.
 On macOS, launch a new agent Editor hidden and without activating it:
 
 ```sh
