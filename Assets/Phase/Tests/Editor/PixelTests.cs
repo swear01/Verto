@@ -100,6 +100,28 @@ public class PixelTests
     }
 
     [Test]
+    public void HoodFollowsDashUseFailedRetryAndLandingRefill()
+    {
+        var s=new PhaseController(new[]{new Block(0,160,320,24)},120,90);s.player.grounded=false;s.flash=0;
+        var pixels=new PhasePixels();
+        void Check(string color)
+        {
+            s.flash=0;pixels.Draw(s);int count=0;Color32 expected=PhasePixels.Hex(color);
+            foreach(var pixel in pixels.Texture.GetPixels32())if(pixel.Equals(expected))count++;
+            Assert.That(count,Is.GreaterThan(24),"charge must occupy the hood, not only the small scarf");
+        }
+        try
+        {
+            Check("ffb24d");s.Step(new Controls{dash=true});Assert.That(s.player.dash,Is.Zero);Check("5a6578");
+            int used=s.dashes;for(int i=0;i<15;i++)s.Step(new Controls());
+            s.Step(new Controls{dash=true});Assert.That(s.dashes,Is.EqualTo(used));Check("5a6578");
+            for(int i=0;i<120&&!s.player.grounded;i++)s.Step(new Controls());
+            Assert.That(s.player.grounded,Is.True);Assert.That(s.player.dash,Is.EqualTo(1));Check("ffb24d");
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
+    [Test]
     public void PublishedDemoArtMatchesAllPosesFacingsDashStatesAndPhases()
     {
         var reference=JsonConvert.DeserializeObject<Reference>(File.ReadAllText("Verification/ArtReference.json"));
@@ -110,16 +132,23 @@ public class PixelTests
             Assert.That(golden.LoadImage(File.ReadAllBytes("Verification/ArtReference.png")),Is.True);
             var expected=golden.GetPixels32();var atlas=new Color32[expected.Length];
             var controller=new PhaseController(reference.blocks,120,149,new MovingPlatform(new[] {new[] {160.0,144},new[] {192.0,144}},32,8,true));
-            int worst=0,bad=0;string first=null;
+            int worst=0,bad=0,hoodPixels=0;string first=null;
             for(int f=0;f<reference.frames.Length;f++)
             {
                 var frame=reference.frames[f];controller.player=frame.player;controller.time=frame.time;controller.phase=frame.phase;controller.flash=0;
                 controller.blocked.Clear();foreach(int index in frame.blocked)controller.blocked.Add(index);
                 pixels.Draw(controller);var actual=pixels.Texture.GetPixels32();
+                var p=frame.player;int feet=(int)Math.Floor(p.y+p.h+.5)+(p.climbing&&p.stamina<=20&&(int)Math.Floor(frame.time*8)%2!=0?1:0);
+                int headTop=feet-(p.ducking?8:13),collar=p.ducking?5:frame.name.StartsWith("run1 ")||frame.name.StartsWith("run3 ")?6:7;
                 for(int y=0;y<180;y++)for(int x=0;x<320;x++)
                 {
                     int index=(golden.height-1-(f/reference.columns*180+y))*golden.width+(f%reference.columns*320+x);
                     var a=actual[(179-y)*320+x];var e=expected[index];atlas[index]=a;
+                    if(x>=p.x-1&&x<p.x+9&&y>=headTop&&y<headTop+collar)
+                    {
+                        if(e.r==234&&e.g==223&&e.b==197){e=(Color32)PhasePixels.Hex(p.dash>0?"ffb24d":"5a6578");hoodPixels++;}
+                        else if(e.r==179&&e.g==163&&e.b==134){e=(Color32)PhasePixels.Hex(p.dash>0?"d5732b":"414a5a");hoodPixels++;}
+                    }
                     int delta=Math.Max(Math.Abs(a.r-e.r),Math.Max(Math.Abs(a.g-e.g),Math.Abs(a.b-e.b)));
                     worst=Math.Max(worst,delta);
                     if(delta>2){bad++;if(first==null)first=$"{frame.name} ({x},{y}) expected {e} actual {a}";}
@@ -129,7 +158,8 @@ public class PixelTests
             var rendered=new Texture2D(golden.width,golden.height,TextureFormat.RGBA32,false);
             try { rendered.SetPixels32(atlas);rendered.Apply();File.WriteAllBytes("TestResults/Web/art-unity.png",rendered.EncodeToPNG()); }
             finally { UnityEngine.Object.DestroyImmediate(rendered); }
-            File.WriteAllText("TestResults/Web/art-parity.json",JsonConvert.SerializeObject(new { frames=reference.frames.Length,badPixels=bad,maxChannelDelta=worst,firstMismatch=first },Formatting.Indented));
+            File.WriteAllText("TestResults/Web/art-parity.json",JsonConvert.SerializeObject(new { frames=reference.frames.Length,hoodPixelsRemapped=hoodPixels,badPixels=bad,maxChannelDelta=worst,firstMismatch=first },Formatting.Indented));
+            Assert.That(hoodPixels,Is.GreaterThan(1000),"all poses retain a large dash-charge hood");
             Assert.That(bad,Is.Zero,first);
             controller.blocks.Add(new Block(0,0,8,8));pixels.Draw(controller);
             Color32 added=pixels.Texture.GetPixel(1,179);

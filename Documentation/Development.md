@@ -16,7 +16,9 @@ open -g -j -n -a /Applications/Unity/Hub/Editor/6000.4.7f1/Unity.app --args -pro
 
 This macOS launch only controls window activation; all Editor operations below
 use the official Unity CLI and Pipeline. `unity open` currently has no background
-launch option. Do not activate Unity or restore another app after stealing focus.
+launch option. Check the active app before and immediately after launch; these
+flags alone do not prove that Unity stayed in the background. Report an unexpected
+activation. Do not activate Unity or restore another app after stealing focus.
 Modal startup dialogs still require attention; report them instead of foregrounding
 the Editor. The dedicated CI runner may continue using `unity open --wait`.
 
@@ -44,8 +46,9 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 22 controller cases, one 48-frame art
-comparison, one bidirectional pixel-slide test, one adaptive-view test, one
-centered-view stone/void extension test, and three
+comparison (only hood colors intentionally remapped), one bidirectional pixel-slide
+test, one adaptive-view test, one centered-view stone/void extension test, one
+dash-charge hood lifecycle test, and three
 Play Mode cases, including custom bindings, pause/release gating and room persistence.
 The three immutable reference files cover 40 movement/action/climb traces.
 Production steps at 1/60 s; reference replays use the recorded 0.0166667 s.
