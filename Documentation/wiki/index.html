@@ -420,13 +420,31 @@
   </article>
 
   <article class="scene" id="scene-demo11" aria-labelledby="scene-demo11-h">
-    <h3 id="scene-demo11-h">PhaseDemo1.1（手工場景）</h3>
+    <h3 id="scene-demo11-h">PhaseDemo1.1（同學製作的手工關卡）</h3>
     <figure class="shot">
       <img src="images/demo-1-1.png" width="320" height="180" loading="lazy" alt="PhaseDemo1.1：左下一段石地，上方是三欄五列、每塊 80 像素寬的紅藍綠平台方陣，右上角一塊白色平台。">
-      <figcaption>PhaseDemo1.1</figcaption>
+      <figcaption>同學製作的 PhaseDemo1.1，可作為手工編關的參考。</figcaption>
     </figure>
-    <p>直接在 Inspector 中手工擺放的實驗場景，<strong>不是第九關</strong>：它不在 <code>DemoRooms.json</code>、不在 Build Settings、也不在網頁版。內容是三欄（x＝32、112、192）× 五列（y＝32、56、88、112、136）的 80×8 單色平台，右上角 x＝272、y＝32 有一塊白色平台；起點與房間 1 相同。</p>
-    <p>它的 <code>rightScene</code> 是 <code>PhaseDemo2</code>。目前地形已對齊 8 像素格線。重建八關不會動到這個檔案。</p>
+    <p>同學在 Inspector 中手工擺放的關卡，可作為編關範例。三欄平台從左下起點向上鋪開，右上角接永久白色平台。每塊彩色平台 80×8 像素（10 格長、1 格厚），同一列的三欄緊鄰，換色後會改變整列可站立的區域。</p>
+    <table>
+      <caption>實際平台配置：由上往下，座標為原生像素</caption>
+      <thead><tr><th scope="col">列 Y</th><th scope="col">左欄 X＝32</th><th scope="col">中欄 X＝112</th><th scope="col">右欄 X＝192</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">32</th><td>藍</td><td>綠</td><td>綠</td></tr>
+        <tr><th scope="row">56</th><td>藍</td><td>綠</td><td>綠</td></tr>
+        <tr><th scope="row">88</th><td>紅</td><td>藍</td><td>紅</td></tr>
+        <tr><th scope="row">112</th><td>藍</td><td>藍</td><td>綠</td></tr>
+        <tr><th scope="row">136</th><td>藍</td><td>綠</td><td>紅</td></tr>
+      </tbody>
+    </table>
+    <h4 id="demo11-reference">可以參考的設計</h4>
+    <ul>
+      <li><strong>換色決定選路</strong>：最下列左藍、中綠、右紅，讓相位循環對應到不同落腳區；編關時可先畫出每次跳躍後可站的平台。</li>
+      <li><strong>重複尺寸、改變色序</strong>：統一 80×8 的平台尺寸，再調整各列顏色，便於比較色序如何影響路線。</li>
+      <li><strong>高度差要逐段試玩</strong>：多數相鄰列差 24 像素，y＝88 到 56 則差 32。不要只看排列就認定能直接跳上去，需核對起跳相位、可落腳處與攀爬／衝刺空間。</li>
+    </ul>
+    <p>在 Unity 開啟 <code>Assets/Scenes/PhaseDemo1.1.unity</code> 即可試玩；要拿來修改，先用 File › Save As 另存自己的場景。以上是場景配置分析，<strong>完整通關路線尚未實測確認</strong>。</p>
+    <p>它獨立於正式八關：不在 <code>DemoRooms.json</code>、Build Settings 或網頁建置清單，<code>rightScene</code> 指向 <code>PhaseDemo2</code>。目前地形已對齊 8 像素格線，右上白台在 (272, 32)、大小 112×8；重建八關不會覆寫這個檔案。</p>
   </article>
 </section>
 
