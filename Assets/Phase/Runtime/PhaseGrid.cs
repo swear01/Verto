@@ -20,6 +20,8 @@ namespace Phase
                 throw new System.InvalidOperationException("PHASE Grid requires unscaled world axes.");
             return grid.CellToWorld(grid.WorldToCell(position + new Vector3(4, 4, 0)));
         }
+        public static Vector3 CellTopLeft(Grid grid, Vector3 point)
+            => grid.CellToWorld(grid.WorldToCell(point + new Vector3(0, -.001f, 0)) + Vector3Int.up);
         public static Block CreateBox(Component owner, Vector3 position, Vector2Int size, int phase = -1, int mask = 0)
         {
             if (owner.transform.rotation != Quaternion.identity || owner.transform.lossyScale != Vector3.one)

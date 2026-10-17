@@ -27,7 +27,8 @@ public sealed class PhaseGridPainter : EditorWindow
         if (e.type != EventType.MouseDown && e.type != EventType.MouseDrag) return;
         var ray = HandleUtility.GUIPointToWorldRay(e.mousePosition);
         if (!new Plane(Vector3.forward, Vector3.zero).Raycast(ray, out float distance)) return;
-        var point = PhaseGrid.Snap(root, ray.GetPoint(distance));
+        var grid = root.GetComponent<Grid>();
+        var point = PhaseGrid.CellTopLeft(grid, ray.GetPoint(distance));
         // Screen Y points down; select the cell below the snapped upper-left corner.
         foreach (var terrain in root.GetComponentsInChildren<PhaseTerrain>())
             if (point.x >= terrain.transform.position.x && point.x < terrain.transform.position.x + terrain.size.x &&

@@ -14,6 +14,10 @@ public class GridGeometryTests
         {
             var root = new GameObject("Grid probe"); SceneManager.MoveGameObjectToScene(root, scene);
             root.AddComponent<Grid>().cellSize = new Vector3(8, 8, 1);
+            var grid = root.GetComponent<Grid>();
+            Assert.That(PhaseGrid.CellTopLeft(grid, new Vector3(6, -6)), Is.EqualTo(Vector3.zero));
+            Assert.That(PhaseGrid.CellTopLeft(grid, new Vector3(8, -8)), Is.EqualTo(new Vector3(8, -8)));
+            Assert.That(PhaseGrid.CellTopLeft(grid, new Vector3(-.1f, -8.1f)), Is.EqualTo(new Vector3(-8, -8)));
             var go = new GameObject("Box"); go.transform.SetParent(root.transform); go.transform.position = new Vector3(25, -39);
             var terrain = go.AddComponent<PhaseTerrain>(); terrain.size = new Vector2Int(24, 8); terrain.phaseMask = 3;
             go.AddComponent<BoxCollider2D>().enabled = false;
