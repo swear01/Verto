@@ -43,8 +43,11 @@ public static class LaserLiveInput
             File.WriteAllBytes("TestResults/Lasers/white-shield.png",sandbox.Frame.EncodeToPNG());
             s.gears[0].platform.x=88;yield return null;yield return null;
             if(!Require(s.deaths==deaths+1,"departing cover immediately exposes a stationary player",result))yield break;
-            s.Reset();s.lasers.Clear();s.lasers.Add(new Laser(136,168,LaserDirection.Up,2));
-            s.player.x=140;s.player.y=100;s.player.grounded=true;s.player.coyote=.1;
+            s.Reset();s.lasers.Clear();var platform=s.gears[0].platform;
+            var blue=new Laser(platform.x+48,platform.y-24,LaserDirection.Down,2);s.lasers.Add(blue);
+            s.player.x=blue.x+4;s.player.y=blue.y+8;s.player.grounded=true;s.player.coyote=.1;
+            if(!Require(s.Solid().TrueForAll(b=>!PhaseController.Overlap(s.player,b)) && PhaseController.Overlap(s.player,s.LaserBeam(blue)),
+                "blue fixture is exposed and outside solid terrain",result))yield break;
             yield return null;
             File.WriteAllBytes("TestResults/Lasers/safe-blue.png",sandbox.Frame.EncodeToPNG());
             InputSystem.QueueStateEvent(keyboard,new KeyboardState(Key.Z));
