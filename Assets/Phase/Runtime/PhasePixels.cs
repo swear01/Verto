@@ -6,9 +6,9 @@ namespace Phase
 {
     public sealed class PhasePixels : IDisposable
     {
-        public static readonly string[] Highlights = { "ff8f91", "79c9ff", "78d892", "a9b8c5", "e7ce76" };
-        static readonly string[] Fills = { "833e54", "356487", "316d4a", "3c4a57" };
-        static readonly string[] Edges = { "b35c70", "4d91b3", "56a271", "697d8e" };
+        public static readonly string[] Highlights = { "ff8f91", "79c9ff", "78d892", "e8e8e8", "e8e8e8" };
+        static readonly string[] Fills = { "833e54", "356487", "316d4a", "646464" };
+        static readonly string[] Edges = { "b35c70", "4d91b3", "56a271", "a0a0a0" };
         const string Ink = "0b0f16";
         static readonly Dictionary<string, Color32> colors = new Dictionary<string, Color32>();
         Color32[] buffer = new Color32[320 * 180];
@@ -193,7 +193,7 @@ namespace Phase
         {
             for (int py = 0; py < image.height; py++) for (int px = 0; px < image.width; px++) Put(x + px, y + py, image.pixels[py * image.width + px], alpha);
         }
-        static readonly Bitmap moverTile = Paint(new[] { "TTTTTTTT","hRbbbbRh","hbbbbbbs","hbhhhhbs","hbhsshbs","hbbbbbbs","hRbbbbRs","ssssssss" }, new Dictionary<char, Color32> { ['T']=Color("f2dc8a"),['R']=Color("e7ce76"),['b']=Color("6f603c"),['h']=Color("8f7c47"),['s']=Color("4b4129") });
+        static readonly Bitmap moverTile = Paint(new[] { "TTTTTTTT","hRbbbbRh","hbbbbbbs","hbhhhhbs","hbhsshbs","hbbbbbbs","hRbbbbRs","ssssssss" }, new Dictionary<char, Color32> { ['T']=Color("f0f0f0"),['R']=Color("e8e8e8"),['b']=Color("787878"),['h']=Color("a0a0a0"),['s']=Color("484848") });
         void Mover(MovingPlatform m)
         {
             for (int i = 0; i < (m.returns ? 1 : m.nodes.Length); i++)
@@ -203,12 +203,12 @@ namespace Phase
                 for (int n = 0; n < length; n++) if (n % 4 < 2)
                 {
                     double x = a[0] + m.w / 2 + (b[0] - a[0]) * n / length, y = a[1] + m.h / 2 + (b[1] - a[1]) * n / length;
-                    if (a[1] == b[1]) Rect(x, y - 1, 1, 2, "e0c569", .25);
-                    else if (a[0] == b[0]) Rect(x - 1, y, 2, 1, "e0c569", .25);
-                    else Rect(x, y, 1, 1, "e0c569", .5);
+                    if (a[1] == b[1]) Rect(x, y - 1, 1, 2, "c8c8c8", .25);
+                    else if (a[0] == b[0]) Rect(x - 1, y, 2, 1, "c8c8c8", .25);
+                    else Rect(x, y, 1, 1, "c8c8c8", .5);
                 }
             }
-            foreach (var n in m.nodes) Rect(n[0] + m.w / 2 - 1, n[1] + 2, 3, 3, "e0c569", .5);
+            foreach (var n in m.nodes) Rect(n[0] + m.w / 2 - 1, n[1] + 2, 3, 3, "c8c8c8", .5);
             Rect(m.x - 1, m.y - 1, m.w + 2, m.h + 2, Ink);
             for (double y = m.y; y < m.y + m.h; y += 8) for (double x = m.x; x < m.x + m.w; x += 8) Blit(moverTile, Round(x) - 1, Round(y) - 1);
         }

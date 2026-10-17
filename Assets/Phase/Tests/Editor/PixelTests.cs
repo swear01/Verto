@@ -54,7 +54,7 @@ public class PixelTests
             for(int y=0;y<180;y++)for(int x=0;x<83;x++)Assert.That(narrow[y*83+x],Is.EqualTo(original[y*320+x+95]),"camera crop keeps native pixels");
             s.ResizeRoom(427);pixels.SetView(427,180,0);pixels.Draw(s);
             Color32 floor=pixels.Texture.GetPixel(400,19);
-            Assert.That((floor.r,floor.g,floor.b),Is.EqualTo(((byte)169,(byte)184,(byte)197)),"connected stone floor reaches the wide edge");
+            Assert.That((floor.r,floor.g,floor.b),Is.EqualTo(((byte)232,(byte)232,(byte)232)),"connected stone floor reaches the wide edge");
             Assert.That(pixels.Texture.GetPixel(400,140).a,Is.EqualTo(1));
             pixels.SetView(320,180,0);s.ResizeRoom(320);pixels.Draw(s);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32(),"resizing back restores the original room");
             pixels.SetView(320,693,0);pixels.Draw(s);var portrait=pixels.Texture.GetPixels32();
@@ -71,6 +71,14 @@ public class PixelTests
             for(int i=0;i<portrait.Length;i++)Assert.That(taller[i],Is.EqualTo(portrait[i]),"height resize keeps sky fixed in world coordinates");
             for(int height=180;height<=1400;height++)Assert.That(PhaseSandbox.ViewSize(320,height),Is.EqualTo(new Vector2Int(320,height)),"native viewport size must not drift on repeat calculation");
             pixels.SetView(320,180,0);pixels.Draw(s);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32(),"portrait resize restores the original art");
+            s.mover=new MovingPlatform(new[]{new[]{160.0,144},new[]{192.0,144}},32,8,true);
+            foreach(int phase in new[]{0,1,2})foreach(double x in new[]{160.0,176.0,192.0})
+            {
+                s.phase=phase;s.mover.x=x;pixels.Draw(s);
+                Assert.That((Color32)pixels.Texture.GetPixel(24,19),Is.EqualTo((Color32)PhasePixels.Hex("e8e8e8")),"permanent floor stays white in every phase");
+                Assert.That((Color32)pixels.Texture.GetPixel((int)x+4,35),Is.EqualTo((Color32)PhasePixels.Hex("f0f0f0")),"moving platform stays white along its path in every phase");
+                Assert.That((Color32)pixels.Texture.GetPixel((int)x+2,33),Is.EqualTo((Color32)PhasePixels.Hex("787878")),"platform retains gray texture");
+            }
         }
         finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
     }
@@ -172,7 +180,9 @@ public class PixelTests
             Assert.That(golden.LoadImage(File.ReadAllBytes("Verification/ArtReference.png")),Is.True);
             var expected=golden.GetPixels32();var atlas=new Color32[expected.Length];
             var controller=new PhaseController(reference.blocks,120,149,new MovingPlatform(new[] {new[] {160.0,144},new[] {192.0,144}},32,8,true));
-            int worst=0,bad=0,hoodPixels=0,scarfPixels=0,staminaPixels=0;string first=null;
+            var neutralColors=new[]{"a9b8c5","e8e8e8","697d8e","a0a0a0","3c4a57","646464","506170","7f7f7f","34404b","565656","242c34","3c3c3c","191f25","2a2a2a","f2dc8a","f0f0f0","e7ce76","e8e8e8","6f603c","787878","8f7c47","a0a0a0","4b4129","484848"};
+            var tracks=new[]{"484a3f","424b57","454537","3f464f","444334","3e444c","786e46","6c7076","7b734d","6f757d"};
+            int worst=0,bad=0,hoodPixels=0,scarfPixels=0,staminaPixels=0,neutralPixels=0;string first=null;
             for(int f=0;f<reference.frames.Length;f++)
             {
                 var frame=reference.frames[f];controller.player=frame.player;controller.time=frame.time;controller.phase=frame.phase;controller.flash=0;
@@ -184,6 +194,18 @@ public class PixelTests
                 {
                     int index=(golden.height-1-(f/reference.columns*180+y))*golden.width+(f%reference.columns*320+x);
                     var a=actual[(179-y)*320+x];var e=expected[index];atlas[index]=a;
+                    bool stone=y>=160||(x>=224&&x<240&&y>=80&&y<160);
+                    bool mover=x>=160&&x<192&&y>=144&&y<152;
+                    if(stone||mover)
+                    {
+                        for(int c=0;c<neutralColors.Length;c+=2)if(e.Equals((Color32)PhasePixels.Hex(neutralColors[c])))
+                        { e=PhasePixels.Hex(neutralColors[c+1]);neutralPixels++;break; }
+                    }
+                    if(x>=192&&x<210&&y>=146&&y<149)
+                    {
+                        for(int c=0;c<tracks.Length;c+=2)if(e.Equals((Color32)PhasePixels.Hex(tracks[c])))
+                        { e=PhasePixels.Hex(tracks[c+1]);neutralPixels++;break; }
+                    }
                     if(x>=p.x-1&&x<p.x+9&&y>=headTop&&y<headTop+collar)
                     {
                         if(e.r==234&&e.g==223&&e.b==197){e=(Color32)PhasePixels.Hex(p.dash>0?"ffb24d":"b96532");hoodPixels++;}
@@ -214,14 +236,15 @@ public class PixelTests
             var rendered=new Texture2D(golden.width,golden.height,TextureFormat.RGBA32,false);
             try { rendered.SetPixels32(atlas);rendered.Apply();File.WriteAllBytes("TestResults/Web/art-unity.png",rendered.EncodeToPNG()); }
             finally { UnityEngine.Object.DestroyImmediate(rendered); }
-            File.WriteAllText("TestResults/Web/art-parity.json",JsonConvert.SerializeObject(new { frames=reference.frames.Length,hoodPixelsRemapped=hoodPixels,scarfPixelsRemapped=scarfPixels,staminaPixelsAdded=staminaPixels,badPixels=bad,maxChannelDelta=worst,firstMismatch=first },Formatting.Indented));
+            File.WriteAllText("TestResults/Web/art-parity.json",JsonConvert.SerializeObject(new { frames=reference.frames.Length,hoodPixelsRemapped=hoodPixels,scarfPixelsRemapped=scarfPixels,staminaPixelsAdded=staminaPixels,neutralPixelsRemapped=neutralPixels,badPixels=bad,maxChannelDelta=worst,firstMismatch=first },Formatting.Indented));
             Assert.That(hoodPixels,Is.GreaterThan(1000),"all poses retain a large dash-charge hood");
             Assert.That(scarfPixels,Is.GreaterThan(100),"spent scarf uses the new dark orange palette");
             Assert.That(staminaPixels,Is.EqualTo(384),"only the eight climbing frames add the 4x12 gauge");
+            Assert.That(neutralPixels,Is.GreaterThan(360000),"permanent stone, mover and track colors are remapped without changing their texture");
             Assert.That(bad,Is.Zero,first);
             controller.blocks.Add(new Block(0,0,8,8));pixels.Draw(controller);
             Color32 added=pixels.Texture.GetPixel(1,179);
-            Assert.That((added.r,added.g,added.b),Is.EqualTo(((byte)169,(byte)184,(byte)197)),"adding terrain invalidates the cached room");
+            Assert.That((added.r,added.g,added.b),Is.EqualTo(((byte)232,(byte)232,(byte)232)),"adding terrain invalidates the cached room");
         }
         finally { UnityEngine.Object.DestroyImmediate(golden); UnityEngine.Object.DestroyImmediate(pixels.Texture); }
     }

@@ -79,6 +79,13 @@ function dashCharge(buffer, player) {
       await page.waitForTimeout(250);
     }
     assert(result.initial, 'Player pixels did not render');
+    const neutralFrame=PNG.sync.read(await canvas.screenshot());
+    result.neutralSolids={};
+    for(const [name,x,y,rgb] of [['floor',24,160,[232,232,232]],['wall',242,80,[232,232,232]],['mover',164,144,[240,240,240]],['moverTexture',162,146,[120,120,120]],['route',201,147,[66,75,87]]]) {
+      const scale=neutralFrame.width/320,i=(Math.floor((y+.5)*scale)*neutralFrame.width+Math.floor((x+.5)*scale))*4;
+      const actual=Array.from(neutralFrame.data.subarray(i,i+3));result.neutralSolids[name]=actual;
+      assert(actual.every((v,k)=>Math.abs(v-rgb[k])<=2),`${name} must use the neutral white/gray palette`);
+    }
     result.chargeReady=dashCharge(await canvas.screenshot(),result.initial);
     assert(result.chargeReady.ready>24,'Available dash must color the whole hood');
     await page.screenshot({ path: path.join(reports, 'desktop-browser.png') });
@@ -123,7 +130,7 @@ function dashCharge(buffer, player) {
       const i = (Math.floor(((x < 160 ? 96 : 80)-originY+.5)*image.height/viewHeight) * image.width + Math.floor((x + .5) * scale)) * 4;
       return Array.from(image.data.subarray(i, i + 3));
     };
-    const isWall = (frame, x, viewWidth) => wallAt(frame, x, viewWidth).every((value, i) => Math.abs(value - [169, 184, 197][i]) <= 2);
+    const isWall = (frame, x, viewWidth) => wallAt(frame, x, viewWidth).every((value, i) => Math.abs(value - [232, 232, 232][i]) <= 2);
     let crossed = false;
     for (let i = 0; i < 65; i++) {
       await page.waitForTimeout(180);
