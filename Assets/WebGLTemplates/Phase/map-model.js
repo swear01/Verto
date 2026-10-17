@@ -22,9 +22,9 @@ const PhaseMapModel = (() => {
     if (typeof room.name !== 'string' || room.name.length > 64 || !Array.isArray(room.blocks) || !Array.isArray(room.spikes) || room.blocks.length + room.spikes.length > columns * rows) throw Error('地圖名稱或物件清單無效。');
     const map = empty(); map.name = room.name; map.spawnX = room.spawnX; map.spawnY = room.spawnY;
     function place(item, spike) {
-      if (!item || typeof item !== 'object' || Array.isArray(item) || !masks(item.phaseMask)) throw Error('每個物件都需要有效的顏色遮罩。');
+      if (!item || typeof item !== 'object' || Array.isArray(item) || !masks(item.phaseMask)) throw Error('地形顏色無效。');
       if (spike && (!Number.isInteger(item.direction) || item.direction < 0 || item.direction > 3)) throw Error('尖刺方向無效。');
-      if (!spike && item.phase !== -1) throw Error('地板 phase 必須為 -1；顏色使用 phaseMask。');
+      if (!spike && item.phase !== -1) throw Error('地圖地形格式無效。');
       const w = spike ? (item.direction < 2 ? item.length : cell) : item.w;
       const h = spike ? (item.direction < 2 ? cell : item.length) : item.h;
       if (!integer(item.x, 0, 312) || !integer(item.y, 0, 168) || !integer(w, 8, 320) || !integer(h, 8, 176) || item.x + w > 320 || item.y + h > 176) throw Error('物件必須對齊 8 px 格線，並位於 320 × 176 範圍內。');

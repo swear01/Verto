@@ -104,7 +104,7 @@ function setupMaps(instance, gameCanvas) {
   addEventListener('phase-map-result',event=>finish(event.detail?.success===true,event.detail?.message));
   document.querySelectorAll('[data-room]').forEach(b=>b.addEventListener('click',()=>request('SelectDemoRoom',b.dataset.room,rooms)));
   document.getElementById('map-play').addEventListener('click',()=>{
-    try {const json=JSON.stringify(model.room(map));model.parse(json);request('LoadCustomMap',json,editor);}
+    try {const room=model.room(map);if(!room.blocks.length)throw Error('地圖至少需要一格地形。');const json=JSON.stringify(room);model.parse(json);request('LoadCustomMap',json,editor);}
     catch(error){status.textContent=error.message;}
   });
   document.getElementById('map-export').addEventListener('click',()=>{

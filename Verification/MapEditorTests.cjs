@@ -11,8 +11,8 @@ const block={x:0,y:0,w:8,h:8,phase:-1,phaseMask:7};
 function rejects(change,pattern) {const r=room();change(r);assert.throws(()=>model.parse(JSON.stringify(r)),pattern);}
 rejects(r=>r.blocks=[{...block,x:1}],/格線/);
 rejects(r=>r.blocks=[{...block,x:320}],/範圍/);
-rejects(r=>r.blocks=[{...block,phaseMask:0}],/遮罩/);
-rejects(r=>r.blocks=[{...block,phase:0}],/phase/);
+rejects(r=>r.blocks=[{...block,phaseMask:0}],/顏色/);
+rejects(r=>r.blocks=[{...block,phase:0}],/地形格式/);
 rejects(r=>r.blocks=[block,{...block,phaseMask:2}],/同一格/);
 rejects(r=>{r.blocks=[block];r.spikes=[{x:0,y:0,length:8,direction:0,phaseMask:2}];},/同一格/);
 rejects(r=>r.spikes=[{x:0,y:0,length:8,direction:4,phaseMask:7}],/方向/);

@@ -148,7 +148,7 @@
         fullscreenPending = false; fullscreen.disabled = false; syncFullscreen();
       }
     });
-    document.addEventListener('fullscreenchange', syncFullscreen);
+    document.addEventListener('fullscreenchange', () => { syncFullscreen(); if (!window.phaseAnyDialogOpen()) canvas.focus(); });
     addEventListener('resize', syncFullscreen);
     addEventListener('pageshow', syncFullscreen);
     addEventListener('focus', syncFullscreen);

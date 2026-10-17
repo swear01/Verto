@@ -37,6 +37,12 @@ const server=http.createServer((req,res)=>{
   assert(map.blocks.some(b=>b.x===40&&b.y===152),'keyboard paint reaches selected cell');
   await page.locator('#map-file').setInputFiles({name:'invalid.json',mimeType:'application/json',buffer:Buffer.from('{')});await page.waitForFunction(()=>document.getElementById('map-status').textContent.includes('JSON'));
   await page.locator('#map-file').setInputFiles(filename);
+  const empty={name:'empty',blocks:[],spikes:[],spawnX:24,spawnY:152};
+  await page.locator('#map-file').setInputFiles({name:'empty.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(empty))});
+  const callsBefore=await page.evaluate(()=>__calls.filter(c=>c.m==='LoadCustomMap').length);
+  await page.locator('#map-play').click();assert.match(await page.locator('#map-status').innerText(),/至少需要一格地形/);
+  assert.equal(await page.evaluate(()=>__calls.filter(c=>c.m==='LoadCustomMap').length),callsBefore,'empty draft stays local');
+  await page.locator('#map-file').setInputFiles(filename);
   await page.evaluate(()=>__fail=true);await page.locator('#map-play').click();await page.waitForFunction(()=>document.getElementById('map-status').textContent==='測試：地圖無效');assert(await page.locator('#map-editor').isVisible());
   await page.evaluate(()=>__fail=false);await page.locator('#map-play').click();await page.waitForFunction(()=>!document.getElementById('map-editor').open);
   const sent=await page.evaluate(()=>__calls.filter(c=>c.m==='LoadCustomMap').at(-1));assert.deepEqual(JSON.parse(sent.v),map);
