@@ -102,6 +102,22 @@ script must return `passed`. Inspect the capture's returned `savedPath`: Pipelin
 
 ## Coordinates
 
+The scene root uses Unity's rectangular `Grid` with 8px cells. Terrain and moving
+mechanism authoring snaps with `WorldToCell`/`CellToWorld`; `BoxCollider2D.bounds`
+defines each model's collision rectangle. The deterministic pixel-step controller
+resolves contacts, preserving the recorded movement; Unity's physics solver does
+not move the player. Native colliders follow mechanism motion, phase/deferred
+solidification, respawn and viewport extension. Motion between authored stops
+remains continuous at pixel resolution.
+
+Use **PHASE > Paint Grid terrain** in the Scene view to paint 8px cells with a
+phase mask (R1/B2/G4; combine bits for mixed surfaces). Turn painting off to use
+Unity's normal selection, Inspector and Delete; terrain `size` sets a rectangle
+in whole cells. Save the scene normally. The painter supports Undo and skips
+occupied cells. Demo JSON changes still require rebuilding the generated scenes.
+`GridGeometryTests` checks native Grid/collider geometry and rejects off-grid demo
+authoring; run it through Pipeline with the other Editor tests.
+
 The controller uses native pixels, Y down, a 60 Hz accumulator, 8×11 collision
 (8×6 crouched), and X then Y pixel stepping. Terrain transforms use Unity X/Y as
 pixel coordinates with Y negated; platform nodes and spawn use screen coordinates.
