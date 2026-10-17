@@ -227,6 +227,39 @@ namespace Phase
                 }
             }
         }
+        void Lasers(PhaseController s)
+        {
+            foreach (var laser in s.lasers)
+            {
+                var beam = s.LaserBeam(laser); bool active = laser.ActiveInPhase(s.phase);
+                bool horizontal = laser.direction == LaserDirection.Left || laser.direction == LaserDirection.Right;
+                int color = surfaceIndices[laser.Mask]; var edge = Color(Highlights[color]);
+                var core = Mix(edge, Color("ffffff"), .6);
+                if (beam.w > 0 && beam.h > 0)
+                {
+                    if (active) Rect(beam.x - (horizontal ? 0 : 1), beam.y - (horizontal ? 1 : 0),
+                        beam.w + (horizontal ? 0 : 2), beam.h + (horizontal ? 2 : 0), Ink);
+                    Rect(beam.x, beam.y, beam.w, beam.h, edge, active ? 1 : .2);
+                    Rect(beam.x + (horizontal ? 0 : 1), beam.y + (horizontal ? 1 : 0),
+                        beam.w - (horizontal ? 0 : 2), beam.h - (horizontal ? 2 : 0), core, active ? 1 : .28);
+                    double endX = laser.direction == LaserDirection.Left ? beam.x : beam.x + beam.w - 1;
+                    double endY = laser.direction == LaserDirection.Up ? beam.y : beam.y + beam.h - 1;
+                    Rect(horizontal ? endX : beam.x, horizontal ? beam.y : endY,
+                        horizontal ? 1 : beam.w, horizontal ? beam.h : 1, core, active ? 1 : .28);
+                }
+                var rows = new[] { "ss......", "sshhh...", "ssddhl..", "ssdddl..", "ssdddl..", "ssddhl..", "sshhh...", "ss......" };
+                for (int v = 0; v < 8; v++) for (int u = 0; u < 8; u++)
+                {
+                    char ink = rows[v][u]; if (ink == '.') continue;
+                    int x = laser.direction == LaserDirection.Left ? 7-u : laser.direction == LaserDirection.Down ? 7-v : laser.direction == LaserDirection.Up ? v : u;
+                    int y = laser.direction == LaserDirection.Left ? 7-v : laser.direction == LaserDirection.Down ? u : laser.direction == LaserDirection.Up ? 7-u : v;
+                    Rect(laser.x+x, laser.y+y, 1, 1, ink == 's' ? Color("646464") : ink == 'h' ? Color("6a6f8a") : ink == 'l' ? edge : Color("2a2438"));
+                }
+                // The lens joins the beam at the cell edge in every orientation.
+                if (horizontal) Rect(laser.x + (laser.direction == LaserDirection.Right ? 6 : 0), laser.y+2, 2, 4, edge);
+                else Rect(laser.x+2, laser.y + (laser.direction == LaserDirection.Down ? 6 : 0), 4, 2, edge);
+            }
+        }
         sealed class Bitmap { public int width, height; public Color32[] pixels; }
         static Bitmap Paint(string[] rows, Dictionary<char,Color32> palette, bool flip = false, bool outline = false)
         {
@@ -376,6 +409,7 @@ namespace Phase
             foreach (var gear in s.gears) Gear(gear);
             Spikes(s);
             if (s.mover != null) Mover(s.mover);
+            Lasers(s);
             foreach (var t in s.trails) Blit(Sprite("dash", s.player.facing, t.phase, 0, true), Round(t.x) - 2, Round(t.y) - 3, t.life * 2);
             if (playerVisible && s.respawn <= 0) DrawPlayer(s.player, s.time, s.phase);
             foreach (var p in s.particles) Rect(p.x, p.y, 1, 1, p.phase < 0 ? "dce7ee" : Highlights[p.phase], Math.Min(1, p.life * 3));
