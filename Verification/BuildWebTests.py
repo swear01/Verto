@@ -6,6 +6,15 @@ import BuildWeb
 
 
 class PipelineFailures(unittest.TestCase):
+    def test_recompile_accepts_current_scripts_but_rejects_compiler_errors(self):
+        for status in ("completed", "up_to_date"):
+            with patch.object(BuildWeb, "command"), patch.object(BuildWeb, "wait", return_value={"status": status, "failed": False}):
+                self.assertEqual(BuildWeb.recompile()["status"], status)
+        for failure in ({"failed": True}, {"compilationFailed": True}, {"errors": ["CS1002"]}):
+            with patch.object(BuildWeb, "command"), patch.object(BuildWeb, "wait", return_value={"status": "completed", **failure}):
+                with self.assertRaisesRegex(RuntimeError, "Script compilation failed"):
+                    BuildWeb.recompile()
+
     def test_release_contains_all_eight_scenes_in_order(self):
         self.assertEqual(BuildWeb.SCENES, [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(1, 9)])
         for scene in BuildWeb.SCENES:

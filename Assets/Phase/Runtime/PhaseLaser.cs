@@ -6,7 +6,11 @@ namespace Phase
     {
         public LaserDirection direction;
         [Range(1, 7)] public int phaseMask = 7;
-        public Laser CreateLaser() => new Laser(Mathf.Round(transform.position.x), -Mathf.Round(transform.position.y), direction, phaseMask);
+        public Laser CreateLaser()
+        {
+            transform.position = PhaseGrid.Snap(this, transform.position);
+            return new Laser(transform.position.x, -transform.position.y, direction, phaseMask);
+        }
         void OnDrawGizmos()
         {
             Gizmos.color = PhasePixels.SurfaceColor(phaseMask);

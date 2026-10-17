@@ -16,12 +16,13 @@ namespace Phase
                 throw new InvalidOperationException("Platform requires positive size, two nodes and a valid start.");
             if (returns && (nodes.Length != 2 || nodes[0].x == nodes[1].x || nodes[0].y != nodes[1].y))
                 throw new InvalidOperationException("Return platform requires two distinct horizontal nodes.");
-            return new MovingPlatform(nodes.Select(n => new[] { (double)n.x, n.y }).ToArray(), size.x, size.y, returns, start);
+            var shape = PhaseGrid.CreateBox(this, new Vector3(nodes[start].x, -nodes[start].y), size);
+            return new MovingPlatform(nodes.Select(n => { var p = PhaseGrid.Snap(this, new Vector3(n.x, -n.y)); return new[] { (double)p.x, -p.y }; }).ToArray(), shape.w, shape.h, returns, start);
         }
         void OnDrawGizmos()
         {
             if (nodes == null) return;
-            Gizmos.color = Color.yellow;
+            Gizmos.color = Color.white;
             foreach (var n in nodes) Gizmos.DrawWireCube(new Vector3(n.x + size.x / 2f, -n.y - size.y / 2f), new Vector3(size.x, size.y, 0));
             for (int i = 1; i < nodes.Length; i++) Gizmos.DrawLine(new Vector3(nodes[i - 1].x, -nodes[i - 1].y), new Vector3(nodes[i].x, -nodes[i].y));
         }

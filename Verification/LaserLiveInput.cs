@@ -14,7 +14,7 @@ public static class LaserLiveInput
         var sandbox=UnityEngine.Object.FindAnyObjectByType<PhaseSandbox>();
         if(!Application.isPlaying || sandbox==null || sandbox.gameObject.scene.name!="PhaseDemo3")
             throw new InvalidOperationException("Open PhaseDemo3 in Play first.");
-        var result=new TaskCompletionSource<string>();sandbox.StartCoroutine(Check(sandbox,result));return result.Task;
+        var result=new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);sandbox.StartCoroutine(Check(sandbox,result));return result.Task;
     }
     static IEnumerator Check(PhaseSandbox sandbox,TaskCompletionSource<string> result)
     {
@@ -34,17 +34,20 @@ public static class LaserLiveInput
             InputSystem.QueueStateEvent(keyboard,new KeyboardState(Key.RightArrow,Key.UpArrow,Key.C));
             for(int i=0;i<95;i++)yield return null;
             InputSystem.QueueStateEvent(keyboard,new KeyboardState());yield return null;
-            if(!Require(s.gears[0].Lift==24 && s.LaserBeam(authored[0]).y==88 && s.deaths==deaths,
+            if(!Require(s.gears[0].Lift==24 && s.LaserBeam(authored[0]).y==s.gears[0].platform.y+s.gears[0].platform.h && s.deaths==deaths,
                 "keyboard climbing moves the shield across the white beam",result))yield break;
-            s.player.x=144;s.player.y=69;s.player.vx=s.player.vy=0;
+            s.player.x=authored[0].x;s.player.y=s.gears[0].platform.y-s.player.h;s.player.vx=s.player.vy=0;
             for(int i=0;i<3;i++)yield return null;
             if(!Require(s.deaths==deaths,"white platform protects the stationary rider",result))yield break;
             Directory.CreateDirectory("TestResults/Lasers");
             File.WriteAllBytes("TestResults/Lasers/white-shield.png",sandbox.Frame.EncodeToPNG());
             s.gears[0].platform.x=88;yield return null;yield return null;
             if(!Require(s.deaths==deaths+1,"departing cover immediately exposes a stationary player",result))yield break;
-            s.Reset();s.lasers.Clear();s.lasers.Add(new Laser(136,168,LaserDirection.Up,2));
-            s.player.x=140;s.player.y=100;s.player.grounded=true;s.player.coyote=.1;
+            s.Reset();s.lasers.Clear();var platform=s.gears[0].platform;
+            var blue=new Laser(platform.x+48,platform.y-24,LaserDirection.Down,2);s.lasers.Add(blue);
+            s.player.x=blue.x+4;s.player.y=blue.y+8;s.player.grounded=true;s.player.coyote=.1;
+            if(!Require(s.Solid().TrueForAll(b=>!PhaseController.Overlap(s.player,b)) && PhaseController.Overlap(s.player,s.LaserBeam(blue)),
+                "blue fixture is exposed and outside solid terrain",result))yield break;
             yield return null;
             File.WriteAllBytes("TestResults/Lasers/safe-blue.png",sandbox.Frame.EncodeToPNG());
             InputSystem.QueueStateEvent(keyboard,new KeyboardState(Key.Z));

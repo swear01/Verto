@@ -13,6 +13,8 @@ cd Verification
 npm ci
 npx --no-install playwright install chromium --no-shell
 cd ..
+node Verification/MapEditorTests.cjs
+node Verification/MapEditorBrowser.cjs
 node Verification/DemoWebSmoke.cjs Builds/Web
 python3 -m http.server 8765 --bind 127.0.0.1 --directory Builds/Web
 ```
@@ -27,11 +29,12 @@ The build verifies both flags and records them in `TestResults/Web/splash.json`;
 browser checks preserve initial canvas frames before the first player frame.
 The hood and scarf are amber with one dash available and dark orange after use;
 landing refills them. Eye colors continue to indicate phase.
-Below55 stamina, the airborne cloak body gradually reddens and shakes by one
-native pixel with increasing frequency; at20 it reaches its strongest red and
-gently pulses. Landing restores the original art. The hood/scarf still indicate
-dash charge and eyes indicate phase. There is no detached stamina gauge.
-Holding grab against a wall after exhaustion caps downward speed at30native
+Below55 stamina, the whole helmet gradually reddens and shakes by one native
+pixel with increasing frequency; at20 the red gently pulses. The cloak stays
+bone-white, larger eyes indicate phase, and the scarf independently indicates
+dash charge. Landing restores the helmet. There is no detached stamina gauge.
+Fast landings add neutral white dust; respawns end with a brief pixel convergence.
+Holding grab against a wall after exhaustion caps downward speed at45native
 pixels/second; releasing, moving away or pressing down restores ordinary falling.
 [Celeste’s original player source](https://github.com/NoelFB/Celeste/blob/1b0ce45c75e05649ae91b44a8bb6b196684e4352/Source/Player/Player.cs)
 flashes its sprite below20 and releases climbing at0; its normal wall slide ramps
@@ -40,13 +43,14 @@ cap are intentional PHASE tuning for this user request, not exact Celeste parity
 Touch controls are not provided.
 The canvas fills the entire viewport and always shows at least the original
 320x180 native-pixel play area. Wide views extend horizontally; tall views keep
-320pixels across and center the original180-pixel play area. Sky extends above;
-stone at the lower room edge continues below, while gaps/voids stay open. Point/pixelated sampling preserves
+320pixels across and center the original180-pixel play area. Built-in rooms have a visible, solid 8px ceiling; stone fills above the top boundary;
+stone touching the last complete grid row continues below. Gaps fade into dark void
+from Y180 to the existing Y194 death limit, rather than suggesting more playable space. Point/pixelated sampling preserves
 square pixels without cropping the room to enlarge the player. Wide rooms extend
 quarry scenery, full-width floor collision and their right exit. Resizing preserves
 movement/color state and clamps positions within a shortened room; resizing during
 a slide completes the handoff safely. Fixed obstacles and movers retain their
-world coordinates. The fullscreen button includes keyboard settings. Fullscreen
+world coordinates. The toolbar includes fullscreen and keyboard settings. Fullscreen
 needs a user click and browser/iframe permission; denied requests show a recovery
 message. Loading failures remain visible.
 
@@ -67,6 +71,30 @@ actions keep both defaults. The old data remains unchanged. Invalid or conflicti
 saved data falls back to defaults with a visible notice.
 The settings interface lives in the Web page; the game view stays free of prose.
 
+The top-right room button selects any of the eight rooms or opens the map editor.
+The editor uses 40×22 cells of 8 pixels: permanent white, the three phase colors,
+three mixed masks, four spike directions, spawn and erase. Drag to paint, or use
+arrows and Space on the grid. Undo/redo applies to whole strokes. The browser keeps
+one draft at `phase.map.v1`; choosing a built-in room leaves that draft intact.
+Export downloads `phase-custom-map.json`; import validates before replacing the draft.
+Storage failure keeps the current session and asks for a JSON backup.
+
+Custom maps contain only `name`, `blocks`, `spikes`, `spawnX` and `spawnY`.
+Geometry occupies at most 880 non-overlapping cells inside 320×176; spawn uses the
+8-pixel grid, stays inside 312×160, and avoids solids/hazards active in red.
+Masks are 1 red, 2 blue, 4 green, 3 magenta, 5 yellow, 6 cyan and 7 permanent white.
+Moving platforms/gears/lasers and JSON over 200,000 characters are rejected. The Web UI
+sends `PHASE.SelectDemoRoom("1".."8")` or `PHASE.LoadCustomMap(json)` and closes
+only after `phase-map-result` reports success. All dialogs share the gameplay pause.
+`MapEditorBrowser.cjs` verifies UI events using a mock Unity bridge; it does not
+prove native map loading. Verify the native bridge through Pipeline and the final
+built Web Player before publishing.
+`DemoWebSmoke.cjs` checks native selection of all eight rooms, custom-map import
+and play, draft retention, and movement after fullscreen exit. Room 1 synchronizes its staircase landings, Room 5 its low-ceiling jump/dash, and
+Room 8 its gear lift and ferry stops with visible phase/position checkpoints.
+For an isolated diagnostic, append `--room=1`, `--room=5` or `--room=8` to the
+local verifier command; a calibration report is not a complete release check.
+
 The custom `Phase` template uses gzip with Unity's decompression fallback, so a
 static host does not need custom `Content-Encoding` headers. The 2D renderer has
 post-processing disabled. A scoped WebGL guard returns no MSAA samples for the
@@ -79,7 +107,7 @@ the warning.
 ## Enable automatic builds and online play
 
 `Web build and preview` runs only on `main`, after push or manual dispatch.
-It uses Unity CLI + live Pipeline for 55 Editor tests, three Play Mode tests and
+It uses Unity CLI + live Pipeline for 78 Editor tests, four Play Mode tests and
 the Web build, then verifies browser rendering, keyboard routes through all eight rooms and seven scene-edge transitions,
 adaptive viewport sizing, keyboard settings, fullscreen, visible load failures,
 and absence of browser errors/warnings. Only a passing build is

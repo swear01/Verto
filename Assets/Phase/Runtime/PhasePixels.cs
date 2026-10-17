@@ -71,10 +71,15 @@ namespace Phase
         {
             if (backdrop != null) { Array.Copy(backdrop, buffer, buffer.Length); return; }
             var bands = new[] { "0a1018", "0c131d", "0e1520", "101a26", "121e2b" };
-            Rect(OriginX, OriginY, Width, -OriginY, bands[0]);
+            Rect(OriginX, OriginY, Width, -OriginY, Fills[3]);
+            for (int y = (int)Math.Floor(OriginY / 8.0) * 8; y < 0; y += 8)
+                for (int x = OriginX / 8 * 8; x < OriginX + Width; x += 8)
+                {
+                    Rect(x, y, 8, 1, "4c4c4c"); Rect(x, y + 1, 1, 7, "787878");
+                    Rect(x + 3, y + 4, 2, 1, "565656");
+                }
+            if (OriginY < 0) Rect(OriginX, -1, Width, 1, Highlights[3]);
             Rect(OriginX, 180, Width, BottomY - 180, "0b111a");
-            for (int y = (int)Math.Floor(OriginY / 18.0) * 18; y < 0; y += 18) for (int x = OriginX / 24 * 24; x < OriginX + Width; x += 24)
-                if (Hash(x, y) % 4 == 0) Rect(x + Hash(x, y) % 17, y + Hash(y, x) % 13, 1, 1, "2a394c");
             for (int i = 0; i < bands.Length; i++)
             {
                 Rect(OriginX, i * 36, Width, 36, bands[i]);
@@ -117,7 +122,7 @@ namespace Phase
             backdrop = (Color32[])buffer.Clone();
         }
         static int Hill(int x) => Round(146 + 5 * Math.Sin(x * .031 + 2) + 3 * Math.Sin(x * .09));
-        double RenderBottom(Block block) => block.y < 180 && block.y + block.h >= 180
+        double RenderBottom(Block block) => block.y < 180 && block.y + block.h >= 176
             ? Math.Max(block.y + block.h, BottomY) : block.y + block.h;
         // shortcut: Same-count terrain edits need a revision when live terrain editing is supported.
         void Terrain(PhaseController s)
@@ -313,7 +318,8 @@ namespace Phase
         void Gear(ClimbGear gear)
         {
             var wall = gear.wall; var platform = gear.platform;
-            int rackX = Round(wall.x + wall.w), rackY = Round(platform.y + platform.h) - 3, cy = rackY + 9;
+            int side = platform.y >= gear.bottom + wall.h - 16 ? -1 : 1;
+            int rackX = Round(wall.x + wall.w), rackY = side > 0 ? Round(platform.y + platform.h) - 3 : Round(platform.y) + 2, cy = rackY + side * 9;
             Rect(wall.x + 2, gear.top - 4, wall.w - 4, gear.bottom + wall.h - gear.top + 8, "444444");
             foreach (double y in new[] { gear.top - 4, gear.bottom + wall.h + 2 })
                 Rect(wall.x - 2, y, wall.w + 4, 2, Highlights[3]);
@@ -322,15 +328,27 @@ namespace Phase
             Rect(left - 1, platform.y + 1, 1, platform.h - 2, "646464");
             Rect(right, platform.y + 1, 1, platform.h - 2, "646464");
             // Keep one full tooth beyond the fixed pinion at the top stop.
-            int rackHeight = Round(Math.Max(wall.h, cy + 14 + 9 + 6 - gear.top));
+            int rackHeight = side < 0 ? Round(wall.h) : Round(Math.Max(wall.h, cy + 14 + 9 + 6 - gear.top));
             int rackBottom = Math.Min(Round(wall.y) + rackHeight, Round(gear.bottom + wall.h));
             Rect(rackX, wall.y, 2, rackBottom - Round(wall.y), "a0a0a0");
             for (int y = Round(wall.y); y < rackBottom; y += 6) Rect(rackX + 2, y, 3, Math.Min(3, rackBottom - y), "a0a0a0");
             Rect(rackX - 1, gear.bottom + wall.h, 7, 4, "646464");
             Rect(rackX - 1, gear.bottom + wall.h + 2, 7, 2, Highlights[3]);
             double angle = gear.Lift * Math.PI / 24, mesh = 2 * Math.Atan2(-7,14) + Math.PI / 8;
-            GearWheel(rackX + 11, cy + 14, angle);
-            GearWheel(rackX + 25, cy + 7, -angle + mesh);
+            double outputAngle = angle;
+            if (side < 0)
+            {
+                double diagonal = 2 * Math.Atan2(8,14) + Math.PI / 8, vertical = Math.PI + Math.PI / 8;
+                GearWheel(rackX + 11, cy - 32, angle);
+                GearWheel(rackX + 25, cy - 24, -angle + diagonal);
+                GearWheel(rackX + 25, cy - 8, angle - diagonal + vertical);
+                outputAngle = -angle + 2 * diagonal - vertical;
+            }
+            else
+            {
+                GearWheel(rackX + 11, cy + 14, angle);
+                GearWheel(rackX + 25, cy + 7, -angle + mesh);
+            }
             foreach (var block in new[] { wall, platform })
             {
                 Rect(block.x - 1, block.y - 1, block.w + 2, block.h + 2, Ink);
@@ -341,25 +359,25 @@ namespace Phase
                     for (double x = block.x + 3; x < block.x + block.w - 2; x += 8) Rect(x, y, 2, 2, Edges[3]);
             }
             Rect(platform.x, rackY, platform.w, 1, "a0a0a0");
-            Rect(platform.x, rackY + 1, platform.w, 2, Ink);
+            Rect(platform.x, rackY + (side > 0 ? 1 : -2), platform.w, 2, Ink);
             for (int x = Round(platform.x) + 3; x < platform.x + platform.w; x += 6)
-                Rect(x, rackY + 1, Math.Min(3, platform.x + platform.w - x), 2, "a0a0a0");
-            GearWheel(rackX + 39, cy, angle);
+                Rect(x, rackY + (side > 0 ? 1 : -2), Math.Min(3, platform.x + platform.w - x), 2, "a0a0a0");
+            GearWheel(rackX + 39, cy, outputAngle);
         }
-        // Original Wick frames; the hood now shares the scarf's dash-charge colors.
+        // The visor shows phase; the helmet warns of fatigue and the scarf retains dash charge.
         static readonly Dictionary<string,string[]> Frames = new Dictionary<string,string[]> {
-            ["idle"] = new[] { "..cc......","..dcc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcffefef.",".dccffff..","..kkkkk...",".dccccccc.",".dcccccdc.",".ssssssss.","..bb..bb..","..bb..bb.." },
-            ["blink"] = new[] { "..cc......","..dcc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcffffff.",".dccfefe..","..kkkkk...",".dccccccc.",".dcccccdc.",".ssssssss.","..bb..bb..","..bb..bb.." },
-            ["run0"] = new[] { "...cc.....","...dcc....","..dccccc..","..dcccccc.","..dccfffff","..dcffefef","..dccffff.","...kkkkk..",".dcccccccd","ddccccccc.",".ssssssss.",".bb...BB..","bb.....BB." },
-            ["run1"] = new[] { "...dcc....","..dccccc..","..dcccccc.","..dccfffff","..dcffefef","..dccffff.","...kkkkk..",".dccccccd.",".dcccccdc.",".ssssssss.",".bbbBB....",".bb.BB....","....BB...." },
-            ["run2"] = new[] { "...cc.....","...dcc....","..dccccc..","..dcccccc.","..dccfffff","..dcffefef","..dccffff.","...kkkkk..",".dccccccc.","dddcccccc.",".ssssssss.",".BB...bb..","BB.....bb." },
-            ["run3"] = new[] { "...dcc....","..dccccc..","..dcccccc.","..dccfffff","..dcffefef","..dccffff.","...kkkkk..",".dccccccd.",".dcccccdc.",".ssssssss.",".BBBbb....",".BB.bb....","....bb...." },
-            ["jump"] = new[] { "..........","ccc.......",".dcccccc..",".dccccccc.",".dccfffff.",".dcffefef.",".dccffff..","..kkkkk...","ddccccccdd",".dccccccc.",".ssssssss.","..bb.BB...","..b...B..." },
-            ["fall"] = new[] { "...cc.....","...cc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcffefef.",".dccffff..","d.kkkkk..d","ddccccccdd",".dccccccc.","ssssssssss","..bb..BB..","..b....B.." },
-            ["dash"] = new[] { "..........","ccc.......",".ddccccc..","..dcccccc.","..dccfffff","..dcffefef","..dccffff.","...kkkkk..",".dcccccccd","ddccccccc.","ssssss....","bbb...BB..","......BB.." },
-            ["climb0"] = new[] { "..cc....d.","..dcc...d.",".dccccc.d.",".dccccccd.",".dcccfffd.",".dccffefd.",".dcccfff..","..kkkkkk..",".dccccccd.",".dcccccdd.",".ssssss...","..bb.bbb..","..bb......" },
-            ["climb1"] = new[] { "..cc......","..dcc.....",".dccccc...",".dccccccd.",".dcccfffd.",".dccffefd.",".dcccfffd.","..kkkkkkd.",".dccccccd.",".dcccccc..",".ssssss...","..BBB.bb..","......bb.." },
-            ["duck"] = new[] { "..........","..cc......",".dcccccc..",".dccfffff.",".dcffefef.","..kkkkkk..","sdcccccccs",".bbssssbb." },
+            ["idle"] = new[] { "..cc......","..dcc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcfeefee.",".dcfeefee.","..kkkkk...",".dccccccc.",".dcccccdc.",".ssssssss.","..bb..bb..","..bb..bb.." },
+            ["blink"] = new[] { "..cc......","..dcc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcffffff.",".dcfeefee.","..kkkkk...",".dccccccc.",".dcccccdc.",".ssssssss.","..bb..bb..","..bb..bb.." },
+            ["run0"] = new[] { "...cc.....","...dcc....","..dccccc..","..dcccccc.","..dccfffff","..dcfeefee","..dcfeefee","...kkkkk..",".dcccccccd","ddccccccc.",".ssssssss.",".bb...BB..","bb.....BB." },
+            ["run1"] = new[] { "...dcc....","..dccccc..","..dcccccc.","..dccfffff","..dcfeefee","..dcfeefee","...kkkkk..",".dccccccd.",".dcccccdc.",".ssssssss.",".bbbBB....",".bb.BB....","....BB...." },
+            ["run2"] = new[] { "...cc.....","...dcc....","..dccccc..","..dcccccc.","..dccfffff","..dcfeefee","..dcfeefee","...kkkkk..",".dccccccc.","dddcccccc.",".ssssssss.",".BB...bb..","BB.....bb." },
+            ["run3"] = new[] { "...dcc....","..dccccc..","..dcccccc.","..dccfffff","..dcfeefee","..dcfeefee","...kkkkk..",".dccccccd.",".dcccccdc.",".ssssssss.",".BBBbb....",".BB.bb....","....bb...." },
+            ["jump"] = new[] { "..........","ccc.......",".dcccccc..",".dccccccc.",".dccfffff.",".dcfeefee.",".dcfeefee.","..kkkkk...","ddccccccdd",".dccccccc.",".ssssssss.","..bb.BB...","..b...B..." },
+            ["fall"] = new[] { "...cc.....","...cc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcfeefee.",".dcfeefee.","d.kkkkk..d","ddccccccdd",".dccccccc.","ssssssssss","..bb..BB..","..b....B.." },
+            ["dash"] = new[] { "..........","ccc.......",".ddccccc..","..dcccccc.","..dccfffff","..dcfeefee","..dcfeefee","...kkkkk..",".dcccccccd","ddccccccc.","ssssss....","bbb...BB..","......BB.." },
+            ["climb0"] = new[] { "..cc....d.","..dcc...d.",".dccccc.d.",".dccccccd.",".dcccfffd.",".dccfeefd.",".dccfeefd.","..kkkkkk..",".dccccccd.",".dcccccdd.",".ssssss...","..bb.bbb..","..bb......" },
+            ["climb1"] = new[] { "..cc......","..dcc.....",".dccccc...",".dccccccd.",".dcccfffd.",".dccfeefd.",".dccfeefd.","..kkkkkkd.",".dccccccd.",".dcccccc..",".ssssss...","..BBB.bb..","......bb.." },
+            ["duck"] = new[] { "..........","..cc......",".dcccccc..",".dccfffff.",".dcfeefee.","..kkkkkk..","sdcccccccs",".bbssssbb." },
         };
         static readonly string[][] Scarf = { new[] { "b96532","763d24" }, new[] { "ffb24d","d5732b" } };
         Bitmap Sprite(string pose, int facing, int phase, int dash, bool silhouette = false, int tired = 0)
@@ -369,7 +387,7 @@ namespace Phase
             var palette = new Dictionary<char,Color32> { ['c']=Color("eadfc5"),['d']=Color("b3a386"),['s']=Color("7d6e5c"),['f']=Color("1a1f2c"),['b']=Color("453c59"),['B']=Color("2c263b"),['e']=Color(Highlights[phase]),['k']=Color(Scarf[dash][0]),['h']=Color(Scarf[dash][0]),['H']=Color(Scarf[dash][1]) };
             var rows = (string[])Frames[pose].Clone();
             for (int y = 0; y < rows.Length && !rows[y].Contains("k"); y++) rows[y] = rows[y].Replace('c','h').Replace('d','H');
-            foreach (char k in "cds") palette[k] = Mix(palette[k], Color("ff5b5e"), tired / 8.0);
+            foreach (char k in "hH") palette[k] = Mix(palette[k], Color("ff5b5e"), tired / 8.0);
             if (silhouette) foreach (char k in "cdsfbBekhH") palette[k] = Color(Highlights[phase]);
             return sprites[key] = Paint(rows, palette, facing < 0, !silhouette);
         }
@@ -403,6 +421,23 @@ namespace Phase
             for (int i = 0; i < length; i++) { var q = segments[i]; Rect(q.x, q.y, 1, q.h, Scarf[dash][i == length - 1 ? 1 : 0]); }
             Blit(Sprite(name, facing, phase, dash, false, tired), x - 2, feet - rows.Length - 1);
         }
+        void VoidBoundary(PhaseController s)
+        {
+            if (BottomY <= 180) return;
+            for (int x = OriginX; x < OriginX + Width; x++)
+            {
+                bool stone = false;
+                for (int i = 0; i < s.blocks.Count && !stone; i++)
+                {
+                    var b = s.blocks[i];
+                    stone = b.ActiveInPhase(s.phase) && !s.blocked.Contains(i) &&
+                        b.y < 180 && b.y + b.h >= 176 && x >= b.x && x < b.x + b.w;
+                }
+                if (stone) continue;
+                for (int y = 180; y < Math.Min(194, BottomY); y++) Rect(x, y, 1, 1, Ink, (y - 180) / 14.0);
+                Rect(x, 194, 1, BottomY - 194, Ink);
+            }
+        }
         public void Draw(PhaseController s, bool playerVisible = true)
         {
             Terrain(s);
@@ -412,8 +447,19 @@ namespace Phase
             Lasers(s);
             foreach (var t in s.trails) Blit(Sprite("dash", s.player.facing, t.phase, 0, true), Round(t.x) - 2, Round(t.y) - 3, t.life * 2);
             if (playerVisible && s.respawn <= 0) DrawPlayer(s.player, s.time, s.phase);
+            if (playerVisible && s.respawn > 0 && s.respawn < .12)
+            {
+                int radius = Round(2 + s.respawn * 75);
+                for (int i = 0; i < 8; i++)
+                {
+                    double angle = i * Math.PI / 4;
+                    Rect(s.spawnX + 4 + Round(Math.Cos(angle) * radius), s.spawnY + 5 + Round(Math.Sin(angle) * radius),
+                        1, 1, "dce7ee", 1 - s.respawn / .12);
+                }
+            }
             foreach (var p in s.particles) Rect(p.x, p.y, 1, 1, p.phase < 0 ? "dce7ee" : Highlights[p.phase], Math.Min(1, p.life * 3));
             if (s.flash > 0) Rect(OriginX, OriginY, Width, Height, Highlights[s.phase], s.flash * .3);
+            VoidBoundary(s);
             Texture.SetPixels32(buffer); Texture.Apply(false);
         }
         public void Slide(Color32[] from, Color32[] to, double progress, int direction)

@@ -7,11 +7,18 @@ namespace Phase
         public Vector2Int wallSize = new Vector2Int(8, 56);
         public int wallTop = 80;
         public Vector2Int platformStart = new Vector2Int(88, 80);
-        public Vector2Int platformSize = new Vector2Int(48, 8);
+        public Vector2Int platformSize = new Vector2Int(56, 8);
         public int platformEndX = 112;
-        public ClimbGear CreateGear() => new ClimbGear(
-            new Block(Mathf.Round(transform.position.x), -Mathf.Round(transform.position.y), wallSize.x, wallSize.y), wallTop,
-            new Block(platformStart.x, platformStart.y, platformSize.x, platformSize.y), platformEndX);
+        public ClimbGear CreateGear()
+        {
+            var wall = PhaseGrid.CreateBox(this, transform.position, wallSize);
+            var platform = transform.Find("Platform collider");
+            if (platform == null) { platform = new GameObject("Platform collider").transform; platform.SetParent(transform); }
+            var surface = PhaseGrid.CreateBox(platform, new Vector3(platformStart.x, -platformStart.y), platformSize);
+            var top = PhaseGrid.Snap(this, new Vector3((float)wall.x, -wallTop));
+            var end = PhaseGrid.Snap(this, new Vector3(platformEndX, -(float)surface.y));
+            return new ClimbGear(wall, -top.y, surface, end.x);
+        }
         void OnDrawGizmos()
         {
             Gizmos.color = Color.white;
