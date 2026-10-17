@@ -67,6 +67,9 @@ namespace Phase
         {
             if (top < 0 || top >= wall.y || wall.w <= 0 || wall.h <= 0 || platform.w <= 0 || platform.h <= 0 || endX == platform.x)
                 throw new ArgumentException("Gear requires a vertical wall range and a horizontal platform range.");
+            double pinionX = wall.x + wall.w + 39;
+            if (endX - platform.x != wall.y - top || pinionX < endX + 6 || pinionX > platform.x + platform.w - 6)
+                throw new ArgumentException("Equal gears require matching travel and a platform rack that stays over the output pinion.");
             this.wall = wall; this.platform = platform; this.top = top;
             bottom = wall.y; startX = platform.x; this.endX = endX;
         }
@@ -116,7 +119,7 @@ namespace Phase
         {
             width = Math.Max(320, width);
             if (width == Width) return;
-            foreach (var block in blocks) if (block.x == 0 && block.w == Width) block.w = width;
+            foreach (var block in blocks) if (block.x + block.w == Width) block.w += width - Width;
             Width = width;
             player.x = Math.Min(player.x, Width - player.w);
         }
@@ -155,6 +158,7 @@ namespace Phase
             return result;
         }
         List<Block> Walls() => blocks.Where((b, i) => b.ActiveInPhase(phase) && !blocked.Contains(i)).ToList();
+        bool Occupied(Block b) => Overlap(player,b) || (mover != null && Overlap(mover,b)) || gears.Any(g => Overlap(g.wall,b) || Overlap(g.platform,b));
         static bool Collides(Player p, List<Block> solids, double x = 0, double y = 0) => solids.Any(b => Overlap(p, b, x, y));
         static int WallAt(Player p, List<Block> solids, int preferred, double reach = 3)
         {
@@ -207,7 +211,7 @@ namespace Phase
         void Shift()
         {
             int previous = phase; phase = (phase + 1) % 3; flash = .08;
-            for (int i = 0; i < blocks.Count; i++) if (!blocks[i].ActiveInPhase(previous) && blocks[i].ActiveInPhase(phase) && Overlap(player, blocks[i])) blocked.Add(i);
+            for (int i = 0; i < blocks.Count; i++) if (!blocks[i].ActiveInPhase(previous) && blocks[i].ActiveInPhase(phase) && Occupied(blocks[i])) blocked.Add(i);
             Burst(player.x + 4, player.y + 5, phase);
             CheckSpikes();
         }
@@ -310,6 +314,7 @@ namespace Phase
             int steps = Math.Max(Math.Abs(dx), Math.Abs(dy));
             for (int i = 0; i < steps; i++)
             {
+                var before = new Block(p.x,p.y,p.w,p.h);
                 block.x += (double)dx / steps; block.y += (double)dy / steps;
                 if (obstacles.Any(b => Overlap(block, b)) || !WithinSides(block.x, block.w)) return false;
                 if (rider || clinger) { p.x += (double)dx / steps; p.y += (double)dy / steps; }
@@ -318,7 +323,7 @@ namespace Phase
                     if (dx > 0) p.x = block.x + block.w; else if (dx < 0) p.x = block.x - p.w;
                     else if (dy > 0) p.y = block.y + block.h; else p.y = block.y - p.h;
                 }
-                if (obstacles.Any(b => Overlap(p, b)) || !WithinSides(p.x, p.w) || p.y < 0) return false;
+                if (CheckSpikes(before) || obstacles.Any(b => Overlap(p, b)) || !WithinSides(p.x, p.w) || p.y < 0) return false;
             }
             return true;
         }
@@ -348,7 +353,7 @@ namespace Phase
             p.buffer = input.jump ? .08 : input.jumpHeld ? Math.Max(0, p.buffer - dt) : 0;
             p.dashBuffer = input.dash ? .08 : input.dashHeld ? Math.Max(0, p.dashBuffer - dt) : 0;
             if (freeze > 1e-9) { freeze = Math.Max(0, freeze - dt); return; }
-            blocked.RemoveWhere(i => !Overlap(p, blocks[i]));
+            blocked.RemoveWhere(i => !Occupied(blocks[i]));
             double platformDX = MovePlatform(input, dt); if (respawn > 0) return;
             p.dashAttack = Math.Max(0, p.dashAttack - dt);
             var solids = Solid(); int contact = WallAt(p, solids, input.x != 0 ? input.x : p.facing, p.dashAttack > 0 && p.dx == 0 && p.dy == -1 ? 5 : 3);

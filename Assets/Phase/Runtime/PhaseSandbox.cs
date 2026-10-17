@@ -12,6 +12,7 @@ namespace Phase
         public Camera pixelCamera;
         public Material pixelMaterial;
         public string leftScene, rightScene;
+        public bool checkpointOnEntry;
         public Vector2Int spawn = new Vector2Int(32, 149);
         public PhaseController Controller { get; private set; }
         public Texture2D Frame => pixels?.Texture;
@@ -56,7 +57,12 @@ namespace Phase
             Controller.ResizeRoom(size.x);
             if (arriving)
             {
-                Controller.EnterFrom(traveler, arrivalDirection);
+                if (checkpointOnEntry)
+                {
+                    Controller.time = traveler.time; Controller.jumps = traveler.jumps;
+                    Controller.dashes = traveler.dashes; Controller.deaths = traveler.deaths;
+                }
+                else Controller.EnterFrom(traveler, arrivalDirection);
                 if (travelFrame?.Length == size.x * size.y) departingFrame = travelFrame;
                 transitionDirection = arrivalDirection;
             }

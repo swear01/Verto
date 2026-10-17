@@ -14,51 +14,50 @@ public class PixelTests
     public void GearRacksTranslateRigidlyAndStayEngagedAcrossFullTravel()
     {
         var s = new PhaseController(Array.Empty<Block>(), 0, 149, gears: new[] {
-            new ClimbGear(new Block(72,104,8,56),64,new Block(104,104,32,8),144)
+            new ClimbGear(new Block(72,104,8,56),80,new Block(88,80,48,8),112)
         });
         var gear = s.gears[0]; s.flash = 0;
         var pixels = new PhasePixels();
         try
         {
-            for (int lift = 0; lift <= 40; lift++)
+            for (int lift = 0; lift <= 24; lift++)
             {
-                gear.wall.y = 104 - lift; gear.platform.x = 104 + lift;
+                gear.wall.y = 104 - lift; gear.platform.x = 88 + lift;
                 pixels.Draw(s); var frame = pixels.Texture.GetPixels32();
-                int bottom = Math.Min(160, 192 - lift);
+                int bottom = 160 - lift;
                 for (int y = (int)gear.wall.y; y < bottom; y++)
                     Assert.That(frame[(179-y)*320+81].r, Is.EqualTo(160), $"rigid rack at lift {lift}, y {y}");
-                Assert.That(frame[(179-137)*320+81].r, Is.EqualTo(160), "rack remains beside the fixed input pinion");
+                Assert.That(frame[(179-108)*320+81].r, Is.EqualTo(160), "rack remains beside the fixed input pinion");
                 if (bottom < 160)
                     for (int x = 81; x <= 84; x++)
                         Assert.That(frame[(179-bottom)*320+x].r, Is.LessThan(40), $"rack end translates with wall at lift {lift}");
-                int left = Math.Max(90, 58 + lift);
-                for (int x = left; x < 136 + lift; x++)
-                    Assert.That(frame[(179-113)*320+x].r, Is.EqualTo(160), $"rigid horizontal rack at lift {lift}, x {x}");
-                Assert.That(frame[(179-113)*320+114].r, Is.EqualTo(160), "rack remains above the fixed output pinion");
-                if (left > 90)
-                    Assert.That(frame[(179-113)*320+left-1].r, Is.LessThan(40), "horizontal rack end translates beyond the fixed sleeve");
+                int left = 88 + lift, right = left + 48;
+                for (int x = left; x < right; x++)
+                    Assert.That(frame[(179-85)*320+x].r, Is.EqualTo(160), $"rack is inset across platform width at lift {lift}");
+                Assert.That(frame[(179-85)*320+119].r, Is.EqualTo(160), "rack remains over the output pinion");
+                foreach (int x in new[] { left-1, right })
+                    Assert.That(frame[(179-85)*320+x].r, Is.Not.EqualTo(160), "rack never extends beyond the collidable platform");
             }
         }
         finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
     }
 
-    [TestCase(0)] [TestCase(19)] [TestCase(40)]
+    [TestCase(0)] [TestCase(12)] [TestCase(24)]
     public void GearRackStaysAttachedToThePlatformAcrossTravel(int lift)
     {
         var s = new PhaseController(Array.Empty<Block>(), 0, 149, gears: new[] {
-            new ClimbGear(new Block(72,104,8,56),64,new Block(104,104,32,8),144)
+            new ClimbGear(new Block(72,104,8,56),80,new Block(88,80,48,8),112)
         });
         var gear = s.gears[0]; gear.wall.y -= lift; gear.platform.x += lift; s.flash = 0;
         var pixels = new PhasePixels();
         try
         {
             pixels.Draw(s);
-            for (int x = (int)gear.platform.x + 1; x < gear.platform.x + gear.platform.w - 1; x++)
-                for (int y = (int)(gear.platform.y + gear.platform.h) - 1; y <= gear.platform.y + gear.platform.h + 1; y++)
-                {
-                    Color32 pixel = pixels.Texture.GetPixel(x, 179 - y);
-                    Assert.That(pixel.r, Is.GreaterThan(40), $"platform and rack have no background gap at ({x},{y})");
-                }
+            for (int x = (int)gear.platform.x; x < gear.platform.x + gear.platform.w; x++)
+            {
+                Color32 pixel = pixels.Texture.GetPixel(x, 179 - ((int)gear.platform.y + 5));
+                Assert.That(pixel.r, Is.EqualTo(160), $"rack belongs to the platform body at x {x}");
+            }
             var first = pixels.Texture.GetPixels32(); s.time += 1; pixels.Draw(s);
             var second = pixels.Texture.GetPixels32();
             for (int y = 60; y < 166; y++) for (int x = 70; x < 180; x++)

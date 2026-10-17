@@ -4,11 +4,11 @@ namespace Phase
 {
     public sealed class PhaseClimbGear : MonoBehaviour
     {
-        public Vector2Int wallSize = new Vector2Int(8, 48);
-        public int wallTop = 56;
-        public Vector2Int platformStart = new Vector2Int(104, 104);
-        public Vector2Int platformSize = new Vector2Int(32, 8);
-        public int platformEndX = 160;
+        public Vector2Int wallSize = new Vector2Int(8, 56);
+        public int wallTop = 80;
+        public Vector2Int platformStart = new Vector2Int(88, 80);
+        public Vector2Int platformSize = new Vector2Int(48, 8);
+        public int platformEndX = 112;
         public ClimbGear CreateGear() => new ClimbGear(
             new Block(Mathf.Round(transform.position.x), -Mathf.Round(transform.position.y), wallSize.x, wallSize.y), wallTop,
             new Block(platformStart.x, platformStart.y, platformSize.x, platformSize.y), platformEndX);

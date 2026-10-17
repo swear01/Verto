@@ -280,31 +280,24 @@ namespace Phase
         void Gear(ClimbGear gear)
         {
             var wall = gear.wall; var platform = gear.platform;
-            int rackX = Round(wall.x + wall.w), rackY = Round(platform.y + platform.h), cy = rackY + 12;
+            int rackX = Round(wall.x + wall.w), rackY = Round(platform.y + platform.h) - 3, cy = rackY + 9;
             Rect(wall.x + 2, gear.top - 4, wall.w - 4, gear.bottom + wall.h - gear.top + 8, "444444");
             foreach (double y in new[] { gear.top - 4, gear.bottom + wall.h + 2 })
                 Rect(wall.x - 2, y, wall.w + 4, 2, Highlights[3]);
             double left = Math.Min(gear.startX, gear.endX), right = Math.Max(gear.startX, gear.endX) + platform.w;
-            Rect(left, platform.y + 3, right - left, 2, "646464");
-            Rect(left - 2, platform.y, 2, platform.h, Highlights[3]); Rect(right, platform.y, 2, platform.h, Highlights[3]);
+            Rect(left, platform.y + 3, right - left, 1, "444444");
+            Rect(left - 1, platform.y + 1, 1, platform.h - 2, "646464");
+            Rect(right, platform.y + 1, 1, platform.h - 2, "646464");
             // Keep one full tooth beyond the fixed pinion at the top stop.
-            int rackHeight = Round(Math.Max(wall.h, cy + 13 + 9 + 6 - gear.top));
+            int rackHeight = Round(Math.Max(wall.h, cy + 14 + 9 + 6 - gear.top));
             int rackBottom = Math.Min(Round(wall.y) + rackHeight, Round(gear.bottom + wall.h));
             Rect(rackX, wall.y, 2, rackBottom - Round(wall.y), "a0a0a0");
             for (int y = Round(wall.y); y < rackBottom; y += 6) Rect(rackX + 2, y, 3, Math.Min(3, rackBottom - y), "a0a0a0");
             Rect(rackX - 1, gear.bottom + wall.h, 7, 4, "646464");
             Rect(rackX - 1, gear.bottom + wall.h + 2, 7, 2, Highlights[3]);
-            double rackLeft = platform.x - Math.Abs(gear.endX - gear.startX) - 6;
-            int rackStart = Math.Max(Round(rackLeft), rackX + 10);
-            Rect(rackStart, rackY, platform.x + platform.w - rackStart, 2, "a0a0a0");
-            for (int x = Round(rackLeft); x < platform.x + platform.w; x += 6)
-                if (x >= rackStart) Rect(x, rackY + 2, 3, 3, "a0a0a0");
-            Rect(rackX + 6, rackY - 1, 4, 7, "646464");
-            double angle = gear.Lift * Math.PI / 24;
-            // Only the raised output pinion touches the horizontal rack.
-            GearWheel(rackX + 11, cy + 13, angle);
-            GearWheel(rackX + 26, cy + 13, -angle + Math.PI / 8);
-            GearWheel(rackX + 34, cy, angle + Math.PI / 10);
+            double angle = gear.Lift * Math.PI / 24, mesh = 2 * Math.Atan2(-7,14) + Math.PI / 8;
+            GearWheel(rackX + 11, cy + 14, angle);
+            GearWheel(rackX + 25, cy + 7, -angle + mesh);
             foreach (var block in new[] { wall, platform })
             {
                 Rect(block.x - 1, block.y - 1, block.w + 2, block.h + 2, Ink);
@@ -314,7 +307,11 @@ namespace Phase
                 for (double y = block.y + 4; y < block.y + block.h - 2; y += 8)
                     for (double x = block.x + 3; x < block.x + block.w - 2; x += 8) Rect(x, y, 2, 2, Edges[3]);
             }
-            Rect(platform.x, rackY, platform.w, 2, "a0a0a0");
+            Rect(platform.x, rackY, platform.w, 1, "a0a0a0");
+            Rect(platform.x, rackY + 1, platform.w, 2, Ink);
+            for (int x = Round(platform.x) + 3; x < platform.x + platform.w; x += 6)
+                Rect(x, rackY + 1, Math.Min(3, platform.x + platform.w - x), 2, "a0a0a0");
+            GearWheel(rackX + 39, cy, angle);
         }
         // Original Wick frames; the hood now shares the scarf's dash-charge colors.
         static readonly Dictionary<string,string[]> Frames = new Dictionary<string,string[]> {

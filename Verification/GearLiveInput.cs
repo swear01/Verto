@@ -75,12 +75,12 @@ public static class GearLiveInput
             Capture(sandbox, "platform");
             yield return Frames(keyboard, 16, Key.RightArrow, Key.Z);
             yield return Frames(keyboard, 10, Key.RightArrow, Key.X);
-            yield return Frames(keyboard, 18);
+            yield return Frames(keyboard, 22);
             if (!Require(s.phase == 2 && s.player.grounded && s.player.y + s.player.h == 80 && s.dashes > dashes, "jump then dash lands on green without an extra phase change", result)) yield break;
-            yield return Frames(keyboard, 30, Key.RightArrow, Key.Z);
+            yield return Frames(keyboard, 26, Key.RightArrow, Key.Z);
             yield return Frames(keyboard, 18);
             if (!Require(s.phase == 0 && s.player.grounded && s.player.y + s.player.h == 56, "next jump lands on red", result)) yield break;
-            yield return Frames(keyboard, 30, Key.RightArrow, Key.Z);
+            yield return Frames(keyboard, 26, Key.RightArrow, Key.Z);
             yield return Frames(keyboard, 18);
             if (!Require(s.deaths == deaths && s.player.grounded && s.player.x >= 296 && s.player.y + s.player.h == 32, "route reaches the resting ledge without a death", result)) yield break;
             Capture(sandbox, "finish");
