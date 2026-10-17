@@ -13,6 +13,8 @@ cd Verification
 npm ci
 npx --no-install playwright install chromium --no-shell
 cd ..
+node Verification/MapEditorTests.cjs
+node Verification/MapEditorBrowser.cjs
 node Verification/DemoWebSmoke.cjs Builds/Web
 python3 -m http.server 8765 --bind 127.0.0.1 --directory Builds/Web
 ```
@@ -66,6 +68,25 @@ Existing `phase.controls.v1` single overrides migrate into the first slot; untou
 actions keep both defaults. The old data remains unchanged. Invalid or conflicting
 saved data falls back to defaults with a visible notice.
 The settings interface lives in the Web page; the game view stays free of prose.
+
+The top-right room button selects any of the eight rooms or opens the map editor.
+The editor uses 40×22 cells of 8 pixels: permanent white, the three phase colors,
+three mixed masks, four spike directions, spawn and erase. Drag to paint, or use
+arrows and Space on the grid. Undo/redo applies to whole strokes. The browser keeps
+one draft at `phase.map.v1`; choosing a built-in room leaves that draft intact.
+Export downloads `phase-custom-map.json`; import validates before replacing the draft.
+Storage failure keeps the current session and asks for a JSON backup.
+
+Custom maps contain only `name`, `blocks`, `spikes`, `spawnX` and `spawnY`.
+Geometry occupies at most 880 non-overlapping cells inside 320×176; spawn uses the
+8-pixel grid, stays inside 312×160, and avoids solids/hazards active in red.
+Masks are 1 red, 2 blue, 4 green, 3 magenta, 5 yellow, 6 cyan and 7 permanent white.
+Moving platforms/gears and JSON over 200,000 characters are rejected. The Web UI
+sends `PHASE.SelectDemoRoom("1".."8")` or `PHASE.LoadCustomMap(json)` and closes
+only after `phase-map-result` reports success. All dialogs share the gameplay pause.
+`MapEditorBrowser.cjs` verifies UI events using a mock Unity bridge; it does not
+prove native map loading. Verify the native bridge through Pipeline and the final
+built Web Player before publishing.
 
 The custom `Phase` template uses gzip with Unity's decompression fallback, so a
 static host does not need custom `Content-Encoding` headers. The 2D renderer has
