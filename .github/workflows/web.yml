@@ -13,7 +13,23 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report Unity runner setup
+        env:
+          ENABLED: ${{ vars.UNITY_WEB_CI_ENABLED }}
+        run: |
+          if [ "$ENABLED" != "true" ]; then
+            echo "::error::Unity Web build is disabled. The repository owner must register the licensed gamejam1-unity desktop runner and configure Pages before enabling UNITY_WEB_CI_ENABLED."
+            echo "Web build is blocked by owner setup; see Documentation/Web.md. No Unity build or deployment ran." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          else
+            echo "Unity Web build enabled; waiting for the dedicated gamejam1-unity runner." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   build:
+    needs: setup
     if: github.ref == 'refs/heads/main' && vars.UNITY_WEB_CI_ENABLED == 'true'
     runs-on: [self-hosted, macOS, ARM64, gamejam1-unity]
     timeout-minutes: 35
@@ -37,7 +53,7 @@ jobs:
           npm ci
           npx --no-install playwright install chromium --no-shell
       - name: Verify browser rendering and keyboard input
-        run: node Verification/WebSmoke.cjs Builds/Web
+        run: node Verification/DemoWebSmoke.cjs Builds/Web
       - name: Close CI Editor
         if: always()
         run: '"$HOME/.unity/bin/unity" close "$GITHUB_WORKSPACE" --json'

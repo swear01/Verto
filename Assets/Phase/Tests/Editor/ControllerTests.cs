@@ -32,16 +32,162 @@ public class ControllerTests
             for (int i = 0; i < c.inputs.Length; i++)
             {
                 var a = c.inputs[i]; s.Step(new Controls { x = name == "movement" ? 1 : (a.right ? 1 : 0) - (a.left ? 1 : 0), y = (a.down ? 1 : 0) - (a.up ? 1 : 0), jump = a.jump && !previous.jump, jumpHeld = a.jump, dash = a.dash && !previous.dash, dashHeld = a.dash, grab = a.grab }, f.dt);
-                previous = a; var e = c.expected[i]; string frame = c.name + " frame " + (i + 1);
+                previous = a; var e = c.expected[i];
+                if (c.name == "climb_to_exhaustion" && i >= 133)
+                {
+                    int[] slowY = {143,143,144,144,145,145,146,146,147,147,148,148,149,149,150,150,151};
+                    e = new Expected { x=e.x,y=slowY[i-133],vx=e.vx,vy=30,stamina=e.stamina };
+                }
+                string frame = c.name + " frame " + (i + 1);
                 Assert.That(p.x + 4, Is.EqualTo(e.x), frame + " x"); Assert.That(p.y + p.h, Is.EqualTo(e.y), frame + " y");
                 Assert.That(p.vx, Is.EqualTo(e.vx).Within(.002), frame + " vx"); Assert.That(p.vy, Is.EqualTo(e.vy).Within(.002), frame + " vy");
                 if (name != "movement") Assert.That(p.stamina, Is.EqualTo(e.stamina).Within(.002), frame + " stamina");
             }
         }
     }
+    [Test]
+    public void PhaseMasksKeepLegacyAndAllSevenCombinations()
+    {
+        foreach(int legacy in new[]{-1,0,1,2})foreach(int phase in new[]{0,1,2})
+            Assert.That(new Block(0,0,8,8,legacy).ActiveInPhase(phase),Is.EqualTo(legacy<0||legacy==phase));
+        for(int mask=1;mask<=7;mask++)for(int phase=0;phase<3;phase++)
+        {
+            var block=new Block(0,160,320,24,phaseMask:mask);var room=new PhaseController(new[]{block},32,120);room.phase=phase;
+            Assert.That(block.Mask,Is.EqualTo(mask));Assert.That(room.Solid().Contains(block),Is.EqualTo((mask&(1<<phase))!=0));
+        }
+        Assert.That(new Block(0,0,8,8,phase:3,phaseMask:5).Mask,Is.EqualTo(5),"HTML mixed-phase metadata is overridden by its explicit mask");
+        Assert.Throws<ArgumentOutOfRangeException>(()=>new Block(0,0,8,8,phaseMask:8));
+        Assert.Throws<ArgumentOutOfRangeException>(()=>new Block(0,0,8,8,phaseMask:-1));
+    }
+    [Test]
+    public void MixedMaterializationDefersOnlyNewlySolidBlocks()
+    {
+        foreach(int mask in new[]{3,5,6,7})
+        {
+            var b=new Block(120,100,8,16,phaseMask:mask);var room=new PhaseController(new[]{b},120,100);
+            room.player.grounded=false;room.player.coyote=.1;
+            room.Step(new Controls{jump=true});
+            Assert.That(room.blocked.Contains(0),Is.EqualTo((mask&1)==0&&(mask&2)!=0));
+            if(room.blocked.Contains(0)) { room.player.x=160;room.Step(new Controls());Assert.That(room.blocked,Is.Empty);Assert.That(room.Solid(),Does.Contain(b)); }
+        }
+    }
+    [Test]
+    public void PhaseSpikesUseRootStripsAndSweptCollisionInEveryDirection()
+    {
+        foreach(SpikeDirection direction in Enum.GetValues(typeof(SpikeDirection)))
+        {
+            var spike=new Spike(80,80,16,direction,3);var hit=spike.Hitbox;
+            Assert.That(direction==SpikeDirection.Up||direction==SpikeDirection.Down?hit.h:hit.w,Is.EqualTo(3));
+            for(int phase=0;phase<3;phase++)
+            {
+                var room=new PhaseController(Array.Empty<Block>(),32,40,spikes:new[]{spike});room.phase=phase;
+                room.player.x=hit.x;room.player.y=hit.y;
+                Assert.That(room.CheckSpikes(),Is.EqualTo(phase!=2));Assert.That(room.deaths,Is.EqualTo(phase!=2?1:0));
+                room.CheckSpikes();Assert.That(room.deaths,Is.LessThanOrEqualTo(1),"a death is counted once");
+            }
+            var sweep=new PhaseController(Array.Empty<Block>(),32,40,spikes:new[]{spike});
+            var from=new Block(hit.x-40,hit.y,8,11);sweep.player.x=hit.x+40;sweep.player.y=hit.y;
+            Assert.That(sweep.CheckSpikes(from),Is.True,"a dash cannot tunnel through a thin root");
+            var reverse=new PhaseController(Array.Empty<Block>(),32,40,spikes:new[]{spike});from.x=hit.x+40;reverse.player.x=hit.x-40;reverse.player.y=hit.y;
+            Assert.That(reverse.CheckSpikes(from),Is.True,"reverse sweep");
+            var diagonal=new PhaseController(Array.Empty<Block>(),32,40,spikes:new[]{spike});from=new Block(hit.x-40,hit.y-40,8,11);diagonal.player.x=hit.x+40;diagonal.player.y=hit.y+40;Assert.That(diagonal.CheckSpikes(from),Is.True,"diagonal sweep");
+            var tangent=new PhaseController(Array.Empty<Block>(),32,40,spikes:new[]{spike});from.x=hit.x-40;from.y=hit.y-11;tangent.player.x=hit.x+40;tangent.player.y=hit.y-11;
+            Assert.That(tangent.CheckSpikes(from),Is.False,"touching the strip boundary is not overlap");
+        }
+        for(int mask=1;mask<=7;mask++)for(int phase=0;phase<3;phase++)
+        { var spike=new Spike(80,80,8,SpikeDirection.Up,mask);Assert.That(spike.ActiveInPhase(phase),Is.EqualTo((mask&(1<<phase))!=0)); }
+        Assert.Throws<ArgumentOutOfRangeException>(()=>new Spike(0,0,7,SpikeDirection.Up));
+        Assert.Throws<ArgumentOutOfRangeException>(()=>new Spike(0,0,8,(SpikeDirection)4));
+        Assert.Throws<ArgumentOutOfRangeException>(()=>new Spike(0,0,8,SpikeDirection.Up,0));
+    }
+    [Test]
+    public void SpikesActivateOnJumpKillPlatformRidersAndReset()
+    {
+        var blue=new Spike(120,100,8,SpikeDirection.Up,2);
+        var room=new PhaseController(Array.Empty<Block>(),32,40,spikes:new[]{blue});room.player.x=120;room.player.y=100;room.player.grounded=false;room.player.coyote=.1;
+        room.Step(new Controls{jump=true});Assert.That(room.phase,Is.EqualTo(1));Assert.That(room.deaths,Is.EqualTo(1));Assert.That(room.respawn,Is.GreaterThan(0));
+        Ticks(room,20);Assert.That(room.player.x,Is.EqualTo(32));Assert.That(room.phase,Is.Zero);Assert.That(room.player.stamina,Is.EqualTo(110));
+        var mover=new MovingPlatform(new[]{new[]{72.0,72},new[]{216.0,72}},48,8);
+        var red=new Spike(104,56,16,SpikeDirection.Left,1);
+        room=new PhaseController(Array.Empty<Block>(),88,61,mover,spikes:new[]{red});
+        room.mover.fromX=72;room.mover.fromY=72;room.mover.index=1;room.mover.duration=.3;room.mover.moving=true;
+        for(int i=0;i<30&&room.deaths==0;i++)room.Step(new Controls());
+        Assert.That(room.deaths,Is.EqualTo(1),"platform carry checks the complete swept path");
+        Ticks(room,20);Assert.That(room.mover.x,Is.EqualTo(72));Assert.That(room.mover.moving,Is.False);
+        room=new PhaseController(Array.Empty<Block>(),32,40,spikes:new[]{new Spike(40,40,16,SpikeDirection.Left,1)});
+        room.player.grounded=false;room.player.dashTime=.3;room.player.vx=240;room.player.dx=1;
+        room.Step(new Controls(),.1);Assert.That(room.deaths,Is.EqualTo(1),"an in-progress dash crossing the complete strip cannot tunnel");
+
+    }
     static PhaseController Arena(double width = 320) => new PhaseController(new[] { new Block(0,150,width,8), new Block(200,33,8,117) }, 67,139);
+    static PhaseController GearArena(params Block[] obstacles)
+    {
+        var blocks = new List<Block> { new Block(0,160,88,24) }; blocks.AddRange(obstacles);
+        return new PhaseController(blocks,64,149,gears:new[] {
+            new ClimbGear(new Block(72,88,8,72),64,new Block(88,104,48,8),112)
+        });
+    }
+    [Test]
+    public void GearRackMustStayInsideItsPlatformAcrossTheWholeTravel()
+    {
+        Assert.Throws<ArgumentException>(() => new ClimbGear(new Block(72,104,8,56),64,new Block(104,104,32,8),144));
+        Assert.DoesNotThrow(() => new ClimbGear(new Block(72,104,8,56),80,new Block(88,80,48,8),112));
+    }
+    [Test]
+    public void GearCarryChecksTheSpikeSweepAfterRelativeClimbing()
+    {
+        var s=GearArena();var p=s.player;p.y=144;p.grounded=false;p.climbing=true;p.facing=1;p.climbWait=0;
+        s.spikes.Add(new Spike(56,135,16,SpikeDirection.Up));
+        Ticks(s,4,new Controls { y=-1,grab=true });
+        Assert.That(s.deaths,Is.EqualTo(1),"the relative climb only touches the edge; the wall carry crosses the lethal root");
+        Ticks(s,24);Assert.That(s.respawn,Is.Zero);Assert.That(s.gears[0].Lift,Is.Zero);
+    }
+    [Test]
+    public void PhaseTerrainWaitsForTheGearToLeaveBeforeMaterializing()
+    {
+        var s=GearArena(new Block(100,104,8,8,1));var gear=s.gears[0];
+        s.Step(new Controls { jump=true,jumpHeld=true });
+        Assert.That(s.phase,Is.EqualTo(1));Assert.That(s.blocked.Contains(1),Is.True);
+        Ticks(s,4);Assert.That(s.blocked.Contains(1),Is.True,"terrain cannot appear inside the parked platform");
+        gear.platform.x=112;Ticks(s,1);Assert.That(s.blocked.Contains(1),Is.False);
+    }
     static void Ticks(PhaseController s, int count, Controls input = default)
     { for (int i = 0; i < count; i++) { var a = input; a.jump &= i == 0; a.dash &= i == 0; s.Step(a); } }
+    [Test]
+    public void GearClimbCarriesPlayerAndDrivesHorizontalPlatformInBothDirections()
+    {
+        var s=GearArena();var gear=s.gears[0];
+        Ticks(s,30,new Controls { x=1,y=-1,grab=true });
+        Assert.That(gear.wall.y,Is.LessThan(88));Assert.That(gear.platform.x,Is.GreaterThan(88));
+        Assert.That(s.player.y,Is.LessThan(149-gear.Lift),"wall carries the player in addition to relative climbing");
+        Assert.That(gear.platform.y,Is.EqualTo(104));Assert.That(s.phase,Is.Zero);
+        double wallY=gear.wall.y,platformX=gear.platform.x;
+        Ticks(s,12,new Controls { grab=true });
+        Assert.That((gear.wall.y,gear.platform.x),Is.EqualTo((wallY,platformX)),"hanging does not drive gears");
+        Ticks(s,16,new Controls { y=1,grab=true });
+        Assert.That(gear.wall.y,Is.GreaterThan(wallY));Assert.That(gear.platform.x,Is.LessThan(platformX));
+        wallY=gear.wall.y;platformX=gear.platform.x;
+        Ticks(s,6,new Controls { y=-1 });
+        Assert.That((gear.wall.y,gear.platform.x),Is.EqualTo((wallY,platformX)),"input without grabbing does not drive gears");
+        s.Reset();Assert.That((s.gears[0].wall.y,s.gears[0].platform.x),Is.EqualTo((88.0,88.0)));
+    }
+    [Test]
+    public void GearEndpointsAndObstructionsStopBothLinkedParts()
+    {
+        var s=GearArena();
+        Ticks(s,90,new Controls { x=1,y=-1,grab=true });
+        Assert.That((s.gears[0].wall.y,s.gears[0].platform.x),Is.EqualTo((64.0,112.0)));
+        var p=s.player;p.x=64;p.y=72;p.vx=p.vy=0;p.facing=1;p.climbing=true;p.climbWait=0;p.stamina=110;
+        Ticks(s,90,new Controls { y=1,grab=true });
+        Assert.That((s.gears[0].wall.y,s.gears[0].platform.x),Is.EqualTo((88.0,88.0)));
+        s=GearArena(new Block(140,104,8,8));
+        Ticks(s,55,new Controls { x=1,y=-1,grab=true });
+        Assert.That((s.gears[0].wall.y,s.gears[0].platform.x),Is.EqualTo((84.0,92.0)),"platform obstruction stops the whole drive");
+        Assert.That(s.deaths,Is.Zero);Assert.That(PhaseController.Overlap(s.gears[0].platform,s.blocks[1]),Is.False);
+        s=GearArena(new Block(56,136,16,8));p=s.player;p.y=144;p.climbing=true;p.facing=1;
+        Ticks(s,12,new Controls { y=-1,grab=true });
+        Assert.That(s.gears[0].Lift,Is.Zero,"a blocked climb does not drive the mechanism");
+    }
     [Test]
     public void AdaptiveRoomExtendsFloorAndEdgesWithoutResettingState()
     {
@@ -110,6 +256,18 @@ public class ControllerTests
         s=Arena();p=s.player;p.x=192;p.y=56;p.grounded=false;p.coyote=0;p.dash=0;
         for(int i=0;i<140&&!p.grounded;i++)s.Step(new Controls { x=1,y=-1,grab=true });
         Assert.That(p.grounded,Is.True);Assert.That(p.y,Is.EqualTo(22));Assert.That(p.dash,Is.EqualTo(1));Assert.That(s.phase,Is.Zero);
+        foreach(int facing in new[]{-1,1})
+        {
+            var wall=new Block(facing>0?200:184,0,8,180);s=new PhaseController(new[]{wall},192,40);p=s.player;
+            p.grounded=false;p.facing=facing;p.stamina=.1;p.climbing=true;
+            Ticks(s,1,new Controls{grab=true});Assert.That(p.climbing,Is.False,"exhaustion releases the grip");
+            Ticks(s,90,new Controls{grab=true});Assert.That(p.vy,Is.EqualTo(30));Assert.That(p.y,Is.InRange(82,85),"held exhausted grab remains a slow slide beyond the normal slide timer");
+            Ticks(s,8,new Controls());Assert.That(p.vy,Is.GreaterThan(100),"release permits normal fall");
+            p.y=40;p.vy=0;Ticks(s,8,new Controls{grab=true,y=1});Assert.That(p.vy,Is.GreaterThan(100),"down bypasses slow slide");
+            p.y=40;p.vy=0;Ticks(s,8,new Controls{grab=true,x=-facing});Assert.That(p.vy,Is.GreaterThan(100),"moving away permits normal fall");
+            s=new PhaseController(new[]{wall,new Block(0,160,320,24)},192,120);p=s.player;p.grounded=false;p.stamina=0;p.facing=facing;
+            Ticks(s,100,new Controls{grab=true});Assert.That(p.grounded,Is.True);Ticks(s,1);Assert.That(p.stamina,Is.EqualTo(110),"landing refills");
+        }
     }
     static PhaseController Board(bool returns=false, int direction=1)
     {

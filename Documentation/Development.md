@@ -23,6 +23,8 @@ Modal startup dialogs still require attention; report them instead of foreground
 the Editor. The dedicated CI runner may continue using `unity open --wait`.
 
 Run from the project directory, or pass `--project-path` to target it explicitly.
+With multiple Editors open, pass `--project-path <project-root>` on every
+command so a domain reload cannot select another connected project.
 Discover the connected package's command parameters with `unity command --query`.
 
 ```sh
@@ -45,12 +47,16 @@ To recreate the sandbox, call its existing builder through the connected Editor:
 edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 22 controller cases, one 48-frame art
-comparison (hood/spent-scarf colors remapped plus the eight climbing-frame stamina gauges), one bidirectional pixel-slide
+starting the next test run. There are 31 controller cases and 13 demo-route/authoring cases, one 48-frame art
+comparison (hood/spent-scarf/permanent-solid colors remapped plus low-stamina body tint), one bidirectional pixel-slide
 test, one adaptive-view test, one centered-view stone/void extension test, one
-dash-charge hood lifecycle test, one stamina-gauge depletion/recovery test, and three
+dash-charge hood lifecycle test, one character-fatigue/recovery test, one mixed-inlay/spike rendering test, three
+gear-rack attachment positions, one full-travel rigid-rack/engagement test, and three
 Play Mode cases, including custom bindings, pause/release gating and room persistence.
-The three immutable reference files cover 40 movement/action/climb traces.
+The three immutable reference files preserve 40 movement/action/climb traces.
+The exhaustion case uses explicit revised Y/speed expectations for its final17
+frames under the new30px/s held-grab cap; all earlier frames and other traces
+retain their original expectations. None of the immutable reference files are edited.
 Production steps at 1/60 s; reference replays use the recorded 0.0166667 s.
 
 Before tests or live Play checks, `BackgroundEditor.Run` sets every existing
@@ -112,10 +118,50 @@ validator rejects duplicate physical keys, reserved keys and actions with no key
 then applies the entire map atomically. Browser storage/migration is described
 in [Web preview](Web.md).
 
+## Climb gear demo
+
+`Assets/Scenes/PhaseGearDemo.unity` is a standalone experiment, with no room links
+or progression. Recreate it through Pipeline with
+`unity command eval 'PhaseSandboxBuilder.CreateGearDemo();'`.
+`PhaseClimbGear` creates a neutral wall and horizontal platform outside the static
+terrain cache. Actual upward/downward climb displacement drives the wall in the
+same direction and the platform between its X endpoints, carrying riders.
+Hanging, release, slipping, blocked climbing and dashing do not drive it.
+Both parts stop at the travel limits or an obstruction; reset/respawn restores
+the authored start positions. White gears and racks are visual only.
+The horizontal rack fills the lower three pixels inside the 48-pixel platform,
+with no overhang. Matching 24-pixel wall/platform travel keeps the fixed output
+pinion engaged. The vertical rack translates rigidly and can enter its lower
+housing. Gear carrying also checks spike sweeps. Newly solid terrain waits while
+a player, gear solid or dash platform occupies it.
+
+Open the demo in the resident Editor, apply `BackgroundEditor.Run`, enter Play,
+then run `Verification/GearLiveInput.cs` via Pipeline `run_script`, entry
+`GearLiveInput.Run`, with CLI `--timeout 90` and script `--timeout_ms 90000`.
+It checks up/down/hold/release
+and replays a complete keyboard route through the white platform, green/red
+landings and resting ledge. Captures go to `TestResults/GearDemo/`; the script
+restores its keyboard, input focus and fixed capture timing settings.
+
+## Eight-room demo
+
+Open `Assets/Scenes/PhaseDemo1.unity`. Rebuild the eight scenes from
+`Assets/Phase/DemoRooms.json` through Pipeline with
+`unity command eval 'PhaseSandboxBuilder.CreateDemoRooms();'`.
+Each room uses `checkpointOnEntry`, resetting player color/dash/stamina and
+mechanism positions while preserving elapsed time and action/death counts.
+The original sandbox links retain their momentum/color carry behavior.
+See [room designs and live input verification](Demo.md).
+`BuildWeb.py` verifies these tests and builds only `PhaseDemo1` through
+`PhaseDemo8`, in that order. `DemoWebSmoke.cjs` replays keyboard routes through
+the eight Web scenes and checks settings, sizing, fullscreen and loading failure.
+The older `WebSmoke.cjs` remains a verifier for the original two-sandbox build.
+
 ## CI
 
-GitHub Actions runs the production `PhaseController.cs` and the same 22
-`ControllerTests` on .NET 10, including the 40 immutable reference traces.
+GitHub Actions runs the production controller and the same controller/demo
+route tests on .NET 10, including the 40 immutable reference traces.
+The Unity-only authoring-deserialization case runs through Pipeline.
 The test fixture parser uses Json.NET, already included by Unity Pipeline.
 The hosted runner requires no Unity license or repository secrets.
 
@@ -135,6 +181,39 @@ stays320 and height grows around the vertically centered180-pixel play area.
 Sky extends above; terrain touching the lower room edge extends below. Gaps
 and voids remain open. This is visual padding; collision stays unchanged.
 Both axes fill the viewport without stretching native pixels.
-Full-width terrain and room edges still expand above320pixels. Resizing preserves
+Terrain ending at the right room edge and room bounds expand above320pixels. Resizing preserves
 controller state and rebuilds the pixel surface/cache; resizing during a slide
 completes its handoff, including a height-only resize.
+
+## Phase masks and spikes
+
+`Block(..., phase: -1, phaseMask: 0)` keeps the existing legacy phase behavior.
+An explicit mask overrides phase metadata: R=1, B=2, G=4, Y=5, M=3, C=6, W=7.
+Masks3/5/6 use paired inlays showing their two active phases; mask7 keeps the
+current white permanent-solid palette. Only newly solid overlapping blocks defer
+materialization; previously solid mixed blocks do not become ghosts on a shared
+phase transition.
+
+`PhaseTerrain.phaseMask` uses0 for the legacy phase field or1–7 for an explicit
+mask. `PhaseSpike` uses `direction` (Up/Down/Left/Right), `length` in8px cells and
+`phaseMask`1–7. Its transform follows the existing native-X/negative-Unity-Y
+convention. The pure controller `Spike(x,y,length,direction,phaseMask)` takes its
+length in native pixels (positive multiples of8).
+
+Pass `spikes:` by name when constructing `PhaseController`; the gear branch also
+adds a `gears:` parameter and positional fifth arguments are not interchangeable.
+Spikes are hazards, never solid blocks. Their lethal strip is the drawn3px root:
+Up offsets Y by5; Left offsets X by5; Down/Right use the top/left3px. All four
+orientations kill on swept overlap in an active phase, including dash, phase
+changes and moving-platform carry. Inactive spikes keep dark teeth and a first
+mixed-color marker. Respawn restores the original player/platform state.
+`CheckSpikes(before)` is the hook for other mechanisms that displace the player;
+call it inside each movement step with a snapshot of the pre-move player bounds.
+The separate gear/room worktree owns integration of that hook in its gear carry.
+
+For an isolated connected-Editor probe, run `Verification/HazardScene.cs` with
+entry `HazardScene.Run`, then enter Play and run `Verification/HazardLiveInput.cs`
+with entry `HazardLiveInput.Run`. The first helper creates only
+`Assets/Temp/PhaseHazardProbe.unity`; it does not replace a product scene or add
+levels to Build Settings. The live script checks component collection, keyboard
+jump activation/death, respawn and phase-preserving dash.

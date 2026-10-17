@@ -6,9 +6,15 @@ namespace Phase
 {
     public sealed class PhasePixels : IDisposable
     {
-        public static readonly string[] Highlights = { "ff8f91", "79c9ff", "78d892", "e8e8e8", "e8e8e8" };
-        static readonly string[] Fills = { "833e54", "356487", "316d4a", "646464" };
-        static readonly string[] Edges = { "b35c70", "4d91b3", "56a271", "a0a0a0" };
+        public static readonly string[] Highlights = { "ff8f91", "79c9ff", "78d892", "e8e8e8", "f1dc81", "d7a3ed", "85e4dc" };
+        static readonly string[] Fills = { "833e54", "356487", "316d4a", "646464", "796d38", "684c7e", "386f78" };
+        static readonly string[] Edges = { "b35c70", "4d91b3", "56a271", "a0a0a0", "b3a35b", "a17cb9", "5ba6ac" };
+        static readonly int[] surfaceIndices = {3,0,1,5,2,4,6,3};
+        public static UnityEngine.Color SurfaceColor(int mask)
+        {
+            if (mask < 1 || mask > 7) throw new ArgumentOutOfRangeException(nameof(mask));
+            return Hex(Highlights[surfaceIndices[mask]]);
+        }
         const string Ink = "0b0f16";
         static readonly Dictionary<string, Color32> colors = new Dictionary<string, Color32>();
         Color32[] buffer = new Color32[320 * 180];
@@ -17,7 +23,7 @@ namespace Phase
         public int OriginY => (180 - Height) / 2;
         int BottomY => OriginY + Height;
         public int OriginX { get; private set; }
-        readonly Dictionary<(string, int, int, int, bool), Bitmap> sprites = new Dictionary<(string, int, int, int, bool), Bitmap>();
+        readonly Dictionary<(string, int, int, int, bool, int), Bitmap> sprites = new Dictionary<(string, int, int, int, bool, int), Bitmap>();
         readonly Dictionary<(int, int), int> cells = new Dictionary<(int, int), int>();
         readonly Dictionary<string, Color32[]> terrain = new Dictionary<string, Color32[]>();
         List<Block> terrainBlocks;
@@ -119,7 +125,7 @@ namespace Phase
             if (terrainBlocks != s.blocks || terrainBlockCount != s.blocks.Count)
             {
                 terrainBlocks = s.blocks; terrainBlockCount = s.blocks.Count; cells.Clear(); terrain.Clear();
-                foreach (var b in s.blocks) for (int y = (int)b.y; y < RenderBottom(b); y += 8) for (int x = (int)b.x; x < b.x + b.w; x += 8) cells[(x,y)] = b.phase;
+                foreach (var b in s.blocks) for (int y = (int)b.y; y < RenderBottom(b); y += 8) for (int x = (int)b.x; x < b.x + b.w; x += 8) cells[(x,y)] = b.Mask;
             }
             var blocked = new List<int>(s.blocked); blocked.Sort();
             string key = s.phase + "|" + string.Join(",", blocked);
@@ -127,13 +133,13 @@ namespace Phase
             Background();
             for (int i = 0; i < s.blocks.Count; i++)
             {
-                var b = s.blocks[i]; int color = b.phase < 0 ? 3 : b.phase;
+                var b = s.blocks[i]; int color = surfaceIndices[b.Mask];
                 Color32 cap = Color(Highlights[color]), rim = Color(Edges[color]), body = Color(Fills[color]);
                 Color32 lift = Mix(body, rim, .45), dim = Mix(body, Color("000000"), .14), seam = Mix(body, Color("000000"), .4), deep = Mix(body, Color("000000"), .58);
-                bool active = (b.phase < 0 || b.phase == s.phase) && !s.blocked.Contains(i), deferred = s.blocked.Contains(i);
+                bool active = b.ActiveInPhase(s.phase) && !s.blocked.Contains(i), deferred = s.blocked.Contains(i);
                 for (int Y = (int)b.y; Y < RenderBottom(b); Y += 8) for (int X = (int)b.x; X < b.x + b.w; X += 8)
                 {
-                    bool Neighbor(int dx, int dy) => cells.TryGetValue((X + dx * 8, Y + dy * 8), out var kind) && kind == b.phase;
+                    bool Neighbor(int dx, int dy) => cells.TryGetValue((X + dx * 8, Y + dy * 8), out var kind) && kind == b.Mask;
                     bool u = Neighbor(0,-1), d = Neighbor(0,1), l = Neighbor(-1,0), r = Neighbor(1,0);
                     if (!active)
                     {
@@ -147,6 +153,7 @@ namespace Phase
                             if (!l && dy) Rect(X, Y + n, 1, 1, rim, alpha);
                             if (!r && dy) Rect(X + 7, Y + n, 1, 1, rim, alpha);
                         }
+                        if (Mixed(b.Mask) && (((X-(int)b.x+Y-(int)b.y)>>3)&1)==0) Pips(X,Y,b.Mask,.6);
                         continue;
                     }
                     for (int y = 0; y < 8; y++)
@@ -170,10 +177,55 @@ namespace Phase
                     if (u && l && !Neighbor(-1,-1)) Rect(X, Y, 1, 1, seam);
                     if (u && r && !Neighbor(1,-1)) Rect(X + 7, Y, 1, 1, seam);
                     if (u && d && l && r && Hash(X,Y) % 11 == 0) { Rect(X + 2, Y + 1, 1, 1, seam); Rect(X + 3, Y + 2, 1, 1, seam); Rect(X + 3, Y + 4, 1, 1, deep); }
+                    if (Mixed(b.Mask) && (((X-(int)b.x+Y-(int)b.y)>>3)&1)==0) Pips(X,Y,b.Mask,1);
                 }
             }
             if (terrain.Count > 12) terrain.Clear();
             terrain[key] = (Color32[])buffer.Clone();
+        }
+        static bool Mixed(int mask) => mask == 3 || mask == 5 || mask == 6;
+        void Pips(int x, int y, int mask, double alpha)
+        {
+            int dot = 0;
+            for (int phase = 0; phase < 3; phase++) if ((mask & (1<<phase)) != 0)
+            { int at=x+2+dot++*3; Rect(at,y+6,2,1,Ink,alpha); Rect(at,y+4,2,2,Highlights[phase],alpha); }
+        }
+        static readonly string[] spikeRows = {".oo..oo.","oTMooTMo","oLMooLMo","oLMooLMo","LLMMLLMM","LMMDLMMD","MMDDMMDD","DDDDDDDD"};
+        readonly Dictionary<(int,SpikeDirection,bool),Bitmap> spikeTiles = new Dictionary<(int,SpikeDirection,bool),Bitmap>();
+        void Spikes(PhaseController s)
+        {
+            foreach (var spike in s.spikes)
+            {
+                bool active=spike.ActiveInPhase(s.phase);var key=(spike.Mask,spike.direction,active);
+                if (!spikeTiles.TryGetValue(key,out var tile))
+                {
+                    int color=surfaceIndices[spike.Mask];var cap=Color(Highlights[color]);var rim=Color(Edges[color]);var body=Color(Fills[color]);
+                    var palette=new Dictionary<char,Color32>{['T']=active?Mix(cap,Color("ffffff"),.6):Mix(rim,Color("101a26"),.45),['L']=active?cap:Mix(body,Color("101a26"),.4),['M']=active?rim:Mix(body,Color("101a26"),.6),['D']=active?body:Mix(body,Color("101a26"),.6)};
+                    if(active)palette['o']=Color(Ink);
+                    var rows=new char[8][];for(int v=0;v<8;v++)rows[v]=new char[8];
+                    for(int v=0;v<8;v++)for(int u=0;u<8;u++)
+                    {
+                        int x=spike.direction==SpikeDirection.Left?v:spike.direction==SpikeDirection.Right?7-v:u;
+                        int y=spike.direction==SpikeDirection.Down?7-v:spike.direction==SpikeDirection.Left||spike.direction==SpikeDirection.Right?u:v;
+                        rows[y][x]=spikeRows[v][u];
+                    }
+                    var text=new string[8];for(int v=0;v<8;v++)text[v]=new string(rows[v]);
+                    spikeTiles[key]=tile=Paint(text,palette);
+                }
+                for(int y=(int)spike.y;y<spike.y+spike.h;y+=8)for(int x=(int)spike.x;x<spike.x+spike.w;x+=8)
+                {
+                    Blit(tile,x-1,y-1);
+                    if(Mixed(spike.Mask)&&(active||(x==spike.x&&y==spike.y)))
+                    {
+                        int dot=0;for(int phase=0;phase<3;phase++)if(spike.ActiveInPhase(phase))
+                        {
+                            int at=2+dot++*3;
+                            if(spike.direction==SpikeDirection.Up||spike.direction==SpikeDirection.Down)Rect(x+at,y+(spike.direction==SpikeDirection.Up?6:1),2,1,Highlights[phase],active?1:.6);
+                            else Rect(x+(spike.direction==SpikeDirection.Left?6:1),y+at,1,2,Highlights[phase],active?1:.6);
+                        }
+                    }
+                }
+            }
         }
         sealed class Bitmap { public int width, height; public Color32[] pixels; }
         static Bitmap Paint(string[] rows, Dictionary<char,Color32> palette, bool flip = false, bool outline = false)
@@ -212,6 +264,55 @@ namespace Phase
             Rect(m.x - 1, m.y - 1, m.w + 2, m.h + 2, Ink);
             for (double y = m.y; y < m.y + m.h; y += 8) for (double x = m.x; x < m.x + m.w; x += 8) Blit(moverTile, Round(x) - 1, Round(y) - 1);
         }
+        void GearWheel(int cx, int cy, double angle)
+        {
+            for (int y = -9; y <= 9; y++) for (int x = -9; x <= 9; x++)
+            {
+                double radius = Math.Sqrt(x * x + y * y), theta = Math.Atan2(y, x) - angle;
+                double edge = Math.Cos(theta * 8) > .35 ? 8.5 : 6.5;
+                if (radius > edge) continue;
+                string color = radius > edge - 1 ? "646464" : "a0a0a0";
+                Put(cx + x, cy + y, Color(color));
+            }
+            Rect(cx - 1, cy - 1, 2, 2, "e8e8e8");
+            Rect(cx + Round(4 * Math.Cos(angle)) - 1, cy + Round(4 * Math.Sin(angle)) - 1, 2, 2, "646464");
+        }
+        void Gear(ClimbGear gear)
+        {
+            var wall = gear.wall; var platform = gear.platform;
+            int rackX = Round(wall.x + wall.w), rackY = Round(platform.y + platform.h) - 3, cy = rackY + 9;
+            Rect(wall.x + 2, gear.top - 4, wall.w - 4, gear.bottom + wall.h - gear.top + 8, "444444");
+            foreach (double y in new[] { gear.top - 4, gear.bottom + wall.h + 2 })
+                Rect(wall.x - 2, y, wall.w + 4, 2, Highlights[3]);
+            double left = Math.Min(gear.startX, gear.endX), right = Math.Max(gear.startX, gear.endX) + platform.w;
+            Rect(left, platform.y + 3, right - left, 1, "444444");
+            Rect(left - 1, platform.y + 1, 1, platform.h - 2, "646464");
+            Rect(right, platform.y + 1, 1, platform.h - 2, "646464");
+            // Keep one full tooth beyond the fixed pinion at the top stop.
+            int rackHeight = Round(Math.Max(wall.h, cy + 14 + 9 + 6 - gear.top));
+            int rackBottom = Math.Min(Round(wall.y) + rackHeight, Round(gear.bottom + wall.h));
+            Rect(rackX, wall.y, 2, rackBottom - Round(wall.y), "a0a0a0");
+            for (int y = Round(wall.y); y < rackBottom; y += 6) Rect(rackX + 2, y, 3, Math.Min(3, rackBottom - y), "a0a0a0");
+            Rect(rackX - 1, gear.bottom + wall.h, 7, 4, "646464");
+            Rect(rackX - 1, gear.bottom + wall.h + 2, 7, 2, Highlights[3]);
+            double angle = gear.Lift * Math.PI / 24, mesh = 2 * Math.Atan2(-7,14) + Math.PI / 8;
+            GearWheel(rackX + 11, cy + 14, angle);
+            GearWheel(rackX + 25, cy + 7, -angle + mesh);
+            foreach (var block in new[] { wall, platform })
+            {
+                Rect(block.x - 1, block.y - 1, block.w + 2, block.h + 2, Ink);
+                Rect(block.x, block.y, block.w, block.h, Fills[3]);
+                Rect(block.x, block.y, block.w, 2, Highlights[3]);
+                Rect(block.x, block.y + 2, 1, block.h - 2, Edges[3]);
+                for (double y = block.y + 4; y < block.y + block.h - 2; y += 8)
+                    for (double x = block.x + 3; x < block.x + block.w - 2; x += 8) Rect(x, y, 2, 2, Edges[3]);
+            }
+            Rect(platform.x, rackY, platform.w, 1, "a0a0a0");
+            Rect(platform.x, rackY + 1, platform.w, 2, Ink);
+            for (int x = Round(platform.x) + 3; x < platform.x + platform.w; x += 6)
+                Rect(x, rackY + 1, Math.Min(3, platform.x + platform.w - x), 2, "a0a0a0");
+            GearWheel(rackX + 39, cy, angle);
+        }
         // Original Wick frames; the hood now shares the scarf's dash-charge colors.
         static readonly Dictionary<string,string[]> Frames = new Dictionary<string,string[]> {
             ["idle"] = new[] { "..cc......","..dcc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcffefef.",".dccffff..","..kkkkk...",".dccccccc.",".dcccccdc.",".ssssssss.","..bb..bb..","..bb..bb.." },
@@ -228,13 +329,14 @@ namespace Phase
             ["duck"] = new[] { "..........","..cc......",".dcccccc..",".dccfffff.",".dcffefef.","..kkkkkk..","sdcccccccs",".bbssssbb." },
         };
         static readonly string[][] Scarf = { new[] { "b96532","763d24" }, new[] { "ffb24d","d5732b" } };
-        Bitmap Sprite(string pose, int facing, int phase, int dash, bool silhouette = false)
+        Bitmap Sprite(string pose, int facing, int phase, int dash, bool silhouette = false, int tired = 0)
         {
-            var key = (pose, facing, phase, dash, silhouette);
+            var key = (pose, facing, phase, dash, silhouette, tired);
             if (sprites.TryGetValue(key, out var image)) return image;
             var palette = new Dictionary<char,Color32> { ['c']=Color("eadfc5"),['d']=Color("b3a386"),['s']=Color("7d6e5c"),['f']=Color("1a1f2c"),['b']=Color("453c59"),['B']=Color("2c263b"),['e']=Color(Highlights[phase]),['k']=Color(Scarf[dash][0]),['h']=Color(Scarf[dash][0]),['H']=Color(Scarf[dash][1]) };
             var rows = (string[])Frames[pose].Clone();
             for (int y = 0; y < rows.Length && !rows[y].Contains("k"); y++) rows[y] = rows[y].Replace('c','h').Replace('d','H');
+            foreach (char k in "cds") palette[k] = Mix(palette[k], Color("ff5b5e"), tired / 8.0);
             if (silhouette) foreach (char k in "cdsfbBekhH") palette[k] = Color(Highlights[phase]);
             return sprites[key] = Paint(rows, palette, facing < 0, !silhouette);
         }
@@ -250,7 +352,9 @@ namespace Phase
         void DrawPlayer(Player p, double t, int phase)
         {
             string name = Pose(p,t); var rows = Frames[name];
-            int x = Round(p.x), feet = Round(p.y + p.h) + (p.climbing && p.stamina <= 20 && (int)Math.Floor(t * 8) % 2 != 0 ? 1 : 0);
+            double fatigue = p.grounded ? 0 : Math.Max(0, Math.Min(1, (55 - p.stamina - (p.wallBoost > 0 ? 27.5 : 0)) / 35));
+            int tired = Round(fatigue * 8 * (.85 + .15 * Math.Pow(Math.Sin(t * Math.PI * 2), 2)));
+            int x = Round(p.x), feet = Round(p.y + p.h) + (fatigue > 0 && (int)Math.Floor(t * (3 + 5 * fatigue)) % 2 != 0 ? 1 : 0);
             int ky = Array.FindIndex(rows, r => r.Contains("k")), kx = rows[ky].IndexOf('k'), facing = p.facing, dash = p.dash != 0 ? 1 : 0, length = dash != 0 ? 5 : 3;
             int ax = facing > 0 ? x + kx - 1 : x + 8 - kx, ay = feet - rows.Length + ky;
             bool still = p.climbing || name == "duck" || (p.grounded && Math.Abs(p.vx) <= 7);
@@ -264,28 +368,13 @@ namespace Phase
             foreach (var q in segments) Rect(q.x, q.y - 1, 1, q.h + 2, Ink);
             var end = segments[length - 1]; Rect(end.x - facing, end.y, 1, end.h, Ink);
             for (int i = 0; i < length; i++) { var q = segments[i]; Rect(q.x, q.y, 1, q.h, Scarf[dash][i == length - 1 ? 1 : 0]); }
-            Blit(Sprite(name, facing, phase, dash), x - 2, feet - rows.Length - 1);
-            if (!p.grounded && (p.climbing || p.stamina <= 20)) DrawStamina(p, t);
-        }
-        void DrawStamina(Player p, double t)
-        {
-            double stamina = Math.Max(0, Math.Min(110, p.stamina));
-            var color = stamina >= 55
-                ? Mix(Color("ffb24d"), Color("78d892"), (stamina - 55) / 55)
-                : Mix(Color("ff5b5e"), Color("ffb24d"), Math.Max(0, (stamina - 20) / 35));
-            if (stamina <= 20 && (int)Math.Floor(t * 4) % 2 != 0) color = Color("ff8f91");
-            int x = Round(p.x) + (p.facing > 0 ? -8 : 12);
-            if (x < OriginX || x + 4 > OriginX + Width) x = Round(p.x) + (p.facing > 0 ? 12 : -8);
-            x = Math.Max(OriginX, Math.Min(OriginX + Width - 4, x));
-            int y = Math.Max(OriginY, Math.Min(BottomY - 12, Round(p.y) - 1));
-            int fill = (int)Math.Ceiling(stamina / 110 * 10);
-            Rect(x, y, 4, 12, stamina <= 20 ? color : Color("697d8e"));
-            Rect(x + 1, y + 1, 2, 10, "101a26");
-            Rect(x + 1, y + 11 - fill, 2, fill, color);
+            Blit(Sprite(name, facing, phase, dash, false, tired), x - 2, feet - rows.Length - 1);
         }
         public void Draw(PhaseController s, bool playerVisible = true)
         {
             Terrain(s);
+            foreach (var gear in s.gears) Gear(gear);
+            Spikes(s);
             if (s.mover != null) Mover(s.mover);
             foreach (var t in s.trails) Blit(Sprite("dash", s.player.facing, t.phase, 0, true), Round(t.x) - 2, Round(t.y) - 3, t.life * 2);
             if (playerVisible && s.respawn <= 0) DrawPlayer(s.player, s.time, s.phase);

@@ -1,7 +1,7 @@
 # Web preview
 
 [Play online](https://phase-gamejam1-20261016.swear01.chatgpt.site). This is a
-manually published two-room preview; automatic CI/Pages still needs the owner
+manually published eight-room demo; automatic CI/Pages still needs the owner
 setup below.
 
 Unity **6000.4.7f1**, Web Build Support and Unity CLI are required. Open the GUI
@@ -13,25 +13,30 @@ cd Verification
 npm ci
 npx --no-install playwright install chromium --no-shell
 cd ..
-node Verification/WebSmoke.cjs Builds/Web
+node Verification/DemoWebSmoke.cjs Builds/Web
 python3 -m http.server 8765 --bind 127.0.0.1 --directory Builds/Web
 ```
 
 Open <http://127.0.0.1:8765/>. Click the canvas for keyboard focus: arrows/WASD
-move, Space/Z jumps, X dashes, and C/Shift grabs. Cross the first room’s right
-edge to continue, or the second room’s left edge to return. Room changes use a
+move, Space/Z jumps, X dashes, and C/Shift grabs. Cross each room’s right
+edge to continue through the eight rooms. Each arrival resets phase, dash, stamina
+and mechanisms while preserving run statistics. Room changes use a
 0.18-second horizontal pixel slide; input/physics pause until it finishes.
 The Unity splash screen and logo are disabled in PlayerSettings.
 The build verifies both flags and records them in `TestResults/Web/splash.json`;
 browser checks preserve initial canvas frames before the first player frame.
 The hood and scarf are amber with one dash available and dark orange after use;
 landing refills them. Eye colors continue to indicate phase.
-Grabbing a wall shows a 4x12 native-pixel stamina gauge beside the player, away
-from the wall. Its fill stays at the bottom as it shrinks, changing from green (110)
-through amber (55) to red (20). At 20 or below it pulses twice per second; an empty
-red outline remains while exhausted in the air. Landing refills stamina and hides
-the gauge. Normal flight has no gauge; the hood/eyes retain their separate meanings.
-This gauge follows the requested gradual stamina display; [Celeste’s original player source](https://github.com/NoelFB/Celeste/blob/master/Source/Player/Player.cs) uses a red sprite flash below its tired threshold.
+Below55 stamina, the airborne cloak body gradually reddens and shakes by one
+native pixel with increasing frequency; at20 it reaches its strongest red and
+gently pulses. Landing restores the original art. The hood/scarf still indicate
+dash charge and eyes indicate phase. There is no detached stamina gauge.
+Holding grab against a wall after exhaustion caps downward speed at30native
+pixels/second; releasing, moving away or pressing down restores ordinary falling.
+[Celeste’s original player source](https://github.com/NoelFB/Celeste/blob/1b0ce45c75e05649ae91b44a8bb6b196684e4352/Source/Player/Player.cs)
+flashes its sprite below20 and releases climbing at0; its normal wall slide ramps
+from20 to160 over1.2seconds. The progressive tint and sustained exhausted-grab
+cap are intentional PHASE tuning for this user request, not exact Celeste parity.
 Touch controls are not provided.
 The canvas fills the entire viewport and always shows at least the original
 320x180 native-pixel play area. Wide views extend horizontally; tall views keep
@@ -74,13 +79,14 @@ the warning.
 ## Enable automatic builds and online play
 
 `Web build and preview` runs only on `main`, after push or manual dispatch.
-It uses Unity CLI + live Pipeline for 28 Editor tests, three Play Mode tests and
-the Web build, then verifies browser rendering, keyboard input, both scene-edge
-transitions, minimum view/tall-sky extension/wide-floor travel, resizing, visible
-load failures, and absence of browser errors/warnings. Only a passing build is
+It uses Unity CLI + live Pipeline for 55 Editor tests, three Play Mode tests and
+the Web build, then verifies browser rendering, keyboard routes through all eight rooms and seven scene-edge transitions,
+adaptive viewport sizing, keyboard settings, fullscreen, visible load failures,
+and absence of browser errors/warnings. Only a passing build is
 uploaded and deployed. `web-verification` contains the reports/captures.
 
-The repository owner must complete this setup first:
+The repository owner must complete runner/Pages setup first. Write access cannot
+register a runner for this personal repository:
 
 1. Register a **dedicated macOS ARM64 runner** under Settings → Actions → Runners,
    with the custom label `gamejam1-unity`. Run it in a logged-in desktop session
@@ -93,7 +99,9 @@ The repository owner must complete this setup first:
    `Web build and preview` on `main`. The successful deployment reports the
    playable URL in its `github-pages` environment.
 
-Until this setup is complete the Web job is explicitly skipped. The existing
+Until this setup is complete the Web build/deploy jobs are explicitly skipped.
+The hosted setup job fails with this blocker in the workflow summary, so a
+missing setup cannot produce a green Web workflow. The existing
 GitHub-hosted controller/compatibility checks still run on pull requests and
 `main`. A local build passing does not prove that the runner or Pages is enabled.
 

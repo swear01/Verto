@@ -8,9 +8,14 @@ The renderer SHA-256 is `b7178e0f6c0a613a10a92d276a2b6f9c37db75420a0ec3426545042
 `Verification/ArtReference.json` and `.png` preserve its independent reference frames.
 The hood now uses the scarf dash-charge palette at the user's request. Pixel tests
 explicitly remap the hood, spent scarf and permanent geometry palettes, and
-account for the added climbing stamina gauge. Permanent stone, moving platforms,
+tint low-stamina body pixels. The user-requested character warning replaces the
+previous detached stamina gauge; its progressive tint/shake and sustained30px/s
+exhausted-grab slide are PHASE-specific tuning. Permanent stone, moving platforms,
 routes and stops now use white and gray at the user's request; the immutable
 reference images and all remaining pixels stay checked.
+The phase-mask mapping, mixed-phase inlays, four-direction spike glyphs and swept
+3-pixel root-strip collision are also ported from the frozen local HTML v10.
+That HTML file remains unchanged; Unity adds the authoring components separately.
 No commercial game art or music is included.
 
 Movement behavior was informed by [Celeste Player.cs](https://github.com/NoelFB/Celeste/blob/1b0ce45c75e05649ae91b44a8bb6b196684e4352/Source/Player/Player.cs).
