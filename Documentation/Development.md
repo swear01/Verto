@@ -54,7 +54,7 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 47 controller cases, 9 laser cases, 17 demo-route/authoring cases,
-16 pixel cases, 3 Grid authoring cases and 4 custom-map validation cases in Edit
+16 pixel cases, 6 Grid authoring cases and 4 custom-map validation cases in Edit
 Mode. The five Play Mode cases cover bindings, pause/release gating, room
 persistence, multiple authored platforms and imported maps. Platform checks cover
 vertical return travel, independent routes/reset, rider and climb-hop attachment,
@@ -126,7 +126,8 @@ authoring; run it through Pipeline with the other Editor tests.
 
 The controller uses native pixels, Y down, a 60 Hz accumulator, 8×11 collision
 (8×6 crouched), and X then Y pixel stepping. Terrain transforms use Unity X/Y as
-pixel coordinates with Y negated; platform nodes and spawn use screen coordinates.
+pixel coordinates with Y negated; spawn uses screen coordinates and platform
+nodes use native X/Y-down offsets from their parent.
 `PhaseSandbox.rightScene` links to `PhaseRoom2`; its `leftScene` returns to the
 sandbox. Crossing an assigned horizontal edge loads that scene asynchronously,
 places the player at the opposite edge at the same height, and carries color,
@@ -145,15 +146,16 @@ in [Web preview](Web.md).
 
 ## Dash platforms
 
-Add or duplicate `PhaseMovingPlatform` objects under the scene's PHASE root;
-each active component creates its own platform. Keep Transform rotation at zero
+Add or duplicate the dash platform Prefabs under the scene's PHASE root;
+each active `PhaseMovingPlatform` component creates its own platform. Keep Transform rotation at zero
 and scale at one. `Size` controls the body independently of its route: a horizontal
 40×8 platform stays horizontal while moving up or down.
 
-Set each platform's `Nodes` in native pixel coordinates, with Y increasing down.
-For example, `(80,144)` → `(80,80)` moves upward at the same X. Nodes determine the
-start position; moving only the Transform does not change the authored route.
-Use the native 8px Grid for sizes and stops.
+Set each platform's `Nodes` relative to its parent, with native Y increasing down.
+For example, a Prefab root at Unity `(80,-144)` with nodes `(0,0)` → `(0,-64)`
+moves upward at the same X. Move the Prefab root to move the whole route; the child
+Transform follows the current platform position. Use the native8px Grid for sizes
+and stops.
 
 Every valid player dash activates all platforms, each with its own route and
 timing. With `Returns` enabled, use two distinct horizontal or vertical stops:
@@ -329,6 +331,30 @@ Run `LaserTests` through Pipeline `run_tests --mode editor`, then `PixelTests`.
 `Verification/LaserLiveInput.cs`, entry `LaserLiveInput.Run`, verifies the
 authored white gear shield and a colored beam's keyboard-triggered activation
 and respawn. It restores its temporary input/settings and controller content.
+
+## Mechanism Prefabs
+
+Paint static terrain with `PHASE/Paint Grid terrain`. Place reusable mechanisms
+from `Assets/Phase/Prefabs/` under the scene's `PHASE` Grid, or use `PHASE/Add`:
+`DashPlatformHorizontal`, `DashPlatformVertical`, `ClimbGear`, `Laser`, `Spikes`.
+Both dash platform prefabs keep a horizontal body; only their travel differs.
+The menu places new instances at native (80,120), with Undo support.
+
+Move or duplicate the **Prefab root** to move the complete mechanism and route.
+Keep rotation0/scale1 and use Unity's8px move snapping. Select its `Platform` or
+`Mechanism` child to edit sizes and routes in the Inspector. Platform `nodes`
+are native X/Y-down offsets from their parent Prefab root, not world positions.
+For example, `(0,0)`→`(0,-64)` moves upward64pixels from the placed root.
+Gear `wallTop`, `platformStart` and `platformEndX` use that same parent-relative
+coordinate system. Laser and spike prefabs use their own Transform position.
+Native collider shapes and all route endpoints still snap through the Unity Grid.
+
+Each instance can override its route, size, direction and phase mask independently.
+Apply overrides only when the change should affect the shared Prefab.
+The demo builders instantiate these assets and preserve the existing room geometry;
+hand-authored scenes are never rebuilt. Existing direct children of the origin
+`PHASE` root retain their coordinates. The Web map editor still edits static
+terrain/spikes; these Prefabs are Unity authoring tools.
 
 ## Hand-authored scenes
 

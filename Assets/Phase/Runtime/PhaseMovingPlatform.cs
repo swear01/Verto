@@ -14,15 +14,20 @@ namespace Phase
         {
             if (size.x <= 0 || size.y <= 0 || nodes == null || nodes.Length < 2 || start < 0 || start >= nodes.Length)
                 throw new InvalidOperationException("Platform requires positive size, two nodes and a valid start.");
-            var shape = PhaseGrid.CreateBox(this, new Vector3(nodes[start].x, -nodes[start].y), size);
-            return new MovingPlatform(nodes.Select(n => { var p = PhaseGrid.Snap(this, new Vector3(n.x, -n.y)); return new[] { (double)p.x, -p.y }; }).ToArray(), shape.w, shape.h, returns, start);
+            var shape = PhaseGrid.CreateBox(this, NodePosition(nodes[start]), size);
+            return new MovingPlatform(nodes.Select(n => { var p = PhaseGrid.Snap(this, NodePosition(n)); return new[] { (double)p.x, -p.y }; }).ToArray(), shape.w, shape.h, returns, start);
+        }
+        Vector3 NodePosition(Vector2Int node)
+        {
+            var point = new Vector3(node.x, -node.y);
+            return transform.parent == null ? point : transform.parent.TransformPoint(point);
         }
         void OnDrawGizmos()
         {
             if (nodes == null) return;
             Gizmos.color = Color.white;
-            foreach (var n in nodes) Gizmos.DrawWireCube(new Vector3(n.x + size.x / 2f, -n.y - size.y / 2f), new Vector3(size.x, size.y, 0));
-            for (int i = 1; i < nodes.Length; i++) Gizmos.DrawLine(new Vector3(nodes[i - 1].x, -nodes[i - 1].y), new Vector3(nodes[i].x, -nodes[i].y));
+            foreach (var n in nodes) Gizmos.DrawWireCube(NodePosition(n) + new Vector3(size.x / 2f, -size.y / 2f), new Vector3(size.x, size.y, 0));
+            for (int i = 1; i < nodes.Length; i++) Gizmos.DrawLine(NodePosition(nodes[i - 1]), NodePosition(nodes[i]));
         }
     }
 }
