@@ -19,6 +19,7 @@ public class DemoRoomTests
             Assert.That(actual.gears.Length,Is.EqualTo(expected.gears.Length));
             Assert.That(actual.mover == null,Is.EqualTo(expected.mover == null));
             Assert.That(actual.spikes.Count,Is.EqualTo(expected.spikes.Count));
+            CollectionAssert.AreEqual(expected.lasers.Select(l => (l.x,l.y,l.direction,l.Mask)), actual.lasers.Select(l => (l.x,l.y,l.direction,l.Mask)));
             CollectionAssert.AreEqual(expected.blocks.Select(b => b.Mask),actual.blocks.Select(b => b.Mask));
         }
     }
@@ -83,6 +84,8 @@ public class DemoRoomTests
         }
         var invalid = rooms[0].ToObject<PhaseDemoRoom>(); invalid.blocks[0].x = 1;
         Assert.Throws<System.InvalidOperationException>(() => invalid.CreateController());
+        var invalidLaser = new PhaseDemoRoom { blocks=System.Array.Empty<Block>(), lasers=new[] { new DemoLaser { x=1, y=8, direction=LaserDirection.Up, phaseMask=7 } } };
+        Assert.Throws<System.InvalidOperationException>(() => invalidLaser.CreateController());
     }
     static void Replay(PhaseController s, JToken steps)
     {

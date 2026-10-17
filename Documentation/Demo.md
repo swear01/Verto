@@ -19,7 +19,7 @@ tutorial messages, menus or added controls.
 
 The first three rooms isolate the core causes; later rooms combine color,
 mechanism position and landing decisions. Single-color and mixed-color surfaces
-use the existing phase masks. Spikes have the same mask meanings. A mask never
+use the existing phase masks. Spikes and continuous lasers have the same mask meanings. A mask never
 adds a new player action.
 
 `Assets/Phase/DemoRooms.json` is the authored geometry and reference-input source.
@@ -84,3 +84,5 @@ playtesting. The Unity scenes do not by themselves update the hosted Web preview
 actual browser build; pass the published URL instead of the build directory
 to check the public deployment. Runner/Pages prerequisites are in
 [Web preview](Web.md#enable-automatic-builds-and-online-play).
+
+Continuous lasers use the same phase masks and are truncated by current solid terrain and moving cover. The eight rooms retain cyan, red, white, green, yellow, cyan, magenta and blue emitters respectively; the third room’s moved bridge shields the upward white beam.

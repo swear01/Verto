@@ -26,6 +26,9 @@ public class GridGeometryTests
             Assert.That((block.x, block.y, block.w, block.h, block.Mask), Is.EqualTo((24d, 40d, 24d, 8d, 3)));
             Assert.That(shape.enabled, Is.True);
             Assert.That(shape.bounds.min.x, Is.EqualTo(block.x)); Assert.That(-shape.bounds.max.y, Is.EqualTo(block.y));
+            go.transform.position = new Vector3(25, -39);
+            var emitter = go.AddComponent<PhaseLaser>(); var laser = emitter.CreateLaser();
+            Assert.That((laser.x, laser.y), Is.EqualTo((24d, 40d)), "emitters share the terrain Grid");
             root.transform.localScale = new Vector3(2, 1, 1);
             Assert.Throws<System.InvalidOperationException>(() => terrain.CreateBlock());
         }

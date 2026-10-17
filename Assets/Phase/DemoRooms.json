@@ -90,7 +90,15 @@
         "dashes": 0,
         "lift": 0
       },
-      "hasGear": false
+      "hasGear": false,
+      "lasers": [
+        {
+          "x": 232,
+          "y": 88,
+          "direction": 1,
+          "phaseMask": 6
+        }
+      ]
     },
     {
       "name": "低頂渡船",
@@ -168,7 +176,15 @@
         "dashes": 1,
         "lift": 0
       },
-      "hasGear": false
+      "hasGear": false,
+      "lasers": [
+        {
+          "x": 176,
+          "y": 128,
+          "direction": 1,
+          "phaseMask": 1
+        }
+      ]
     },
     {
       "name": "齒輪抬門",
@@ -369,6 +385,14 @@
             "x": 1
           }
         ]
+      ],
+      "lasers": [
+        {
+          "x": 144,
+          "y": 168,
+          "direction": 0,
+          "phaseMask": 7
+        }
       ]
     },
     {
@@ -503,7 +527,15 @@
         "dashes": 0,
         "lift": 0
       },
-      "hasGear": false
+      "hasGear": false,
+      "lasers": [
+        {
+          "x": 176,
+          "y": 168,
+          "direction": 0,
+          "phaseMask": 4
+        }
+      ]
     },
     {
       "name": "保色穿刺",
@@ -602,7 +634,15 @@
         "dashes": 1,
         "lift": 0
       },
-      "hasGear": false
+      "hasGear": false,
+      "lasers": [
+        {
+          "x": 136,
+          "y": 168,
+          "direction": 0,
+          "phaseMask": 5
+        }
+      ]
     },
     {
       "name": "三站轉乘",
@@ -796,7 +836,15 @@
           "x": 1
         }
       ],
-      "hasGear": false
+      "hasGear": false,
+      "lasers": [
+        {
+          "x": 224,
+          "y": 168,
+          "direction": 0,
+          "phaseMask": 6
+        }
+      ]
     },
     {
       "name": "相位卡齒",
@@ -1028,6 +1076,14 @@
             "x": 1
           }
         ]
+      ],
+      "lasers": [
+        {
+          "x": 184,
+          "y": 168,
+          "direction": 0,
+          "phaseMask": 3
+        }
       ]
     },
     {
@@ -1242,6 +1298,14 @@
             "x": 1
           }
         ]
+      ],
+      "lasers": [
+        {
+          "x": 264,
+          "y": 168,
+          "direction": 0,
+          "phaseMask": 2
+        }
       ]
     }
   ]
