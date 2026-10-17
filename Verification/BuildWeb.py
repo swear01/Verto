@@ -70,7 +70,7 @@ def main():
     command("run_script", "--", "--file", "Verification/BackgroundEditor.cs", "--entry", "BackgroundEditor.Run")
     for mode, test_filter, expected in [
         ("editor", "ControllerTests", 47), ("editor", "LaserTests", 9), ("editor", "DemoRoomTests", 17),
-        ("editor", "PixelTests", 16), ("editor", "GridGeometryTests", 3),
+        ("editor", "PixelTests", 16), ("editor", "GridGeometryTests", 6),
         ("editor", "CustomMapTests", 4), ("playmode", "SandboxTests", 4),
         ("playmode", "MapBridgeTests", 1),
     ]:

@@ -1,11 +1,125 @@
 using NUnit.Framework;
+using System.Linq;
 using Phase;
+using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class GridGeometryTests
 {
+    [Test]
+    public void SavedDemoPrefabInstancesPreserveAllEightRoomMechanisms()
+    {
+        var data = JsonUtility.FromJson<PhaseDemoRooms>(System.IO.File.ReadAllText("Assets/Phase/DemoRooms.json"));
+        for (int i = 0; i < data.rooms.Length; i++)
+        {
+            var scene = EditorSceneManager.OpenScene("Assets/Scenes/PhaseDemo" + (i + 1) + ".unity", OpenSceneMode.Additive);
+            try
+            {
+                var sandbox = scene.GetRootGameObjects().SelectMany(o => o.GetComponentsInChildren<PhaseSandbox>()).Single();
+                var expected = data.rooms[i].CreateController();
+                var movers = sandbox.GetComponentsInChildren<PhaseMovingPlatform>();
+                Assert.That(movers.Length, Is.EqualTo(expected.movers.Length));
+                for (int j = 0; j < movers.Length; j++)
+                {
+                    Assert.That(PrefabUtility.IsPartOfPrefabInstance(movers[j]), Is.True);
+                    var model = movers[j].CreatePlatform(); var source = expected.movers[j];
+                    Assert.That(model.nodes, Is.EqualTo(source.nodes));
+                    Assert.That((model.w, model.h, model.returns), Is.EqualTo((source.w, source.h, source.returns)));
+                }
+                var gears = sandbox.GetComponentsInChildren<PhaseClimbGear>();
+                Assert.That(gears.Length, Is.EqualTo(expected.gears.Length));
+                for (int j = 0; j < gears.Length; j++)
+                {
+                    Assert.That(PrefabUtility.IsPartOfPrefabInstance(gears[j]), Is.True);
+                    var model = gears[j].CreateGear(); var source = expected.gears[j];
+                    Assert.That((model.wall.x, model.wall.y, model.wall.w, model.wall.h, model.top),
+                        Is.EqualTo((source.wall.x, source.wall.y, source.wall.w, source.wall.h, source.top)));
+                    Assert.That((model.platform.x, model.platform.y, model.platform.w, model.platform.h, model.endX),
+                        Is.EqualTo((source.platform.x, source.platform.y, source.platform.w, source.platform.h, source.endX)));
+                }
+                var lasers = sandbox.GetComponentsInChildren<PhaseLaser>();
+                Assert.That(lasers.All(PrefabUtility.IsPartOfPrefabInstance), Is.True);
+                Assert.That(lasers.Select(l => l.CreateLaser()).Select(l => (l.x, l.y, l.direction, l.Mask)),
+                    Is.EqualTo(expected.lasers.Select(l => (l.x, l.y, l.direction, l.Mask))));
+                var spikes = sandbox.GetComponentsInChildren<PhaseSpike>();
+                Assert.That(spikes.All(PrefabUtility.IsPartOfPrefabInstance), Is.True);
+                Assert.That(spikes.Select(s => s.CreateSpike()).Select(s => (s.x, s.y, s.w, s.h, s.direction, s.Mask)),
+                    Is.EqualTo(expected.spikes.Select(s => (s.x, s.y, s.w, s.h, s.direction, s.Mask))));
+            }
+            finally { EditorSceneManager.CloseScene(scene, true); }
+        }
+    }
+
+    [Test]
+    public void DuplicatedPlatformPrefabsTranslateTheirOwnRoutesOnTheGrid()
+    {
+        var scene = EditorSceneManager.NewPreviewScene();
+        try
+        {
+            var root = new GameObject("Prefab Grid probe"); SceneManager.MoveGameObjectToScene(root, scene);
+            root.AddComponent<Grid>().cellSize = new Vector3(8, 8, 1);
+            var asset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Phase/Prefabs/DashPlatformVertical.prefab");
+            Assert.That(asset, Is.Not.Null);
+            var first = (GameObject)PrefabUtility.InstantiatePrefab(asset, root.transform);
+            first.transform.position = new Vector3(80, -144);
+            var second = (GameObject)PrefabUtility.InstantiatePrefab(asset, root.transform);
+            second.transform.position = new Vector3(217, -111);
+            var a = first.GetComponentInChildren<PhaseMovingPlatform>();
+            var b = second.GetComponentInChildren<PhaseMovingPlatform>();
+            b.nodes[1] = new Vector2Int(56, 0);
+            var m = a.CreatePlatform(); var n = b.CreatePlatform();
+            Assert.That(m.nodes[0], Is.EqualTo(new[] { 80d, 144d }));
+            Assert.That(m.nodes[1], Is.EqualTo(new[] { 80d, 80d }));
+            Assert.That(n.nodes[0], Is.EqualTo(new[] { 216d, 112d }));
+            Assert.That(n.nodes[1], Is.EqualTo(new[] { 272d, 112d }));
+            first.transform.position += new Vector3(16, 8);
+            m = a.CreatePlatform();
+            Assert.That(m.nodes[0], Is.EqualTo(new[] { 96d, 136d }));
+            Assert.That(m.nodes[1], Is.EqualTo(new[] { 96d, 72d }));
+            Assert.That(b.CreatePlatform().nodes, Is.EqualTo(n.nodes));
+            Assert.That(a.GetComponent<BoxCollider2D>().size, Is.EqualTo(new Vector2(40, 8)));
+            Assert.That(PrefabUtility.GetCorrespondingObjectFromSource(first), Is.EqualTo(asset));
+            Assert.That(PrefabUtility.GetCorrespondingObjectFromSource(second), Is.EqualTo(asset));
+            Assert.That(asset.GetComponentInChildren<PhaseMovingPlatform>().nodes[1], Is.EqualTo(new Vector2Int(0, -64)));
+        }
+        finally { EditorSceneManager.ClosePreviewScene(scene); }
+    }
+
+    [Test]
+    public void GearLaserAndSpikePrefabsCanBePlacedMoreThanOnce()
+    {
+        var scene = EditorSceneManager.NewPreviewScene();
+        try
+        {
+            var root = new GameObject("Mechanism Grid probe"); SceneManager.MoveGameObjectToScene(root, scene);
+            root.AddComponent<Grid>().cellSize = new Vector3(8, 8, 1);
+            foreach (var name in new[] { "ClimbGear", "Laser", "Spikes" })
+            {
+                var asset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Phase/Prefabs/" + name + ".prefab");
+                Assert.That(asset, Is.Not.Null);
+                for (int i = 0; i < 2; i++)
+                {
+                    var instance = (GameObject)PrefabUtility.InstantiatePrefab(asset, root.transform);
+                    instance.transform.position = new Vector3(72 + 96 * i, -104);
+                    var gear = instance.GetComponentInChildren<PhaseClimbGear>();
+                    if (gear != null)
+                    {
+                        var model = gear.CreateGear();
+                        Assert.That((model.wall.x, model.wall.y, model.top), Is.EqualTo((72d + 96 * i, 104d, 80d)));
+                        Assert.That((model.platform.x, model.platform.y, model.endX), Is.EqualTo((88d + 96 * i, 80d, 112d + 96 * i)));
+                    }
+                    var laser = instance.GetComponent<PhaseLaser>();
+                    if (laser != null) Assert.That(laser.CreateLaser().x, Is.EqualTo(72 + 96 * i));
+                    var spike = instance.GetComponent<PhaseSpike>();
+                    if (spike != null) Assert.That(spike.CreateSpike().x, Is.EqualTo(72 + 96 * i));
+                }
+            }
+        }
+        finally { EditorSceneManager.ClosePreviewScene(scene); }
+    }
+
     [Test]
     public void VerticalReturnNodesKeepTheNativeColliderHorizontal()
     {

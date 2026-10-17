@@ -229,6 +229,7 @@ public class SandboxTests : InputTestFixture
         finally { InputSystem.RemoveDevice(k); }
     }
 
+    #if UNITY_EDITOR
     [UnityTest]
     public IEnumerator MultipleAuthoredPlatformsReceiveKeyboardDashAndSyncTheirColliders()
     {
@@ -240,8 +241,12 @@ public class SandboxTests : InputTestFixture
         foreach(var route in new[]{new[]{new Vector2Int(80,144),new Vector2Int(80,80)},
             new[]{new Vector2Int(216,112),new Vector2Int(272,112)}})
         {
-            var go=new GameObject("Dash platform");go.transform.SetParent(root.transform,false);
-            var platform=go.AddComponent<PhaseMovingPlatform>();platform.nodes=route;
+            var asset=UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Phase/Prefabs/"+
+                (route[0].x==80?"DashPlatformVertical":"DashPlatformHorizontal")+".prefab");
+            Assert.That(asset,Is.Not.Null);
+            var anchor=(GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(asset,root.transform);
+            anchor.transform.position=new Vector3(route[0].x,-route[0].y);
+            var platform=anchor.GetComponentInChildren<PhaseMovingPlatform>();platform.nodes=new[]{Vector2Int.zero,route[1]-route[0]};
             platform.size=route[0].x==80?new Vector2Int(80,8):new Vector2Int(32,8);
             platform.returns=route[0].x==80;
         }
@@ -289,6 +294,8 @@ public class SandboxTests : InputTestFixture
             Object.Destroy(root);
         }
     }
+
+    #endif
 
     static void CheckNativeShapes(PhaseSandbox sandbox)
     {

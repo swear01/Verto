@@ -28,37 +28,35 @@ public static class PhaseSandboxBuilder
             foreach (var b in room.blocks) Add(root, "Terrain", (int)b.x, (int)b.y, (int)b.w, (int)b.h, b.phase, b.phaseMask);
             foreach (var spike in room.CreateSpikes())
             {
-                var go = new GameObject("Phase spikes"); go.transform.SetParent(root.transform);
-                go.transform.position = new Vector3((float)spike.x,-(float)spike.y);
-                var teeth = go.AddComponent<PhaseSpike>(); teeth.direction = spike.direction; teeth.phaseMask = spike.Mask;
+                var go = PhaseMechanismPrefabs.Instantiate("Spikes", root.transform, new Vector3((float)spike.x, -(float)spike.y));
+                var teeth = go.GetComponent<PhaseSpike>(); teeth.direction = spike.direction; teeth.phaseMask = spike.Mask;
                 teeth.length = (int)(spike.direction == SpikeDirection.Up || spike.direction == SpikeDirection.Down ? spike.w : spike.h) / 8;
             }
             var drive = room.CreateGear();
             foreach (var laser in room.CreateLasers())
             {
-                var go = new GameObject("Phase laser"); go.transform.SetParent(root.transform);
-                go.transform.position = new Vector3((float)laser.x, -(float)laser.y);
-                var emitter = go.AddComponent<PhaseLaser>(); emitter.direction = laser.direction; emitter.phaseMask = laser.Mask;
+                var go = PhaseMechanismPrefabs.Instantiate("Laser", root.transform, new Vector3((float)laser.x, -(float)laser.y));
+                var emitter = go.GetComponent<PhaseLaser>(); emitter.direction = laser.direction; emitter.phaseMask = laser.Mask;
             }
             if (drive != null)
             {
-                var go = new GameObject("White gear drive"); go.transform.SetParent(root.transform);
-                go.transform.position = new Vector3((float)drive.wall.x, -(float)drive.wall.y);
-                var gear = go.AddComponent<PhaseClimbGear>();
-                gear.wallSize = new Vector2Int((int)drive.wall.w, (int)drive.wall.h); gear.wallTop = (int)drive.top;
-                gear.platformStart = new Vector2Int((int)drive.platform.x, (int)drive.platform.y);
-                gear.platformSize = new Vector2Int((int)drive.platform.w, (int)drive.platform.h); gear.platformEndX = (int)drive.endX; gear.CreateGear();
+                var go = PhaseMechanismPrefabs.Instantiate("ClimbGear", root.transform, new Vector3((float)drive.wall.x, -(float)drive.wall.y));
+                var gear = go.GetComponentInChildren<PhaseClimbGear>();
+                gear.wallSize = new Vector2Int((int)drive.wall.w, (int)drive.wall.h); gear.wallTop = (int)(drive.top - drive.wall.y);
+                gear.platformStart = new Vector2Int((int)(drive.platform.x - drive.wall.x), (int)(drive.platform.y - drive.wall.y));
+                gear.platformSize = new Vector2Int((int)drive.platform.w, (int)drive.platform.h); gear.platformEndX = (int)(drive.endX - drive.wall.x); gear.CreateGear();
             }
             var platform = room.CreateMover();
             if (platform != null)
             {
-                var go = new GameObject("Dash platform"); go.transform.SetParent(root.transform);
-                var mover = go.AddComponent<PhaseMovingPlatform>();
+                var go = PhaseMechanismPrefabs.Instantiate("DashPlatformHorizontal", root.transform, new Vector3((float)platform.x, -(float)platform.y));
+                var mover = go.GetComponentInChildren<PhaseMovingPlatform>();
                 mover.size = new Vector2Int((int)platform.w, (int)platform.h);
-                mover.nodes = System.Array.ConvertAll(platform.nodes, n => new Vector2Int((int)n[0], (int)n[1]));
+                mover.nodes = System.Array.ConvertAll(platform.nodes, n => new Vector2Int((int)(n[0] - platform.x), (int)(n[1] - platform.y)));
                 mover.returns = platform.returns; mover.CreatePlatform();
             }
             string path = "Assets/Scenes/PhaseDemo" + (i + 1) + ".unity";
+            RecordOverrides(root);
             EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), path);
             scenes.Add(new EditorBuildSettingsScene(path, true));
         }
@@ -84,14 +82,14 @@ public static class PhaseSandboxBuilder
         Add(root, "Green landing", 208, 80, 24, 8, 2);
         Add(root, "Red landing", 256, 56, 24, 8, 0);
         Add(root, "Rest", 296, 32, 24, 8, -1);
-        var drive = new GameObject("White gear drive"); drive.transform.SetParent(root.transform);
-        drive.transform.position = new Vector3(72, -104, 0);
-        var gear = drive.AddComponent<PhaseClimbGear>();
-        gear.wallSize = new Vector2Int(8, 56); gear.platformSize = new Vector2Int(56, 8); gear.wallTop = 80; gear.platformEndX = 112; gear.CreateGear();
-        var moving = new GameObject("Dash recovery platform"); moving.transform.SetParent(root.transform);
-        var mover = moving.AddComponent<PhaseMovingPlatform>();
-        mover.size = new Vector2Int(24, 8); mover.nodes = new[] { new Vector2Int(232, 112), new Vector2Int(264, 112) }; mover.returns = true; mover.CreatePlatform();
+        var drive = PhaseMechanismPrefabs.Instantiate("ClimbGear", root.transform, new Vector3(72, -104));
+        var gear = drive.GetComponentInChildren<PhaseClimbGear>();
+        gear.wallSize = new Vector2Int(8, 56); gear.platformSize = new Vector2Int(56, 8); gear.wallTop = -24; gear.platformStart = new Vector2Int(16, -24); gear.platformEndX = 40; gear.CreateGear();
+        var moving = PhaseMechanismPrefabs.Instantiate("DashPlatformHorizontal", root.transform, new Vector3(232, -112));
+        var mover = moving.GetComponentInChildren<PhaseMovingPlatform>();
+        mover.size = new Vector2Int(24, 8); mover.nodes = new[] { Vector2Int.zero, new Vector2Int(32, 0) }; mover.returns = true; mover.CreatePlatform();
         const string path = "Assets/Scenes/PhaseGearDemo.unity";
+        RecordOverrides(root);
         EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), path);
         var scenes = new System.Collections.Generic.List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
         if (!scenes.Exists(s => s.path == path)) scenes.Add(new EditorBuildSettingsScene(path, true));
@@ -135,10 +133,16 @@ public static class PhaseSandboxBuilder
         Add(root, "Red", second ? 120 : 48, second ? 128 : 136, 24, 8, 0);
         Add(root, "Blue", second ? 160 : 88, second ? 112 : 120, 24, 8, 1);
         Add(root, "Green", second ? 200 : 128, second ? 96 : 104, 24, 8, 2);
-        var platform = new GameObject("Yellow platform"); platform.transform.SetParent(root.transform);
-        var mover = platform.AddComponent<PhaseMovingPlatform>();
-        mover.nodes = second ? new[] { new Vector2Int(248, 144), new Vector2Int(280, 144) } : new[] { new Vector2Int(160, 144), new Vector2Int(192, 144) }; mover.returns = true; mover.CreatePlatform();
+        var platform = PhaseMechanismPrefabs.Instantiate("DashPlatformHorizontal", root.transform, new Vector3(second ? 248 : 160, -144));
+        var mover = platform.GetComponentInChildren<PhaseMovingPlatform>();
+        mover.nodes = new[] { Vector2Int.zero, new Vector2Int(32, 0) }; mover.returns = true; mover.CreatePlatform();
+        RecordOverrides(root);
         EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), second ? "Assets/Scenes/PhaseRoom2.unity" : "Assets/Scenes/PhaseSandbox.unity");
+    }
+    static void RecordOverrides(GameObject root)
+    {
+        foreach (var component in root.GetComponentsInChildren<Component>())
+            if (PrefabUtility.IsPartOfPrefabInstance(component)) PrefabUtility.RecordPrefabInstancePropertyModifications(component);
     }
     static void Add(GameObject root, string name, int x, int y, int w, int h, int phase, int phaseMask = 0)
     {
