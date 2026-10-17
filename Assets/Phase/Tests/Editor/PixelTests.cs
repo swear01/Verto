@@ -175,7 +175,7 @@ public class PixelTests
     }
 
     [Test]
-    public void TallViewCentersPlayAreaAndExtendsOnlyBottomTerrain()
+    public void TallViewCentersPlayAreaAndMarksBothBoundaries()
     {
         var pixels=new PhasePixels();
         var blocks=new[]{new Block(0,160,112,24),new Block(208,160,112,24),new Block(128,96,64,8)};
@@ -184,6 +184,10 @@ public class PixelTests
         {
             pixels.SetView(320,693,0);pixels.Draw(room);
             Assert.That(pixels.OriginY,Is.EqualTo(-256));
+            Color32 top = pixels.Texture.GetPixel(160, pixels.Height - 1);
+            Assert.That(top.r, Is.EqualTo(top.g), "portrait padding above the play area is neutral stone");
+            Assert.That(top.r, Is.GreaterThan(50));
+            Assert.That((Color32)pixels.Texture.GetPixel(160, pixels.Height - 1 - (194 - pixels.OriginY)), Is.EqualTo((Color32)PhasePixels.Hex("0b0f16")), "void becomes fully dark at the existing death boundary");
             Assert.That(Math.Abs(-pixels.OriginY+90-pixels.Height/2.0),Is.LessThanOrEqualTo(.5),"play area is centered");
             var stone=pixels.Texture.GetPixel(32,40);var gap=pixels.Texture.GetPixel(160,40);
             Assert.That(stone,Is.Not.EqualTo(gap),"bottom stone extends while the gap remains void");
@@ -192,6 +196,9 @@ public class PixelTests
             pixels.Draw(voidRoom);
             Assert.That(pixels.Texture.GetPixel(32,40),Is.EqualTo(gap),"a bottom void must not acquire a floor");
             Assert.That(pixels.Texture.GetPixel(160,40),Is.EqualTo(gap),"floating terrain must not extend to the bottom");
+            var gridFloor = new PhaseController(new[] { new Block(0,168,320,8) },32,157); gridFloor.flash=0;
+            pixels.Draw(gridFloor);
+            Assert.That(pixels.Texture.GetPixel(32,40), Is.Not.EqualTo(gap), "the last complete 8px grid row extends as stone");
             pixels.SetView(320,180,0);pixels.Draw(room);Assert.That(pixels.OriginY,Is.Zero);
             pixels.SetView(320,693,0);pixels.Draw(room);Assert.That(pixels.Texture.GetPixel(32,40),Is.EqualTo(stone),"resize rebuilds extended terrain");
         }

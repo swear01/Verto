@@ -6,15 +6,17 @@ using UnityEngine;
 public sealed class PhaseGridPainter : EditorWindow
 {
     bool painting;
-    int mask = 7;
+    int color;
+    static readonly int[] masks = { 7, 1, 2, 4, 5, 3, 6 };
+    static readonly string[] colors = { "永久白", "紅", "藍", "綠", "黃", "洋紅", "青" };
     [MenuItem("PHASE/Paint Grid terrain")]
     static void Open() => GetWindow<PhaseGridPainter>("PHASE Grid");
     void OnEnable() => SceneView.duringSceneGui += Paint;
     void OnDisable() => SceneView.duringSceneGui -= Paint;
     void OnGUI()
     {
-        painting = EditorGUILayout.Toggle("Paint 8px cells", painting);
-        mask = EditorGUILayout.IntSlider("Phase mask", mask, 1, 7);
+        painting = EditorGUILayout.Toggle("畫地磚", painting);
+        color = EditorGUILayout.Popup("顏色", color, colors);
     }
     void Paint(SceneView view)
     {
@@ -35,7 +37,7 @@ public sealed class PhaseGridPainter : EditorWindow
                 point.y <= terrain.transform.position.y && point.y > terrain.transform.position.y - terrain.size.y) { e.Use(); return; }
         var go = new GameObject("Terrain"); Undo.RegisterCreatedObjectUndo(go, "Paint PHASE cell");
         go.transform.SetParent(root.transform); go.transform.position = point;
-        var block = go.AddComponent<PhaseTerrain>(); block.phaseMask = mask; block.CreateBlock();
+        var block = go.AddComponent<PhaseTerrain>(); block.phaseMask = masks[color]; block.CreateBlock();
         EditorSceneManager.MarkSceneDirty(go.scene); e.Use(); view.Repaint();
     }
 }

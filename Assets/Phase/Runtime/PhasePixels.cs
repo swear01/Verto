@@ -71,10 +71,15 @@ namespace Phase
         {
             if (backdrop != null) { Array.Copy(backdrop, buffer, buffer.Length); return; }
             var bands = new[] { "0a1018", "0c131d", "0e1520", "101a26", "121e2b" };
-            Rect(OriginX, OriginY, Width, -OriginY, bands[0]);
+            Rect(OriginX, OriginY, Width, -OriginY, Fills[3]);
+            for (int y = (int)Math.Floor(OriginY / 8.0) * 8; y < 0; y += 8)
+                for (int x = OriginX / 8 * 8; x < OriginX + Width; x += 8)
+                {
+                    Rect(x, y, 8, 1, "4c4c4c"); Rect(x, y + 1, 1, 7, "787878");
+                    Rect(x + 3, y + 4, 2, 1, "565656");
+                }
+            if (OriginY < 0) Rect(OriginX, -1, Width, 1, Highlights[3]);
             Rect(OriginX, 180, Width, BottomY - 180, "0b111a");
-            for (int y = (int)Math.Floor(OriginY / 18.0) * 18; y < 0; y += 18) for (int x = OriginX / 24 * 24; x < OriginX + Width; x += 24)
-                if (Hash(x, y) % 4 == 0) Rect(x + Hash(x, y) % 17, y + Hash(y, x) % 13, 1, 1, "2a394c");
             for (int i = 0; i < bands.Length; i++)
             {
                 Rect(OriginX, i * 36, Width, 36, bands[i]);
@@ -117,7 +122,7 @@ namespace Phase
             backdrop = (Color32[])buffer.Clone();
         }
         static int Hill(int x) => Round(146 + 5 * Math.Sin(x * .031 + 2) + 3 * Math.Sin(x * .09));
-        double RenderBottom(Block block) => block.y < 180 && block.y + block.h >= 180
+        double RenderBottom(Block block) => block.y < 180 && block.y + block.h >= 176
             ? Math.Max(block.y + block.h, BottomY) : block.y + block.h;
         // shortcut: Same-count terrain edits need a revision when live terrain editing is supported.
         void Terrain(PhaseController s)
@@ -370,6 +375,23 @@ namespace Phase
             for (int i = 0; i < length; i++) { var q = segments[i]; Rect(q.x, q.y, 1, q.h, Scarf[dash][i == length - 1 ? 1 : 0]); }
             Blit(Sprite(name, facing, phase, dash, false, tired), x - 2, feet - rows.Length - 1);
         }
+        void VoidBoundary(PhaseController s)
+        {
+            if (BottomY <= 180) return;
+            for (int x = OriginX; x < OriginX + Width; x++)
+            {
+                bool stone = false;
+                for (int i = 0; i < s.blocks.Count && !stone; i++)
+                {
+                    var b = s.blocks[i];
+                    stone = b.ActiveInPhase(s.phase) && !s.blocked.Contains(i) &&
+                        b.y < 180 && b.y + b.h >= 176 && x >= b.x && x < b.x + b.w;
+                }
+                if (stone) continue;
+                for (int y = 180; y < Math.Min(194, BottomY); y++) Rect(x, y, 1, 1, Ink, (y - 180) / 14.0);
+                Rect(x, 194, 1, BottomY - 194, Ink);
+            }
+        }
         public void Draw(PhaseController s, bool playerVisible = true)
         {
             Terrain(s);
@@ -390,6 +412,7 @@ namespace Phase
             }
             foreach (var p in s.particles) Rect(p.x, p.y, 1, 1, p.phase < 0 ? "dce7ee" : Highlights[p.phase], Math.Min(1, p.life * 3));
             if (s.flash > 0) Rect(OriginX, OriginY, Width, Height, Highlights[s.phase], s.flash * .3);
+            VoidBoundary(s);
             Texture.SetPixels32(buffer); Texture.Apply(false);
         }
         public void Slide(Color32[] from, Color32[] to, double progress, int direction)

@@ -110,8 +110,8 @@ not move the player. Native colliders follow mechanism motion, phase/deferred
 solidification, respawn and viewport extension. Motion between authored stops
 remains continuous at pixel resolution.
 
-Use **PHASE > Paint Grid terrain** in the Scene view to paint 8px cells with a
-phase mask (R1/B2/G4; combine bits for mixed surfaces). Turn painting off to use
+Use **PHASE > Paint Grid terrain** in the Scene view to paint 8px cells in the
+selected color (permanent white, red, blue, green, yellow, magenta or cyan). Turn painting off to use
 Unity's normal selection, Inspector and Delete; terrain `size` sets a rectangle
 in whole cells. Save the scene normally. The painter supports Undo and skips
 occupied cells. Demo JSON changes still require rebuilding the generated scenes.
@@ -148,7 +148,7 @@ same direction and the platform between its X endpoints, carrying riders.
 Hanging, release, slipping, blocked climbing and dashing do not drive it.
 Both parts stop at the travel limits or an obstruction; reset/respawn restores
 the authored start positions. White gears and racks are visual only.
-The horizontal rack fills the lower three pixels inside the 48-pixel platform,
+The horizontal rack fills the lower three pixels inside the 56-pixel platform,
 with no overhang. Matching 24-pixel wall/platform travel keeps the fixed output
 pinion engaged. The vertical rack translates rigidly and can enter its lower
 housing. Gear carrying also checks spike sweeps. Newly solid terrain waits while
@@ -197,8 +197,9 @@ and deploys only after browser verification. It requires owner setup before use.
 The view always contains at least the original 320x180 native-pixel play area.
 At wider aspects, height stays180 and width grows; at taller aspects, width
 stays320 and height grows around the vertically centered180-pixel play area.
-Sky extends above; terrain touching the lower room edge extends below. Gaps
-and voids remain open. This is visual padding; collision stays unchanged.
+Stone fills the area above the native top boundary; terrain touching the last
+complete 8px row (bottom176) extends below. Gaps and voids remain open, with a
+short fade to black between native Y180 and the existing Y194 death boundary. This is visual padding; collision stays unchanged.
 Both axes fill the viewport without stretching native pixels.
 Terrain ending at the right room edge and room bounds expand above320pixels. Resizing preserves
 controller state and rebuilds the pixel surface/cache; resizing during a slide
