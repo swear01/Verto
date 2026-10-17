@@ -5,9 +5,7 @@ assert(model.paint(map,10,10,'block',7));
 assert(model.paint(map,11,10,'spike2',3));
 const exported=JSON.stringify(model.room(map));
 assert.deepEqual(model.parse(exported),map,'export/import round trip');
-const before=JSON.stringify(map);
 assert(model.paint(map,10,10,'erase',7));assert.equal(map.cells[410],null);
-Object.assign(map,JSON.parse(before));assert.equal(map.cells[410].mask,7,'snapshot undo');
 const room=()=>({name:'test',blocks:[],spikes:[],spawnX:24,spawnY:152});
 const block={x:0,y:0,w:8,h:8,phase:-1,phaseMask:7};
 function rejects(change,pattern) {const r=room();change(r);assert.throws(()=>model.parse(JSON.stringify(r)),pattern);}
@@ -29,4 +27,4 @@ assert.throws(()=>model.parse(' '.repeat(200001)),/200,000/);
 assert.throws(()=>model.parse('{'),/JSON/);
 assert.equal(model.paint(map,-1,1,'block',7),false);
 assert.equal(model.paint(map,1,21,'spawn',7),false);
-console.log('PASS: grid painting, erase/undo, round trip, bounds, masks, overlap, spawn, size and unsupported mechanisms');
+console.log('PASS: grid painting, erase, round trip, bounds, masks, overlap, spawn, size and unsupported mechanisms');

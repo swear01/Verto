@@ -23,7 +23,10 @@ const server=http.createServer((req,res)=>{
   const board=page.locator('#map-board');await board.focus();
   await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowRight');await page.keyboard.press('Space');
   assert(await page.locator('#map-undo').isEnabled());
-  await page.locator('#map-undo').click();assert(await page.locator('#map-redo').isEnabled());await page.locator('#map-redo').click();
+  await page.locator('#map-undo').click();assert(await page.locator('#map-redo').isEnabled());
+  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('phase.map.v1')).blocks.some(b=>b.x===40&&b.y===152)),false,'undo removes keyboard stroke');
+  await page.locator('#map-redo').click();
+  assert(await page.evaluate(()=>JSON.parse(localStorage.getItem('phase.map.v1')).blocks.some(b=>b.x===40&&b.y===152)),'redo restores keyboard stroke');
   await page.locator('[data-map-tool="spike0"]').click();await page.locator('[data-map-mask="5"]').click();
   const rect=await board.boundingBox();
   await page.mouse.move(rect.x+rect.width*10.5/40,rect.y+rect.height*10.5/22);await page.mouse.down();
@@ -64,6 +67,10 @@ const server=http.createServer((req,res)=>{
   assert(await page.locator('[data-room="2"]').isDisabled(),'timeout cannot create overlapping uncorrelated bridge requests');
   await page.evaluate(()=>dispatchEvent(new CustomEvent('phase-map-result',{detail:{success:true}})));
   assert(await page.locator('#rooms').isVisible(),'late callback cannot close a new dialog');
+  await page.locator('#rooms-close').click();await page.locator('#rooms-toggle').click();
+  assert.match(await page.locator('#rooms-status').innerText(),/重新整理/);
+  await page.locator('#map-open').click();assert.match(await page.locator('#map-status').innerText(),/重新整理/);
+  assert(await page.locator('#map-play').isDisabled());
   assert.deepEqual(errors,[]);console.log('PASS: mock bridge selection, painter keyboard/drag, history, JSON, failure retention, persistence, mobile and repeated resized fullscreen enter/exit');
  }finally{if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}
 })().catch(error=>{console.error(error);process.exitCode=1;});

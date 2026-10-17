@@ -80,9 +80,9 @@ function setupMaps(instance, gameCanvas) {
   document.querySelectorAll('[data-map-mask]').forEach(b=>b.addEventListener('click',()=>{mask=Number(b.dataset.mapMask);render();}));
   document.getElementById('map-undo').addEventListener('click',()=>history(undo,redo));
   document.getElementById('map-redo').addEventListener('click',()=>history(redo,undo));
-  document.getElementById('rooms-toggle').addEventListener('click',()=>{roomStatus.textContent='';open(rooms);});
+  document.getElementById('rooms-toggle').addEventListener('click',()=>{roomStatus.textContent=stalled?'載入逾時，請重新整理後再試。':'';open(rooms);});
   document.getElementById('rooms-close').addEventListener('click',()=>rooms.close());
-  document.getElementById('map-open').addEventListener('click',()=>{open(editor);rooms.close();status.textContent=notice;notice='';render();board.focus();});
+  document.getElementById('map-open').addEventListener('click',()=>{open(editor);rooms.close();status.textContent=stalled?'載入逾時，請重新整理後再試。':notice;notice='';render();board.focus();});
   document.getElementById('map-close').addEventListener('click',()=>editor.close());
   for(const dialog of [rooms,editor]) { dialog.addEventListener('close',closed);dialog.addEventListener('cancel',event=>{if(pending)event.preventDefault();}); }
   function request(method,value,dialog) {
