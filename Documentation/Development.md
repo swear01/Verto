@@ -130,7 +130,7 @@ sandbox. Crossing an assigned horizontal edge loads that scene asynchronously,
 places the player at the opposite edge at the same height, and carries color,
 velocity, jump/dash state and counters. Empty links keep the side closed. Both
 scenes must be in Build Settings and in the Web build's explicit scene list.
-Deaths respawn in the current room. Top/bottom behavior and immutable reference
+Deaths respawn in the current room. The controller’s top/bottom clamp and immutable reference
 fixtures stay unchanged; there is no player text.
 Default movement, dash aiming and climb bindings accept arrow keys or WASD.
 Web settings expose two independent slots per action; changing one preserves the
@@ -307,3 +307,12 @@ Run `LaserTests` through Pipeline `run_tests --mode editor`, then `PixelTests`.
 `Verification/LaserLiveInput.cs`, entry `LaserLiveInput.Run`, verifies the
 authored white gear shield and a colored beam's keyboard-triggered activation
 and respawn. It restores its temporary input/settings and controller content.
+
+## Hand-authored scenes
+
+`Assets/Scenes/PhaseDemo1.1.unity` is a separate authoring scene. It uses the same
+8px Grid and native collider shapes; imported sizes, phase masks and scene links
+are retained, with positions snapped by at most half a cell. Edit it with the Grid
+painter and normal Inspector tools. It is not included in the explicit eight-room
+Web build or the Web room selector. Use `PhaseSandboxBuilder` only to rebuild
+generated demo scenes; preserve hand-authored layouts.
