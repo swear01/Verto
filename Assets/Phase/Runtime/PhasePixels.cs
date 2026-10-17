@@ -264,6 +264,55 @@ namespace Phase
             Rect(m.x - 1, m.y - 1, m.w + 2, m.h + 2, Ink);
             for (double y = m.y; y < m.y + m.h; y += 8) for (double x = m.x; x < m.x + m.w; x += 8) Blit(moverTile, Round(x) - 1, Round(y) - 1);
         }
+        void GearWheel(int cx, int cy, double angle)
+        {
+            for (int y = -9; y <= 9; y++) for (int x = -9; x <= 9; x++)
+            {
+                double radius = Math.Sqrt(x * x + y * y), theta = Math.Atan2(y, x) - angle;
+                double edge = Math.Cos(theta * 8) > .35 ? 8.5 : 6.5;
+                if (radius > edge) continue;
+                string color = radius > edge - 1 ? "646464" : "a0a0a0";
+                Put(cx + x, cy + y, Color(color));
+            }
+            Rect(cx - 1, cy - 1, 2, 2, "e8e8e8");
+            Rect(cx + Round(4 * Math.Cos(angle)) - 1, cy + Round(4 * Math.Sin(angle)) - 1, 2, 2, "646464");
+        }
+        void Gear(ClimbGear gear)
+        {
+            var wall = gear.wall; var platform = gear.platform;
+            int rackX = Round(wall.x + wall.w), rackY = Round(platform.y + platform.h) - 3, cy = rackY + 9;
+            Rect(wall.x + 2, gear.top - 4, wall.w - 4, gear.bottom + wall.h - gear.top + 8, "444444");
+            foreach (double y in new[] { gear.top - 4, gear.bottom + wall.h + 2 })
+                Rect(wall.x - 2, y, wall.w + 4, 2, Highlights[3]);
+            double left = Math.Min(gear.startX, gear.endX), right = Math.Max(gear.startX, gear.endX) + platform.w;
+            Rect(left, platform.y + 3, right - left, 1, "444444");
+            Rect(left - 1, platform.y + 1, 1, platform.h - 2, "646464");
+            Rect(right, platform.y + 1, 1, platform.h - 2, "646464");
+            // Keep one full tooth beyond the fixed pinion at the top stop.
+            int rackHeight = Round(Math.Max(wall.h, cy + 14 + 9 + 6 - gear.top));
+            int rackBottom = Math.Min(Round(wall.y) + rackHeight, Round(gear.bottom + wall.h));
+            Rect(rackX, wall.y, 2, rackBottom - Round(wall.y), "a0a0a0");
+            for (int y = Round(wall.y); y < rackBottom; y += 6) Rect(rackX + 2, y, 3, Math.Min(3, rackBottom - y), "a0a0a0");
+            Rect(rackX - 1, gear.bottom + wall.h, 7, 4, "646464");
+            Rect(rackX - 1, gear.bottom + wall.h + 2, 7, 2, Highlights[3]);
+            double angle = gear.Lift * Math.PI / 24, mesh = 2 * Math.Atan2(-7,14) + Math.PI / 8;
+            GearWheel(rackX + 11, cy + 14, angle);
+            GearWheel(rackX + 25, cy + 7, -angle + mesh);
+            foreach (var block in new[] { wall, platform })
+            {
+                Rect(block.x - 1, block.y - 1, block.w + 2, block.h + 2, Ink);
+                Rect(block.x, block.y, block.w, block.h, Fills[3]);
+                Rect(block.x, block.y, block.w, 2, Highlights[3]);
+                Rect(block.x, block.y + 2, 1, block.h - 2, Edges[3]);
+                for (double y = block.y + 4; y < block.y + block.h - 2; y += 8)
+                    for (double x = block.x + 3; x < block.x + block.w - 2; x += 8) Rect(x, y, 2, 2, Edges[3]);
+            }
+            Rect(platform.x, rackY, platform.w, 1, "a0a0a0");
+            Rect(platform.x, rackY + 1, platform.w, 2, Ink);
+            for (int x = Round(platform.x) + 3; x < platform.x + platform.w; x += 6)
+                Rect(x, rackY + 1, Math.Min(3, platform.x + platform.w - x), 2, "a0a0a0");
+            GearWheel(rackX + 39, cy, angle);
+        }
         // Original Wick frames; the hood now shares the scarf's dash-charge colors.
         static readonly Dictionary<string,string[]> Frames = new Dictionary<string,string[]> {
             ["idle"] = new[] { "..cc......","..dcc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcffefef.",".dccffff..","..kkkkk...",".dccccccc.",".dcccccdc.",".ssssssss.","..bb..bb..","..bb..bb.." },
@@ -324,6 +373,7 @@ namespace Phase
         public void Draw(PhaseController s, bool playerVisible = true)
         {
             Terrain(s);
+            foreach (var gear in s.gears) Gear(gear);
             Spikes(s);
             if (s.mover != null) Mover(s.mover);
             foreach (var t in s.trails) Blit(Sprite("dash", s.player.facing, t.phase, 0, true), Round(t.x) - 2, Round(t.y) - 3, t.life * 2);

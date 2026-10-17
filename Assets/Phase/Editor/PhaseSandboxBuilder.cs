@@ -5,6 +5,93 @@ using UnityEngine;
 
 public static class PhaseSandboxBuilder
 {
+    [MenuItem("PHASE/Create eight-room demo")]
+    public static void CreateDemoRooms()
+    {
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+        var data = JsonUtility.FromJson<PhaseDemoRooms>(System.IO.File.ReadAllText("Assets/Phase/DemoRooms.json"));
+        if (data?.rooms == null || data.rooms.Length != 8) throw new System.InvalidOperationException("Demo requires eight rooms.");
+        var scenes = new System.Collections.Generic.List<EditorBuildSettingsScene>();
+        for (int i = 0; i < data.rooms.Length; i++)
+        {
+            var room = data.rooms[i]; room.CreateController();
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            var root = new GameObject("PHASE"); var sandbox = root.AddComponent<PhaseSandbox>();
+            var camera = new GameObject("Camera").AddComponent<Camera>();
+            camera.orthographic = true; camera.orthographicSize = 90;
+            camera.clearFlags = CameraClearFlags.SolidColor; camera.backgroundColor = Color.black;
+            sandbox.pixelCamera = camera;
+            sandbox.pixelMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Phase/PixelSurface.mat");
+            sandbox.spawn = new Vector2Int((int)room.spawnX, (int)room.spawnY);
+            sandbox.checkpointOnEntry = true;
+            sandbox.rightScene = i < 7 ? "PhaseDemo" + (i + 2) : "";
+            foreach (var b in room.blocks) Add(root, "Terrain", (int)b.x, (int)b.y, (int)b.w, (int)b.h, b.phase, b.phaseMask);
+            foreach (var spike in room.CreateSpikes())
+            {
+                var go = new GameObject("Phase spikes"); go.transform.SetParent(root.transform);
+                go.transform.position = new Vector3((float)spike.x,-(float)spike.y);
+                var teeth = go.AddComponent<PhaseSpike>(); teeth.direction = spike.direction; teeth.phaseMask = spike.Mask;
+                teeth.length = (int)(spike.direction == SpikeDirection.Up || spike.direction == SpikeDirection.Down ? spike.w : spike.h) / 8;
+            }
+            var drive = room.CreateGear();
+            if (drive != null)
+            {
+                var go = new GameObject("White gear drive"); go.transform.SetParent(root.transform);
+                go.transform.position = new Vector3((float)drive.wall.x, -(float)drive.wall.y);
+                var gear = go.AddComponent<PhaseClimbGear>();
+                gear.wallSize = new Vector2Int((int)drive.wall.w, (int)drive.wall.h); gear.wallTop = (int)drive.top;
+                gear.platformStart = new Vector2Int((int)drive.platform.x, (int)drive.platform.y);
+                gear.platformSize = new Vector2Int((int)drive.platform.w, (int)drive.platform.h); gear.platformEndX = (int)drive.endX;
+            }
+            var platform = room.CreateMover();
+            if (platform != null)
+            {
+                var go = new GameObject("Dash platform"); go.transform.SetParent(root.transform);
+                var mover = go.AddComponent<PhaseMovingPlatform>();
+                mover.size = new Vector2Int((int)platform.w, (int)platform.h);
+                mover.nodes = System.Array.ConvertAll(platform.nodes, n => new Vector2Int((int)n[0], (int)n[1]));
+                mover.returns = platform.returns;
+            }
+            string path = "Assets/Scenes/PhaseDemo" + (i + 1) + ".unity";
+            EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), path);
+            scenes.Add(new EditorBuildSettingsScene(path, true));
+        }
+        foreach (var scene in EditorBuildSettings.scenes)
+            if (!scenes.Exists(s => s.path == scene.path)) scenes.Add(scene);
+        EditorBuildSettings.scenes = scenes.ToArray();
+        AssetDatabase.SaveAssets();
+        EditorSceneManager.OpenScene("Assets/Scenes/PhaseDemo1.unity");
+    }
+    [MenuItem("PHASE/Create gear demo")]
+    public static void CreateGearDemo()
+    {
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+        EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+        var root = new GameObject("PHASE"); var sandbox = root.AddComponent<PhaseSandbox>();
+        var camera = new GameObject("Camera").AddComponent<Camera>();
+        camera.orthographic = true; camera.orthographicSize = 90;
+        camera.clearFlags = CameraClearFlags.SolidColor; camera.backgroundColor = Color.black;
+        sandbox.pixelCamera = camera;
+        sandbox.pixelMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Phase/PixelSurface.mat");
+        Add(root, "Safe approach", 0, 160, 88, 24, -1);
+        Add(root, "Blue recovery", 208, 136, 24, 8, 1);
+        Add(root, "Green landing", 208, 80, 24, 8, 2);
+        Add(root, "Red landing", 256, 56, 24, 8, 0);
+        Add(root, "Rest", 296, 32, 24, 8, -1);
+        var drive = new GameObject("White gear drive"); drive.transform.SetParent(root.transform);
+        drive.transform.position = new Vector3(72, -104, 0);
+        var gear = drive.AddComponent<PhaseClimbGear>();
+        gear.wallSize = new Vector2Int(8, 56); gear.wallTop = 80; gear.platformEndX = 112;
+        var moving = new GameObject("Dash recovery platform"); moving.transform.SetParent(root.transform);
+        var mover = moving.AddComponent<PhaseMovingPlatform>();
+        mover.size = new Vector2Int(24, 8); mover.nodes = new[] { new Vector2Int(232, 112), new Vector2Int(264, 112) }; mover.returns = true;
+        const string path = "Assets/Scenes/PhaseGearDemo.unity";
+        EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), path);
+        var scenes = new System.Collections.Generic.List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
+        if (!scenes.Exists(s => s.path == path)) scenes.Add(new EditorBuildSettingsScene(path, true));
+        EditorBuildSettings.scenes = scenes.ToArray();
+        AssetDatabase.SaveAssets();
+    }
     [MenuItem("PHASE/Create minimal sandbox")]
     public static void Create()
     {
@@ -47,9 +134,9 @@ public static class PhaseSandboxBuilder
         mover.nodes = second ? new[] { new Vector2Int(248, 144), new Vector2Int(280, 144) } : new[] { new Vector2Int(160, 144), new Vector2Int(192, 144) }; mover.returns = true;
         EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), second ? "Assets/Scenes/PhaseRoom2.unity" : "Assets/Scenes/PhaseSandbox.unity");
     }
-    static void Add(GameObject root, string name, int x, int y, int w, int h, int phase)
+    static void Add(GameObject root, string name, int x, int y, int w, int h, int phase, int phaseMask = 0)
     {
         var go = new GameObject(name); go.transform.SetParent(root.transform); go.transform.position = new Vector3(x, -y, 0);
-        var terrain = go.AddComponent<PhaseTerrain>(); terrain.size = new Vector2Int(w, h); terrain.phase = phase;
+        var terrain = go.AddComponent<PhaseTerrain>(); terrain.size = new Vector2Int(w, h); terrain.phase = phase; terrain.phaseMask = phaseMask;
     }
 }

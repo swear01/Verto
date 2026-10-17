@@ -11,6 +11,62 @@ public class PixelTests
     public class Frame { public string name; public double time; public int phase; public int[] blocked; public Player player; }
 
     [Test]
+    public void GearRacksTranslateRigidlyAndStayEngagedAcrossFullTravel()
+    {
+        var s = new PhaseController(Array.Empty<Block>(), 0, 149, gears: new[] {
+            new ClimbGear(new Block(72,104,8,56),80,new Block(88,80,48,8),112)
+        });
+        var gear = s.gears[0]; s.flash = 0;
+        var pixels = new PhasePixels();
+        try
+        {
+            for (int lift = 0; lift <= 24; lift++)
+            {
+                gear.wall.y = 104 - lift; gear.platform.x = 88 + lift;
+                pixels.Draw(s); var frame = pixels.Texture.GetPixels32();
+                int bottom = 160 - lift;
+                for (int y = (int)gear.wall.y; y < bottom; y++)
+                    Assert.That(frame[(179-y)*320+81].r, Is.EqualTo(160), $"rigid rack at lift {lift}, y {y}");
+                Assert.That(frame[(179-108)*320+81].r, Is.EqualTo(160), "rack remains beside the fixed input pinion");
+                if (bottom < 160)
+                    for (int x = 81; x <= 84; x++)
+                        Assert.That(frame[(179-bottom)*320+x].r, Is.LessThan(40), $"rack end translates with wall at lift {lift}");
+                int left = 88 + lift, right = left + 48;
+                for (int x = left; x < right; x++)
+                    Assert.That(frame[(179-85)*320+x].r, Is.EqualTo(160), $"rack is inset across platform width at lift {lift}");
+                Assert.That(frame[(179-85)*320+119].r, Is.EqualTo(160), "rack remains over the output pinion");
+                foreach (int x in new[] { left-1, right })
+                    Assert.That(frame[(179-85)*320+x].r, Is.Not.EqualTo(160), "rack never extends beyond the collidable platform");
+            }
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
+    [TestCase(0)] [TestCase(12)] [TestCase(24)]
+    public void GearRackStaysAttachedToThePlatformAcrossTravel(int lift)
+    {
+        var s = new PhaseController(Array.Empty<Block>(), 0, 149, gears: new[] {
+            new ClimbGear(new Block(72,104,8,56),80,new Block(88,80,48,8),112)
+        });
+        var gear = s.gears[0]; gear.wall.y -= lift; gear.platform.x += lift; s.flash = 0;
+        var pixels = new PhasePixels();
+        try
+        {
+            pixels.Draw(s);
+            for (int x = (int)gear.platform.x; x < gear.platform.x + gear.platform.w; x++)
+            {
+                Color32 pixel = pixels.Texture.GetPixel(x, 179 - ((int)gear.platform.y + 5));
+                Assert.That(pixel.r, Is.EqualTo(160), $"rack belongs to the platform body at x {x}");
+            }
+            var first = pixels.Texture.GetPixels32(); s.time += 1; pixels.Draw(s);
+            var second = pixels.Texture.GetPixels32();
+            for (int y = 60; y < 166; y++) for (int x = 70; x < 180; x++)
+                Assert.That(second[(179-y)*320+x], Is.EqualTo(first[(179-y)*320+x]), "stationary gears do not animate on their own");
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
+    [Test]
     public void MixedInlaysAndDirectionalSpikesMatchTheirMasks()
     {
         var pixels=new PhasePixels();

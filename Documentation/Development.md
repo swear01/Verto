@@ -23,6 +23,8 @@ Modal startup dialogs still require attention; report them instead of foreground
 the Editor. The dedicated CI runner may continue using `unity open --wait`.
 
 Run from the project directory, or pass `--project-path` to target it explicitly.
+With multiple Editors open, pass `--project-path <project-root>` on every
+command so a domain reload cannot select another connected project.
 Discover the connected package's command parameters with `unity command --query`.
 
 ```sh
@@ -45,10 +47,11 @@ To recreate the sandbox, call its existing builder through the connected Editor:
 edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 26 controller cases, one 48-frame art
+starting the next test run. There are 31 controller cases and 13 demo-route/authoring cases, one 48-frame art
 comparison (hood/spent-scarf/permanent-solid colors remapped plus low-stamina body tint), one bidirectional pixel-slide
 test, one adaptive-view test, one centered-view stone/void extension test, one
-dash-charge hood lifecycle test, one character-fatigue/recovery test, one mixed-inlay/spike rendering test, and three
+dash-charge hood lifecycle test, one character-fatigue/recovery test, one mixed-inlay/spike rendering test, three
+gear-rack attachment positions, one full-travel rigid-rack/engagement test, and three
 Play Mode cases, including custom bindings, pause/release gating and room persistence.
 The three immutable reference files preserve 40 movement/action/climb traces.
 The exhaustion case uses explicit revised Y/speed expectations for its final17
@@ -115,10 +118,48 @@ validator rejects duplicate physical keys, reserved keys and actions with no key
 then applies the entire map atomically. Browser storage/migration is described
 in [Web preview](Web.md).
 
+## Climb gear demo
+
+`Assets/Scenes/PhaseGearDemo.unity` is a standalone experiment, with no room links
+or progression. Recreate it through Pipeline with
+`unity command eval 'PhaseSandboxBuilder.CreateGearDemo();'`.
+`PhaseClimbGear` creates a neutral wall and horizontal platform outside the static
+terrain cache. Actual upward/downward climb displacement drives the wall in the
+same direction and the platform between its X endpoints, carrying riders.
+Hanging, release, slipping, blocked climbing and dashing do not drive it.
+Both parts stop at the travel limits or an obstruction; reset/respawn restores
+the authored start positions. White gears and racks are visual only.
+The horizontal rack fills the lower three pixels inside the 48-pixel platform,
+with no overhang. Matching 24-pixel wall/platform travel keeps the fixed output
+pinion engaged. The vertical rack translates rigidly and can enter its lower
+housing. Gear carrying also checks spike sweeps. Newly solid terrain waits while
+a player, gear solid or dash platform occupies it.
+
+Open the demo in the resident Editor, apply `BackgroundEditor.Run`, enter Play,
+then run `Verification/GearLiveInput.cs` via Pipeline `run_script`, entry
+`GearLiveInput.Run`, with CLI `--timeout 90` and script `--timeout_ms 90000`.
+It checks up/down/hold/release
+and replays a complete keyboard route through the white platform, green/red
+landings and resting ledge. Captures go to `TestResults/GearDemo/`; the script
+restores its keyboard, input focus and fixed capture timing settings.
+
+## Eight-room demo
+
+Open `Assets/Scenes/PhaseDemo1.unity`. Rebuild the eight scenes from
+`Assets/Phase/DemoRooms.json` through Pipeline with
+`unity command eval 'PhaseSandboxBuilder.CreateDemoRooms();'`.
+Each room uses `checkpointOnEntry`, resetting player color/dash/stamina and
+mechanism positions while preserving elapsed time and action/death counts.
+The original sandbox links retain their momentum/color carry behavior.
+See [room designs and live input verification](Demo.md).
+`BuildWeb.py` verifies these tests but retains its explicit two-sandbox Web build;
+the eight-room Unity demo has not replaced the hosted preview.
+
 ## CI
 
-GitHub Actions runs the production `PhaseController.cs` and the same 26
-`ControllerTests` on .NET 10, including the 40 immutable reference traces.
+GitHub Actions runs the production controller and the same controller/demo
+route tests on .NET 10, including the 40 immutable reference traces.
+The Unity-only authoring-deserialization case runs through Pipeline.
 The test fixture parser uses Json.NET, already included by Unity Pipeline.
 The hosted runner requires no Unity license or repository secrets.
 
@@ -138,7 +179,7 @@ stays320 and height grows around the vertically centered180-pixel play area.
 Sky extends above; terrain touching the lower room edge extends below. Gaps
 and voids remain open. This is visual padding; collision stays unchanged.
 Both axes fill the viewport without stretching native pixels.
-Full-width terrain and room edges still expand above320pixels. Resizing preserves
+Terrain ending at the right room edge and room bounds expand above320pixels. Resizing preserves
 controller state and rebuilds the pixel surface/cache; resizing during a slide
 completes its handoff, including a height-only resize.
 

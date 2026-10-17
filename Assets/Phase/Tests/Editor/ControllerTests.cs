@@ -120,8 +120,74 @@ public class ControllerTests
 
     }
     static PhaseController Arena(double width = 320) => new PhaseController(new[] { new Block(0,150,width,8), new Block(200,33,8,117) }, 67,139);
+    static PhaseController GearArena(params Block[] obstacles)
+    {
+        var blocks = new List<Block> { new Block(0,160,88,24) }; blocks.AddRange(obstacles);
+        return new PhaseController(blocks,64,149,gears:new[] {
+            new ClimbGear(new Block(72,88,8,72),64,new Block(88,104,48,8),112)
+        });
+    }
+    [Test]
+    public void GearRackMustStayInsideItsPlatformAcrossTheWholeTravel()
+    {
+        Assert.Throws<ArgumentException>(() => new ClimbGear(new Block(72,104,8,56),64,new Block(104,104,32,8),144));
+        Assert.DoesNotThrow(() => new ClimbGear(new Block(72,104,8,56),80,new Block(88,80,48,8),112));
+    }
+    [Test]
+    public void GearCarryChecksTheSpikeSweepAfterRelativeClimbing()
+    {
+        var s=GearArena();var p=s.player;p.y=144;p.grounded=false;p.climbing=true;p.facing=1;p.climbWait=0;
+        s.spikes.Add(new Spike(56,135,16,SpikeDirection.Up));
+        Ticks(s,4,new Controls { y=-1,grab=true });
+        Assert.That(s.deaths,Is.EqualTo(1),"the relative climb only touches the edge; the wall carry crosses the lethal root");
+        Ticks(s,24);Assert.That(s.respawn,Is.Zero);Assert.That(s.gears[0].Lift,Is.Zero);
+    }
+    [Test]
+    public void PhaseTerrainWaitsForTheGearToLeaveBeforeMaterializing()
+    {
+        var s=GearArena(new Block(100,104,8,8,1));var gear=s.gears[0];
+        s.Step(new Controls { jump=true,jumpHeld=true });
+        Assert.That(s.phase,Is.EqualTo(1));Assert.That(s.blocked.Contains(1),Is.True);
+        Ticks(s,4);Assert.That(s.blocked.Contains(1),Is.True,"terrain cannot appear inside the parked platform");
+        gear.platform.x=112;Ticks(s,1);Assert.That(s.blocked.Contains(1),Is.False);
+    }
     static void Ticks(PhaseController s, int count, Controls input = default)
     { for (int i = 0; i < count; i++) { var a = input; a.jump &= i == 0; a.dash &= i == 0; s.Step(a); } }
+    [Test]
+    public void GearClimbCarriesPlayerAndDrivesHorizontalPlatformInBothDirections()
+    {
+        var s=GearArena();var gear=s.gears[0];
+        Ticks(s,30,new Controls { x=1,y=-1,grab=true });
+        Assert.That(gear.wall.y,Is.LessThan(88));Assert.That(gear.platform.x,Is.GreaterThan(88));
+        Assert.That(s.player.y,Is.LessThan(149-gear.Lift),"wall carries the player in addition to relative climbing");
+        Assert.That(gear.platform.y,Is.EqualTo(104));Assert.That(s.phase,Is.Zero);
+        double wallY=gear.wall.y,platformX=gear.platform.x;
+        Ticks(s,12,new Controls { grab=true });
+        Assert.That((gear.wall.y,gear.platform.x),Is.EqualTo((wallY,platformX)),"hanging does not drive gears");
+        Ticks(s,16,new Controls { y=1,grab=true });
+        Assert.That(gear.wall.y,Is.GreaterThan(wallY));Assert.That(gear.platform.x,Is.LessThan(platformX));
+        wallY=gear.wall.y;platformX=gear.platform.x;
+        Ticks(s,6,new Controls { y=-1 });
+        Assert.That((gear.wall.y,gear.platform.x),Is.EqualTo((wallY,platformX)),"input without grabbing does not drive gears");
+        s.Reset();Assert.That((s.gears[0].wall.y,s.gears[0].platform.x),Is.EqualTo((88.0,88.0)));
+    }
+    [Test]
+    public void GearEndpointsAndObstructionsStopBothLinkedParts()
+    {
+        var s=GearArena();
+        Ticks(s,90,new Controls { x=1,y=-1,grab=true });
+        Assert.That((s.gears[0].wall.y,s.gears[0].platform.x),Is.EqualTo((64.0,112.0)));
+        var p=s.player;p.x=64;p.y=72;p.vx=p.vy=0;p.facing=1;p.climbing=true;p.climbWait=0;p.stamina=110;
+        Ticks(s,90,new Controls { y=1,grab=true });
+        Assert.That((s.gears[0].wall.y,s.gears[0].platform.x),Is.EqualTo((88.0,88.0)));
+        s=GearArena(new Block(140,104,8,8));
+        Ticks(s,55,new Controls { x=1,y=-1,grab=true });
+        Assert.That((s.gears[0].wall.y,s.gears[0].platform.x),Is.EqualTo((84.0,92.0)),"platform obstruction stops the whole drive");
+        Assert.That(s.deaths,Is.Zero);Assert.That(PhaseController.Overlap(s.gears[0].platform,s.blocks[1]),Is.False);
+        s=GearArena(new Block(56,136,16,8));p=s.player;p.y=144;p.climbing=true;p.facing=1;
+        Ticks(s,12,new Controls { y=-1,grab=true });
+        Assert.That(s.gears[0].Lift,Is.Zero,"a blocked climb does not drive the mechanism");
+    }
     [Test]
     public void AdaptiveRoomExtendsFloorAndEdgesWithoutResettingState()
     {

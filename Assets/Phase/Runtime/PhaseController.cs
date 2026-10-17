@@ -58,6 +58,25 @@ namespace Phase
         public bool jump, dash, jumpHeld, dashHeld, grab;
     }
 
+    public sealed class ClimbGear
+    {
+        public readonly Block wall, platform;
+        public readonly double top, bottom, startX, endX;
+        public double Lift => bottom - wall.y;
+        public ClimbGear(Block wall, double top, Block platform, double endX)
+        {
+            if (top < 0 || top >= wall.y || wall.w <= 0 || wall.h <= 0 || platform.w <= 0 || platform.h <= 0 || endX == platform.x)
+                throw new ArgumentException("Gear requires a vertical wall range and a horizontal platform range.");
+            double pinionX = wall.x + wall.w + 39;
+            if (endX - platform.x != wall.y - top || pinionX < endX + 6 || pinionX > platform.x + platform.w - 6)
+                throw new ArgumentException("Equal gears require matching travel and a platform rack that stays over the output pinion.");
+            this.wall = wall; this.platform = platform; this.top = top;
+            bottom = wall.y; startX = platform.x; this.endX = endX;
+        }
+        public ClimbGear Fresh() => new ClimbGear(new Block(wall.x, bottom, wall.w, wall.h), top,
+            new Block(startX, platform.y, platform.w, platform.h), endX);
+    }
+
     public sealed class Player : Block
     {
         public double vx, vy, coyote = .1, buffer, dashBuffer, dashAttack, remX, remY;
@@ -84,9 +103,11 @@ namespace Phase
         public readonly List<Particle> particles = new List<Particle>();
         readonly double spawnX, spawnY;
         readonly MovingPlatform platformTemplate;
+        readonly ClimbGear[] gearTemplates;
         readonly Random random = new Random(1);
         public Player player;
         public MovingPlatform mover;
+        public ClimbGear[] gears;
         public int phase, jumps, dashes, deaths;
         public double time, flash, freeze, respawn;
         public bool exitLeft, exitRight;
@@ -98,7 +119,7 @@ namespace Phase
         {
             width = Math.Max(320, width);
             if (width == Width) return;
-            foreach (var block in blocks) if (block.x == 0 && block.w == Width) block.w = width;
+            foreach (var block in blocks) if (block.x + block.w == Width) block.w += width - Width;
             Width = width;
             player.x = Math.Min(player.x, Width - player.w);
         }
@@ -115,25 +136,29 @@ namespace Phase
             player.grounded = player.vy >= 0 && OnGround(player, Solid());
         }
 
-        public PhaseController(IEnumerable<Block> blocks, double spawnX, double spawnY, MovingPlatform platform = null, IEnumerable<Spike> spikes = null)
+        public PhaseController(IEnumerable<Block> blocks, double spawnX, double spawnY, MovingPlatform platform = null, IEnumerable<ClimbGear> gears = null, IEnumerable<Spike> spikes = null)
         {
             this.blocks = blocks.ToList(); this.spawnX = spawnX; this.spawnY = spawnY;
             this.spikes = spikes?.ToList() ?? new List<Spike>();
-            platformTemplate = platform; Reset();
+            platformTemplate = platform; gearTemplates = gears?.Select(g => g.Fresh()).ToArray() ?? Array.Empty<ClimbGear>(); Reset();
         }
         public void Reset()
         {
             phase = 0; respawn = freeze = 0; blocked.Clear();
             player = new Player(spawnX, spawnY); mover = platformTemplate?.Fresh();
+            gears = gearTemplates.Select(g => g.Fresh()).ToArray();
             trails.Clear(); flash = .08;
         }
         public static bool Overlap(Block a, Block b, double x = 0, double y = 0) =>
             a.x + x < b.x + b.w && a.x + a.w + x > b.x && a.y + y < b.y + b.h && a.y + a.h + y > b.y;
         public List<Block> Solid()
         {
-            var result = Walls(); if (mover != null) result.Add(mover); return result;
+            var result = Walls(); if (mover != null) result.Add(mover);
+            foreach (var gear in gears) { result.Add(gear.wall); result.Add(gear.platform); }
+            return result;
         }
         List<Block> Walls() => blocks.Where((b, i) => b.ActiveInPhase(phase) && !blocked.Contains(i)).ToList();
+        bool Occupied(Block b) => Overlap(player,b) || (mover != null && Overlap(mover,b)) || gears.Any(g => Overlap(g.wall,b) || Overlap(g.platform,b));
         static bool Collides(Player p, List<Block> solids, double x = 0, double y = 0) => solids.Any(b => Overlap(p, b, x, y));
         static int WallAt(Player p, List<Block> solids, int preferred, double reach = 3)
         {
@@ -186,7 +211,7 @@ namespace Phase
         void Shift()
         {
             int previous = phase; phase = (phase + 1) % 3; flash = .08;
-            for (int i = 0; i < blocks.Count; i++) if (!blocks[i].ActiveInPhase(previous) && blocks[i].ActiveInPhase(phase) && Overlap(player, blocks[i])) blocked.Add(i);
+            for (int i = 0; i < blocks.Count; i++) if (!blocks[i].ActiveInPhase(previous) && blocks[i].ActiveInPhase(phase) && Occupied(blocks[i])) blocked.Add(i);
             Burst(player.x + 4, player.y + 5, phase);
             CheckSpikes();
         }
@@ -267,6 +292,7 @@ namespace Phase
             bool rider = p.vy >= 0 && Math.Abs(p.y + p.h - m.y) < .6 && p.x + p.w > m.x && p.x < m.x + m.w;
             bool clinger = (p.climbing && input.grab && p.stamina > 0 && p.dashTime <= 0 && Collides(p, new List<Block> { m }, p.facing)) || (p.hopMover && p.wallLock > 0);
             int steps = Math.Max(1, (int)Math.Ceiling(Math.Max(Math.Abs(dx), Math.Abs(dy)))); var walls = Walls();
+            foreach (var gear in gears) { walls.Add(gear.wall); walls.Add(gear.platform); }
             for (int i = 0; i < steps; i++)
             {
                 var before = new Block(p.x,p.y,p.w,p.h);
@@ -278,6 +304,42 @@ namespace Phase
             }
             if (t >= 1) { m.moving = false; if (m.returns && m.index == 1) m.hold = .2; }
             return dx;
+        }
+        bool MoveGearBlock(Block block, int dx, int dy, Controls input)
+        {
+            var p = player;
+            bool rider = p.vy >= 0 && OnGround(p, new List<Block> { block });
+            bool clinger = p.climbing && input.grab && Collides(p, new List<Block> { block }, p.facing);
+            var obstacles = Solid().Where(b => b != block).ToList();
+            int steps = Math.Max(Math.Abs(dx), Math.Abs(dy));
+            for (int i = 0; i < steps; i++)
+            {
+                var before = new Block(p.x,p.y,p.w,p.h);
+                block.x += (double)dx / steps; block.y += (double)dy / steps;
+                if (obstacles.Any(b => Overlap(block, b)) || !WithinSides(block.x, block.w)) return false;
+                if (rider || clinger) { p.x += (double)dx / steps; p.y += (double)dy / steps; }
+                else if (Overlap(p, block))
+                {
+                    if (dx > 0) p.x = block.x + block.w; else if (dx < 0) p.x = block.x - p.w;
+                    else if (dy > 0) p.y = block.y + block.h; else p.y = block.y - p.h;
+                }
+                if (CheckSpikes(before) || obstacles.Any(b => Overlap(p, b)) || !WithinSides(p.x, p.w) || p.y < 0) return false;
+            }
+            return true;
+        }
+        void DriveGear(ClimbGear gear, int climb, Controls input)
+        {
+            for (int i = 0; i < Math.Abs(climb); i++)
+            {
+                int dy = Math.Sign(climb);
+                double y = gear.wall.y + dy;
+                if (y < gear.top || y > gear.bottom) break;
+                double wallY = gear.wall.y, platformX = gear.platform.x, px = player.x, py = player.y;
+                int dx = PixelRound(gear.startX + (gear.endX - gear.startX) * (gear.bottom - y) / (gear.bottom - gear.top)) - (int)gear.platform.x;
+                if (MoveGearBlock(gear.wall, 0, dy, input) && MoveGearBlock(gear.platform, dx, 0, input)) continue;
+                gear.wall.y = wallY; gear.platform.x = platformX; player.x = px; player.y = py;
+                break;
+            }
         }
         public void Step(Controls input, double dt = Dt)
         {
@@ -291,7 +353,7 @@ namespace Phase
             p.buffer = input.jump ? .08 : input.jumpHeld ? Math.Max(0, p.buffer - dt) : 0;
             p.dashBuffer = input.dash ? .08 : input.dashHeld ? Math.Max(0, p.dashBuffer - dt) : 0;
             if (freeze > 1e-9) { freeze = Math.Max(0, freeze - dt); return; }
-            blocked.RemoveWhere(i => !Overlap(p, blocks[i]));
+            blocked.RemoveWhere(i => !Occupied(blocks[i]));
             double platformDX = MovePlatform(input, dt); if (respawn > 0) return;
             p.dashAttack = Math.Max(0, p.dashAttack - dt);
             var solids = Solid(); int contact = WallAt(p, solids, input.x != 0 ? input.x : p.facing, p.dashAttack > 0 && p.dx == 0 && p.dy == -1 ? 5 : 3);
@@ -424,6 +486,9 @@ namespace Phase
                 if (!exitRight) p.x = Math.Min(Width - p.w, p.x);
                 if (CheckSpikes(before)) return;
             }
+            var drivenGear = p.climbing && input.grab && input.y != 0 && p.climbWait <= 0 && p.climbMove == input.y
+                ? gears.FirstOrDefault(g => Collides(p, new List<Block> { g.wall }, p.facing)) : null;
+            double climbY = p.y;
             p.remY += p.vy * dt; int moveY = PixelRound(p.remY); p.remY -= moveY;
             bool hitY = false;
             for (int n = 0; n < Math.Abs(moveY) && !hitY; n++)
@@ -449,6 +514,7 @@ namespace Phase
                 }
                 if (CheckSpikes(before)) return;
             }
+            if (drivenGear != null && Math.Sign(p.y - climbY) == input.y) DriveGear(drivenGear, PixelRound(p.y - climbY), input);
             if (p.y < 0) { p.y = 0; p.vy = Math.Max(0, p.vy); p.varTime = p.remY = p.dashAttack = 0; }
             solids = Solid(); p.grounded = p.vy >= 0 && OnGround(p, solids); p.wall = WallAt(p, solids, input.x != 0 ? input.x : p.facing);
             if (p.grounded && p.dashRefill <= 0 && p.dashTime <= 0) p.dash = 1;

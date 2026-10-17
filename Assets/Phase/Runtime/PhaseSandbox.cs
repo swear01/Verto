@@ -12,6 +12,7 @@ namespace Phase
         public Camera pixelCamera;
         public Material pixelMaterial;
         public string leftScene, rightScene;
+        public bool checkpointOnEntry;
         public Vector2Int spawn = new Vector2Int(32, 149);
         public PhaseController Controller { get; private set; }
         public Texture2D Frame => pixels?.Texture;
@@ -46,7 +47,9 @@ namespace Phase
         void Awake()
         {
             var platform = GetComponentInChildren<PhaseMovingPlatform>();
-            Controller = new PhaseController(GetComponentsInChildren<PhaseTerrain>().Select(t => t.CreateBlock()), spawn.x, spawn.y, platform != null ? platform.CreatePlatform() : null, spikes: GetComponentsInChildren<PhaseSpike>().Select(t => t.CreateSpike()));
+            Controller = new PhaseController(GetComponentsInChildren<PhaseTerrain>().Select(t => t.CreateBlock()), spawn.x, spawn.y,
+                platform != null ? platform.CreatePlatform() : null, gears: GetComponentsInChildren<PhaseClimbGear>().Select(g => g.CreateGear()),
+                spikes: GetComponentsInChildren<PhaseSpike>().Select(t => t.CreateSpike()));
             Controller.exitLeft = !string.IsNullOrEmpty(leftScene);
             Controller.exitRight = !string.IsNullOrEmpty(rightScene);
             bool arriving = traveler != null && gameObject.scene.name == arrivalScene;
@@ -54,7 +57,12 @@ namespace Phase
             Controller.ResizeRoom(size.x);
             if (arriving)
             {
-                Controller.EnterFrom(traveler, arrivalDirection);
+                if (checkpointOnEntry)
+                {
+                    Controller.time = traveler.time; Controller.jumps = traveler.jumps;
+                    Controller.dashes = traveler.dashes; Controller.deaths = traveler.deaths;
+                }
+                else Controller.EnterFrom(traveler, arrivalDirection);
                 if (travelFrame?.Length == size.x * size.y) departingFrame = travelFrame;
                 transitionDirection = arrivalDirection;
             }
