@@ -21,9 +21,11 @@ public static class DemoLiveInput
     {
         var sandbox = UnityEngine.Object.FindAnyObjectByType<PhaseSandbox>();
         string scene = SceneManager.GetActiveScene().name;
-        if (!Application.isPlaying || sandbox == null || !scene.StartsWith("PhaseDemo") || !int.TryParse(scene.Substring(9),out int number))
-            throw new InvalidOperationException("Open an eight-room demo scene in Play mode.");
-        var room = Newtonsoft.Json.JsonConvert.DeserializeObject<Routes>(File.ReadAllText("Assets/Phase/DemoRooms.json")).rooms[number-1];
+        string prefix = scene.StartsWith("PhaseCrystal") ? "PhaseCrystal" : "PhaseDemo";
+        string course = prefix == "PhaseCrystal" ? "CrystalRooms" : "DemoRooms";
+        if (!Application.isPlaying || sandbox == null || !scene.StartsWith(prefix) || !int.TryParse(scene.Substring(prefix.Length),out int number))
+            throw new InvalidOperationException("Open a demo or crystal scene in Play mode.");
+        var room = Newtonsoft.Json.JsonConvert.DeserializeObject<Routes>(File.ReadAllText("Assets/Phase/"+course+".json")).rooms[number-1];
         var routes = bypass ? room.bypassRoutes : new[] { room.route };
         if (routes == null || routes.Length == 0) throw new InvalidOperationException("This room has no recorded bypass routes.");
         var reports = new System.Collections.Generic.List<string>();
@@ -37,7 +39,7 @@ public static class DemoLiveInput
             var beforeEditorInput=InputSystem.settings.editorInputBehaviorInPlayMode;
             UnityEngine.Events.UnityAction<Scene,Scene> changed = (a,b) => result.TrySetException(new InvalidOperationException("Route crossed the exit before its landing check: "+scene));
             SceneManager.activeSceneChanged += changed;
-            try { sandbox.StartCoroutine(Check(sandbox,trial,number,result)); reports.Add(await result.Task); }
+            try { sandbox.StartCoroutine(Check(sandbox,trial,number,course,result)); reports.Add(await result.Task); }
             finally { SceneManager.activeSceneChanged -= changed; }
             if(Time.captureDeltaTime!=beforeCapture||Application.runInBackground!=beforeBackground||
                 InputSystem.settings.backgroundBehavior!=beforeFocus||InputSystem.settings.editorInputBehaviorInPlayMode!=beforeEditorInput)
@@ -45,7 +47,7 @@ public static class DemoLiveInput
         }
         return string.Join("\n", reports);
     }
-    static IEnumerator Check(PhaseSandbox sandbox, Room room, int number, TaskCompletionSource<string> result)
+    static IEnumerator Check(PhaseSandbox sandbox, Room room, int number, string course, TaskCompletionSource<string> result)
     {
         bool background = Application.runInBackground;
         var focus = InputSystem.settings.backgroundBehavior;
@@ -63,9 +65,10 @@ public static class DemoLiveInput
             string label = number + room.suffix;
             int deaths = s.deaths, jumps = s.jumps, dashes = s.dashes, frame = Time.frameCount;
             double time = s.time;
-            Directory.CreateDirectory("TestResults/DemoRooms");
-            File.WriteAllBytes($"TestResults/DemoRooms/{label}-start.png",sandbox.Frame.EncodeToPNG());
-            for (int i=0;i<room.route.Length;i++)
+            Directory.CreateDirectory("TestResults/"+course);
+            File.WriteAllBytes($"TestResults/{course}/{label}-start.png",sandbox.Frame.EncodeToPNG());
+            bool landed = false;
+            for (int i=0;i<room.route.Length && !landed;i++)
             {
                 var step=room.route[i];
                 var keys = new System.Collections.Generic.List<Key>();
@@ -76,7 +79,9 @@ public static class DemoLiveInput
                 for (int n = 0; n < step.frames; n++)
                 {
                     yield return null;
-                    if (room.goal != null && i==room.route.Length-1 && s.player.x>=room.goal.x && s.player.grounded && s.player.y+s.player.h==room.goal.y) break;
+                    if (room.goal != null && s.player.x>=room.goal.x && s.player.grounded && s.player.y+s.player.h==room.goal.y &&
+                        s.phase==room.goal.phase && s.jumps-jumps==room.goal.jumps && s.dashes-dashes==room.goal.dashes)
+                    { landed = true; break; }
                 }
             }
             InputSystem.QueueStateEvent(keyboard,new KeyboardState());
@@ -88,9 +93,9 @@ public static class DemoLiveInput
                     result.TrySetException(new InvalidOperationException($"Room {label} bypass escaped: x={p.x}, lift={s.gears[0].Lift}, deaths={s.deaths-deaths}"));
                     yield break;
                 }
-                File.WriteAllBytes($"TestResults/DemoRooms/{label}-end.png",sandbox.Frame.EncodeToPNG());
+                File.WriteAllBytes($"TestResults/{course}/{label}-end.png",sandbox.Frame.EncodeToPNG());
                 string blocked = $"Room {label} blocked: frames={Time.frameCount-frame}, seconds={s.time-time:F3}, x={p.x}, lift=0, deaths=0";
-                File.WriteAllText($"TestResults/DemoRooms/{label}.txt",blocked); result.SetResult(blocked); yield break;
+                File.WriteAllText($"TestResults/{course}/{label}.txt",blocked); result.SetResult(blocked); yield break;
             }
             if (s.deaths != deaths || p.x < goal.x || p.y + p.h != goal.y || !p.grounded || s.phase != goal.phase ||
                 s.jumps-jumps != goal.jumps || s.dashes-dashes != goal.dashes || (s.gears.Length > 0 && s.gears[0].Lift != goal.lift) ||
@@ -99,9 +104,9 @@ public static class DemoLiveInput
                 result.TrySetException(new InvalidOperationException($"Room {number}: x={p.x}, feet={p.y+p.h}, phase={s.phase}, jumps={s.jumps-jumps}, dashes={s.dashes-dashes}, deaths={s.deaths-deaths}, lift={(s.gears.Length>0?s.gears[0].Lift:0)}"));
                 yield break;
             }
-            File.WriteAllBytes($"TestResults/DemoRooms/{label}-end.png",sandbox.Frame.EncodeToPNG());
+            File.WriteAllBytes($"TestResults/{course}/{label}-end.png",sandbox.Frame.EncodeToPNG());
             string report = $"Room {number} passed: frames={Time.frameCount-frame}, seconds={s.time-time:F3}, jumps={s.jumps-jumps}, dashes={s.dashes-dashes}, deaths=0";
-            File.WriteAllText($"TestResults/DemoRooms/{label}.txt",report);
+            File.WriteAllText($"TestResults/{course}/{label}.txt",report);
             result.SetResult(report);
         }
         finally

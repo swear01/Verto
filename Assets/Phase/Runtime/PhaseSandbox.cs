@@ -49,7 +49,8 @@ namespace Phase
             Controller = new PhaseController(GetComponentsInChildren<PhaseTerrain>().Select(t => t.CreateBlock()), spawn.x, spawn.y,
                 GetComponentsInChildren<PhaseMovingPlatform>().Select(m => m.CreatePlatform()), gears: GetComponentsInChildren<PhaseClimbGear>().Select(g => g.CreateGear()),
                 spikes: GetComponentsInChildren<PhaseSpike>().Select(t => t.CreateSpike()),
-                lasers: GetComponentsInChildren<PhaseLaser>().Select(t => t.CreateLaser()));
+                lasers: GetComponentsInChildren<PhaseLaser>().Select(t => t.CreateLaser()),
+                crystals: GetComponentsInChildren<PhaseCrystal>().Select(t => t.CreateCrystal()));
             Controller.exitLeft = !string.IsNullOrEmpty(leftScene);
             Controller.exitRight = !string.IsNullOrEmpty(rightScene);
             bool arriving = traveler != null && gameObject.scene.name == arrivalScene;

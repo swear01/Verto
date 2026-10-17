@@ -19,6 +19,13 @@ const server=http.createServer((req,res)=>{
   await page.goto(`http://127.0.0.1:${server.address().port}/`);await page.locator('#rooms-toggle').waitFor({state:'visible'});
   await page.locator('#rooms-toggle').click();await page.locator('[data-room="5"]').click();await page.waitForFunction(()=>!document.getElementById('rooms').open);
   assert(await page.evaluate(()=>__calls.some(c=>c.m==='SelectDemoRoom'&&c.v==='5')));
+  assert.equal(await page.locator('[data-room]').count(),11,'selector includes three crystal rooms');
+  for(const room of ['9','10','11']) {
+    await page.locator('#rooms-toggle').click();await page.locator(`[data-room="${room}"]`).click();
+    await page.waitForFunction(()=>!document.getElementById('rooms').open);
+    assert(await page.evaluate(value=>__calls.some(c=>c.m==='SelectDemoRoom'&&c.v===value),room));
+  }
+
   await page.locator('#rooms-toggle').click();await page.locator('#map-open').click();assert(await page.locator('#map-editor').isVisible());
   const board=page.locator('#map-board');await board.focus();
   await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowRight');await page.keyboard.press('Space');

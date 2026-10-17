@@ -30,6 +30,15 @@ EditorBuildSettings:
     path: Assets/Scenes/PhaseDemo8.unity
     guid: 6bf990b86887d44cead2cb2a711691c0
   - enabled: 1
+    path: Assets/Scenes/PhaseCrystal1.unity
+    guid: d63ae9e37bb774163804d5c412a83f71
+  - enabled: 1
+    path: Assets/Scenes/PhaseCrystal2.unity
+    guid: 4f253c227bc2449c2a23c69c21311a04
+  - enabled: 1
+    path: Assets/Scenes/PhaseCrystal3.unity
+    guid: ec08d76b7933345b5afdca00cf8f5a13
+  - enabled: 1
     path: Assets/Scenes/PhaseSandbox.unity
     guid: 95612d62033eb42338c7fdd522af857f
   - enabled: 1

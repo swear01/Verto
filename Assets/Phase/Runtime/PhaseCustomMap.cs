@@ -75,7 +75,7 @@ namespace Phase
                 throw new ArgumentException("地圖至少需要一格地形。");
             if (room.blocks.Length + (room.spikes?.Length ?? 0) > 880)
                 throw new ArgumentException("地圖超過880格。");
-            if ((room.lasers?.Length ?? 0) != 0 || (room.nodeX?.Length ?? 0) != 0 || (room.nodeY?.Length ?? 0) != 0 || room.hasGear ||
+            if ((room.crystals?.Length ?? 0) != 0 || (room.lasers?.Length ?? 0) != 0 || (room.nodeX?.Length ?? 0) != 0 || (room.nodeY?.Length ?? 0) != 0 || room.hasGear ||
                 room.gearWall != null || room.gearPlatform != null || room.gearTop != 0 || room.gearEndX != 0 || room.returns ||
                 double.IsNaN(room.moverW) || double.IsInfinity(room.moverW) || double.IsNaN(room.moverH) || double.IsInfinity(room.moverH))
                 throw new ArgumentException("自訂地圖目前支援靜態地形與尖刺。");

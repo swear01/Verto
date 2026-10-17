@@ -9,16 +9,18 @@ using UnityEngine.SceneManagement;
 public class GridGeometryTests
 {
     [Test]
-    public void SavedDemoPrefabInstancesPreserveAllEightRoomMechanisms()
+    public void SavedDemoPrefabInstancesPreserveAllElevenRoomMechanisms()
     {
         var data = JsonUtility.FromJson<PhaseDemoRooms>(System.IO.File.ReadAllText("Assets/Phase/DemoRooms.json"));
-        for (int i = 0; i < data.rooms.Length; i++)
+        var rooms = data.rooms.Concat(JsonUtility.FromJson<PhaseDemoRooms>(System.IO.File.ReadAllText("Assets/Phase/CrystalRooms.json")).rooms).ToArray();
+        for (int i = 0; i < rooms.Length; i++)
         {
-            var scene = EditorSceneManager.OpenScene("Assets/Scenes/PhaseDemo" + (i + 1) + ".unity", OpenSceneMode.Additive);
+            var name = i < 8 ? "PhaseDemo" + (i + 1) : "PhaseCrystal" + (i - 7);
+            var scene = EditorSceneManager.OpenScene("Assets/Scenes/" + name + ".unity", OpenSceneMode.Additive);
             try
             {
                 var sandbox = scene.GetRootGameObjects().SelectMany(o => o.GetComponentsInChildren<PhaseSandbox>()).Single();
-                var expected = data.rooms[i].CreateController();
+                var expected = rooms[i].CreateController();
                 var movers = sandbox.GetComponentsInChildren<PhaseMovingPlatform>();
                 Assert.That(movers.Length, Is.EqualTo(expected.movers.Length));
                 for (int j = 0; j < movers.Length; j++)
@@ -39,6 +41,10 @@ public class GridGeometryTests
                     Assert.That((model.platform.x, model.platform.y, model.platform.w, model.platform.h, model.endX),
                         Is.EqualTo((source.platform.x, source.platform.y, source.platform.w, source.platform.h, source.endX)));
                 }
+                var crystals = sandbox.GetComponentsInChildren<PhaseCrystal>();
+                Assert.That(crystals.All(PrefabUtility.IsPartOfPrefabInstance), Is.True);
+                Assert.That(crystals.Select(c => c.CreateCrystal()).Select(c => (c.x, c.y, c.kind, c.Mask)),
+                    Is.EqualTo(expected.crystals.Select(c => (c.x, c.y, c.kind, c.Mask))));
                 var lasers = sandbox.GetComponentsInChildren<PhaseLaser>();
                 Assert.That(lasers.All(PrefabUtility.IsPartOfPrefabInstance), Is.True);
                 Assert.That(lasers.Select(l => l.CreateLaser()).Select(l => (l.x, l.y, l.direction, l.Mask)),
@@ -163,6 +169,12 @@ public class GridGeometryTests
             go.transform.position = new Vector3(25, -39);
             var emitter = go.AddComponent<PhaseLaser>(); var laser = emitter.CreateLaser();
             Assert.That((laser.x, laser.y), Is.EqualTo((24d, 40d)), "emitters share the terrain Grid");
+            go.transform.position = new Vector3(25, -39);
+            var pickup = go.AddComponent<PhaseCrystal>(); pickup.kind = CrystalKind.Dash; pickup.phaseMask = 5;
+            var crystal = pickup.CreateCrystal();
+            Assert.That((crystal.x, crystal.y, crystal.w, crystal.h, crystal.Mask, crystal.kind),
+                Is.EqualTo((24d, 40d, 8d, 8d, 5, CrystalKind.Dash)), "pickups share the terrain Grid and native bounds");
+            Assert.That(shape.isTrigger, Is.True); Assert.That(shape.size, Is.EqualTo(new Vector2(8, 8)));
             root.transform.localScale = new Vector3(2, 1, 1);
             Assert.Throws<System.InvalidOperationException>(() => terrain.CreateBlock());
         }
@@ -173,7 +185,11 @@ public class GridGeometryTests
     {
         var data = JsonUtility.FromJson<PhaseDemoRooms>(System.IO.File.ReadAllText("Assets/Phase/DemoRooms.json"));
         foreach (var room in data.rooms) room.CreateController();
+        double originalX = data.rooms[0].blocks[0].x;
         data.rooms[0].blocks[0].x = 1;
+        Assert.Throws<System.InvalidOperationException>(() => data.rooms[0].CreateController());
+        data.rooms[0].blocks[0].x = originalX;
+        data.rooms[0].crystals = new[] { new DemoCrystal { x = 40, y = 81, kind = CrystalKind.Jump, phaseMask = 7 } };
         Assert.Throws<System.InvalidOperationException>(() => data.rooms[0].CreateController());
     }
 }

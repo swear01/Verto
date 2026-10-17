@@ -18,6 +18,7 @@ rejects(r=>{r.blocks=[block];r.spikes=[{x:0,y:0,length:8,direction:0,phaseMask:2
 rejects(r=>r.spikes=[{x:0,y:0,length:8,direction:4,phaseMask:7}],/方向/);
 rejects(r=>r.nodeX=[0,8],/只支援/);
 rejects(r=>r.hasGear=true,/只支援/);
+rejects(r=>r.crystals=[{x:80,y:80,kind:0,phaseMask:7}],/只支援/);
 rejects(r=>r.blocks=Array(881).fill(block),/清單/);
 rejects(r=>r.spawnY=168,/出生點/);
 rejects(r=>r.blocks=[{...block,x:24,y:152,phaseMask:1}],/重疊/);

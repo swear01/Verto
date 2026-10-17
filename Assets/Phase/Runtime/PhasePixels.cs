@@ -265,6 +265,38 @@ namespace Phase
                 else Rect(laser.x+2, laser.y + (laser.direction == LaserDirection.Down ? 6 : 0), 4, 2, edge);
             }
         }
+        static readonly string[][] CrystalRows = {
+            new[] { "..hhhh..", ".hllleh.", "hlllleeh", "hllbbeeh", "hlbbbeeh", "hebbbeeh", ".heeeeh.", "..hhhh.." },
+            new[] { "hhhhhhhh", "hllllleh", "hlllleeh", "hllbbeeh", "hlbbbeeh", "hbbbbeeh", "heeeeeeh", "hhhhhhhh" }
+        };
+        void Crystals(PhaseController s)
+        {
+            foreach (var crystal in s.crystals)
+            {
+                if (crystal.collected) continue;
+                int color = surfaceIndices[crystal.Mask]; var highlight = Color(Highlights[color]);
+                var edge = Color(Edges[color]); var body = Color(Fills[color]); var core = Mix(highlight, Color("ffffff"), .6);
+                double alpha = crystal.ActiveInPhase(s.phase) ? 1 : .2;
+                var rows = CrystalRows[crystal.kind == CrystalKind.Jump ? 0 : 1];
+                bool Solid(int u, int v) => u >= 0 && u < 8 && v >= 0 && v < 8 && rows[v][u] != '.';
+                for (int y = -1; y <= 8; y++) for (int x = -1; x <= 8; x++)
+                {
+                    if (Solid(x,y))
+                    {
+                        char ink = rows[y][x];
+                        Rect(crystal.x+x, crystal.y+y, 1, 1, ink == 'h' ? highlight : ink == 'l' ? core : ink == 'e' ? edge : body, alpha);
+                    }
+                    else if (Solid(x-1,y) || Solid(x+1,y) || Solid(x,y-1) || Solid(x,y+1))
+                        Rect(crystal.x+x, crystal.y+y, 1, 1, Ink, alpha);
+                }
+                if (crystal.Mask != 7 && (crystal.Mask & (crystal.Mask-1)) != 0)
+                {
+                    int dot = 0;
+                    for (int phase = 0; phase < 3; phase++) if (crystal.ActiveInPhase(phase))
+                        Rect(crystal.x+2+dot++*3, crystal.y+5, 1, 1, Highlights[phase], alpha);
+                }
+            }
+        }
         sealed class Bitmap { public int width, height; public Color32[] pixels; }
         static Bitmap Paint(string[] rows, Dictionary<char,Color32> palette, bool flip = false, bool outline = false)
         {
@@ -420,6 +452,13 @@ namespace Phase
             var end = segments[length - 1]; Rect(end.x - facing, end.y, 1, end.h, Ink);
             for (int i = 0; i < length; i++) { var q = segments[i]; Rect(q.x, q.y, 1, q.h, Scarf[dash][i == length - 1 ? 1 : 0]); }
             Blit(Sprite(name, facing, phase, dash, false, tired), x - 2, feet - rows.Length - 1);
+            if (p.airJump > 0)
+            {
+                int cx = x + 3, cy = feet - (name == "duck" ? 2 : 5);
+                Rect(cx-1, cy-1, 3, 3, Ink);
+                Rect(cx, cy-1, 1, 1, "e8e8e8"); Rect(cx-1, cy, 1, 1, "e8e8e8");
+                Rect(cx+1, cy, 1, 1, "e8e8e8"); Rect(cx, cy+1, 1, 1, "e8e8e8");
+            }
         }
         void VoidBoundary(PhaseController s)
         {
@@ -444,6 +483,7 @@ namespace Phase
             foreach (var gear in s.gears) Gear(gear);
             Spikes(s);
             foreach (var mover in s.movers) Mover(mover);
+            Crystals(s);
             Lasers(s);
             foreach (var t in s.trails) Blit(Sprite("dash", s.player.facing, t.phase, 0, true), Round(t.x) - 2, Round(t.y) - 3, t.life * 2);
             if (playerVisible && s.respawn <= 0) DrawPlayer(s.player, s.time, s.phase);

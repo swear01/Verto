@@ -10,6 +10,7 @@ namespace Phase
         PhaseTerrain[] terrain;
         PhaseMovingPlatform[] movers;
         PhaseClimbGear[] gears;
+        PhaseCrystal[] crystals;
         public static Vector3 Snap(Component owner, Vector3 position)
         {
             var grid = owner.GetComponentInParent<Grid>();
@@ -42,6 +43,7 @@ namespace Phase
             terrain = GetComponentsInChildren<PhaseTerrain>();
             movers = GetComponentsInChildren<PhaseMovingPlatform>();
             gears = GetComponentsInChildren<PhaseClimbGear>();
+            crystals = GetComponentsInChildren<PhaseCrystal>();
         }
         void LateUpdate()
         {
@@ -54,6 +56,9 @@ namespace Phase
                 Sync(gears[i].GetComponent<BoxCollider2D>(), controller.gears[i].wall);
                 Sync(gears[i].transform.Find("Platform collider").GetComponent<BoxCollider2D>(), controller.gears[i].platform);
             }
+            for (int i = 0; i < crystals.Length; i++)
+                Sync(crystals[i].GetComponent<BoxCollider2D>(), controller.crystals[i],
+                    controller.crystals[i].ActiveInPhase(controller.phase) && !controller.crystals[i].collected);
             Physics2D.SyncTransforms();
         }
         static void Sync(BoxCollider2D shape, Block block, bool active = true)
