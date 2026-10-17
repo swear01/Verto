@@ -229,7 +229,9 @@ function dashCharge(buffer, player) {
     await binding(4).click(); await page.keyboard.press('l');
     assert.match(await page.locator('#controls-status').innerText(), /此鍵已設定/);
     await page.keyboard.press('Escape');
-    assert(await dialog.isVisible(), 'Escape should cancel key capture first');
+    assert(await dialog.isVisible(), 'Escape clears a slot without closing settings');
+    assert.equal(await binding(4).innerText(), '未設定');
+    assert.equal(await binding(4, 1).innerText(), 'Space', 'Clearing first slot must preserve second');
     await binding(4).click(); await page.keyboard.press('j');
     await binding(5).click(); await page.keyboard.press('k');
     await binding(6).click(); await page.keyboard.press('h');
@@ -240,11 +242,14 @@ function dashCharge(buffer, player) {
     await page.keyboard.press('Escape');
     await binding(5, 1).click(); await page.keyboard.press('v');
     assert.equal(await binding(5).innerText(), 'K');
-    await binding(5, 1).click(); await page.keyboard.press('Delete');
+    await binding(5, 1).click(); await page.keyboard.press('Escape');
     assert.equal(await binding(5, 1).innerText(), '未設定');
-    await binding(5).click(); await page.keyboard.press('Delete');
+    await binding(5).click(); await page.keyboard.press('Escape');
     assert.match(await page.locator('#controls-status').innerText(), /至少保留一個鍵/);
-    await page.keyboard.press('Escape');
+    assert(await dialog.isVisible(), 'Blocked clear cannot dismiss settings');
+    assert.equal(await binding(5).getAttribute('aria-pressed'), 'true');
+    await page.keyboard.press('Tab');
+    assert.equal(await binding(5).innerText(), 'K', 'Cancel preserves the last key');
     await binding(1, 1).click(); await page.keyboard.press('Tab');
     assert.equal(await binding(1, 1).getAttribute('aria-pressed'), 'false');
     assert.equal(await binding(1, 1).innerText(), 'D');
@@ -298,6 +303,7 @@ function dashCharge(buffer, player) {
     assert.equal(await binding(6, 1).innerText(), 'Shift');
     assert.equal(await binding(4).innerText(), 'J');
     assert.equal(await binding(5).innerText(), 'K');
+    assert.equal(await binding(5, 1).innerText(), '未設定', 'Esc clear must persist');
     await page.locator('#controls-close').click();
     await page.waitForTimeout(200);
     for (let i = 0; i < 40 && !(await capture('controls-reloaded')); i++) await page.waitForTimeout(250);
@@ -375,6 +381,7 @@ function dashCharge(buffer, player) {
     const migrated = await capture('controls-migrated');
     await page.keyboard.press('l', { delay: 180 });
     assert((await capture('controls-migrated-moved')).x > migrated.x + 12, 'Migrated binding did not reach Unity');
+    result.escapeClearsSlot = true;
     result.twoKeySlots = true;
     result.legacyMigration = true;
     result.perActionReset = true;
