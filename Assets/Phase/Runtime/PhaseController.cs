@@ -101,7 +101,7 @@ namespace Phase
         public readonly HashSet<int> blocked = new HashSet<int>();
         public readonly List<Trail> trails = new List<Trail>();
         public readonly List<Particle> particles = new List<Particle>();
-        readonly double spawnX, spawnY;
+        public readonly double spawnX, spawnY;
         readonly MovingPlatform platformTemplate;
         readonly ClimbGear[] gearTemplates;
         readonly Random random = new Random(1);
