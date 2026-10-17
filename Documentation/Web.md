@@ -21,6 +21,17 @@ Open <http://127.0.0.1:8765/>. Click the canvas for keyboard focus: arrows/WASD
 move, Space/Z jumps, X dashes, and C/Shift grabs. Cross the first room’s right
 edge to continue, or the second room’s left edge to return. Room changes use a
 0.18-second horizontal pixel slide; input/physics pause until it finishes.
+The Unity splash screen and logo are disabled in PlayerSettings.
+The build verifies both flags and records them in `TestResults/Web/splash.json`;
+browser checks preserve initial canvas frames before the first player frame.
+The hood and scarf are amber with one dash available and dark orange after use;
+landing refills them. Eye colors continue to indicate phase.
+Grabbing a wall shows a 4x12 native-pixel stamina gauge beside the player, away
+from the wall. Its fill stays at the bottom as it shrinks, changing from green (110)
+through amber (55) to red (20). At 20 or below it pulses twice per second; an empty
+red outline remains while exhausted in the air. Landing refills stamina and hides
+the gauge. Normal flight has no gauge; the hood/eyes retain their separate meanings.
+This gauge follows the requested gradual stamina display; [Celeste’s original player source](https://github.com/NoelFB/Celeste/blob/master/Source/Player/Player.cs) uses a red sprite flash below its tired threshold.
 Touch controls are not provided.
 The canvas fills the entire viewport and always shows at least the original
 320x180 native-pixel play area. Wide views extend horizontally; tall views keep
@@ -35,14 +46,20 @@ needs a user click and browser/iframe permission; denied requests show a recover
 message. Loading failures remain visible.
 
 The top-right settings button opens keyboard bindings and pauses the game. Select
-an action, then press one key; Esc cancels capture or closes settings. Overrides
-replace that action's default aliases. Duplicate keys and browser modifier shortcuts
+either of an action’s two slots, then press a key; the other slot is preserved.
+Shift is one logical binding that accepts either left or right Shift. During capture,
+Esc clears the selected slot; each action must keep at least one key. Tab cancels
+capture and moves focus. Outside capture, Esc closes settings. Duplicate keys and browser modifier shortcuts
 are rejected. Changes apply immediately and are stored on this browser/origin;
 blocked storage displays a warning while keeping the current session usable.
 Release held keys after closing settings to resume. Each action has its own Restore
 button; it resets only that action and is disabled when already at its defaults.
 If another action uses a default key, the message names that action and asks you to
 change it first. Other bindings are preserved. Bindings survive room travel.
+`phase.controls.v2` stores 14 strings (two per action, empty means unused).
+Existing `phase.controls.v1` single overrides migrate into the first slot; untouched
+actions keep both defaults. The old data remains unchanged. Invalid or conflicting
+saved data falls back to defaults with a visible notice.
 The settings interface lives in the Web page; the game view stays free of prose.
 
 The custom `Phase` template uses gzip with Unity's decompression fallback, so a
@@ -57,7 +74,7 @@ the warning.
 ## Enable automatic builds and online play
 
 `Web build and preview` runs only on `main`, after push or manual dispatch.
-It uses Unity CLI + live Pipeline for 26 Editor tests, three Play Mode tests and
+It uses Unity CLI + live Pipeline for 28 Editor tests, three Play Mode tests and
 the Web build, then verifies browser rendering, keyboard input, both scene-edge
 transitions, minimum view/tall-sky extension/wide-floor travel, resizing, visible
 load failures, and absence of browser errors/warnings. Only a passing build is

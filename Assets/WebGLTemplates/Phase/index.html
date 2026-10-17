@@ -27,9 +27,10 @@
     dialog header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
     h1 { margin: 0; font-size: 22px; }
     #bindings { display: grid; gap: 8px; }
-    .binding { display: grid; grid-template-columns: 2em minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+    .binding { display: grid; grid-template-columns: 2em repeat(2, minmax(0, 1fr)) 3em; align-items: center; gap: 8px; }
     .binding .key { min-width: 0; padding: 8px 10px; overflow-wrap: anywhere; }
-    .binding .restore { padding: 8px; }
+    .binding .restore { min-width: 0; padding: 8px 4px; }
+    .binding-head { margin-bottom: 8px; color: #c0d4e8; text-align: center; }
     .binding button[aria-pressed="true"] { border-color: #ffb24d; color: #ffb24d; }
     #controls-status { min-height: 48px; margin: 16px 0; color: #c0d4e8; }
     ::selection { color: #101a2b; background: #79c9ff; }
@@ -44,6 +45,7 @@
   <button id="controls-toggle" class="icon" aria-label="鍵位設定" title="鍵位設定" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18M8 3v6M16 9v6M8 15v6"/></svg></button>
   <dialog id="controls" aria-labelledby="controls-title">
     <header><h1 id="controls-title">鍵位設定</h1><button id="controls-close" class="icon" aria-label="返回遊戲"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+    <div class="binding binding-head" aria-hidden="true"><span></span><span>第一組</span><span>第二組</span><span></span></div>
     <div id="bindings"></div>
     <p id="controls-status" role="status" aria-live="polite"></p>
   </dialog>

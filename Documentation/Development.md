@@ -16,7 +16,9 @@ open -g -j -n -a /Applications/Unity/Hub/Editor/6000.4.7f1/Unity.app --args -pro
 
 This macOS launch only controls window activation; all Editor operations below
 use the official Unity CLI and Pipeline. `unity open` currently has no background
-launch option. Do not activate Unity or restore another app after stealing focus.
+launch option. Check the active app before and immediately after launch; these
+flags alone do not prove that Unity stayed in the background. Report an unexpected
+activation. Do not activate Unity or restore another app after stealing focus.
 Modal startup dialogs still require attention; report them instead of foregrounding
 the Editor. The dedicated CI runner may continue using `unity open --wait`.
 
@@ -46,8 +48,9 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 24 controller cases, one 48-frame art
-comparison, one bidirectional pixel-slide test, one adaptive-view test, one
-centered-view stone/void extension test, and three
+comparison (hood/spent-scarf colors remapped plus the eight climbing-frame stamina gauges), one bidirectional pixel-slide
+test, one adaptive-view test, one centered-view stone/void extension test, one
+dash-charge hood lifecycle test, one stamina-gauge depletion/recovery test, and three
 Play Mode cases, including custom bindings, pause/release gating and room persistence.
 The three immutable reference files cover 40 movement/action/climb traces.
 Production steps at 1/60 s; reference replays use the recorded 0.0166667 s.
@@ -103,7 +106,13 @@ scenes must be in Build Settings and in the Web build's explicit scene list.
 Deaths respawn in the current room. Top/bottom behavior and immutable reference
 fixtures stay unchanged; there is no player text.
 Default movement, dash aiming and climb bindings accept arrow keys or WASD.
-Web players can replace these bindings through the settings button.
+Web settings expose two independent slots per action; changing one preserves the
+other. Logical `Shift` activates both physical Shift keys. The Web bridge sends
+14 strings to `ConfigureControls`, in left/right/up/down/jump/dash/grab order,
+with two adjacent slots per action; empty strings disable a slot. The native
+validator rejects duplicate physical keys, reserved keys and actions with no key,
+then applies the entire map atomically. Browser storage/migration is described
+in [Web preview](Web.md).
 
 ## Climb gear demo
 

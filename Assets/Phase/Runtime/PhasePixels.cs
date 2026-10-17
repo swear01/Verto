@@ -6,9 +6,9 @@ namespace Phase
 {
     public sealed class PhasePixels : IDisposable
     {
-        public static readonly string[] Highlights = { "ff8f91", "79c9ff", "78d892", "a9b8c5", "e7ce76" };
-        static readonly string[] Fills = { "833e54", "356487", "316d4a", "3c4a57" };
-        static readonly string[] Edges = { "b35c70", "4d91b3", "56a271", "697d8e" };
+        public static readonly string[] Highlights = { "ff8f91", "79c9ff", "78d892", "e8e8e8", "e8e8e8" };
+        static readonly string[] Fills = { "833e54", "356487", "316d4a", "646464" };
+        static readonly string[] Edges = { "b35c70", "4d91b3", "56a271", "a0a0a0" };
         const string Ink = "0b0f16";
         static readonly Dictionary<string, Color32> colors = new Dictionary<string, Color32>();
         Color32[] buffer = new Color32[320 * 180];
@@ -193,7 +193,7 @@ namespace Phase
         {
             for (int py = 0; py < image.height; py++) for (int px = 0; px < image.width; px++) Put(x + px, y + py, image.pixels[py * image.width + px], alpha);
         }
-        static readonly Bitmap moverTile = Paint(new[] { "TTTTTTTT","hRbbbbRh","hbbbbbbs","hbhhhhbs","hbhsshbs","hbbbbbbs","hRbbbbRs","ssssssss" }, new Dictionary<char, Color32> { ['T']=Color("f2dc8a"),['R']=Color("e7ce76"),['b']=Color("6f603c"),['h']=Color("8f7c47"),['s']=Color("4b4129") });
+        static readonly Bitmap moverTile = Paint(new[] { "TTTTTTTT","hRbbbbRh","hbbbbbbs","hbhhhhbs","hbhsshbs","hbbbbbbs","hRbbbbRs","ssssssss" }, new Dictionary<char, Color32> { ['T']=Color("f0f0f0"),['R']=Color("e8e8e8"),['b']=Color("787878"),['h']=Color("a0a0a0"),['s']=Color("484848") });
         void Mover(MovingPlatform m)
         {
             for (int i = 0; i < (m.returns ? 1 : m.nodes.Length); i++)
@@ -203,12 +203,12 @@ namespace Phase
                 for (int n = 0; n < length; n++) if (n % 4 < 2)
                 {
                     double x = a[0] + m.w / 2 + (b[0] - a[0]) * n / length, y = a[1] + m.h / 2 + (b[1] - a[1]) * n / length;
-                    if (a[1] == b[1]) Rect(x, y - 1, 1, 2, "e0c569", .25);
-                    else if (a[0] == b[0]) Rect(x - 1, y, 2, 1, "e0c569", .25);
-                    else Rect(x, y, 1, 1, "e0c569", .5);
+                    if (a[1] == b[1]) Rect(x, y - 1, 1, 2, "c8c8c8", .25);
+                    else if (a[0] == b[0]) Rect(x - 1, y, 2, 1, "c8c8c8", .25);
+                    else Rect(x, y, 1, 1, "c8c8c8", .5);
                 }
             }
-            foreach (var n in m.nodes) Rect(n[0] + m.w / 2 - 1, n[1] + 2, 3, 3, "e0c569", .5);
+            foreach (var n in m.nodes) Rect(n[0] + m.w / 2 - 1, n[1] + 2, 3, 3, "c8c8c8", .5);
             Rect(m.x - 1, m.y - 1, m.w + 2, m.h + 2, Ink);
             for (double y = m.y; y < m.y + m.h; y += 8) for (double x = m.x; x < m.x + m.w; x += 8) Blit(moverTile, Round(x) - 1, Round(y) - 1);
         }
@@ -252,7 +252,7 @@ namespace Phase
                     for (double x = block.x + 3; x < block.x + block.w - 2; x += 8) Rect(x, y, 2, 2, "a9b8c5");
             }
         }
-        // Frames and palette are ported verbatim from the user's published Wick renderer.
+        // Original Wick frames; the hood now shares the scarf's dash-charge colors.
         static readonly Dictionary<string,string[]> Frames = new Dictionary<string,string[]> {
             ["idle"] = new[] { "..cc......","..dcc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcffefef.",".dccffff..","..kkkkk...",".dccccccc.",".dcccccdc.",".ssssssss.","..bb..bb..","..bb..bb.." },
             ["blink"] = new[] { "..cc......","..dcc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcffffff.",".dccfefe..","..kkkkk...",".dccccccc.",".dcccccdc.",".ssssssss.","..bb..bb..","..bb..bb.." },
@@ -267,14 +267,16 @@ namespace Phase
             ["climb1"] = new[] { "..cc......","..dcc.....",".dccccc...",".dccccccd.",".dcccfffd.",".dccffefd.",".dcccfffd.","..kkkkkkd.",".dccccccd.",".dcccccc..",".ssssss...","..BBB.bb..","......bb.." },
             ["duck"] = new[] { "..........","..cc......",".dcccccc..",".dccfffff.",".dcffefef.","..kkkkkk..","sdcccccccs",".bbssssbb." },
         };
-        static readonly string[][] Scarf = { new[] { "5a6578","414a5a" }, new[] { "ffb24d","d5732b" } };
+        static readonly string[][] Scarf = { new[] { "b96532","763d24" }, new[] { "ffb24d","d5732b" } };
         Bitmap Sprite(string pose, int facing, int phase, int dash, bool silhouette = false)
         {
             var key = (pose, facing, phase, dash, silhouette);
             if (sprites.TryGetValue(key, out var image)) return image;
-            var palette = new Dictionary<char,Color32> { ['c']=Color("eadfc5"),['d']=Color("b3a386"),['s']=Color("7d6e5c"),['f']=Color("1a1f2c"),['b']=Color("453c59"),['B']=Color("2c263b"),['e']=Color(Highlights[phase]),['k']=Color(Scarf[dash][0]) };
-            if (silhouette) foreach (char k in "cdsfbBek") palette[k] = Color(Highlights[phase]);
-            return sprites[key] = Paint(Frames[pose], palette, facing < 0, !silhouette);
+            var palette = new Dictionary<char,Color32> { ['c']=Color("eadfc5"),['d']=Color("b3a386"),['s']=Color("7d6e5c"),['f']=Color("1a1f2c"),['b']=Color("453c59"),['B']=Color("2c263b"),['e']=Color(Highlights[phase]),['k']=Color(Scarf[dash][0]),['h']=Color(Scarf[dash][0]),['H']=Color(Scarf[dash][1]) };
+            var rows = (string[])Frames[pose].Clone();
+            for (int y = 0; y < rows.Length && !rows[y].Contains("k"); y++) rows[y] = rows[y].Replace('c','h').Replace('d','H');
+            if (silhouette) foreach (char k in "cdsfbBekhH") palette[k] = Color(Highlights[phase]);
+            return sprites[key] = Paint(rows, palette, facing < 0, !silhouette);
         }
         static string Pose(Player p, double t)
         {
@@ -303,6 +305,23 @@ namespace Phase
             var end = segments[length - 1]; Rect(end.x - facing, end.y, 1, end.h, Ink);
             for (int i = 0; i < length; i++) { var q = segments[i]; Rect(q.x, q.y, 1, q.h, Scarf[dash][i == length - 1 ? 1 : 0]); }
             Blit(Sprite(name, facing, phase, dash), x - 2, feet - rows.Length - 1);
+            if (!p.grounded && (p.climbing || p.stamina <= 20)) DrawStamina(p, t);
+        }
+        void DrawStamina(Player p, double t)
+        {
+            double stamina = Math.Max(0, Math.Min(110, p.stamina));
+            var color = stamina >= 55
+                ? Mix(Color("ffb24d"), Color("78d892"), (stamina - 55) / 55)
+                : Mix(Color("ff5b5e"), Color("ffb24d"), Math.Max(0, (stamina - 20) / 35));
+            if (stamina <= 20 && (int)Math.Floor(t * 4) % 2 != 0) color = Color("ff8f91");
+            int x = Round(p.x) + (p.facing > 0 ? -8 : 12);
+            if (x < OriginX || x + 4 > OriginX + Width) x = Round(p.x) + (p.facing > 0 ? 12 : -8);
+            x = Math.Max(OriginX, Math.Min(OriginX + Width - 4, x));
+            int y = Math.Max(OriginY, Math.Min(BottomY - 12, Round(p.y) - 1));
+            int fill = (int)Math.Ceiling(stamina / 110 * 10);
+            Rect(x, y, 4, 12, stamina <= 20 ? color : Color("697d8e"));
+            Rect(x + 1, y + 1, 2, 10, "101a26");
+            Rect(x + 1, y + 11 - fill, 2, fill, color);
         }
         public void Draw(PhaseController s, bool playerVisible = true)
         {
