@@ -258,3 +258,12 @@ loading; custom-map success waits for the new root's controller and pixel surfac
 Invalid input preserves the current map and produces a failure callback without
 logging a gameplay error. Controller validation runs in the three `CustomMapTests`;
 `MapBridgeTests` adds one Play Mode import/keyboard/respawn/scene-selection case.
+
+For live verification, enter a demo in Play mode and run
+`Verification/MapLiveInput.cs`, entry `MapLiveInput.Run`, with CLI timeout90seconds
+and script timeout_ms90000. It loads a static map, uses queued keyboard input for
+move/jump/dash and spike death, verifies local respawn and then selects demo2.
+It requires at least100advancing frames plus controller time, writes captures and
+a report to `TestResults/CustomMap`, and restores temporary input/background/timing
+settings. Inspect the live Console separately and capture the actual Game View
+through Pipeline as in the normal live check.
