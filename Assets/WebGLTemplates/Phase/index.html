@@ -54,8 +54,11 @@
     const canvas = document.getElementById('unity-canvas');
     const loading = document.getElementById('loading');
     function resize() {
-      const width = Math.max(1, Math.round(180 * innerWidth / Math.max(1, innerHeight)));
+      const w = Math.max(1, innerWidth), h = Math.max(1, innerHeight);
+      const width = Math.max(320, Math.round(180 * w / h));
+      const height = Math.max(180, Math.ceil(320 * h / w));
       if (canvas.width !== width) canvas.width = width;
+      if (canvas.height !== height) canvas.height = height;
       canvas.style.width = `${innerWidth}px`;
       canvas.style.height = `${innerHeight}px`;
     }

@@ -64,7 +64,8 @@ public class SandboxTests : InputTestFixture
         yield return SceneManager.LoadSceneAsync("PhaseSandbox");
         var sandbox=Object.FindAnyObjectByType<PhaseSandbox>();Assert.That(sandbox,Is.Not.Null);
         yield return null;
-        Assert.That(sandbox.Frame.width,Is.EqualTo(PhaseSandbox.ViewWidth(Screen.width,Screen.height)));Assert.That(sandbox.Frame.height,Is.EqualTo(180));Assert.That(sandbox.Frame.filterMode,Is.EqualTo(FilterMode.Point));
+        var view=PhaseSandbox.ViewSize(Screen.width,Screen.height);
+        Assert.That(sandbox.Frame.width,Is.EqualTo(view.x));Assert.That(sandbox.Frame.height,Is.EqualTo(view.y));Assert.That(sandbox.Frame.filterMode,Is.EqualTo(FilterMode.Point));
         var k=InputSystem.AddDevice<Keyboard>();
         try
         {
@@ -105,7 +106,7 @@ public class SandboxTests : InputTestFixture
                     rendered.LoadImage(File.ReadAllBytes(screen));
                     var viewport=sandbox.pixelCamera.pixelRect;
                     int scale=Mathf.Max(1,(int)viewport.width/sandbox.Frame.width);
-                    Color32 expected=sandbox.Frame.GetPixel(0,179);
+                    Color32 expected=sandbox.Frame.GetPixel(0,sandbox.Frame.height-1);
                     for(int y=0;y<scale;y++)for(int x=0;x<scale;x++)
                     {
                         Color32 actual=rendered.GetPixel((int)viewport.x+x,rendered.height-1-(int)viewport.y-y);

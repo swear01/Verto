@@ -13,14 +13,15 @@ public class PixelTests
     [Test]
     public void RoomSlideKeepsPixelsAndJoinsBothDirections()
     {
-        foreach (int width in new[] { 83,320,427 }) CheckSlide(width);
+        foreach (int width in new[] { 83,320,427 }) CheckSlide(width,180);
+        CheckSlide(320,693);
     }
-    static void CheckSlide(int width)
+    static void CheckSlide(int width, int height)
     {
-        var from = new Color32[width * 180]; var to = new Color32[from.Length];
+        var from = new Color32[width * height]; var to = new Color32[from.Length];
         for (int i = 0; i < from.Length; i++) { from[i] = new Color32(10, (byte)(i % width), 0, 255); to[i] = new Color32(20, (byte)(i % width), 0, 255); }
         var pixels = new PhasePixels();
-        pixels.SetView(width,0);
+        pixels.SetView(width,height,0);
         try
         {
             foreach (int direction in new[] { -1, 1 })
@@ -30,7 +31,7 @@ public class PixelTests
                 pixels.Slide(from, to, .5, direction);
                 var frame = pixels.Texture.GetPixels32();
                 int shift=(int)Math.Floor(width*.5+.5);
-                for (int y = 0; y < 180; y++) for (int x = 0; x < width; x++)
+                for (int y = 0; y < height; y++) for (int x = 0; x < width; x++)
                 {
                     int source = x + shift * direction;
                     var expected = source >= 0 && source < width ? from[y * width + source] : to[y * width + source - width * direction];
@@ -49,15 +50,27 @@ public class PixelTests
         try
         {
             pixels.Draw(s); var original=pixels.Texture.GetPixels32();
-            pixels.SetView(83,95);pixels.Draw(s);var narrow=pixels.Texture.GetPixels32();
+            pixels.SetView(83,180,95);pixels.Draw(s);var narrow=pixels.Texture.GetPixels32();
             for(int y=0;y<180;y++)for(int x=0;x<83;x++)Assert.That(narrow[y*83+x],Is.EqualTo(original[y*320+x+95]),"camera crop keeps native pixels");
-            s.ResizeRoom(427);pixels.SetView(427,0);pixels.Draw(s);
+            s.ResizeRoom(427);pixels.SetView(427,180,0);pixels.Draw(s);
             Color32 floor=pixels.Texture.GetPixel(400,19);
             Assert.That((floor.r,floor.g,floor.b),Is.EqualTo(((byte)169,(byte)184,(byte)197)),"connected stone floor reaches the wide edge");
             Assert.That(pixels.Texture.GetPixel(400,140).a,Is.EqualTo(1));
-            pixels.SetView(320,0);s.ResizeRoom(320);pixels.Draw(s);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32(),"resizing back restores the original room");
-            Assert.That(PhaseSandbox.ViewWidth(390,844),Is.EqualTo(83)); Assert.That(PhaseSandbox.ViewWidth(2560,1080),Is.EqualTo(427));
-            Assert.That(PhaseSandbox.ViewOrigin(83,320,160),Is.EqualTo(122)); Assert.That(PhaseSandbox.ViewOrigin(83,320,315),Is.EqualTo(237));
+            pixels.SetView(320,180,0);s.ResizeRoom(320);pixels.Draw(s);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32(),"resizing back restores the original room");
+            pixels.SetView(320,693,0);pixels.Draw(s);var portrait=pixels.Texture.GetPixels32();
+            for(int y=0;y<180;y++)for(int x=0;x<320;x++)Assert.That(portrait[y*320+x],Is.EqualTo(original[y*320+x]),"portrait retains the entire original play area");
+            foreach(var pixel in portrait)Assert.That(pixel.a,Is.EqualTo(255),"extended sky is opaque");
+            Assert.That(PhaseSandbox.ViewSize(390,844),Is.EqualTo(new Vector2Int(320,693)));
+            Assert.That(PhaseSandbox.ViewSize(2560,1080),Is.EqualTo(new Vector2Int(427,180)));
+            foreach(var viewport in new[]{new Vector2Int(320,180),new Vector2Int(800,600),new Vector2Int(390,844),new Vector2Int(320,1200)})
+            {
+                var size=PhaseSandbox.ViewSize(viewport.x,viewport.y);
+                Assert.That(size.x,Is.GreaterThanOrEqualTo(320));Assert.That(size.y,Is.GreaterThanOrEqualTo(180));
+            }
+            pixels.SetView(320,694,0);pixels.Draw(s);var taller=pixels.Texture.GetPixels32();
+            for(int i=0;i<portrait.Length;i++)Assert.That(taller[i],Is.EqualTo(portrait[i]),"height resize keeps sky fixed in world coordinates");
+            for(int height=180;height<=1400;height++)Assert.That(PhaseSandbox.ViewSize(320,height),Is.EqualTo(new Vector2Int(320,height)),"native viewport size must not drift on repeat calculation");
+            pixels.SetView(320,180,0);pixels.Draw(s);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32(),"portrait resize restores the original art");
         }
         finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
     }

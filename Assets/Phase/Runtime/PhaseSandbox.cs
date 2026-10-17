@@ -26,6 +26,7 @@ namespace Phase
         int transitionDirection;
         static PhaseController traveler;
         static Color32[] travelFrame;
+        static Vector2Int travelSize;
         static string arrivalScene;
         static int arrivalDirection;
         static readonly Key[][] defaultKeys = {
@@ -39,7 +40,7 @@ namespace Phase
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetSession() { ClearTravel(); keys = defaultKeys; controlsOpen = releaseControls = false; }
-        static void ClearTravel() { traveler = null; travelFrame = null; arrivalScene = null; arrivalDirection = 0; }
+        static void ClearTravel() { traveler = null; travelFrame = null; travelSize = default; arrivalScene = null; arrivalDirection = 0; }
 
         void Awake()
         {
@@ -48,17 +49,17 @@ namespace Phase
             Controller.exitLeft = !string.IsNullOrEmpty(leftScene);
             Controller.exitRight = !string.IsNullOrEmpty(rightScene);
             bool arriving = traveler != null && gameObject.scene.name == arrivalScene;
-            int width = arriving && travelFrame != null ? travelFrame.Length / 180 : ViewWidth(Screen.width, Screen.height);
-            Controller.ResizeRoom(width);
+            var size = arriving && travelFrame != null ? travelSize : ViewSize(Screen.width, Screen.height);
+            Controller.ResizeRoom(size.x);
             if (arriving)
             {
                 Controller.EnterFrom(traveler, arrivalDirection);
-                if (travelFrame?.Length == width * 180) departingFrame = travelFrame;
+                if (travelFrame?.Length == size.x * size.y) departingFrame = travelFrame;
                 transitionDirection = arrivalDirection;
             }
             ClearTravel();
             pixels = new PhasePixels();
-            pixels.SetView(width, ViewOrigin(width, Controller.Width, Controller.player.x));
+            pixels.SetView(size.x, size.y, 0);
             pixels.Draw(Controller);
             if (departingFrame != null)
             {
@@ -72,20 +73,21 @@ namespace Phase
         void UpdateSurface()
         {
             if (sprite != null) Destroy(sprite);
-            sprite = Sprite.Create(Frame, new Rect(0, 0, pixels.Width, 180), new Vector2(.5f, .5f), 1, 0, SpriteMeshType.FullRect);
-            surface.sprite = sprite; surface.transform.position = new Vector3(pixels.Width / 2f, -90, 0);
+            sprite = Sprite.Create(Frame, new Rect(0, 0, pixels.Width, pixels.Height), new Vector2(.5f, .5f), 1, 0, SpriteMeshType.FullRect);
+            surface.sprite = sprite; surface.transform.position = new Vector3(pixels.Width / 2f, pixels.Height / 2f - 180, 0);
             pixelCamera.rect = new Rect(0, 0, 1, 1);
-            pixelCamera.aspect = pixels.Width / 180f;
-            pixelCamera.transform.position = new Vector3(pixels.Width / 2f, -90, -10);
+            pixelCamera.aspect = pixels.Width / (float)pixels.Height;
+            pixelCamera.orthographicSize = pixels.Height / 2f;
+            pixelCamera.transform.position = new Vector3(pixels.Width / 2f, pixels.Height / 2f - 180, -10);
         }
         void ResizeCamera()
         {
-            int width = ViewWidth(Screen.width, Screen.height);
-            if (width != pixels.Width)
+            var size = ViewSize(Screen.width, Screen.height);
+            if (size.x != pixels.Width || size.y != pixels.Height)
             {
-                Controller.ResizeRoom(width);
+                Controller.ResizeRoom(size.x);
                 departingFrame = arrivingFrame = null;
-                pixels.SetView(width, ViewOrigin(width, Controller.Width, Controller.player.x));
+                pixels.SetView(size.x, size.y, 0);
                 pixels.Draw(Controller); UpdateSurface();
             }
         }
@@ -120,7 +122,6 @@ namespace Phase
                 accumulator -= PhaseController.Dt;
                 if (Controller.ExitDirection != 0) { Travel(Controller.ExitDirection); break; }
             }
-            pixels.SetView(pixels.Width, ViewOrigin(pixels.Width, Controller.Width, Controller.player.x));
             pixels.Draw(Controller);
         }
         void Travel(int direction)
@@ -134,7 +135,7 @@ namespace Phase
                 return;
             }
             traveler = Controller; arrivalScene = destination; arrivalDirection = direction;
-            pixels.Draw(Controller, false); travelFrame = Frame.GetPixels32();
+            pixels.Draw(Controller, false); travelFrame = Frame.GetPixels32(); travelSize = new Vector2Int(pixels.Width, pixels.Height);
             transitioning = true;
             SceneManager.LoadSceneAsync(destination);
         }
@@ -172,9 +173,13 @@ namespace Phase
             keys = next;
             jumpQueued = dashQueued = false; accumulator = 0;
         }
-        public static int ViewWidth(int width, int height) => Mathf.Max(1, Mathf.RoundToInt(180f * width / Mathf.Max(1, height)));
-        public static int ViewOrigin(int width, int roomWidth, double playerX)
-            => Mathf.Clamp((int)Math.Floor(playerX + 4 - width / 2.0), 0, Mathf.Max(0, roomWidth - width));
+        public static Vector2Int ViewSize(int width, int height)
+        {
+            width = Mathf.Max(1, width); height = Mathf.Max(1, height);
+            return new Vector2Int(
+                Math.Max(320, (int)Math.Floor(180.0 * width / height + .5)),
+                Math.Max(180, (int)Math.Ceiling(320.0 * height / width)));
+        }
         void OnDestroy() { if (sprite != null) Destroy(sprite); pixels?.Dispose(); }
     }
 }
