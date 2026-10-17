@@ -7,7 +7,7 @@ namespace Phase
         public Vector2Int wallSize = new Vector2Int(8, 56);
         public int wallTop = 80;
         public Vector2Int platformStart = new Vector2Int(88, 80);
-        public Vector2Int platformSize = new Vector2Int(48, 8);
+        public Vector2Int platformSize = new Vector2Int(56, 8);
         public int platformEndX = 112;
         public ClimbGear CreateGear()
         {

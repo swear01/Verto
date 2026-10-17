@@ -81,7 +81,7 @@ public static class PhaseSandboxBuilder
         var drive = new GameObject("White gear drive"); drive.transform.SetParent(root.transform);
         drive.transform.position = new Vector3(72, -104, 0);
         var gear = drive.AddComponent<PhaseClimbGear>();
-        gear.wallSize = new Vector2Int(8, 56); gear.wallTop = 80; gear.platformEndX = 112; gear.CreateGear();
+        gear.wallSize = new Vector2Int(8, 56); gear.platformSize = new Vector2Int(56, 8); gear.wallTop = 80; gear.platformEndX = 112; gear.CreateGear();
         var moving = new GameObject("Dash recovery platform"); moving.transform.SetParent(root.transform);
         var mover = moving.AddComponent<PhaseMovingPlatform>();
         mover.size = new Vector2Int(24, 8); mover.nodes = new[] { new Vector2Int(232, 112), new Vector2Int(264, 112) }; mover.returns = true; mover.CreatePlatform();

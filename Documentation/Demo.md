@@ -10,12 +10,12 @@ tutorial messages, menus or added controls.
 | --- | --- | --- |
 | 1 — 換色階梯 | Which landing exists after a jump? | Jump onto blue, green, then red. |
 | 2 — 低頂渡船 | When should the ferry move? | Board first, then dash; the ferry carries the player and the color stays blue. |
-| 3 — 齒輪抬橋 | How can a parked platform bridge the corridor? | Climb to move the wall and platform, release to park them, then cross the low ceiling gap. |
+| 3 — 齒輪抬門 | How can the closed passage open? | Climb to lift the wall, drop below it, dash onto the linked bridge, then jump and dash across the low corridor. |
 | 4 — 五連跳 | Can the complete color sequence be read ahead? | Five rising landings require B/G/R/B/G; the reference route uses five jumps and no dashes. |
 | 5 — 保色穿刺 | When is another jump the wrong action? | Keep blue through the low corridor using dash; another jump activates the green spikes and removes the blue landings. |
 | 6 — 三站轉乘 | Is another dash useful or does it overshoot? | Stop the ferry at its middle station, jump onto cyan, then onto yellow. Extra dashes can cycle the ferry back. |
-| 7 — 相位卡齒 | Why did the linked mechanism stop? | Change to blue before climbing so the red obstruction is absent; the crossing jump turns green, making the blue spikes safe and the exit solid. |
-| 8 — 色序預算 | Which moves should preserve color? | Prepare blue, position the gear and ferry, jump green to board, dash through blue spikes, then dash upward onto the yellow exit. A magenta lower ledge offers recovery while blue. |
+| 7 — 相位卡齒 | Why did the linked mechanism stop? | Change to blue before climbing so the red stop is absent; pass under the raised gate, then jump green to make the blue spikes safe and the exit solid. |
+| 8 — 色序預算 | Which moves should preserve color? | Prepare blue, lift the gate and board its bridge, jump green onto the ferry, dash through blue spikes, then dash upward onto the yellow exit. A magenta lower ledge offers recovery while blue. |
 
 The first three rooms isolate the core causes; later rooms combine color,
 mechanism position and landing decisions. Single-color and mixed-color surfaces
@@ -31,7 +31,7 @@ the scenes. The original finalized HTML demo is a separate, unchanged artifact.
 ## Gear geometry
 
 The horizontal rack occupies the last three pixels **inside** the platform's
-collision rectangle, with exactly the platform's width. The 48-pixel platform
+collision rectangle, with exactly the platform's width. The 56-pixel platform
 travels 24 pixels. Its fixed output pinion stays within the overlap of both end
 positions, with a full tooth of margin. Three adjacent gears turn in alternating
 directions at matching pitch. The dark fixed guide and end marks sit behind the
@@ -39,7 +39,17 @@ platform; they do not form another ledge. The vertical rack has a fixed length
 and may enter the lower guide housing. Mechanism decoration has no collision.
 
 `ClimbGear` rejects unmatched travel or a rack that would disengage. The neutral
-wall and platform remain the only moving colliders.
+wall and platform remain the only moving colliders. Both are seven 8px cells long
+and one cell thick. Rooms 3, 7 and 8 use the wall as a visible closed gate: it
+meets the floor at rest, and the adjoining solid ceiling prevents climbing over
+it. Raising it opens a real passage underneath. There is no progress flag or
+invisible barrier. The vertical shaft has a visible stone cap.
+
+Two zero-lift wall-jump/up-dash routes found in the original room geometry, and
+one found in room 8, are retained as `bypassRoutes`. Regression tests check that
+the closed gate blocks them. A bounded 14-stage beam search also checks jump,
+dash, grab, left/right and upward strategies while forbidding gear displacement;
+it does not establish a unique solution.
 
 ## Verification
 
@@ -47,7 +57,7 @@ wall and platform remain the only moving colliders.
 checking the final landing, color, action counts and mechanism position with no
 deaths. The exit ledges also support wider viewports. Pixel tests check the whole
 gear travel, attached rack width and stationary gears. These witnesses prove
-solvability; they do not prove there is only one solution.
+solvability and reject the recorded bypasses; they do not prove there is only one solution.
 
 For live verification, open room 1 in Play and run `Verification/DemoLiveInput.cs`
 through Pipeline, entry `DemoLiveInput.Run`. It queues the room's input on a

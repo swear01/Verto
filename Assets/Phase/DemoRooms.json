@@ -157,7 +157,7 @@
       "hasGear": false
     },
     {
-      "name": "齒輪抬橋",
+      "name": "齒輪抬門",
       "spawnX": 32,
       "spawnY": 149,
       "blocks": [
@@ -169,17 +169,31 @@
           "phase": -1
         },
         {
-          "x": 88,
+          "x": 0,
           "y": 0,
-          "w": 120,
-          "h": 64,
+          "w": 64,
+          "h": 104,
           "phase": -1
         },
         {
-          "x": 208,
-          "y": 80,
-          "w": 112,
-          "h": 8,
+          "x": 64,
+          "y": 0,
+          "w": 16,
+          "h": 72,
+          "phase": -1
+        },
+        {
+          "x": 80,
+          "y": 0,
+          "w": 152,
+          "h": 128,
+          "phase": -1
+        },
+        {
+          "x": 232,
+          "y": 160,
+          "w": 88,
+          "h": 24,
           "phase": -1
         }
       ],
@@ -193,8 +207,8 @@
       "gearTop": 80,
       "gearPlatform": {
         "x": 88,
-        "y": 80,
-        "w": 48,
+        "y": 160,
+        "w": 56,
         "h": 8,
         "phase": -1
       },
@@ -205,10 +219,18 @@
           "x": 1
         },
         {
-          "frames": 95,
+          "frames": 55,
           "x": 1,
           "y": -1,
           "grab": true
+        },
+        {
+          "frames": 35,
+          "y": 1
+        },
+        {
+          "frames": 12,
+          "x": 1
         },
         {
           "frames": 12,
@@ -216,11 +238,14 @@
           "dash": true
         },
         {
-          "frames": 24,
+          "frames": 24
+        },
+        {
+          "frames": 8,
           "x": 1
         },
         {
-          "frames": 4,
+          "frames": 12,
           "x": 1,
           "jump": true
         },
@@ -230,19 +255,102 @@
           "dash": true
         },
         {
-          "frames": 60,
+          "frames": 70,
           "x": 1
         }
       ],
       "goal": {
         "x": 296,
-        "y": 80,
+        "y": 160,
         "phase": 1,
         "jumps": 1,
         "dashes": 2,
         "lift": 24
       },
-      "hasGear": true
+      "hasGear": true,
+      "bypassRoutes": [
+        [
+          {
+            "frames": 24,
+            "x": 1,
+            "jump": true,
+            "grab": true
+          },
+          {
+            "frames": 24,
+            "x": 1,
+            "y": -1,
+            "dash": true
+          },
+          {
+            "frames": 40,
+            "x": 1,
+            "jump": true,
+            "grab": true
+          },
+          {
+            "frames": 16,
+            "x": 1,
+            "jump": true
+          },
+          {
+            "frames": 16,
+            "x": 1,
+            "dash": true
+          },
+          {
+            "frames": 40,
+            "x": 1,
+            "jump": true,
+            "grab": true
+          },
+          {
+            "frames": 16,
+            "x": 1,
+            "dash": true
+          }
+        ],
+        [
+          {
+            "frames": 24,
+            "x": 1,
+            "jump": true,
+            "grab": true
+          },
+          {
+            "frames": 24,
+            "x": 1,
+            "y": -1,
+            "dash": true
+          },
+          {
+            "frames": 24,
+            "x": 1,
+            "jump": true,
+            "grab": true
+          },
+          {
+            "frames": 16,
+            "x": 1,
+            "dash": true
+          },
+          {
+            "frames": 24,
+            "x": 1,
+            "jump": true
+          },
+          {
+            "frames": 40,
+            "x": 1,
+            "y": -1,
+            "dash": true
+          },
+          {
+            "frames": 24,
+            "x": 1
+          }
+        ]
+      ]
     },
     {
       "name": "五連跳",
@@ -663,26 +771,39 @@
           "phase": -1
         },
         {
-          "x": 88,
+          "x": 0,
           "y": 0,
-          "w": 120,
-          "h": 64,
+          "w": 64,
+          "h": 104,
           "phase": -1
         },
         {
-          "x": 208,
-          "y": 80,
-          "w": 112,
-          "h": 8,
+          "x": 64,
+          "y": 0,
+          "w": 16,
+          "h": 72,
+          "phase": -1
+        },
+        {
+          "x": 80,
+          "y": 0,
+          "w": 152,
+          "h": 128,
+          "phase": -1
+        },
+        {
+          "x": 232,
+          "y": 160,
+          "w": 88,
+          "h": 24,
           "phase": 2
         },
         {
-          "x": 152,
-          "y": 80,
+          "x": 144,
+          "y": 160,
           "w": 8,
           "h": 8,
-          "phase": 0,
-          "phaseMask": 0
+          "phase": 0
         }
       ],
       "gearWall": {
@@ -695,8 +816,8 @@
       "gearTop": 80,
       "gearPlatform": {
         "x": 88,
-        "y": 80,
-        "w": 48,
+        "y": 160,
+        "w": 56,
         "h": 8,
         "phase": -1
       },
@@ -711,10 +832,18 @@
           "x": 1
         },
         {
-          "frames": 95,
+          "frames": 55,
           "x": 1,
           "y": -1,
           "grab": true
+        },
+        {
+          "frames": 35,
+          "y": 1
+        },
+        {
+          "frames": 12,
+          "x": 1
         },
         {
           "frames": 12,
@@ -722,11 +851,14 @@
           "dash": true
         },
         {
-          "frames": 24,
+          "frames": 24
+        },
+        {
+          "frames": 8,
           "x": 1
         },
         {
-          "frames": 4,
+          "frames": 12,
           "x": 1,
           "jump": true
         },
@@ -736,13 +868,13 @@
           "dash": true
         },
         {
-          "frames": 60,
+          "frames": 70,
           "x": 1
         }
       ],
       "goal": {
         "x": 296,
-        "y": 80,
+        "y": 160,
         "phase": 2,
         "jumps": 2,
         "dashes": 2,
@@ -750,14 +882,97 @@
       },
       "spikes": [
         {
-          "x": 168,
-          "y": 72,
-          "length": 40,
+          "x": 184,
+          "y": 152,
+          "length": 48,
           "direction": 0,
           "phaseMask": 2
         }
       ],
-      "hasGear": true
+      "hasGear": true,
+      "bypassRoutes": [
+        [
+          {
+            "frames": 24,
+            "x": 1,
+            "jump": true,
+            "grab": true
+          },
+          {
+            "frames": 24,
+            "x": 1,
+            "y": -1,
+            "dash": true
+          },
+          {
+            "frames": 40,
+            "x": 1,
+            "jump": true,
+            "grab": true
+          },
+          {
+            "frames": 16,
+            "x": 1,
+            "jump": true
+          },
+          {
+            "frames": 16,
+            "x": 1,
+            "dash": true
+          },
+          {
+            "frames": 40,
+            "x": 1,
+            "jump": true,
+            "grab": true
+          },
+          {
+            "frames": 16,
+            "x": 1,
+            "dash": true
+          }
+        ],
+        [
+          {
+            "frames": 24,
+            "x": 1,
+            "jump": true,
+            "grab": true
+          },
+          {
+            "frames": 24,
+            "x": 1,
+            "y": -1,
+            "dash": true
+          },
+          {
+            "frames": 24,
+            "x": 1,
+            "jump": true,
+            "grab": true
+          },
+          {
+            "frames": 16,
+            "x": 1,
+            "dash": true
+          },
+          {
+            "frames": 24,
+            "x": 1,
+            "jump": true
+          },
+          {
+            "frames": 40,
+            "x": 1,
+            "y": -1,
+            "dash": true
+          },
+          {
+            "frames": 24,
+            "x": 1
+          }
+        ]
+      ]
     },
     {
       "name": "色序預算",
@@ -769,28 +984,39 @@
           "y": 160,
           "w": 88,
           "h": 24,
-          "phase": -1,
-          "phaseMask": 0
+          "phase": -1
         },
         {
-          "x": 88,
+          "x": 0,
           "y": 0,
-          "w": 120,
-          "h": 64,
-          "phase": -1,
-          "phaseMask": 0
+          "w": 64,
+          "h": 104,
+          "phase": -1
         },
         {
-          "x": 152,
-          "y": 80,
+          "x": 64,
+          "y": 0,
+          "w": 16,
+          "h": 72,
+          "phase": -1
+        },
+        {
+          "x": 80,
+          "y": 0,
+          "w": 96,
+          "h": 128,
+          "phase": -1
+        },
+        {
+          "x": 144,
+          "y": 160,
           "w": 8,
           "h": 8,
-          "phase": 0,
-          "phaseMask": 0
+          "phase": 0
         },
         {
-          "x": 160,
-          "y": 112,
+          "x": 176,
+          "y": 176,
           "w": 32,
           "h": 8,
           "phase": -1,
@@ -798,7 +1024,7 @@
         },
         {
           "x": 280,
-          "y": 56,
+          "y": 96,
           "w": 40,
           "h": 8,
           "phase": -1,
@@ -815,8 +1041,8 @@
       "gearTop": 80,
       "gearPlatform": {
         "x": 88,
-        "y": 80,
-        "w": 48,
+        "y": 160,
+        "w": 56,
         "h": 8,
         "phase": -1
       },
@@ -831,10 +1057,18 @@
           "x": 1
         },
         {
-          "frames": 95,
+          "frames": 55,
           "x": 1,
           "y": -1,
           "grab": true
+        },
+        {
+          "frames": 35,
+          "y": 1
+        },
+        {
+          "frames": 12,
+          "x": 1
         },
         {
           "frames": 12,
@@ -842,7 +1076,10 @@
           "dash": true
         },
         {
-          "frames": 24,
+          "frames": 24
+        },
+        {
+          "frames": 8,
           "x": 1
         },
         {
@@ -873,7 +1110,7 @@
       ],
       "goal": {
         "x": 296,
-        "y": 56,
+        "y": 96,
         "phase": 2,
         "jumps": 2,
         "dashes": 3,
@@ -882,7 +1119,7 @@
       "spikes": [
         {
           "x": 208,
-          "y": 72,
+          "y": 136,
           "length": 32,
           "direction": 0,
           "phaseMask": 2
@@ -894,14 +1131,55 @@
         240
       ],
       "nodeY": [
-        80,
-        80,
-        80
+        144,
+        144,
+        144
       ],
       "moverW": 32,
       "moverH": 8,
       "returns": false,
-      "hasGear": true
+      "hasGear": true,
+      "bypassRoutes": [
+        [
+          {
+            "frames": 16,
+            "x": 1,
+            "y": -1,
+            "dash": true
+          },
+          {
+            "frames": 40,
+            "x": 1,
+            "jump": true,
+            "grab": true
+          },
+          {
+            "frames": 8,
+            "x": 1
+          },
+          {
+            "frames": 40,
+            "x": 1,
+            "y": -1,
+            "dash": true
+          },
+          {
+            "frames": 24,
+            "x": 1,
+            "jump": true
+          },
+          {
+            "frames": 40,
+            "x": 1,
+            "y": -1,
+            "dash": true
+          },
+          {
+            "frames": 8,
+            "x": 1
+          }
+        ]
+      ]
     }
   ]
 }
