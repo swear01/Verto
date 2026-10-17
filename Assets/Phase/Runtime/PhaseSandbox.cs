@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -154,19 +155,29 @@ namespace Phase
         public void SetControlsOpen(string value) { controlsOpen = value == "true"; releaseControls = true; }
         public void ConfigureControls(string json)
         {
+            // JsonUtility turns null string-array entries into empty strings.
+            if (json == null || json.Contains("null")) return;
             KeyOverrides map;
             try { map = JsonUtility.FromJson<KeyOverrides>(json); }
             catch (ArgumentException) { return; }
-            if (map?.keys == null || map.keys.Length != defaultKeys.Length) return;
+            if (map?.keys == null || map.keys.Length != defaultKeys.Length * 2) return;
             var next = new Key[defaultKeys.Length][];
             for (int i = 0; i < next.Length; i++)
             {
-                if (map.keys[i] == "") { next[i] = defaultKeys[i]; continue; }
-                if (!Enum.TryParse(map.keys[i], out Key key) || !Enum.IsDefined(typeof(Key), key) ||
-                    key == Key.None || key == Key.Escape || key == Key.Tab || (int)key >= Keyboard.KeyCount ||
-                    key == Key.LeftCtrl || key == Key.RightCtrl || key == Key.LeftAlt || key == Key.RightAlt ||
-                    key == Key.LeftMeta || key == Key.RightMeta) return;
-                next[i] = new[] { key };
+                var action = new List<Key>();
+                for (int slot = 0; slot < 2; slot++)
+                {
+                    string name = map.keys[i * 2 + slot];
+                    if (name == "") continue;
+                    if (name == "Shift") { action.Add(Key.LeftShift); action.Add(Key.RightShift); continue; }
+                    if (!Enum.TryParse(name, out Key key) || !Enum.IsDefined(typeof(Key), key) || key.ToString() != name ||
+                        key == Key.None || key == Key.Escape || key == Key.Tab || key == Key.Delete || (int)key >= Keyboard.KeyCount ||
+                        key == Key.LeftCtrl || key == Key.RightCtrl || key == Key.LeftAlt || key == Key.RightAlt ||
+                        key == Key.LeftMeta || key == Key.RightMeta) return;
+                    action.Add(key);
+                }
+                if (action.Count == 0) return;
+                next[i] = action.ToArray();
             }
             var all = next.SelectMany(action => action).ToArray();
             if (all.Distinct().Count() != all.Length) return;

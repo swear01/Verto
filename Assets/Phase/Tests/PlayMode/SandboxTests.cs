@@ -17,15 +17,33 @@ public class SandboxTests : InputTestFixture
         yield return SceneManager.LoadSceneAsync("PhaseSandbox");
         var sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
         var k = InputSystem.AddDevice<Keyboard>();
-        const string defaults = "{\"keys\":[\"\",\"\",\"\",\"\",\"\",\"\",\"\"]}";
+        var defaults = new[] { "LeftArrow", "A", "RightArrow", "D", "UpArrow", "W", "DownArrow", "S", "Z", "Space", "X", "", "C", "Shift" };
+        var custom = new[] { "LeftArrow", "A", "L", "D", "UpArrow", "W", "DownArrow", "S", "J", "Space", "K", "", "H", "Shift" };
         try
         {
-            sandbox.ConfigureControls("{\"keys\":[\"\",\"L\",\"\",\"\",\"J\",\"K\",\"H\"]}");
+            sandbox.ConfigureControls(Map(custom));
             InputSystem.QueueStateEvent(k, new KeyboardState(Key.RightArrow, Key.Z, Key.X, Key.C));
             yield return null;
             var input = PhaseSandbox.ReadControls(k);
             Assert.That((input.x, input.jumpHeld, input.dashHeld, input.grab), Is.EqualTo((0, false, false, false)));
             sandbox.SetControlsOpen("true");
+            InputSystem.QueueStateEvent(k, new KeyboardState(Key.D, Key.Space)); yield return null;
+            input = PhaseSandbox.ReadControls(k);
+            Assert.That((input.x, input.jumpHeld), Is.EqualTo((1, true)), "secondary slots retain their defaults");
+            foreach (var shift in new[] { Key.LeftShift, Key.RightShift })
+            {
+                InputSystem.QueueStateEvent(k, new KeyboardState(shift)); yield return null;
+                Assert.That(PhaseSandbox.ReadControls(k).grab, Is.True, shift.ToString());
+            }
+            custom[3] = "P";
+            sandbox.ConfigureControls(Map(custom));
+            foreach (var right in new[] { Key.L, Key.P })
+            {
+                InputSystem.QueueStateEvent(k, new KeyboardState(right)); yield return null;
+                Assert.That(PhaseSandbox.ReadControls(k).x, Is.EqualTo(1), "both changed slots work");
+            }
+            InputSystem.QueueStateEvent(k, new KeyboardState(Key.D)); yield return null;
+            Assert.That(PhaseSandbox.ReadControls(k).x, Is.Zero, "only replaced secondary key stops working");
             double time = sandbox.Controller.time;
             InputSystem.QueueStateEvent(k, new KeyboardState(Key.J));
             yield return new WaitForSeconds(.1f);
@@ -42,7 +60,17 @@ public class SandboxTests : InputTestFixture
             yield return new WaitForSeconds(.1f);
             Assert.That(sandbox.Controller.dashes, Is.EqualTo(1));
             Assert.That(PhaseSandbox.ReadControls(k).grab, Is.True);
-            foreach (string invalid in new[] { "{}", "{\"keys\":[null]}", "{\"keys\":[\"\",\"L\",\"\",\"\",\"L\",\"K\",\"H\"]}", "{\"keys\":[\"\",\"Escape\",\"\",\"\",\"J\",\"K\",\"H\"]}" }) sandbox.ConfigureControls(invalid);
+            foreach (string invalid in new[] { "{}", "{\"keys\":[null]}", Map(custom).Replace("\"L\"", "null") }) sandbox.ConfigureControls(invalid);
+            int invalidCase = 0;
+            foreach (var invalid in new System.Action<string[]>[] {
+                a => a[8] = "L", a => a[2] = "Escape", a => a[2] = a[3] = "",
+                a => a[3] = "L", a => a[11] = "LeftShift", a => a[2] = "Delete", a => a[2] = "1"
+            })
+            {
+                var candidate = (string[])custom.Clone(); invalid(candidate); sandbox.ConfigureControls(Map(candidate));
+                InputSystem.QueueStateEvent(k, new KeyboardState(Key.L)); yield return null;
+                Assert.That(PhaseSandbox.ReadControls(k).x, Is.EqualTo(1), "invalid case " + invalidCase++);
+            }
             InputSystem.QueueStateEvent(k, new KeyboardState(Key.L)); yield return null;
             Assert.That(PhaseSandbox.ReadControls(k).x, Is.EqualTo(1), "invalid overrides are atomic");
             InputSystem.QueueStateEvent(k, new KeyboardState());
@@ -53,10 +81,13 @@ public class SandboxTests : InputTestFixture
         finally
         {
             var current = Object.FindAnyObjectByType<PhaseSandbox>();
-            if (current != null) { current.ConfigureControls(defaults); current.SetControlsOpen("false"); }
+            if (current != null) { current.ConfigureControls(Map(defaults)); current.SetControlsOpen("false"); }
             InputSystem.RemoveDevice(k);
         }
     }
+
+    [System.Serializable] class Bindings { public string[] keys; }
+    static string Map(string[] keys) => JsonUtility.ToJson(new Bindings { keys = keys });
 
     [UnityTest]
     public IEnumerator SceneKeyboardPixelFrameAndNoText()
