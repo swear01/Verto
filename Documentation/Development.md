@@ -51,7 +51,7 @@ starting the next test run. There are 24 controller cases, one 48-frame art
 comparison (hood/spent-scarf colors remapped plus the eight climbing-frame stamina gauges), one bidirectional pixel-slide
 test, one adaptive-view test, one centered-view stone/void extension test, one
 dash-charge hood lifecycle test, one stamina-gauge depletion/recovery test, three
-gear-rack attachment positions, and three
+gear-rack attachment positions, one full-travel rigid-rack/engagement test, and three
 Play Mode cases, including custom bindings, pause/release gating and room persistence.
 The three immutable reference files cover 40 movement/action/climb traces.
 Production steps at 1/60 s; reference replays use the recorded 0.0166667 s.
@@ -126,6 +126,9 @@ same direction and the platform between its X endpoints, carrying riders.
 Hanging, release, slipping, blocked climbing and dashing do not drive it.
 Both parts stop at the travel limits or an obstruction; reset/respawn restores
 the authored start positions. White gears and racks are visual only.
+Both racks have fixed lengths and translate with their solids. Their hidden
+ends pass behind fixed sleeves, with an extra tooth of engagement at full travel;
+the vertical rack extends beyond the wall instead of stretching to the lower stop.
 
 Open the demo in the resident Editor, apply `BackgroundEditor.Run`, enter Play,
 then run `Verification/GearLiveInput.cs` via Pipeline `run_script`, entry

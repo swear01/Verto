@@ -235,13 +235,19 @@ namespace Phase
             double left = Math.Min(gear.startX, gear.endX), right = Math.Max(gear.startX, gear.endX) + platform.w;
             Rect(left, platform.y + 3, right - left, 2, "646464");
             Rect(left - 2, platform.y, 2, platform.h, Highlights[3]); Rect(right, platform.y, 2, platform.h, Highlights[3]);
-            Rect(rackX, wall.y, 2, gear.bottom + wall.h - wall.y, "a0a0a0");
-            for (int y = Round(wall.y); y < gear.bottom + wall.h; y += 6) Rect(rackX + 2, y, 3, 3, "a0a0a0");
-            double rackLeft = platform.x - Math.Abs(gear.endX - gear.startX);
-            int rackStart = Math.Max(Round(rackLeft), rackX + 4);
+            // Keep one full tooth beyond the fixed pinion at the top stop.
+            int rackHeight = Round(Math.Max(wall.h, cy + 13 + 9 + 6 - gear.top));
+            int rackBottom = Math.Min(Round(wall.y) + rackHeight, Round(gear.bottom + wall.h));
+            Rect(rackX, wall.y, 2, rackBottom - Round(wall.y), "a0a0a0");
+            for (int y = Round(wall.y); y < rackBottom; y += 6) Rect(rackX + 2, y, 3, Math.Min(3, rackBottom - y), "a0a0a0");
+            Rect(rackX - 1, gear.bottom + wall.h, 7, 4, "646464");
+            Rect(rackX - 1, gear.bottom + wall.h + 2, 7, 2, Highlights[3]);
+            double rackLeft = platform.x - Math.Abs(gear.endX - gear.startX) - 6;
+            int rackStart = Math.Max(Round(rackLeft), rackX + 10);
             Rect(rackStart, rackY, platform.x + platform.w - rackStart, 2, "a0a0a0");
             for (int x = Round(rackLeft); x < platform.x + platform.w; x += 6)
                 if (x >= rackStart) Rect(x, rackY + 2, 3, 3, "a0a0a0");
+            Rect(rackX + 6, rackY - 1, 4, 7, "646464");
             double angle = gear.Lift * Math.PI / 24;
             // Only the raised output pinion touches the horizontal rack.
             GearWheel(rackX + 11, cy + 13, angle);

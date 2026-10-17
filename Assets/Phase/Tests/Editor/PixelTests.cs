@@ -10,6 +10,38 @@ public class PixelTests
     public class Reference { public int columns; public Block[] blocks; public Frame[] frames; }
     public class Frame { public string name; public double time; public int phase; public int[] blocked; public Player player; }
 
+    [Test]
+    public void GearRacksTranslateRigidlyAndStayEngagedAcrossFullTravel()
+    {
+        var s = new PhaseController(Array.Empty<Block>(), 0, 149, gears: new[] {
+            new ClimbGear(new Block(72,104,8,56),64,new Block(104,104,32,8),144)
+        });
+        var gear = s.gears[0]; s.flash = 0;
+        var pixels = new PhasePixels();
+        try
+        {
+            for (int lift = 0; lift <= 40; lift++)
+            {
+                gear.wall.y = 104 - lift; gear.platform.x = 104 + lift;
+                pixels.Draw(s); var frame = pixels.Texture.GetPixels32();
+                int bottom = Math.Min(160, 192 - lift);
+                for (int y = (int)gear.wall.y; y < bottom; y++)
+                    Assert.That(frame[(179-y)*320+81].r, Is.EqualTo(160), $"rigid rack at lift {lift}, y {y}");
+                Assert.That(frame[(179-137)*320+81].r, Is.EqualTo(160), "rack remains beside the fixed input pinion");
+                if (bottom < 160)
+                    for (int x = 81; x <= 84; x++)
+                        Assert.That(frame[(179-bottom)*320+x].r, Is.LessThan(40), $"rack end translates with wall at lift {lift}");
+                int left = Math.Max(90, 58 + lift);
+                for (int x = left; x < 136 + lift; x++)
+                    Assert.That(frame[(179-113)*320+x].r, Is.EqualTo(160), $"rigid horizontal rack at lift {lift}, x {x}");
+                Assert.That(frame[(179-113)*320+114].r, Is.EqualTo(160), "rack remains above the fixed output pinion");
+                if (left > 90)
+                    Assert.That(frame[(179-113)*320+left-1].r, Is.LessThan(40), "horizontal rack end translates beyond the fixed sleeve");
+            }
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
     [TestCase(0)] [TestCase(19)] [TestCase(40)]
     public void GearRackStaysAttachedToThePlatformAcrossTravel(int lift)
     {

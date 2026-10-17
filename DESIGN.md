@@ -70,3 +70,5 @@ colors:
 - 不把來源 PNG 作為 Player 素材；來源 PNG 僅供驗證。
 
 齒條結構參考 [KHK rack and pinion](https://khkgears.net/new/gear_rack.html)；小尺寸輪體與像素分組參考 [knekko 的齒輪集](https://opengameart.org/content/cogwheels-and-gears)及 [PixelJoint 教學](https://pixeljoint.com/forum/forum_posts.asp?TID=11299)。仍由既有 renderer 繪製。
+
+直、橫齒條長度固定，跟牆／平台整根平移；超出的末端藏在固定套筒後，最高／最右端仍保留完整一齒的咬合餘量。垂直齒條長於牆面，不能把下端釘在導軌端點造成伸縮。
