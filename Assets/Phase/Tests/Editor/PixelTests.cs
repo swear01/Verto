@@ -11,6 +11,41 @@ public class PixelTests
     public class Frame { public string name; public double time; public int phase; public int[] blocked; public Player player; }
 
     [Test]
+    public void MixedInlaysAndDirectionalSpikesMatchTheirMasks()
+    {
+        var pixels=new PhasePixels();
+        Color32 At(int x,int y)=>pixels.Texture.GetPixel(x,179-y);
+        try
+        {
+            foreach(int mask in new[]{3,5,6})
+            {
+                var b=new Block(80,80,16,8,phaseMask:mask);var room=new PhaseController(new[]{b},32,40);room.flash=0;
+                for(int phase=0;phase<3;phase++)
+                {
+                    room.phase=phase;pixels.Draw(room,false);int dot=0;
+                    for(int p=0;p<3;p++)if(b.ActiveInPhase(p))
+                    {
+                        var actual=At(82+dot++*3,84);
+                        if(b.ActiveInPhase(phase))Assert.That(actual,Is.EqualTo((Color32)PhasePixels.Hex(PhasePixels.Highlights[p])),"inlays show both solid phases");
+                        else Assert.That(actual,Is.Not.EqualTo((Color32)PhasePixels.Hex(PhasePixels.Highlights[p])),"inactive inlays are dim");
+                    }
+                }
+            }
+            foreach(SpikeDirection direction in Enum.GetValues(typeof(SpikeDirection)))
+            {
+                var spike=new Spike(80,80,16,direction,3);var room=new PhaseController(Array.Empty<Block>(),32,40,spikes:new[]{spike});room.flash=0;
+                var empty=new PhaseController(Array.Empty<Block>(),32,40);empty.flash=0;pixels.Draw(empty,false);var background=pixels.Texture.GetPixels32();
+                room.phase=0;pixels.Draw(room,false);var active=pixels.Texture.GetPixels32();var hit=spike.Hitbox;
+                for(int y=(int)hit.y;y<hit.y+hit.h;y++)for(int x=(int)hit.x;x<hit.x+hit.w;x++)Assert.That(At(x,y),Is.Not.EqualTo(background[(179-y)*320+x]),"every lethal root pixel is drawn");
+                room.phase=2;pixels.Draw(room,false);var inactive=pixels.Texture.GetPixels32();Assert.That(inactive,Is.Not.EqualTo(active),"inactive spikes retain dark teeth");
+                room.phase=0;pixels.Draw(room,false);CollectionAssert.AreEqual(active,pixels.Texture.GetPixels32(),"phase changes recover the same cached spike art");
+            }
+            Assert.That(PhasePixels.SurfaceColor(7),Is.EqualTo(PhasePixels.Hex("e8e8e8")),"permanent white remains neutral");
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
+    [Test]
     public void RoomSlideKeepsPixelsAndJoinsBothDirections()
     {
         foreach (int width in new[] { 83,320,427 }) CheckSlide(width,180);

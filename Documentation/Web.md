@@ -78,7 +78,7 @@ the warning.
 ## Enable automatic builds and online play
 
 `Web build and preview` runs only on `main`, after push or manual dispatch.
-It uses Unity CLI + live Pipeline for 28 Editor tests, three Play Mode tests and
+It uses Unity CLI + live Pipeline for 33 Editor tests, three Play Mode tests and
 the Web build, then verifies browser rendering, keyboard input, both scene-edge
 transitions, minimum view/tall-sky extension/wide-floor travel, resizing, visible
 load failures, and absence of browser errors/warnings. Only a passing build is

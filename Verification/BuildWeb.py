@@ -58,7 +58,7 @@ def main():
         raise RuntimeError("Unity splash screen and logo must be disabled")
     command("set_autotick")
     command("run_script", "--", "--file", "Verification/BackgroundEditor.cs", "--entry", "BackgroundEditor.Run")
-    for mode, test_filter, expected in [("editor", "ControllerTests", 22), ("editor", "PixelTests", 6), ("playmode", "SandboxTests", 3)]:
+    for mode, test_filter, expected in [("editor", "ControllerTests", 26), ("editor", "PixelTests", 7), ("playmode", "SandboxTests", 3)]:
         wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)
         command("run_tests", "--", "--mode", mode, "--filter", test_filter, "--async_tests")
         result = wait("test_status", lambda r: r.get("status") == "completed", 300)

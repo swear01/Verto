@@ -13,6 +13,9 @@ previous detached stamina gauge; its progressive tint/shake and sustained30px/s
 exhausted-grab slide are PHASE-specific tuning. Permanent stone, moving platforms,
 routes and stops now use white and gray at the user's request; the immutable
 reference images and all remaining pixels stay checked.
+The phase-mask mapping, mixed-phase inlays, four-direction spike glyphs and swept
+3-pixel root-strip collision are also ported from the frozen local HTML v10.
+That HTML file remains unchanged; Unity adds the authoring components separately.
 No commercial game art or music is included.
 
 Movement behavior was informed by [Celeste Player.cs](https://github.com/NoelFB/Celeste/blob/1b0ce45c75e05649ae91b44a8bb6b196684e4352/Source/Player/Player.cs).
