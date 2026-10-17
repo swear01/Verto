@@ -17,7 +17,7 @@ namespace Phase
         public int OriginY => (180 - Height) / 2;
         int BottomY => OriginY + Height;
         public int OriginX { get; private set; }
-        readonly Dictionary<(string, int, int, int, bool), Bitmap> sprites = new Dictionary<(string, int, int, int, bool), Bitmap>();
+        readonly Dictionary<(string, int, int, int, bool, int), Bitmap> sprites = new Dictionary<(string, int, int, int, bool, int), Bitmap>();
         readonly Dictionary<(int, int), int> cells = new Dictionary<(int, int), int>();
         readonly Dictionary<string, Color32[]> terrain = new Dictionary<string, Color32[]>();
         List<Block> terrainBlocks;
@@ -228,13 +228,14 @@ namespace Phase
             ["duck"] = new[] { "..........","..cc......",".dcccccc..",".dccfffff.",".dcffefef.","..kkkkkk..","sdcccccccs",".bbssssbb." },
         };
         static readonly string[][] Scarf = { new[] { "b96532","763d24" }, new[] { "ffb24d","d5732b" } };
-        Bitmap Sprite(string pose, int facing, int phase, int dash, bool silhouette = false)
+        Bitmap Sprite(string pose, int facing, int phase, int dash, bool silhouette = false, int tired = 0)
         {
-            var key = (pose, facing, phase, dash, silhouette);
+            var key = (pose, facing, phase, dash, silhouette, tired);
             if (sprites.TryGetValue(key, out var image)) return image;
             var palette = new Dictionary<char,Color32> { ['c']=Color("eadfc5"),['d']=Color("b3a386"),['s']=Color("7d6e5c"),['f']=Color("1a1f2c"),['b']=Color("453c59"),['B']=Color("2c263b"),['e']=Color(Highlights[phase]),['k']=Color(Scarf[dash][0]),['h']=Color(Scarf[dash][0]),['H']=Color(Scarf[dash][1]) };
             var rows = (string[])Frames[pose].Clone();
             for (int y = 0; y < rows.Length && !rows[y].Contains("k"); y++) rows[y] = rows[y].Replace('c','h').Replace('d','H');
+            foreach (char k in "cds") palette[k] = Mix(palette[k], Color("ff5b5e"), tired / 8.0);
             if (silhouette) foreach (char k in "cdsfbBekhH") palette[k] = Color(Highlights[phase]);
             return sprites[key] = Paint(rows, palette, facing < 0, !silhouette);
         }
@@ -250,7 +251,9 @@ namespace Phase
         void DrawPlayer(Player p, double t, int phase)
         {
             string name = Pose(p,t); var rows = Frames[name];
-            int x = Round(p.x), feet = Round(p.y + p.h) + (p.climbing && p.stamina <= 20 && (int)Math.Floor(t * 8) % 2 != 0 ? 1 : 0);
+            double fatigue = p.grounded ? 0 : Math.Max(0, Math.Min(1, (55 - p.stamina - (p.wallBoost > 0 ? 27.5 : 0)) / 35));
+            int tired = Round(fatigue * 8 * (.85 + .15 * Math.Pow(Math.Sin(t * Math.PI * 2), 2)));
+            int x = Round(p.x), feet = Round(p.y + p.h) + (fatigue > 0 && (int)Math.Floor(t * (3 + 5 * fatigue)) % 2 != 0 ? 1 : 0);
             int ky = Array.FindIndex(rows, r => r.Contains("k")), kx = rows[ky].IndexOf('k'), facing = p.facing, dash = p.dash != 0 ? 1 : 0, length = dash != 0 ? 5 : 3;
             int ax = facing > 0 ? x + kx - 1 : x + 8 - kx, ay = feet - rows.Length + ky;
             bool still = p.climbing || name == "duck" || (p.grounded && Math.Abs(p.vx) <= 7);
@@ -264,24 +267,7 @@ namespace Phase
             foreach (var q in segments) Rect(q.x, q.y - 1, 1, q.h + 2, Ink);
             var end = segments[length - 1]; Rect(end.x - facing, end.y, 1, end.h, Ink);
             for (int i = 0; i < length; i++) { var q = segments[i]; Rect(q.x, q.y, 1, q.h, Scarf[dash][i == length - 1 ? 1 : 0]); }
-            Blit(Sprite(name, facing, phase, dash), x - 2, feet - rows.Length - 1);
-            if (!p.grounded && (p.climbing || p.stamina <= 20)) DrawStamina(p, t);
-        }
-        void DrawStamina(Player p, double t)
-        {
-            double stamina = Math.Max(0, Math.Min(110, p.stamina));
-            var color = stamina >= 55
-                ? Mix(Color("ffb24d"), Color("78d892"), (stamina - 55) / 55)
-                : Mix(Color("ff5b5e"), Color("ffb24d"), Math.Max(0, (stamina - 20) / 35));
-            if (stamina <= 20 && (int)Math.Floor(t * 4) % 2 != 0) color = Color("ff8f91");
-            int x = Round(p.x) + (p.facing > 0 ? -8 : 12);
-            if (x < OriginX || x + 4 > OriginX + Width) x = Round(p.x) + (p.facing > 0 ? 12 : -8);
-            x = Math.Max(OriginX, Math.Min(OriginX + Width - 4, x));
-            int y = Math.Max(OriginY, Math.Min(BottomY - 12, Round(p.y) - 1));
-            int fill = (int)Math.Ceiling(stamina / 110 * 10);
-            Rect(x, y, 4, 12, stamina <= 20 ? color : Color("697d8e"));
-            Rect(x + 1, y + 1, 2, 10, "101a26");
-            Rect(x + 1, y + 11 - fill, 2, fill, color);
+            Blit(Sprite(name, facing, phase, dash, false, tired), x - 2, feet - rows.Length - 1);
         }
         public void Draw(PhaseController s, bool playerVisible = true)
         {
