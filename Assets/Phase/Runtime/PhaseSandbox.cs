@@ -7,7 +7,7 @@ using UnityEngine.SceneManagement;
 
 namespace Phase
 {
-    public sealed class PhaseSandbox : MonoBehaviour
+    public sealed partial class PhaseSandbox : MonoBehaviour
     {
         public Camera pixelCamera;
         public Material pixelMaterial;

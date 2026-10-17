@@ -117,6 +117,9 @@ public class SandboxTests : InputTestFixture
             InputSystem.QueueStateEvent(k,new KeyboardState(Key.X,Key.UpArrow));
             yield return new WaitForSeconds(.2f);
             Assert.That(sandbox.Controller.dashes,Is.EqualTo(1));Assert.That(sandbox.Controller.phase,Is.EqualTo(1));
+            yield return new WaitForFixedUpdate(); CheckNativeShapes(sandbox);
+            sandbox.Controller.ResizeRoom(view.x + 8); yield return new WaitForFixedUpdate(); CheckNativeShapes(sandbox);
+            sandbox.Controller.ResizeRoom(view.x); yield return new WaitForFixedUpdate(); CheckNativeShapes(sandbox);
             Assert.That(Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None),Is.Empty);
             Assert.That(Object.FindObjectsByType<TextMesh>(FindObjectsSortMode.None),Is.Empty);
             Assert.That(sandbox.pixelCamera.rect,Is.EqualTo(new Rect(0,0,1,1)),"camera fills the Game View");
@@ -148,6 +151,16 @@ public class SandboxTests : InputTestFixture
                 }
                 finally { Object.Destroy(rendered); }
             }
+            yield return SceneManager.LoadSceneAsync("PhaseDemo3");
+            sandbox=Object.FindAnyObjectByType<PhaseSandbox>();
+            InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow));
+            yield return new WaitForSeconds(25f / 60);
+            InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow,Key.UpArrow,Key.C));
+            yield return new WaitForSeconds(40f / 60);
+            InputSystem.QueueStateEvent(k,new KeyboardState());
+            yield return new WaitForFixedUpdate();
+            Assert.That(sandbox.Controller.gears[0].Lift,Is.GreaterThan(0)); CheckNativeShapes(sandbox);
+            sandbox.Controller.Reset(); yield return new WaitForFixedUpdate(); CheckNativeShapes(sandbox);
         }
         finally { InputSystem.RemoveDevice(k); }
     }
@@ -199,6 +212,7 @@ public class SandboxTests : InputTestFixture
             yield return new WaitForSeconds(.4f);
             Assert.That(SceneManager.GetActiveScene().name,Is.EqualTo("PhaseRoom2"));
             Assert.That(sandbox.Controller.deaths,Is.EqualTo(1));Assert.That(sandbox.Controller.player.x,Is.EqualTo(sandbox.spawn.x));
+            yield return new WaitForFixedUpdate(); CheckNativeShapes(sandbox);
             p=sandbox.Controller.player;p.x=1;p.y=100;p.vx=-90;p.vy=-30;p.dash=0;
             sandbox.Controller.phase=1;
             InputSystem.QueueStateEvent(k,new KeyboardState(Key.LeftArrow));
@@ -213,6 +227,63 @@ public class SandboxTests : InputTestFixture
             LogAssert.NoUnexpectedReceived();
         }
         finally { InputSystem.RemoveDevice(k); }
+    }
+
+    [UnityTest]
+    public IEnumerator CrystalNativeTriggerTracksPhasePickupAndReset()
+    {
+        yield return SceneManager.LoadSceneAsync("PhaseCrystal1");
+        var sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
+        sandbox.SetControlsOpen("true");
+        try
+        {
+            var s = sandbox.Controller;
+            var crystal = s.crystals.Single(c => c.Mask == 2);
+            var pickup = sandbox.GetComponentsInChildren<PhaseCrystal>().Single(c => c.phaseMask == 2);
+            var shape = pickup.GetComponent<BoxCollider2D>();
+            yield return null; yield return null;
+            Assert.That(s.phase, Is.Zero); Assert.That(shape, Is.Not.Null);
+            Assert.That(shape.enabled, Is.False, "blue pickup is a ghost in red");
+            Assert.That(shape.isTrigger, Is.True); Assert.That(shape.size, Is.EqualTo(new Vector2(8, 8)));
+
+            s.phase = 1; yield return null; yield return null;
+            Assert.That(shape.enabled, Is.True); CheckNativeShapes(sandbox);
+            s.player.x = crystal.x; s.player.y = crystal.y; s.Step(default);
+            yield return null; yield return null;
+            Assert.That(crystal.collected, Is.True); Assert.That(s.player.airJump, Is.EqualTo(1));
+            Assert.That(shape.enabled, Is.False, "consumed pickup has no native trigger");
+
+            s.Reset(); s.phase = 1; yield return null; yield return null;
+            Assert.That(crystal.collected, Is.False); Assert.That(shape.enabled, Is.True);
+            CheckNativeShapes(sandbox); LogAssert.NoUnexpectedReceived();
+        }
+        finally { if (sandbox != null) sandbox.SetControlsOpen("false"); }
+    }
+
+    static void CheckNativeShapes(PhaseSandbox sandbox)
+    {
+        void Match(BoxCollider2D shape, Block model, bool active = true)
+        {
+            Assert.That(shape.enabled, Is.EqualTo(active), "native phase/deferred solidity");
+            Assert.That(shape.size, Is.EqualTo(new Vector2((float)model.w,(float)model.h)), "native collision size");
+            if (!active) return;
+            Assert.That(shape.bounds.min.x, Is.EqualTo(model.x).Within(.001));
+            Assert.That(-shape.bounds.max.y, Is.EqualTo(model.y).Within(.001));
+        }
+        var s = sandbox.Controller; var terrain = sandbox.GetComponentsInChildren<PhaseTerrain>();
+        for (int i = 0; i < terrain.Length; i++)
+            Match(terrain[i].GetComponent<BoxCollider2D>(),s.blocks[i],s.blocks[i].ActiveInPhase(s.phase)&&!s.blocked.Contains(i));
+        var mover = sandbox.GetComponentInChildren<PhaseMovingPlatform>();
+        if (mover != null) Match(mover.GetComponent<BoxCollider2D>(),s.mover);
+        var gears = sandbox.GetComponentsInChildren<PhaseClimbGear>();
+        for (int i = 0; i < gears.Length; i++)
+        {
+            Match(gears[i].GetComponent<BoxCollider2D>(),s.gears[i].wall);
+            Match(gears[i].transform.Find("Platform collider").GetComponent<BoxCollider2D>(),s.gears[i].platform);
+        }
+        var crystals = sandbox.GetComponentsInChildren<PhaseCrystal>();
+        for (int i = 0; i < crystals.Length; i++)
+            Match(crystals[i].GetComponent<BoxCollider2D>(),s.crystals[i],s.crystals[i].ActiveInPhase(s.phase)&&!s.crystals[i].collected);
     }
 
 }

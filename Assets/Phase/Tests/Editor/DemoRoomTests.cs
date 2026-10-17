@@ -57,6 +57,36 @@ public class DemoRoomTests
         Assert.That(s.dashes, Is.EqualTo((int)goal["dashes"]));
         if (s.gears.Length > 0) Assert.That(s.gears[0].Lift, Is.EqualTo((double)goal["lift"]));
     }
+    [TestCase(2)] [TestCase(6)] [TestCase(7)]
+    public void WallJumpUpDashBypassCannotSkipMovingTheGear(int index)
+    {
+        var room = JObject.Parse(File.ReadAllText("Assets/Phase/DemoRooms.json"))["rooms"][index];
+        var s = room.ToObject<PhaseDemoRoom>().CreateController();
+        foreach (var route in room["bypassRoutes"])
+        {
+            s.Reset(); Replay(s, route);
+            Assert.That(s.gears[0].Lift, Is.Zero);
+            Assert.That(s.player.x + s.player.w, Is.LessThanOrEqualTo(80), "The visible closed gate blocks the former zero-lift routes.");
+        }
+    }
+    [Test]
+    public void AuthoredGeometryUsesWholeCellsAndEqualGearSurfaces()
+    {
+        var rooms = JObject.Parse(File.ReadAllText("Assets/Phase/DemoRooms.json"))["rooms"];
+        foreach (var room in rooms)
+        {
+            var data = room.ToObject<PhaseDemoRoom>(); data.CreateController();
+            Assert.That(data.blocks.Any(b => b.x == 0 && b.y == 0 && b.w == 320 && b.h >= 8 && b.Mask == 7),
+                Is.True, "Every built-in room shows a solid ceiling before the upper movement boundary.");
+            if (!data.hasGear) continue;
+            Assert.That(data.gearWall.h, Is.EqualTo(data.gearPlatform.w));
+            Assert.That(data.gearWall.w, Is.EqualTo(data.gearPlatform.h));
+        }
+        var invalid = rooms[0].ToObject<PhaseDemoRoom>(); invalid.blocks[0].x = 1;
+        Assert.Throws<System.InvalidOperationException>(() => invalid.CreateController());
+        var invalidLaser = new PhaseDemoRoom { blocks=System.Array.Empty<Block>(), lasers=new[] { new DemoLaser { x=1, y=8, direction=LaserDirection.Up, phaseMask=7 } } };
+        Assert.Throws<System.InvalidOperationException>(() => invalidLaser.CreateController());
+    }
     static void Replay(PhaseController s, JToken steps)
     {
         bool lastJump = false, lastDash = false;
@@ -90,7 +120,7 @@ public class DemoRoomTests
         var room=JObject.Parse(File.ReadAllText("Assets/Phase/DemoRooms.json"))["rooms"][6];
         var s=room.ToObject<PhaseDemoRoom>().CreateController();
         Replay(s,new JArray(room["route"][1].DeepClone(),room["route"][2].DeepClone()));
-        Assert.That(s.gears[0].Lift,Is.EqualTo(16));Assert.That(s.deaths,Is.Zero);
+        Assert.That(s.gears[0].Lift,Is.Zero);Assert.That(s.deaths,Is.Zero);
         s.Reset();Assert.That(s.gears[0].Lift,Is.Zero);
     }
     [Test]

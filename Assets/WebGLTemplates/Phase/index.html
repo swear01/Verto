@@ -19,8 +19,28 @@
     button:disabled { opacity: .5; cursor: default; }
     .icon { width: 44px; padding: 10px; }
     .icon svg { display: block; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; }
-    #controls-toggle { position: absolute; top: 16px; right: 16px; }
-    #fullscreen-toggle { position: absolute; top: 16px; right: 72px; }
+    #game-tools { position: fixed; top: max(16px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); display: flex; gap: 12px; z-index: 30; }
+    #game-tools button { flex: 0 0 44px; }
+    #rooms-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+    #rooms-list button { min-height: 56px; font-variant-numeric: tabular-nums; }
+    #map-open { width: 100%; }
+    #map-editor { width: min(720px, calc(100vw - 32px)); padding: 24px; }
+    #map-tools, #map-colors, #map-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    #map-tools { margin-bottom: 12px; }
+    #map-colors { margin-bottom: 16px; }
+    #map-colors button { width: 44px; padding: 9px; }
+    #map-colors span { display: block; width: 22px; height: 22px; background: var(--swatch); }
+    #map-editor button[aria-pressed="true"] { outline: 2px solid #eadfc5; outline-offset: 2px; background: #314254; }
+    #map-board { width: 100%; height: auto; aspect-ratio: 20 / 11; image-rendering: auto; touch-action: none; cursor: crosshair; background: #101a2b; }
+    #map-board:focus-visible { outline: 2px solid #eadfc5; outline-offset: 4px; }
+    .map-caption { display: flex; justify-content: space-between; gap: 16px; margin: 12px 0 20px; color: #c0d4e8; font-size: 14px; }
+    #map-coordinate { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    #map-play { margin-left: auto; border-color: #eadfc5; color: #101a2b; background: #eadfc5; }
+    #map-play:hover { background: #cfc1a5; }
+    #map-status:empty, #rooms-status:empty { display: none; }
+    #map-status, #rooms-status { color: #f1dc81; margin: 16px 0 0; }
+    dialog { scrollbar-color: #697d8e #101a2b; }
+    @media (max-width: 480px) { #map-tools, #map-colors { flex-wrap: nowrap; overflow-x: auto; padding: 4px; margin-left: -4px; margin-right: -4px; scrollbar-color: #697d8e #101a2b; } #map-tools button, #map-colors button { flex: 0 0 44px; } #map-editor { padding: 16px; } #map-play { margin-left: 0; } #game-tools { gap: 8px; } }
     #display-error { position: absolute; bottom: 16px; max-width: 80vw; padding: 8px 16px; background: #101a2b; }
     dialog { box-sizing: border-box; width: min(400px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); margin: auto; padding: 24px; overflow: auto; border: 1px solid #697d8e; border-radius: 4px; color: #eadfc5; background: #101a2b; }
     dialog::backdrop { background: #0b0f16cc; }
@@ -41,15 +61,48 @@
   <progress id="loading" max="1" value="0" aria-label="載入遊戲"></progress>
   <p id="error" role="alert" hidden></p>
   <p id="display-error" role="alert" hidden></p>
+  <nav id="game-tools" aria-label="遊戲工具">
+    <button id="rooms-toggle" class="icon" aria-label="選擇關卡" title="選擇關卡" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg></button>
   <button id="fullscreen-toggle" class="icon" aria-label="進入全螢幕" title="進入全螢幕" aria-pressed="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button>
   <button id="controls-toggle" class="icon" aria-label="鍵位設定" title="鍵位設定" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18M8 3v6M16 9v6M8 15v6"/></svg></button>
+  </nav>
+  <dialog id="rooms" aria-labelledby="rooms-title">
+    <header><h1 id="rooms-title">選擇關卡</h1><button id="rooms-close" class="icon" aria-label="返回遊戲"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+    <div id="rooms-list"><button data-room="1" aria-label="第 1 關">1</button><button data-room="2" aria-label="第 2 關">2</button><button data-room="3" aria-label="第 3 關">3</button><button data-room="4" aria-label="第 4 關">4</button><button data-room="5" aria-label="第 5 關">5</button><button data-room="6" aria-label="第 6 關">6</button><button data-room="7" aria-label="第 7 關">7</button><button data-room="8" aria-label="第 8 關">8</button><button data-room="9" aria-label="第 9 關">9</button><button data-room="10" aria-label="第 10 關">10</button><button data-room="11" aria-label="第 11 關">11</button></div>
+    <button id="map-open">地圖編輯</button>
+    <p id="rooms-status" role="status" aria-live="polite"></p>
+  </dialog>
+  <dialog id="map-editor" aria-labelledby="map-title">
+    <header><h1 id="map-title">地圖編輯</h1><button id="map-close" class="icon" aria-label="返回遊戲"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+    <div id="map-tools" role="group" aria-label="繪製工具">
+      <button data-map-tool="block" class="icon" aria-label="地板" title="地板"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM4 9h16"/></svg></button>
+<button data-map-tool="spike0" class="icon" aria-label="向上尖刺" title="向上尖刺"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20 12 4 21 20z"/></svg></button><button data-map-tool="spike1" class="icon" aria-label="向下尖刺" title="向下尖刺"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4 12 20 21 4z"/></svg></button><button data-map-tool="spike2" class="icon" aria-label="向左尖刺" title="向左尖刺"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 3 4 12 20 21z"/></svg></button><button data-map-tool="spike3" class="icon" aria-label="向右尖刺" title="向右尖刺"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3 20 12 4 21z"/></svg></button>
+      <button data-map-tool="spawn" class="icon" aria-label="出生點" title="出生點"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v8H7zM9 11v10m6-10v10M4 14h16M10 6h1m2 0h1"/></svg></button>
+      <button data-map-tool="erase" class="icon" aria-label="橡皮擦" title="橡皮擦"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 14 11-11 7 7-11 11H7zM8 9l7 7M10 21h11"/></svg></button>
+    </div>
+    <div id="map-colors" role="group" aria-label="作用顏色">
+<button data-map-mask="7" aria-label="永久白" title="永久白" style="--swatch:#e8e8e8"><span aria-hidden="true"></span></button><button data-map-mask="1" aria-label="紅" title="紅" style="--swatch:#ff8f91"><span aria-hidden="true"></span></button><button data-map-mask="2" aria-label="藍" title="藍" style="--swatch:#79c9ff"><span aria-hidden="true"></span></button><button data-map-mask="4" aria-label="綠" title="綠" style="--swatch:#78d892"><span aria-hidden="true"></span></button><button data-map-mask="5" aria-label="黃：紅與綠" title="黃：紅與綠" style="--swatch:#f1dc81"><span aria-hidden="true"></span></button><button data-map-mask="3" aria-label="洋紅：紅與藍" title="洋紅：紅與藍" style="--swatch:#d7a3ed"><span aria-hidden="true"></span></button><button data-map-mask="6" aria-label="青：藍與綠" title="青：藍與綠" style="--swatch:#85e4dc"><span aria-hidden="true"></span></button>
+    </div>
+    <canvas id="map-board" width="640" height="352" tabindex="0" role="application" aria-label="地圖格線" aria-describedby="map-keyboard"></canvas>
+    <div class="map-caption"><span id="map-keyboard">拖曳繪製；方向鍵移格，Space 繪製。</span><output id="map-coordinate"></output></div>
+    <div id="map-actions">
+      <button id="map-undo">復原</button><button id="map-redo">重做</button>
+      <button id="map-import">匯入 JSON</button><button id="map-export">匯出 JSON</button>
+      <button id="map-play">試玩</button>
+    </div>
+    <input id="map-file" type="file" accept="application/json,.json" hidden>
+    <p id="map-status" role="status" aria-live="polite"></p>
+  </dialog>
   <dialog id="controls" aria-labelledby="controls-title">
     <header><h1 id="controls-title">鍵位設定</h1><button id="controls-close" class="icon" aria-label="返回遊戲"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
     <div class="binding binding-head" aria-hidden="true"><span></span><span>第一組</span><span>第二組</span><span></span></div>
     <div id="bindings"></div>
     <p id="controls-status" role="status" aria-live="polite"></p>
   </dialog>
+  <script>window.phaseAnyDialogOpen = () => !!document.querySelector('dialog[open]');</script>
   <script src="controls.js"></script>
+  <script src="map-model.js"></script>
+  <script src="maps.js"></script>
   <script src="webgl-compat.js"></script>
   <script src="Build/{{{ LOADER_FILENAME }}}"></script>
   <script>
@@ -73,23 +126,33 @@
     }
     addEventListener('resize', resize);
     const fullscreen = document.getElementById('fullscreen-toggle');
+    let fullscreenPending = false;
+    function syncFullscreen() {
+      const active = !!document.fullscreenElement;
+      fullscreen.setAttribute('aria-pressed', String(active));
+      fullscreen.title = active ? '退出全螢幕' : '進入全螢幕';
+      fullscreen.setAttribute('aria-label', fullscreen.title);
+      fullscreen.querySelector('path').setAttribute('d', active ? 'M3 8h5V3m8 0v5h5M8 21v-5H3m13 5v-5h5' : 'M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5');
+      resize();
+    }
     fullscreen.addEventListener('click', async () => {
+      if (fullscreenPending) return;
+      fullscreenPending = true; fullscreen.disabled = true;
       const error = document.getElementById('display-error'); error.hidden = true;
       try {
         if (document.fullscreenElement) await document.exitFullscreen();
         else await document.documentElement.requestFullscreen();
       } catch {
         error.textContent = '無法切換全螢幕，請在獨立分頁開啟遊戲後再試。'; error.hidden = false;
+      } finally {
+        fullscreenPending = false; fullscreen.disabled = false; syncFullscreen();
       }
     });
-    document.addEventListener('fullscreenchange', () => {
-      const active = !!document.fullscreenElement;
-      fullscreen.setAttribute('aria-pressed', String(active));
-      fullscreen.title = active ? '退出全螢幕' : '進入全螢幕';
-      fullscreen.setAttribute('aria-label', fullscreen.title);
-      fullscreen.querySelector('path').setAttribute('d', active ? 'M3 8h5V3m8 0v5h5M8 21v-5H3m13 5v-5h5' : 'M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5');
-      resize(); canvas.focus();
-    });
+    document.addEventListener('fullscreenchange', () => { syncFullscreen(); if (!window.phaseAnyDialogOpen()) canvas.focus(); });
+    addEventListener('resize', syncFullscreen);
+    addEventListener('pageshow', syncFullscreen);
+    addEventListener('focus', syncFullscreen);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) syncFullscreen(); });
     canvas.addEventListener('pointerdown', () => canvas.focus());
     resize();
     createUnityInstance(canvas, {
@@ -106,6 +169,7 @@
     }, value => loading.value = value).then(instance => {
       loading.hidden = true;
       setupControls(instance, canvas);
+      setupMaps(instance, canvas);
       fullscreen.hidden = false;
       canvas.focus();
     }).catch(failed);

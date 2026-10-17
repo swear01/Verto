@@ -32,7 +32,7 @@ function setupControls(instance, canvas) {
     }
   } catch { loadNotice = '無法讀取儲存的鍵位，已使用預設。'; }
   const send = () => instance.SendMessage('PHASE', 'ConfigureControls', JSON.stringify({ keys }));
-  const pause = open => instance.SendMessage('PHASE', 'SetControlsOpen', String(open));
+  const pause = open => instance.SendMessage('PHASE', 'SetControlsOpen', String(open || window.phaseAnyDialogOpen()));
   const buttons = [], resets = [];
   labels.forEach((label, i) => {
     const row = document.createElement('div'); row.className = 'binding';
@@ -73,13 +73,14 @@ function setupControls(instance, canvas) {
   toggle.addEventListener('click', () => { pause(true); pending = -1; status.textContent = loadNotice; render(); dialog.showModal(); });
   document.getElementById('controls-close').addEventListener('click', () => dialog.close());
   dialog.addEventListener('cancel', event => { if (pending >= 0) { event.preventDefault(); pending = -1; status.textContent = ''; render(); } });
-  dialog.addEventListener('close', () => { pending = -1; pause(false); canvas.focus(); });
+  dialog.addEventListener('close', () => { pending = -1; pause(false); if (!window.phaseAnyDialogOpen()) canvas.focus(); });
   addEventListener('keydown', event => {
     const activate = () => {
       if ((event.code === 'Enter' || event.code === 'Space') && event.target.tagName === 'BUTTON') {
         event.preventDefault(); if (!event.repeat) event.target.click();
       }
     };
+    if (!dialog.open && window.phaseAnyDialogOpen()) return;
     if (!dialog.open) { if (event.target !== canvas || event.code === 'Tab') event.stopImmediatePropagation(); activate(); return; }
     event.stopImmediatePropagation();
     if (pending < 0) { activate(); return; }

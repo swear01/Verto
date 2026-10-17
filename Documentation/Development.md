@@ -6,8 +6,14 @@ captures and Console inspection all run through the live Pipeline connection.
 Do not use direct Editor `-batchmode` / `-executeMethod` invocations or cold
 `unity run` / `unity test` jobs for this workflow. Fix a failed Pipeline connection
 before continuing. Reuse the connected Editor instead of reopening it.
+Parallel agents may edit isolated worktrees, but consolidate verification in one
+owned resident Editor. Finish or cancel tests and stop Play before changing C#;
+wait for builds to finish before importing code or rebuilding scenes.
 Keep Unity's completed URP material-upgrade record in version control; resetting
 it can reopen a startup confirmation dialog and block Pipeline commands.
+Do not restore the Unity Hub one-time `HubForceResolve.cs` bootstrap. Its delayed
+package resolve and self-deletion can trigger an Editor assembly reload during the
+first Play Mode test run. The Editor resolves the committed package manifest itself.
 On macOS, launch a new agent Editor hidden and without activating it:
 
 ```sh
@@ -47,17 +53,16 @@ To recreate the sandbox, call its existing builder through the connected Editor:
 edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 31 controller cases, 8 laser cases, 13 demo-route/authoring cases, two laser-rendering cases, one 48-frame art
-comparison (hood/spent-scarf/permanent-solid colors remapped plus low-stamina body tint), one bidirectional pixel-slide
+starting the next test run. There are 32 controller cases, 8 laser cases and 17 demo-route/authoring cases, two laser-rendering cases, one 48-frame art
+comparison (permanent-solid colors remapped outside the deliberately revised character), one bidirectional pixel-slide
 test, one adaptive-view test, one centered-view stone/void extension test, one
-dash-charge hood lifecycle test, one character-fatigue/recovery test, one mixed-inlay/spike rendering test, three
-gear-rack attachment positions, one full-travel rigid-rack/engagement test, and three
-Play Mode cases, including custom bindings, pause/release gating and room persistence.
-There are also15 crystal mechanics cases,18 crystal-route/authoring cases
-(including45 independent timing variants), and two crystal-rendering cases.
-The three immutable reference files preserve40 movement/action/climb traces.
+dash-charge hood lifecycle test, one helmet-fatigue/recovery test, one checkpoint-respawn cue test, one mixed-inlay/spike rendering test, three
+gear-rack attachment positions, one full-travel rigid-rack/engagement test and one floor-level rack test (15 pixel cases total).
+Two Grid authoring cases and four custom-map validation cases also run in Edit Mode.
+The four Play Mode cases cover bindings, pause/release gating, room persistence and imported maps.
+The three immutable reference files preserve 40 movement/action/climb traces.
 The exhaustion case uses explicit revised Y/speed expectations for its final17
-frames under the new30px/s held-grab cap; all earlier frames and other traces
+frames under the new45px/s held-grab cap; all earlier frames and other traces
 retain their original expectations. None of the immutable reference files are edited.
 Production steps at 1/60 s; reference replays use the recorded 0.0166667 s.
 
@@ -101,6 +106,22 @@ script must return `passed`. Inspect the capture's returned `savedPath`: Pipelin
 
 ## Coordinates
 
+The scene root uses Unity's rectangular `Grid` with 8px cells. Terrain and moving
+mechanism authoring snaps with `WorldToCell`/`CellToWorld`; `BoxCollider2D.bounds`
+defines each model's collision rectangle. The deterministic pixel-step controller
+resolves contacts, preserving the recorded movement; Unity's physics solver does
+not move the player. Native colliders follow mechanism motion, phase/deferred
+solidification, respawn and viewport extension. Motion between authored stops
+remains continuous at pixel resolution.
+
+Use **PHASE > Paint Grid terrain** in the Scene view to paint 8px cells in the
+selected color (permanent white, red, blue, green, yellow, magenta or cyan). Turn painting off to use
+Unity's normal selection, Inspector and Delete; terrain `size` sets a rectangle
+in whole cells. Save the scene normally. The painter supports Undo and skips
+occupied cells. Demo JSON changes still require rebuilding the generated scenes.
+`GridGeometryTests` checks native Grid/collider geometry and rejects off-grid demo
+authoring; run it through Pipeline with the other Editor tests.
+
 The controller uses native pixels, Y down, a 60 Hz accumulator, 8×11 collision
 (8×6 crouched), and X then Y pixel stepping. Terrain transforms use Unity X/Y as
 pixel coordinates with Y negated; platform nodes and spawn use screen coordinates.
@@ -109,7 +130,7 @@ sandbox. Crossing an assigned horizontal edge loads that scene asynchronously,
 places the player at the opposite edge at the same height, and carries color,
 velocity, jump/dash state and counters. Empty links keep the side closed. Both
 scenes must be in Build Settings and in the Web build's explicit scene list.
-Deaths respawn in the current room. Top/bottom behavior and immutable reference
+Deaths respawn in the current room. The controller’s top/bottom clamp and immutable reference
 fixtures stay unchanged; there is no player text.
 Default movement, dash aiming and climb bindings accept arrow keys or WASD.
 Web settings expose two independent slots per action; changing one preserves the
@@ -131,7 +152,8 @@ same direction and the platform between its X endpoints, carrying riders.
 Hanging, release, slipping, blocked climbing and dashing do not drive it.
 Both parts stop at the travel limits or an obstruction; reset/respawn restores
 the authored start positions. White gears and racks are visual only.
-The horizontal rack fills the lower three pixels inside the 48-pixel platform,
+The horizontal rack fills three pixels inside the 56-pixel platform,
+on its upper face for floor-level bridges and lower face for elevated bridges,
 with no overhang. Matching 24-pixel wall/platform travel keeps the fixed output
 pinion engaged. The vertical rack translates rigidly and can enter its lower
 housing. Gear carrying also checks spike sweeps. Newly solid terrain waits while
@@ -155,8 +177,8 @@ mechanism positions while preserving elapsed time and action/death counts.
 The original sandbox links retain their momentum/color carry behavior.
 See [room designs and live input verification](Demo.md).
 `BuildWeb.py` verifies these tests and builds `PhaseDemo1` through
-`PhaseDemo8`, followed by `PhaseCrystal1` through3. `DemoWebSmoke.cjs` replays keyboard routes through
-all eleven Web scenes and checks settings, sizing, fullscreen and loading failure.
+`PhaseDemo8`, followed by `PhaseCrystal1` through `PhaseCrystal3`. `DemoWebSmoke.cjs` replays keyboard routes through
+the eleven Web scenes and checks settings, sizing, fullscreen and loading failure.
 The older `WebSmoke.cjs` remains a verifier for the original two-sandbox build.
 
 ## CI
@@ -180,8 +202,9 @@ and deploys only after browser verification. It requires owner setup before use.
 The view always contains at least the original 320x180 native-pixel play area.
 At wider aspects, height stays180 and width grows; at taller aspects, width
 stays320 and height grows around the vertically centered180-pixel play area.
-Sky extends above; terrain touching the lower room edge extends below. Gaps
-and voids remain open. This is visual padding; collision stays unchanged.
+Stone fills the area above the native top boundary; terrain touching the last
+complete 8px row (bottom176) extends below. Gaps and voids remain open, with a
+short fade to black between native Y180 and the existing Y194 death boundary. This extension is visual padding. Each built-in demo also has a visible, solid 8px ceiling at Y0; custom maps use their authored terrain.
 Both axes fill the viewport without stretching native pixels.
 Terrain ending at the right room edge and room bounds expand above320pixels. Resizing preserves
 controller state and rebuilds the pixel surface/cache; resizing during a slide
@@ -220,11 +243,48 @@ with entry `HazardLiveInput.Run`. The first helper creates only
 levels to Build Settings. The live script checks component collection, keyboard
 jump activation/death, respawn and phase-preserving dash.
 
+## Runtime map bridge
+
+The active `PHASE` object accepts `SelectDemoRoom("1".."11")` and
+`LoadCustomMap(json)`. Scene selection uses the eleven built demo and crystal scene names.
+Custom maps use the `PhaseDemoRoom` fields `name`, `blocks`, `spikes`, `spawnX`,
+`spawnY`; blocks require explicit `phaseMask`1–7 and the Web editor sends
+`phase:-1`. Spike direction is Up0/Down1/Left2/Right3; length is native pixels.
+
+Custom geometry occupies non-overlapping8px cells within320×176, at most880cells.
+Spawn X is0–312 and Y0–160 on the same grid, with an8×11 player clear of initially
+red-active terrain and spike hitboxes. Empty terrain, invalid numbers/masks,
+non-grid geometry, moving nodes and gear data are rejected. JSON is limited to
+200000characters. Validation completes before replacing the current runtime root;
+no saved scene changes. The runtime map has no room-edge links.
+
+Web completion dispatches `window` event `phase-map-result` with
+`detail:{success:boolean,message:string}`. Scene success waits for asynchronous
+loading; custom-map success waits for the new root's controller and pixel surface.
+Invalid input preserves the current map and produces a failure callback without
+logging a gameplay error. `PhaseSandbox.LastMapError` exposes the last failure
+message for native verification and clears on success. Serialize only the supported
+five-field map shape: Unity serializes null nested `PhaseDemoRoom` gear fields as
+empty objects. The runtime uses the installed Newtonsoft.Json parser with a strict
+five-field schema, rejecting unknown/duplicate fields and non-numeric coordinates
+before constructing the room; it preserves absent mechanisms as null.
+Parsing and controller validation run in the four `CustomMapTests`;
+`MapBridgeTests` adds one Play Mode import/keyboard/respawn/scene-selection case.
+
+For live verification, enter a demo in Play mode and run
+`Verification/MapLiveInput.cs`, entry `MapLiveInput.Run`, with CLI timeout90seconds
+and script timeout_ms90000. It loads a static map, uses queued keyboard input for
+move/jump/dash and spike death, verifies local respawn and then selects demo2.
+It requires at least100advancing frames plus controller time, writes captures and
+a report to `TestResults/CustomMap`, and restores temporary input/background/timing
+settings. Inspect the live Console separately and capture the actual Game View
+through Pipeline as in the normal live check.
+
 ## Continuous lasers
 
 `PhaseLaser` authors an 8×8 emitter with `LaserDirection` Up/Down/Left/Right
 and `phaseMask` 1–7. Its transform uses native X and negative Unity Y, like
-terrain. `DemoLaser` stores the same fields in `DemoRooms.json`; rebuilding
+terrain and snaps to the same8px Grid. `DemoLaser` stores the same fields in `DemoRooms.json`; rebuilding
 the rooms collects these into the saved scenes. All seven masks appear in
 the eight-room demo.
 
@@ -248,9 +308,19 @@ Run `LaserTests` through Pipeline `run_tests --mode editor`, then `PixelTests`.
 authored white gear shield and a colored beam's keyboard-triggered activation
 and respawn. It restores its temporary input/settings and controller content.
 
+## Hand-authored scenes
+
+`Assets/Scenes/PhaseDemo1.1.unity` is a separate authoring scene. It uses the same
+8px Grid and native collider shapes; imported sizes, phase masks and scene links
+are retained, with positions snapped by at most half a cell. Edit it with the Grid
+painter and normal Inspector tools. It is not included in the explicit eleven-room
+Web build or the Web room selector. Use `PhaseSandboxBuilder` only to rebuild
+generated demo scenes; preserve hand-authored layouts.
+
 ## Colored crystals
 
-`PhaseCrystal` authors an8×8 pickup at native-X/negative-Unity-Y coordinates.
+`PhaseCrystal` authors an8×8 native pickup trigger on the shared8px Unity Grid,
+using native-X/negative-Unity-Y coordinates. Its collider tracks active/collected state.
 `kind` is Jump (round) or Dash (square); `phaseMask` is1–7 using the same seven
 colors as terrain and lasers. White works in every phase; other colors can only
 be collected in an active phase and appear faint otherwise. Pickups never change
@@ -264,7 +334,7 @@ death/reset also restores them. There is no respawn timer. Swept movement and
 platform/gear carry collect pickups; lethal hazards take priority.
 
 The three rooms in `Assets/Phase/CrystalRooms.json` follow `PhaseDemo8` and are
-also independently playable as `Assets/Scenes/PhaseCrystal1.unity` through3.
+also independently playable as `Assets/Scenes/PhaseCrystal1.unity` through `PhaseCrystal3.unity`.
 They introduce airborne recoloring, a ten-emitter ascent and a same-color
 midair dash relay. Rebuild only these three scenes through the connected Editor:
 `unity command eval 'PhaseSandboxBuilder.CreateCrystalRooms();'`.

@@ -33,7 +33,7 @@ def wait(name, ready, seconds):
         except (RuntimeError, json.JSONDecodeError, subprocess.TimeoutExpired) as error:
             last = str(error)
         if isinstance(last, dict):
-            if last.get("status") in ("error", "cancelled") or last.get("failed") or last.get("compilationFailed"):
+            if last.get("status") in ("error", "cancelled"):
                 raise RuntimeError(f"{name}: {last}")
             if ready(last):
                 return last
@@ -43,6 +43,14 @@ def wait(name, ready, seconds):
 
 def save(name, result):
     (REPORTS / f"{name}.json").write_text(json.dumps(result, indent=2))
+
+
+def recompile():
+    command("recompile", "--", "--focus", "false")
+    result = wait("recompile_status", lambda r: r.get("status") in ("completed", "up_to_date"), 180)
+    if result.get("failed") or result.get("compilationFailed") or result.get("errors"):
+        raise RuntimeError(f"Script compilation failed: {result}")
+    return result
 
 
 def main():
@@ -58,14 +66,19 @@ def main():
     if splash["show"] or splash["logo"]:
         raise RuntimeError("Unity splash screen and logo must be disabled")
     command("set_autotick")
+    save("recompile", recompile())
     command("run_script", "--", "--file", "Verification/BackgroundEditor.cs", "--entry", "BackgroundEditor.Run")
-    command("recompile", "--", "--focus", "false")
-    wait("recompile_status", lambda r: r.get("status") in ("completed", "up_to_date"), 120)
-    for mode, test_filter, expected in [("editor", "ControllerTests", 31), ("editor", "LaserTests", 8), ("editor", "DemoRoomTests", 13), ("editor", "CrystalTests", 15), ("editor", "CrystalRoomTests", 18), ("editor", "PixelTests", 15), ("playmode", "SandboxTests", 3)]:
+    for mode, test_filter, expected in [
+        ("editor", "ControllerTests", 32), ("editor", "LaserTests", 8), ("editor", "DemoRoomTests", 17),
+        ("editor", "CrystalTests", 15), ("editor", "CrystalRoomTests", 18),
+        ("editor", "PixelTests", 17), ("editor", "GridGeometryTests", 2),
+        ("editor", "CustomMapTests", 4), ("playmode", "SandboxTests", 4),
+        ("playmode", "MapBridgeTests", 1),
+    ]:
         wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)
         command("run_tests", "--", "--mode", mode, "--filter", test_filter, "--async_tests")
         result = wait("test_status", lambda r: r.get("status") == "completed", 300)
-        save({"ControllerTests": "editor", "LaserTests": "lasers", "DemoRoomTests": "demo", "PixelTests": "pixels", "CrystalTests": "crystals", "CrystalRoomTests": "crystal-rooms", "SandboxTests": "playmode"}[test_filter], result)
+        save({"ControllerTests": "editor", "DemoRoomTests": "demo", "PixelTests": "pixels", "SandboxTests": "playmode"}.get(test_filter, test_filter), result)
         summary = result["summary"]
         if summary.get("total") != expected or summary.get("passed") != expected:
             raise RuntimeError(f"{mode}: expected {expected} passing tests, got {summary}")

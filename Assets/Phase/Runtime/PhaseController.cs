@@ -103,7 +103,7 @@ namespace Phase
         public readonly HashSet<int> blocked = new HashSet<int>();
         public readonly List<Trail> trails = new List<Trail>();
         public readonly List<Particle> particles = new List<Particle>();
-        readonly double spawnX, spawnY;
+        public readonly double spawnX, spawnY;
         readonly MovingPlatform platformTemplate;
         readonly ClimbGear[] gearTemplates;
         readonly Random random = new Random(1);
@@ -515,7 +515,7 @@ namespace Phase
                 if (slide == p.facing && (move == p.facing || (move == 0 && input.grab)) && p.vy >= 0 && input.y != 1 && p.slide < 1.2)
                 { maxFall = 20 + (160 - 20) * p.slide / 1.2; p.slide += dt; }
                 if (slide == p.facing && input.grab && p.stamina <= 0 && (move == 0 || move == p.facing) && p.vy >= 0 && input.y != 1)
-                    maxFall = Math.Min(maxFall, 30);
+                    maxFall = Math.Min(maxFall, 45);
                 if (!p.grounded) { double gravity = Math.Abs(p.vy) < 40 && (input.jumpHeld || p.autoJump) ? 450 : 900; p.vy = Approach(p.vy, maxFall, gravity * dt); }
                 if (p.varTime > 1e-9) { if (input.jumpHeld) p.vy = Math.Min(p.vy, p.varSpeed); else p.varTime = 0; }
                 if (p.buffer > 0 && (p.coyote > 0 || contact != 0)) { var jumpInput = input; jumpInput.x = move; Jump(p.coyote > 0 ? 0 : contact, jumpInput); }
@@ -579,6 +579,11 @@ namespace Phase
                     if (!corrected)
                     {
                         p.y = vy > 0 ? b.y - p.h : b.y + b.h;
+                        if (vy > 0 && p.vy >= 120)
+                            for (int dust = 0; dust < 6; dust++)
+                                particles.Add(new Particle { x = p.x + p.w / 2, y = p.y + p.h - 1,
+                                    vx = (dust % 2 == 0 ? -1 : 1) * (12 + random.NextDouble() * 24),
+                                    vy = -10 - random.NextDouble() * 15, life = .25 + random.NextDouble() * .15, phase = -1 });
                         if (vy > 0 && p.dashTime > 0 && p.dx != 0 && p.dy > 0) { p.dx = Math.Sign(p.dx); p.dy = 0; p.vx *= 1.2; Duck(p, solids, true); }
                         p.vy = p.dashAttack = 0; hitY = true; if (vy > 0 || p.varTime < .2 - .05) p.varTime = 0;
                     }
