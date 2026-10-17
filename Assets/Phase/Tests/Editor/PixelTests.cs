@@ -102,6 +102,26 @@ public class PixelTests
     }
 
     [Test]
+    public void FloorLevelGearKeepsItsRackAndPinionsVisibleAboveTheBridge()
+    {
+        var gear = new ClimbGear(new Block(72,104,8,56),80,new Block(88,160,56,8),112);
+        var room = new PhaseController(Array.Empty<Block>(),32,149,gears:new[]{gear}); room.flash=0;
+        var pixels = new PhasePixels();
+        try
+        {
+            foreach (int lift in new[] { 0,12,24 })
+            {
+                room.gears[0].wall.y = 104-lift; room.gears[0].platform.x = 88+lift;
+                pixels.Draw(room,false);
+                foreach (var center in new[] { (x:91,y:139),(x:105,y:146),(x:119,y:153) })
+                    Assert.That((Color32)pixels.Texture.GetPixel(center.x,179-center.y),Is.EqualTo((Color32)PhasePixels.Hex("e8e8e8")),"fixed pinions remain visible and engaged above the floor-level rack");
+                Assert.That((Color32)pixels.Texture.GetPixel(92+lift,179-162), Is.EqualTo((Color32)PhasePixels.Hex("a0a0a0")),"the rack base stays inside the platform rectangle");
+            }
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
+    [Test]
     public void RoomSlideKeepsPixelsAndJoinsBothDirections()
     {
         foreach (int width in new[] { 83,320,427 }) CheckSlide(width,180);
