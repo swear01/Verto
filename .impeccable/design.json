@@ -12,13 +12,13 @@
       "phase-red": {"displayName": "紅相位"},
       "phase-blue": {"displayName": "藍相位"},
       "phase-green": {"displayName": "綠相位"},
-      "stone-neutral": {"role": "neutral", "displayName": "常駐石材亮頂"},
+      "stone-neutral": {"role": "neutral", "displayName": "常駐石材白色亮頂"},
       "scarf-ready": {"displayName": "可衝刺兜帽與圍巾琥珀"},
       "scarf-ready-shade": {"displayName": "可衝刺兜帽與圍巾暗面"},
       "scarf-spent": {"displayName": "用盡衝刺兜帽與圍巾暗橘色"},
       "scarf-spent-shade": {"displayName": "用盡衝刺兜帽與圍巾暗面"},
       "stamina-critical": {"displayName": "攀抓低耐力警示紅"},
-      "brass-highlight": {"displayName": "黃銅平台亮頂"},
+      "mover-highlight": {"role": "neutral", "displayName": "常駐移動平台白色亮頂"},
       "night-top": {"role": "neutral", "displayName": "夜空頂色"},
       "night-bottom": {"role": "neutral", "displayName": "夜空底色"}
     },
@@ -45,6 +45,7 @@
     "overview": "骨白斗篷旅人 Wick、連成整片的石材與低亮度夜景，沿用使用者示範版姿勢，兜帽依使用者新要求顯示衝刺存量。螢幕比例改變時延伸可見世界，保留角色、石材與動作的原生像素尺度。",
     "keyCharacteristics": ["至少 320×180 原生像素視野，可遊玩區域垂直置中；下方依地形延伸石牆或虛空，8×8 地形格。", "Point 取樣與 pixelated 放大，Web 與原生 Editor 填滿視窗。", "眼睛表示相位；兜帽與圍巾以大面積琥珀／暗橘色表示衝刺是否可用。", "夜景固定於世界座標，亮度低於主體。"],
     "rules": [
+      {"name": "永久實體", "body": "永久地板、牆面與移動平台使用白色亮頂、灰色紋理；路徑與停靠點同為中性色。黃色保留給衝刺／耐力狀態。", "section": "colors"},
       {"name": "相位與衝刺分開表示", "body": "眼睛使用目前相位色；兜帽與圍巾獨立使用琥珀（剩1次）／暗橘色（剩0次），落地補回立即還原。圍巾長短提供非色彩線索；骨白身體與姿勢不變。", "section": "colors"},
       {"name": "像素層次", "body": "同色石格依世界座標連接成錯縫磚，只畫露出的亮頂、側邊與暗底。夜空、月亮、固定星點、遠山與殘柱固定於世界座標，亮度低於角色和地形；寬視野依原有規則延伸夜空、星點、山丘、採石場殘柱與地板。背景快取隨視寬、視高或視野原點改變而重建，調整大小不使既有背景位置跳動。", "section": "elevation"},
       {"name": "攀抓耐力", "body": "背向牆的一側顯示4×12原生像素耐力條，內部2×10依剩餘量由下填滿，110綠、55橘、20紅，≤20時每秒脈動兩次。空中耗盡留紅框，落地補滿隱藏；邊緣移至另一側，不改眼睛相位或兜帽衝刺色。", "section": "components"},
