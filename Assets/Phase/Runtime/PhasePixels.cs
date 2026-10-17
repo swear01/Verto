@@ -378,6 +378,16 @@ namespace Phase
             if (s.mover != null) Mover(s.mover);
             foreach (var t in s.trails) Blit(Sprite("dash", s.player.facing, t.phase, 0, true), Round(t.x) - 2, Round(t.y) - 3, t.life * 2);
             if (playerVisible && s.respawn <= 0) DrawPlayer(s.player, s.time, s.phase);
+            if (playerVisible && s.respawn > 0 && s.respawn < .12)
+            {
+                int radius = Round(2 + s.respawn * 75);
+                for (int i = 0; i < 8; i++)
+                {
+                    double angle = i * Math.PI / 4;
+                    Rect(s.spawnX + 4 + Round(Math.Cos(angle) * radius), s.spawnY + 5 + Round(Math.Sin(angle) * radius),
+                        1, 1, "dce7ee", 1 - s.respawn / .12);
+                }
+            }
             foreach (var p in s.particles) Rect(p.x, p.y, 1, 1, p.phase < 0 ? "dce7ee" : Highlights[p.phase], Math.Min(1, p.life * 3));
             if (s.flash > 0) Rect(OriginX, OriginY, Width, Height, Highlights[s.phase], s.flash * .3);
             Texture.SetPixels32(buffer); Texture.Apply(false);

@@ -50,7 +50,7 @@ Wait for each `test_status` result to be `completed` and inspect its summary bef
 starting the next test run. There are 32 controller cases and 13 demo-route/authoring cases, one 48-frame art
 comparison (permanent-solid colors remapped outside the deliberately revised character), one bidirectional pixel-slide
 test, one adaptive-view test, one centered-view stone/void extension test, one
-dash-charge hood lifecycle test, one helmet-fatigue/recovery test, one mixed-inlay/spike rendering test, three
+dash-charge hood lifecycle test, one helmet-fatigue/recovery test, one checkpoint-respawn cue test, one mixed-inlay/spike rendering test, three
 gear-rack attachment positions, one full-travel rigid-rack/engagement test, and three
 Play Mode cases, including custom bindings, pause/release gating and room persistence.
 The three immutable reference files preserve 40 movement/action/climb traces.

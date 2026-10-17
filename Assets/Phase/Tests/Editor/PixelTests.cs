@@ -264,6 +264,35 @@ public class PixelTests
     }
 
     [Test]
+    public void RespawnConvergesAtCheckpointWithoutFlashingTheWorld()
+    {
+        var room=new PhaseController(new[]{new Block(0,160,320,24)},120,100);room.flash=0;
+        var pixels=new PhasePixels();
+        try
+        {
+            pixels.Draw(room,false);var background=pixels.Texture.GetPixels32();
+            room.respawn=.11;pixels.Draw(room);var early=pixels.Texture.GetPixels32();
+            room.respawn=.03;pixels.Draw(room);var late=pixels.Texture.GetPixels32();
+            int outerEarly=0,outerLate=0,changed=0;
+            for(int y=0;y<180;y++)for(int x=0;x<320;x++)
+            {
+                int index=(179-y)*320+x;
+                if(!early[index].Equals(background[index]))
+                {
+                    changed++;Assert.That(Math.Abs(x-124),Is.LessThanOrEqualTo(11));Assert.That(Math.Abs(y-105),Is.LessThanOrEqualTo(11));
+                    if(Math.Abs(x-124)>5||Math.Abs(y-105)>5)outerEarly++;
+                }
+                if(!late[index].Equals(background[index])&&(Math.Abs(x-124)>5||Math.Abs(y-105)>5))outerLate++;
+            }
+            Assert.That(changed,Is.EqualTo(8));Assert.That(outerEarly,Is.GreaterThan(0));Assert.That(outerLate,Is.Zero,"the eight sparks contract onto the checkpoint");
+            Assert.That(room.player.x,Is.EqualTo(120));Assert.That(room.player.y,Is.EqualTo(100),"animation does not move collision");
+            room.respawn=.001;room.Step(new Controls{x=1,jump=true});Assert.That(room.respawn,Is.Zero);Assert.That(room.jumps,Is.Zero,"respawn timing and input freeze are unchanged");
+            room.flash=0;pixels.Draw(room);Assert.That(pixels.Texture.GetPixels32(),Is.Not.EqualTo(background),"the player returns after the cue");
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
+    [Test]
     public void PublishedTerrainAndMoverArtRemainUnchangedAcrossAllCharacterPoses()
     {
         var reference=JsonConvert.DeserializeObject<Reference>(File.ReadAllText("Verification/ArtReference.json"));
