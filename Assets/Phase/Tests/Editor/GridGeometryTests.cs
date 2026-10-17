@@ -20,8 +20,9 @@ public class GridGeometryTests
             Assert.That(PhaseGrid.CellTopLeft(grid, new Vector3(-.1f, -8.1f)), Is.EqualTo(new Vector3(-8, -8)));
             var go = new GameObject("Box"); go.transform.SetParent(root.transform); go.transform.position = new Vector3(25, -39);
             var terrain = go.AddComponent<PhaseTerrain>(); terrain.size = new Vector2Int(24, 8); terrain.phaseMask = 3;
-            go.AddComponent<BoxCollider2D>().enabled = false;
             var block = terrain.CreateBlock(); var shape = go.GetComponent<BoxCollider2D>();
+            Assert.That(shape, Is.Not.Null, "authoring creates the missing native collider");
+            shape.enabled = false; block = terrain.CreateBlock();
             Assert.That((block.x, block.y, block.w, block.h, block.Mask), Is.EqualTo((24d, 40d, 24d, 8d, 3)));
             Assert.That(shape.enabled, Is.True);
             Assert.That(shape.bounds.min.x, Is.EqualTo(block.x)); Assert.That(-shape.bounds.max.y, Is.EqualTo(block.y));

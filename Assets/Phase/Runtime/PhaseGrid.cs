@@ -27,7 +27,8 @@ namespace Phase
             if (owner.transform.rotation != Quaternion.identity || owner.transform.lossyScale != Vector3.one)
                 throw new System.InvalidOperationException("PHASE collider requires unscaled world axes.");
             owner.transform.position = Snap(owner, position);
-            var shape = owner.GetComponent<BoxCollider2D>() ?? owner.gameObject.AddComponent<BoxCollider2D>();
+            var shape = owner.GetComponent<BoxCollider2D>();
+            if (shape == null) shape = owner.gameObject.AddComponent<BoxCollider2D>();
             if (size.x < 8 || size.y < 8 || size.x % 8 != 0 || size.y % 8 != 0)
                 throw new System.InvalidOperationException("Collision sizes must cover whole 8px Grid cells.");
             shape.enabled = true; shape.size = size; shape.offset = new Vector2(size.x / 2f, -size.y / 2f); shape.isTrigger = true;
