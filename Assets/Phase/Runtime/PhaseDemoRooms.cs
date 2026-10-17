@@ -23,6 +23,7 @@ namespace Phase
         public double gearTop, gearEndX;
         public DemoSpike[] spikes;
         public DemoLaser[] lasers;
+        public DemoCrystal[] crystals;
 
         public MovingPlatform CreateMover()
         {
@@ -34,17 +35,19 @@ namespace Phase
         public ClimbGear CreateGear() => hasGear ? new ClimbGear(gearWall, gearTop, gearPlatform, gearEndX) : null;
         public Spike[] CreateSpikes() => spikes?.Select(s => new Spike(s.x,s.y,s.length,s.direction,s.phaseMask)).ToArray() ?? Array.Empty<Spike>();
         public Laser[] CreateLasers() => lasers?.Select(l => new Laser(l.x,l.y,l.direction,l.phaseMask)).ToArray() ?? Array.Empty<Laser>();
+        public Crystal[] CreateCrystals() => crystals?.Select(c => new Crystal(c.x,c.y,c.kind,c.phaseMask)).ToArray() ?? Array.Empty<Crystal>();
         public PhaseController CreateController()
         {
             void Cell(double value) { if (value % 8 != 0) throw new InvalidOperationException("Demo geometry must use whole 8px Grid cells."); }
             foreach (var block in blocks) { Cell(block.x); Cell(block.y); Cell(block.w); Cell(block.h); if (block.w < 8 || block.h < 8) throw new InvalidOperationException("Demo cells require positive sizes."); }
             foreach (var spike in CreateSpikes()) { Cell(spike.x); Cell(spike.y); }
             foreach (var laser in CreateLasers()) { Cell(laser.x); Cell(laser.y); }
+            foreach (var crystal in CreateCrystals()) { Cell(crystal.x); Cell(crystal.y); }
             if (nodeX != null) { foreach (var x in nodeX) Cell(x); if (nodeY != null) foreach (var y in nodeY) Cell(y); Cell(moverW); Cell(moverH); }
             if (hasGear) { foreach (var b in new[] { gearWall, gearPlatform }) { Cell(b.x); Cell(b.y); Cell(b.w); Cell(b.h); } Cell(gearTop); Cell(gearEndX); }
             var gear = CreateGear(); var mover = CreateMover();
             return new PhaseController(blocks.Select(b => new Block(b.x,b.y,b.w,b.h,b.phase,b.phaseMask)), spawnX, spawnY,
-                mover == null ? null : new[] { mover }, gears: gear == null ? null : new[] { gear }, spikes: CreateSpikes(), lasers: CreateLasers());
+                mover == null ? null : new[] { mover }, gears: gear == null ? null : new[] { gear }, spikes: CreateSpikes(), lasers: CreateLasers(), crystals: CreateCrystals());
         }
     }
     [Serializable]
@@ -59,6 +62,13 @@ namespace Phase
     {
         public double x, y;
         public LaserDirection direction;
+        public int phaseMask;
+    }
+    [Serializable]
+    public sealed class DemoCrystal
+    {
+        public double x, y;
+        public CrystalKind kind;
         public int phaseMask;
     }
 }

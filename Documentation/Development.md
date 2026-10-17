@@ -54,9 +54,9 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 47 controller cases, 9 laser cases, 17 demo-route/authoring cases,
-16 pixel cases, 6 Grid authoring cases and 4 custom-map validation cases in Edit
-Mode. The five Play Mode cases cover bindings, pause/release gating, room
-persistence, multiple authored platforms and imported maps. Platform checks cover
+15 crystal cases, 18 crystal-room cases, 18 pixel cases, 6 Grid authoring cases and 4 custom-map validation cases in Edit
+Mode. The six Play Mode cases cover bindings, pause/release gating, room
+persistence, multiple authored platforms, crystal triggers and imported maps. Platform checks cover
 vertical return travel, independent routes/reset, rider and climb-hop attachment,
 crush/hazard sweeps, native collider synchronization and rendering.
 The three immutable reference files preserve 40 movement/action/climb traces.
@@ -200,9 +200,9 @@ Each room uses `checkpointOnEntry`, resetting player color/dash/stamina and
 mechanism positions while preserving elapsed time and action/death counts.
 The original sandbox links retain their momentum/color carry behavior.
 See [room designs and live input verification](Demo.md).
-`BuildWeb.py` verifies these tests and builds only `PhaseDemo1` through
-`PhaseDemo8`, in that order. `DemoWebSmoke.cjs` replays keyboard routes through
-the eight Web scenes and checks settings, sizing, fullscreen and loading failure.
+`BuildWeb.py` verifies these tests and builds `PhaseDemo1` through
+`PhaseDemo8`, followed by `PhaseCrystal1` through `PhaseCrystal3`. `DemoWebSmoke.cjs` replays keyboard routes through
+the eleven Web scenes and checks settings, sizing, fullscreen and loading failure.
 The older `WebSmoke.cjs` remains a verifier for the original two-sandbox build.
 
 ## CI
@@ -269,8 +269,8 @@ jump activation/death, respawn and phase-preserving dash.
 
 ## Runtime map bridge
 
-The active `PHASE` object accepts `SelectDemoRoom("1".."8")` and
-`LoadCustomMap(json)`. Scene selection uses only the eight built demo scene names.
+The active `PHASE` object accepts `SelectDemoRoom("1".."11")` and
+`LoadCustomMap(json)`. Scene selection uses the eleven built demo and crystal scene names.
 Custom maps use the `PhaseDemoRoom` fields `name`, `blocks`, `spikes`, `spawnX`,
 `spawnY`; blocks require explicit `phaseMask`1–7 and the Web editor sends
 `phase:-1`. Spike direction is Up0/Down1/Left2/Right3; length is native pixels.
@@ -336,7 +336,8 @@ and respawn. It restores its temporary input/settings and controller content.
 
 Paint static terrain with `PHASE/Paint Grid terrain`. Place reusable mechanisms
 from `Assets/Phase/Prefabs/` under the scene's `PHASE` Grid, or use `PHASE/Add`:
-`DashPlatformHorizontal`, `DashPlatformVertical`, `ClimbGear`, `Laser`, `Spikes`.
+`DashPlatformHorizontal`, `DashPlatformVertical`, `ClimbGear`, `Laser`, `Spikes`,
+`JumpCrystal`, `DashCrystal`.
 Both dash platform prefabs keep a horizontal body; only their travel differs.
 The menu places new instances at native (80,120), with Undo support.
 
@@ -350,6 +351,7 @@ coordinate system. Laser and spike prefabs use their own Transform position.
 Native collider shapes and all route endpoints still snap through the Unity Grid.
 
 Each instance can override its route, size, direction and phase mask independently.
+Crystal Prefabs expose `kind` and `phaseMask`; both use an8×8 native trigger.
 Apply overrides only when the change should affect the shared Prefab.
 The demo builders instantiate these assets and preserve the existing room geometry;
 hand-authored scenes are never rebuilt. Existing direct children of the origin
@@ -361,6 +363,31 @@ terrain/spikes; these Prefabs are Unity authoring tools.
 `Assets/Scenes/PhaseDemo1.1.unity` is a separate authoring scene. It uses the same
 8px Grid and native collider shapes; imported sizes, phase masks and scene links
 are retained, with positions snapped by at most half a cell. Edit it with the Grid
-painter and normal Inspector tools. It is not included in the explicit eight-room
+painter and normal Inspector tools. It is not included in the explicit eleven-room
 Web build or the Web room selector. Use `PhaseSandboxBuilder` only to rebuild
 generated demo scenes; preserve hand-authored layouts.
+
+## Colored crystals
+
+`PhaseCrystal` authors an8×8 native pickup trigger on the shared8px Unity Grid,
+using native-X/negative-Unity-Y coordinates. Its collider tracks active/collected state.
+`kind` is Jump (round) or Dash (square); `phaseMask` is1–7 using the same seven
+colors as terrain and lasers. White works in every phase; other colors can only
+be collected in an active phase and appear faint otherwise. Pickups never change
+phase. A round crystal stores at most one air jump; releasing and pressing jump
+spends it and advances phase through the usual jump action. Ground, coyote and
+wall jumps take priority. The cloak's small hollow ring shows the stored jump.
+A square crystal unconditionally sets the dash charge to1, even when it was
+already full or a dash is in progress, without cancelling that dash or refilling
+stamina. Actual landing clears unused air jump and rearms consumed crystals;
+death/reset also restores them. There is no respawn timer. Swept movement and
+platform/gear carry collect pickups; lethal hazards take priority.
+
+The three rooms in `Assets/Phase/CrystalRooms.json` follow `PhaseDemo8` and are
+also independently playable as `Assets/Scenes/PhaseCrystal1.unity` through `PhaseCrystal3.unity`.
+They introduce airborne recoloring, a ten-emitter ascent and a same-color
+midair dash relay. Rebuild only these three scenes through the connected Editor:
+`unity command eval 'PhaseSandboxBuilder.CreateCrystalRooms();'`.
+The manually edited `PhaseDemo1.1` is separate from these builders.
+`DemoLiveInput.Run` checks either demo or crystal scenes and saves keyboard-route
+captures under `TestResults/DemoRooms/` or `TestResults/CrystalRooms/`.

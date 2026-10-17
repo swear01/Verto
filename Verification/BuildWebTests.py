@@ -15,8 +15,8 @@ class PipelineFailures(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "Script compilation failed"):
                     BuildWeb.recompile()
 
-    def test_release_contains_all_eight_scenes_in_order(self):
-        self.assertEqual(BuildWeb.SCENES, [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(1, 9)])
+    def test_release_contains_demo_and_crystal_scenes_in_order(self):
+        self.assertEqual(BuildWeb.SCENES, [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(1, 9)] + [f"Assets/Scenes/PhaseCrystal{i}.unity" for i in range(1, 4)])
         for scene in BuildWeb.SCENES:
             self.assertTrue((BuildWeb.PROJECT / scene).is_file(), scene)
 

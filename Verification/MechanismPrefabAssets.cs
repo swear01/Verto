@@ -20,8 +20,13 @@ public static class MechanismPrefabAssets
         });
         Save("Laser", root => root.AddComponent<PhaseLaser>());
         Save("Spikes", root => root.AddComponent<PhaseSpike>());
+        foreach (var kind in new[] { CrystalKind.Jump, CrystalKind.Dash })
+            Save(kind + "Crystal", root =>
+            {
+                root.AddComponent<PhaseCrystal>().kind = kind; Box(root, new Vector2Int(8, 8));
+            });
         AssetDatabase.SaveAssets();
-        return "Created five reusable PHASE mechanism prefabs.";
+        return "Ensured seven reusable PHASE mechanism prefabs.";
     }
 
     static void SavePlatform(string name, Vector2Int end) => Save(name, root =>
@@ -42,7 +47,7 @@ public static class MechanismPrefabAssets
     {
         var path = PhaseMechanismPrefabs.Folder + name + ".prefab";
         if (AssetDatabase.LoadAssetAtPath<GameObject>(path) != null)
-            throw new System.InvalidOperationException("Preserve the existing prefab: " + path);
+            return;
         var root = new GameObject(name);
         try { setup(root); PrefabUtility.SaveAsPrefabAsset(root, path); }
         finally { Object.DestroyImmediate(root); }

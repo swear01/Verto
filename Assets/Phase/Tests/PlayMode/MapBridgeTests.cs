@@ -22,11 +22,12 @@ public class MapBridgeTests : InputTestFixture
         yield return SceneManager.LoadSceneAsync("PhaseDemo1");
         var original=Object.FindAnyObjectByType<PhaseSandbox>();var controller=original.Controller;
         original.SetControlsOpen("true");
-        foreach(string value in new[]{null,"","02","9","PhaseDemo2"}) original.SelectDemoRoom(value);
+        foreach(string value in new[]{null,"","02","09","12","10 ","+10","PhaseDemo2"}) original.SelectDemoRoom(value);
         foreach(string json in new[]{null,"{}",new string(' ',PhaseCustomMap.MaxJsonLength+1),
             "{\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phase\":-1,\"phaseMask\":7}],\"spawnX\":1,\"spawnY\":152}",
             "{\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phase\":-1,\"phaseMask\":7}],\"spawnX\":24,\"spawnY\":152,\"movers\":[{}]}",
-            "{\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phase\":-1,\"phaseMask\":7}],\"spawnX\":24,\"spawnY\":152,\"gears\":[{}]}"})
+            "{\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phase\":-1,\"phaseMask\":7}],\"spawnX\":24,\"spawnY\":152,\"gears\":[{}]}",
+            "{\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phase\":-1,\"phaseMask\":7}],\"spawnX\":24,\"spawnY\":152,\"crystals\":[{\"x\":80,\"y\":80,\"kind\":0,\"phaseMask\":7}]}"})
         {
             original.LoadCustomMap(json);Assert.That(PhaseSandbox.LastMapError,Is.Not.Empty);
             Assert.That(original.gameObject.activeSelf,Is.True);
@@ -45,6 +46,16 @@ public class MapBridgeTests : InputTestFixture
         Assert.That(sandbox.Frame.filterMode,Is.EqualTo(FilterMode.Point));
         Assert.That(sandbox.Controller.blocks.Count,Is.EqualTo(1));Assert.That(sandbox.Controller.spikes.Count,Is.EqualTo(1));
         Assert.That(sandbox.Controller.exitLeft||sandbox.Controller.exitRight,Is.False);
+        var previousGrid = sandbox.GetComponent<PhaseGrid>();
+        var previousCollider = sandbox.GetComponentInChildren<PhaseTerrain>().GetComponent<BoxCollider2D>();
+        Assert.That(previousGrid, Is.Not.Null); Assert.That(previousCollider, Is.Not.Null);
+        sandbox.LoadCustomMap(JsonUtility.ToJson(new MapData { name=map.name,blocks=map.blocks,spikes=map.spikes,spawnX=map.spawnX,spawnY=map.spawnY }));
+        Assert.That(PhaseSandbox.LastMapError, Is.Empty); yield return null;
+        sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
+        Assert.That(previousGrid == null && previousCollider == null, Is.True, "reimport disposes the previous grid and collider cache");
+        Assert.That(sandbox.GetComponent<PhaseGrid>(), Is.Not.Null);
+        Assert.That(sandbox.Controller.blocks.Count, Is.EqualTo(1));
+        Assert.That(sandbox.Controller.crystals, Is.Empty);
         var keyboard=InputSystem.AddDevice<Keyboard>();
         try
         {
@@ -63,6 +74,17 @@ public class MapBridgeTests : InputTestFixture
             yield return null;var next=Object.FindAnyObjectByType<PhaseSandbox>();
             Assert.That(next.Controller.phase,Is.Zero);Assert.That(next.Frame,Is.Not.Null);
             Assert.That(Object.FindObjectsByType<PhaseSandbox>(FindObjectsSortMode.None).Length,Is.EqualTo(1));
+            foreach (var room in new[] { ("9", "PhaseCrystal1", 1), ("10", "PhaseCrystal2", 3), ("11", "PhaseCrystal3", 1) })
+            {
+                next.SelectDemoRoom(room.Item1); deadline = Time.realtimeSinceStartupAsDouble + 5;
+                while (SceneManager.GetActiveScene().name != room.Item2 && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
+                Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo(room.Item2)); yield return null;
+                next = Object.FindAnyObjectByType<PhaseSandbox>();
+                Assert.That(next.Controller.phase, Is.Zero);
+                Assert.That(next.Controller.crystals.Count, Is.EqualTo(room.Item3));
+                Assert.That(next.GetComponent<PhaseGrid>(), Is.Not.Null);
+                Assert.That(Object.FindObjectsByType<PhaseSandbox>(FindObjectsSortMode.None).Length, Is.EqualTo(1));
+            }
             LogAssert.NoUnexpectedReceived();
         }
         finally

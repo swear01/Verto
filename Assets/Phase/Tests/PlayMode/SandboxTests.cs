@@ -297,6 +297,37 @@ public class SandboxTests : InputTestFixture
 
     #endif
 
+    [UnityTest]
+    public IEnumerator CrystalNativeTriggerTracksPhasePickupAndReset()
+    {
+        yield return SceneManager.LoadSceneAsync("PhaseCrystal1");
+        var sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
+        sandbox.SetControlsOpen("true");
+        try
+        {
+            var s = sandbox.Controller;
+            var crystal = s.crystals.Single(c => c.Mask == 2);
+            var pickup = sandbox.GetComponentsInChildren<PhaseCrystal>().Single(c => c.phaseMask == 2);
+            var shape = pickup.GetComponent<BoxCollider2D>();
+            yield return null; yield return null;
+            Assert.That(s.phase, Is.Zero); Assert.That(shape, Is.Not.Null);
+            Assert.That(shape.enabled, Is.False, "blue pickup is a ghost in red");
+            Assert.That(shape.isTrigger, Is.True); Assert.That(shape.size, Is.EqualTo(new Vector2(8, 8)));
+
+            s.phase = 1; yield return null; yield return null;
+            Assert.That(shape.enabled, Is.True); CheckNativeShapes(sandbox);
+            s.player.x = crystal.x; s.player.y = crystal.y; s.Step(default);
+            yield return null; yield return null;
+            Assert.That(crystal.collected, Is.True); Assert.That(s.player.airJump, Is.EqualTo(1));
+            Assert.That(shape.enabled, Is.False, "consumed pickup has no native trigger");
+
+            s.Reset(); s.phase = 1; yield return null; yield return null;
+            Assert.That(crystal.collected, Is.False); Assert.That(shape.enabled, Is.True);
+            CheckNativeShapes(sandbox); LogAssert.NoUnexpectedReceived();
+        }
+        finally { if (sandbox != null) sandbox.SetControlsOpen("false"); }
+    }
+
     static void CheckNativeShapes(PhaseSandbox sandbox)
     {
         void Match(BoxCollider2D shape, Block model, bool active = true)
@@ -319,6 +350,9 @@ public class SandboxTests : InputTestFixture
             Match(gears[i].GetComponent<BoxCollider2D>(),s.gears[i].wall);
             Match(gears[i].transform.Find("Platform collider").GetComponent<BoxCollider2D>(),s.gears[i].platform);
         }
+        var crystals = sandbox.GetComponentsInChildren<PhaseCrystal>();
+        for (int i = 0; i < crystals.Length; i++)
+            Match(crystals[i].GetComponent<BoxCollider2D>(),s.crystals[i],s.crystals[i].ActiveInPhase(s.phase)&&!s.crystals[i].collected);
     }
 
 }

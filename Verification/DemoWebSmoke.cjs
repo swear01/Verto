@@ -6,7 +6,7 @@ const http = require('node:http');
 const path = require('node:path');
 
 const calibrationRoom=Number((process.argv.find(a=>a.startsWith('--room='))||'').slice(7))||0;
-assert(Number.isInteger(calibrationRoom)&&calibrationRoom>=0&&calibrationRoom<=8,'Calibration room must be1..8');
+assert(Number.isInteger(calibrationRoom)&&calibrationRoom>=0&&calibrationRoom<=11,'Calibration room must be1..11');
 const remote = /^https?:/.test(process.argv[2] || '') ? process.argv[2] : null;
 const root = path.resolve(remote ? 'Builds/Web' : (process.argv[2] || 'Builds/Web'));
 const reports = path.resolve(__dirname, '../TestResults/Web');
@@ -67,6 +67,7 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     result.browser = browser.version();
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
     page.setDefaultTimeout(30000);
+    await page.clock.install();
     const statuses=new WeakMap();
     page.on('console', message => {
       if (message.type() === 'error') result.errors.push(message.text());
@@ -102,11 +103,11 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
       throw Error(`${label}: visible checkpoint not reached: ${JSON.stringify(last)}`);
     }
     async function walkUntil(label,predicate) {
-      const deadline=Date.now()+12000;let buffer,current;
+      const deadline=Date.now()+25000;let buffer,current;
       while(Date.now()<deadline) {
         buffer=await capture();current=character(buffer);
         if(current&&predicate(current)){fs.writeFileSync(path.join(reports,`demo-${label}.png`),buffer);result.checkpoints.push({label,player:current});return current;}
-        await page.keyboard.press('ArrowRight',{delay:80});await page.waitForTimeout(100);
+        await page.keyboard.press('ArrowRight',{delay:40});await page.waitForTimeout(100);
       }
       if(buffer)fs.writeFileSync(path.join(reports,`demo-${label}-failed.png`),buffer);
       throw Error(`${label}: walking checkpoint not reached: ${JSON.stringify(current)}`);
@@ -133,11 +134,15 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     await page.goto(url); await ready(); await canvas.click();
     assert.equal(await page.title(),'PHASE');
     assert.equal(await page.locator('body').innerText(),'');
-    const rooms=JSON.parse(fs.readFileSync(path.join(__dirname,'../Assets/Phase/DemoRooms.json'))).rooms;
+    const rooms=['DemoRooms','CrystalRooms'].flatMap(course=>JSON.parse(fs.readFileSync(path.join(__dirname,`../Assets/Phase/${course}.json`))).rooms);
     await page.evaluate(()=>{window.__nativeMapResults=[];addEventListener('phase-map-result',event=>window.__nativeMapResults.push(event.detail));});
     if(calibrationRoom>1)await selectRoom(calibrationRoom);
     for(let index=calibrationRoom?calibrationRoom-1:0;index<(calibrationRoom||rooms.length);index++) {
       const room=rooms[index];
+      if(index>=8 && (index===8 || calibrationRoom)) {
+        await page.clock.pauseAt(await page.evaluate(()=>Date.now()+100));
+        result.crystalRouteClock='Controlled browser time; production physics at 1/60s';
+      }
       const start=character(await capture({path:path.join(reports,`demo-${index+1}-start.png`)}));
       assert(start && Math.abs(start.x/4-room.spawnX-4)<1,`Room ${index+1} checkpoint spawn`);
       const artOffset=start.y/4-room.spawnY,exitY=room.goal.y-11+artOffset;
@@ -197,8 +202,8 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
         await stableLanding('8-green-far-ferry',2,248,275,144-11+artOffset);
         await walkUntil('8-before-up-dash',p=>p.phase===2&&p.x/4>=263&&p.x/4<272);
         await inputSegment(['ArrowUp','x'],200);
-        await page.keyboard.press('ArrowRight',{delay:800});
-        await stableLanding('8-green-exit-platform',2,284,320,96-11+artOffset);
+        await inputSegment(['ArrowRight'],300);
+        await stableLanding('8-green-exit-platform',2,280,304,96-11+artOffset);
       }
       for(const step of index===0||index===4||index===7?[]:room.route.slice(0,-1)) {
         const started=performance.now(), next=new Set();
@@ -208,11 +213,24 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
         await Promise.all([...held].filter(k=>!next.has(k)).map(k=>page.keyboard.up(k)));
         await Promise.all([...next].filter(k=>!held.has(k)).map(k=>page.keyboard.down(k)));
         held=next;
-        await page.waitForTimeout(Math.max(0,step.frames*1000/60-(performance.now()-started)));
+        if(index>=8)await page.clock.runFor(Math.round(step.frames*1000/60));
+        else await page.waitForTimeout(Math.max(0,step.frames*1000/60-(performance.now()-started)));
       }
       await Promise.all([...held].map(k=>page.keyboard.up(k)));
       const last=room.route.at(-1);
       assert(last.x===1&&!last.y&&!last.jump&&!last.dash&&!last.grab,'Route ends with a horizontal landing approach');
+      if(index>=8) {
+        await page.keyboard.down('ArrowRight');
+        const deadline=Date.now()+12000;
+        let reached=false;
+        while(Date.now()<deadline) {
+          await page.clock.runFor(32);
+          const player=await observe();
+          if(player&&player.phase===room.goal.phase&&player.x/4>=room.goal.x+3&&Math.abs(player.y/4-exitY)<2){reached=true;break;}
+        }
+        await page.keyboard.up('ArrowRight');
+        assert(reached,`Crystal room ${index+1} reaches its visible landing`);
+      } else {
       // Release well before the scene edge; screenshots can span several live frames.
       await walkUntil(`${index+1}-exit-approach`,p=>p.x/4>=room.goal.x-24&&Math.abs(p.y/4-exitY)<2);
       await page.waitForTimeout(120);
@@ -224,25 +242,28 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
       }
       assert(atExit,`Room ${index+1} controlled approach reaches exit before transition`);
       await stableLanding(`${index+1}-exit-landing`,room.goal.phase,room.goal.x+2,320,exitY);
+      }
       const end=character(await capture({path:path.join(reports,`demo-${index+1}-end.png`)}));
       assert(end && end.x/4>=room.goal.x-2,`Room ${index+1} route reaches exit landing: ${JSON.stringify(end)}`);
       assert(Math.abs(end.y/4-exitY)<2,`Room ${index+1} exit height`);
       result.rooms.push({room:index+1,start,end});console.log(`Passed visible route ${index+1}`);
-      if(index<7&&!calibrationRoom) {
+      if(index<rooms.length-1&&!calibrationRoom) {
         const travelDeadline=Date.now()+5000;
         let arrived=false;
         while(Date.now()<travelDeadline) {
           // Release before the slide ends so the destination checkpoint stays still.
-          await page.keyboard.press('ArrowRight',{delay:80});await page.waitForTimeout(280);
+          if(index>=8) { await page.keyboard.down('ArrowRight');await page.clock.runFor(32);await page.keyboard.up('ArrowRight'); }
+          else { await page.keyboard.press('ArrowRight',{delay:80});await page.waitForTimeout(280); }
           const player=await observe();
           if(player&&player.x/4<room.goal.x-12){arrived=true;break;}
         }
         assert(arrived,`Room ${index+1} right edge loads the next checkpoint`);
-        await page.waitForTimeout(350);
+        if(index>=8)await page.clock.runFor(350);else await page.waitForTimeout(350);
       }
     }
     if(calibrationRoom){assert.deepEqual(result.errors,[]);assert.deepEqual(result.warnings,[]);assert.deepEqual(result.failedRequests,[]);result.calibrationRoom=calibrationRoom;result.passed=true;return;}
-    result.checkpointTransitions=7;console.log('Passed eight routes and seven transitions; checking native room selection and custom map');
+    await page.clock.resume();
+    result.checkpointTransitions=rooms.length-1;console.log(`Passed ${rooms.length} routes and ${rooms.length-1} transitions; checking native room selection and custom map`);
 
     async function nativeResult(before) {
       await page.waitForFunction(n=>window.__nativeMapResults.length>n,before);
@@ -257,7 +278,7 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
       const player=await visible(`select-${number}`,p=>Math.abs(p.x/4-expected.spawnX-4)<2&&p.phase===0);
       return {room:number,response,player};
     }
-    result.selectedRooms=[];for(let number=1;number<=8;number++)result.selectedRooms.push(await selectRoom(number));
+    result.selectedRooms=[];for(let number=1;number<=rooms.length;number++)result.selectedRooms.push(await selectRoom(number));
     await page.locator('#rooms-toggle').click();await page.locator('#map-open').click();
     const custom={name:'Browser native map',blocks:[{x:0,y:168,w:320,h:8,phase:-1,phaseMask:7}],spikes:[{x:200,y:160,length:8,direction:0,phaseMask:7}],spawnX:24,spawnY:152};
     const chooser=page.waitForEvent('filechooser');await page.locator('#map-import').click();

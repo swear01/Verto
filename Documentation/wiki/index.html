@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PHASE 中文 Wiki</title>
+<meta name="description" content="PHASE 的世界、操作、物件機制、十一個房間、網頁地圖編輯器與 Unity 關卡編輯說明。">
+<meta name="color-scheme" content="dark">
+<link rel="stylesheet" href="style.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">跳到內容</a>
+
+<div class="layout">
+<header class="masthead">
+  <p class="brand"><a href="#top">PHASE</a></p>
+  <nav class="toc" aria-label="章節">
+    <ul>
+      <li><a href="#world">世界與 Wick</a></li>
+      <li><a href="#controls">操作</a></li>
+      <li><a href="#movement">動作與相位</a></li>
+      <li><a href="#objects">物件圖鑑</a></li>
+      <li><a href="#rooms">十一個房間</a></li>
+      <li><a href="#scenes">其他場景</a></li>
+      <li><a href="#editing">關卡編輯</a></li>
+      <li><a href="#sources">來源</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" tabindex="-1">
+<div class="intro" id="top">
+  <h1>PHASE 中文 Wiki</h1>
+  <p class="lede">PHASE 是一款 Unity 像素平台遊戲。每次成功跳躍，世界就換一種顏色；只有符合目前顏色的石材、尖刺與雷射會存在或致命。</p>
+  <p class="baseline">機制與編關說明已整合七色水晶、多平台與 Prefab；原有八關圖片拍攝於 <code>e4332a2</code>，水晶關卡圖片來自本次整合版。<a href="https://phase-gamejam1-20261016.swear01.chatgpt.site">公開預覽</a>是否同步需另外驗證。</p>
+  <figure class="shot wide">
+    <img src="images/game-view.png" width="960" height="540" alt="房間 1 出口附近：Wick 站在右側白色石台上，左方有紅色實體平台、綠色與藍色虛線平台，石台上立著一座青色雷射發射器，背景是月亮、星點與暗色山丘。">
+    <figcaption>Unity 八關 Demo，房間 1。</figcaption>
+  </figure>
+</div>
+
+<section id="world" aria-labelledby="world-h">
+  <h2 id="world-h">世界與 Wick</h2>
+  <p>美術方向定名為「月夜的染色採石場」：低亮度夜空、固定的月亮與星點、遠山與採石場殘柱，前景是以 8×8 格拼接的錯縫石材。永久存在的石材是骨白與灰色；只在特定相位存在的石材染成紅、藍、綠或混色。</p>
+  <p>主角 Wick 是披著骨白斗篷的旅人，暗色臉孔、深色靴子。角色身上的顏色都有遊戲意義：</p>
+  <ul class="cues">
+    <li><strong>眼睛</strong>＝目前相位色（紅、藍、綠）。</li>
+    <li><strong>兜帽與圍巾</strong>＝衝刺是否可用。琥珀色、圍巾 5 格長表示還有一次衝刺；暗橘色、圍巾縮成 3 格並下垂表示已用掉。</li>
+    <li><strong>整頂兜帽</strong>＝空中的耐力。耐力低於 55 時逐漸染紅並以 1 像素抖動，越低抖得越快；20 以下最紅並輕微明暗脈動。落地立即恢復；斗篷保持骨白，眼睛仍顯示相位，圍巾獨立顯示衝刺存量。</li>
+  </ul>
+  <div class="sprites" role="group" aria-label="Wick 的三種狀態">
+    <figure>
+      <img src="images/character-ready.png" width="24" height="28" alt="Wick 可衝刺：琥珀色兜帽與長圍巾。">
+      <figcaption>可衝刺</figcaption>
+    </figure>
+    <figure>
+      <img src="images/character-spent.png" width="24" height="28" alt="Wick 衝刺已用掉：暗橘色兜帽與較短的圍巾。">
+      <figcaption>衝刺已用</figcaption>
+    </figure>
+    <figure>
+      <img src="images/character-tired.png" width="24" height="28" alt="Wick 耐力只剩 10：整頂兜帽染成紅色，斗篷保持骨白。">
+      <figcaption>耐力低</figcaption>
+    </figure>
+    <p class="sprite-note">角色狀態示意：由遊戲正式的 <code>PhasePixels</code> renderer 繪製（24×28 原生像素，放大 4 倍），不是遊玩截圖。</p>
+  </div>
+  <p class="note">故事、Wick 的身世與旅程目的<strong>尚未定稿</strong>。遊戲內以幾何、顏色和動作呈現規則，不放教學文字。</p>
+</section>
+
+<section id="controls" aria-labelledby="controls-h">
+  <h2 id="controls-h">操作</h2>
+  <table>
+    <caption>預設鍵位（Unity Editor 與網頁版相同）</caption>
+    <thead><tr><th scope="col">動作</th><th scope="col">按鍵</th><th scope="col">說明</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">左右移動</th><td><kbd>←</kbd> <kbd>→</kbd> 或 <kbd>A</kbd> <kbd>D</kbd></td><td>空中仍可控制，但加速較慢。</td></tr>
+      <tr><th scope="row">上／下</th><td><kbd>↑</kbd> <kbd>↓</kbd> 或 <kbd>W</kbd> <kbd>S</kbd></td><td>攀爬、瞄準衝刺；地面按下蹲，下落中按住加速下墜。</td></tr>
+      <tr><th scope="row">跳躍</th><td><kbd>Z</kbd> 或 <kbd>Space</kbd></td><td>每次成功跳躍都切換相位。按住跳得較高。</td></tr>
+      <tr><th scope="row">衝刺</th><td><kbd>X</kbd></td><td>朝方向鍵所指的八方向衝刺；沒按方向就朝面向。</td></tr>
+      <tr><th scope="row">抓牆</th><td><kbd>C</kbd> 或 <kbd>Shift</kbd></td><td>按住貼牆攀爬。左右 Shift 都有效。</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="web-keys">網頁版改鍵</h3>
+  <p>先點一下遊戲畫面取得鍵盤焦點。右上角依序有選擇關卡、全螢幕與鍵位設定。遊戲角色仍需鍵盤操作；地圖編輯器可用指標繪圖。</p>
+  <ul>
+    <li>開啟設定會暫停遊戲。每個動作有<strong>兩個獨立鍵位格</strong>，選一格再按鍵即可，另一格不受影響。</li>
+    <li><kbd>Shift</kbd> 是一個邏輯鍵，同時接受左右 Shift。</li>
+    <li>正在錄鍵時：<kbd>Esc</kbd> 清除該格（每個動作至少保留一鍵），<kbd>Tab</kbd> 取消錄鍵並移動焦點。沒在錄鍵時，<kbd>Esc</kbd> 關閉設定。</li>
+    <li>重複的按鍵、瀏覽器修飾鍵組合會被拒絕；Esc、Tab、Delete、Ctrl、Alt、Meta 不能綁定。</li>
+    <li>每個動作各有「還原」按鈕，只重設該動作。設定立即套用、跨房間保留，並存在這個瀏覽器（<code>phase.controls.v2</code>）。</li>
+    <li>關閉設定後先放開所有按鍵，遊戲才會繼續。</li>
+  </ul>
+  <p>Unity Editor 內沒有改鍵介面，固定使用上表預設鍵位。</p>
+</section>
+
+<section id="movement" aria-labelledby="movement-h">
+  <h2 id="movement-h">動作與相位</h2>
+  <p>控制器以原生像素、Y 向下、每秒 60 步運算。Wick 的碰撞框是 8×11 像素，蹲下時 8×6。以下數值取自 <a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Runtime/PhaseController.cs"><code>PhaseController.cs</code></a>。</p>
+
+  <h3 id="phase-cycle">相位循環</h3>
+  <p class="cycle" aria-label="相位循環：紅、藍、綠，再回到紅">
+    <span class="ph ph-r">紅</span><span aria-hidden="true">→</span><span class="ph ph-b">藍</span><span aria-hidden="true">→</span><span class="ph ph-g">綠</span><span aria-hidden="true">→</span><span class="ph ph-r">紅</span>
+  </p>
+  <p>正式十一關每次進房都從<strong>紅</strong>開始（原始沙盒換房時保留相位）。<strong>只有成功起跳</strong>會換色，包括地面跳、牆跳、攀爬跳、圓水晶補跳與衝刺中的跳躍。衝刺、攀爬、落地、走路都<strong>不換色</strong>，這是保留顏色的主要手段。</p>
+
+  <h3 id="jump">跳躍</h3>
+  <ul>
+    <li>普通跳躍可從地面、離地 0.1 秒內，或貼著牆（3 像素內）起跳；吃到圓水晶後，另可使用一次空中補跳。</li>
+    <li>按住跳躍鍵約可上升 28 原生像素（3.5 格），輕點只會跳起少許。這是依程式數值推算的近似值。</li>
+    <li>落地前 0.08 秒內按下跳躍會被記住，著地即起跳（需仍按著）。</li>
+  </ul>
+
+  <h3 id="wall">貼牆、牆跳與攀爬</h3>
+  <ul>
+    <li><strong>滑牆</strong>：空中朝牆按住方向（或只按住抓牆），下落速度從很慢開始，在 1.2 秒內逐漸回到正常。</li>
+    <li><strong>牆跳</strong>：貼牆沒在抓牆時按跳，會往牆的反方向彈出。</li>
+    <li><strong>攀爬</strong>：貼牆按住抓牆鍵即可抓住（耐力需至少 20，且不在上升中）。按上以每秒 45 像素往上、按下以每秒 80 像素往下；爬到牆頂會自動翻上去。</li>
+    <li><strong>攀爬跳</strong>：抓牆時按跳會直直往上跳；若在 0.2 秒內再按離牆方向，就轉成往外的牆跳並退回耗掉的耐力。</li>
+  </ul>
+  <table>
+    <caption>耐力（上限 110，落地立刻補滿）</caption>
+    <thead><tr><th scope="col">狀態</th><th scope="col">消耗</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">往上爬</th><td>約每秒 45.5</td></tr>
+      <tr><th scope="row">掛著不動</th><td>每秒 10</td></tr>
+      <tr><th scope="row">往下爬</th><td>不消耗</td></tr>
+      <tr><th scope="row">空中攀爬跳</th><td>每次 27.5</td></tr>
+    </tbody>
+  </table>
+  <p>耐力歸零會自動放手。耗盡後仍按住抓牆貼著牆，下滑速度上限是每秒 45 像素；放開、離牆或按下就恢復正常落速。</p>
+
+  <h3 id="dash">衝刺</h3>
+  <ul>
+    <li>共有 <strong>1 次</strong>，用掉後要落地才補回。衝刺有 0.2 秒冷卻。</li>
+    <li>方向是八方向，取當下的方向鍵；沒按方向就朝面向。地面上往斜下衝刺會變成蹲低滑行。</li>
+    <li>衝刺會讓房間的移動平台出發（見<a href="#platform">移動平台</a>）。</li>
+    <li><strong>衝刺不是無敵</strong>：尖刺和雷射在衝刺路徑上的每一個像素都會檢查。</li>
+    <li>衝刺途中貼牆或在地面上按跳，會接成一次跳躍，也會換色。</li>
+  </ul>
+
+  <h3 id="death">死亡與檢查點</h3>
+  <p>碰到目前相位有效的尖刺或雷射、掉出畫面下緣、或被平台與機構擠進牆裡／推過封閉的房間邊界，都會死亡；開放的出口邊界則照常換房。約 0.28 秒後在<strong>本房間</strong>的起點重生：顏色回到紅、衝刺與耐力補滿，移動平台與齒輪回到初始位置。經過時間、跳躍、衝刺與死亡次數則保留。</p>
+  <p>重生前的最後 0.12 秒，八顆淺色像素會向出生點聚攏；沒有全畫面閃白。重落地（向下速度至少 120 像素／秒）則揚起六顆白色塵粒。</p>
+  <p>十一關中，走出房間右緣就進入下一關，並以 0.18 秒的水平像素滑動轉場；每個新房間都是新的檢查點。各房間左緣封閉，第 8 關接水晶關卡，第 11 關右緣封閉。</p>
+</section>
+
+<section id="objects" aria-labelledby="objects-h">
+  <h2 id="objects-h">物件圖鑑</h2>
+
+  <h3 id="masks">相位地形與七種 mask</h3>
+  <p>每塊地形、尖刺與雷射都有一個 <code>phaseMask</code>（1–7），由紅＝1、藍＝2、綠＝4 相加而成。目前相位包含在 mask 裡時，石材是實體、尖刺與雷射是致命的。</p>
+  <table class="masks">
+    <caption>七種 mask</caption>
+    <thead><tr><th scope="col">mask</th><th scope="col">顏色</th><th scope="col">紅相位</th><th scope="col">藍相位</th><th scope="col">綠相位</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><th scope="row"><span class="sw sw-1" aria-hidden="true"></span>紅</th><td>有</td><td>—</td><td>—</td></tr>
+      <tr><td>2</td><th scope="row"><span class="sw sw-2" aria-hidden="true"></span>藍</th><td>—</td><td>有</td><td>—</td></tr>
+      <tr><td>4</td><th scope="row"><span class="sw sw-4" aria-hidden="true"></span>綠</th><td>—</td><td>—</td><td>有</td></tr>
+      <tr><td>3</td><th scope="row"><span class="sw sw-3" aria-hidden="true"></span>洋紅（紅＋藍）</th><td>有</td><td>有</td><td>—</td></tr>
+      <tr><td>5</td><th scope="row"><span class="sw sw-5" aria-hidden="true"></span>黃（紅＋綠）</th><td>有</td><td>—</td><td>有</td></tr>
+      <tr><td>6</td><th scope="row"><span class="sw sw-6" aria-hidden="true"></span>青（藍＋綠）</th><td>—</td><td>有</td><td>有</td></tr>
+      <tr><td>7</td><th scope="row"><span class="sw sw-7" aria-hidden="true"></span>白（全部）</th><td>有</td><td>有</td><td>有</td></tr>
+    </tbody>
+  </table>
+  <p>失效的石材只剩淡色底與虛線邊；雙色石材用兩個顏色嵌點標出有效相位。地形另有舊欄位 <code>phase</code>：<code>phaseMask</code> 為 0 時，<code>phase</code> = −1 等於白（7），0／1／2 等於紅／藍／綠。</p>
+  <p><strong>例</strong>：房間 6 的青色平台在藍與綠時可站。從它起跳的那一刻你變紅，它也同時消失，所以下一個落點必須是含紅的石材。</p>
+
+  <h3 id="deferred">重疊時延後實體化</h3>
+  <p>換色時，如果一塊<strong>剛變成實體</strong>的石材正和 Wick、移動平台或齒輪零件重疊，它會先保持可穿過，畫成較亮的實線框；等重疊的東西離開後才變成實體。原本就是實體的雙色石材在換色時不受影響。延後中的石材也擋不住雷射。</p>
+  <p><strong>例</strong>：紅色時站在藍色虛線平台的範圍內起跳，變藍後那塊平台不會把你卡住，等你離開它才出現。</p>
+
+  <h3 id="crystals">七色水晶</h3>
+  <p>顏色符合目前相位才能拾取；白色全相位可用，雙色水晶接受其中任一相位。錯色時呈半透明，拾取本身不換色。</p>
+  <table><thead><tr><th scope="col">形狀</th><th scope="col">效果</th></tr></thead><tbody>
+    <tr><th scope="row">圓形</th><td>儲存一次空中補跳，最多一跳；重新按跳躍才使用，成功跳出時才換色。</td></tr>
+    <tr><th scope="row">方形</th><td>直接恢復一次衝刺，即使原本已滿也會消耗水晶；不改相位，也不取消正在進行的衝刺。</td></tr>
+  </tbody></table>
+  <p>實際落地或重生後水晶恢復，落地也會清除未用的補跳。圓水晶存量用斗篷上的白色環表示；眼睛、兜帽與圍巾仍保留原來的相位與衝刺意義。雷射先判定致命，不能靠同時拾取水晶免死。</p>
+
+  <h3 id="platform">衝刺驅動的移動平台</h3>
+  <p>白灰色的鉚釘平台，所有相位都存在。它只在<strong>你衝刺的瞬間</strong>出發，與你人在哪裡無關。站在上面或攀在它側面會被載著走；被它推進牆裡、推過封閉的房間邊界或推進危險物會死亡。它也會擋住雷射。同一場景可放多個平台；每次有效衝刺會同時啟動所有平台，各自依自己的路線移動。</p>
+  <dl class="terms">
+    <dt><code>returns</code> 關閉：站點循環</dt>
+    <dd>每衝刺一次，平台前往<strong>下一個站點</strong>，每段 0.3 秒；連續衝刺會排隊依序執行。到最後一站後，下一次衝刺直接回到第一站。只有兩站時就是來回切換。</dd>
+    <dt><code>returns</code> 開啟：去了會回來</dt>
+    <dd>只能有兩個站點，且必須水平或垂直排列。平台本體可維持橫向，只讓路線上下移動。衝刺後平台衝向第二站，停 0.2 秒，再慢慢回到第一站。從端點走完全程時，去程 0.2 秒、回程 1.2 秒；回程中途再衝刺會從目前位置重新出發，時間依剩餘距離等比縮短。</dd>
+  </dl>
+  <p><strong>例</strong>：房間 6 的渡船有三站（x＝96、152、208）。第一次衝刺停在中站；第二次到右站；第三次直接回到 96。</p>
+
+  <h3 id="gear">攀爬連動齒輪</h3>
+  <p>一面白色攀爬牆和一塊白色橫平台由齒輪與齒條連動（貼地橋四顆、架高橋三顆）。只有<strong>真正爬動造成的位移</strong>會驅動它：往上爬，牆跟著往上並帶著你，平台同步向右滑；往下爬則反向。掛著不動、放手、滑落、衝刺，或往上爬卻被擋住時，都不會轉動。</p>
+  <ul>
+    <li>牆和平台的行程相同（八關都是 24 像素），到端點就停。</li>
+    <li>任一零件撞到實體（例如目前相位存在的石材或移動平台）就停在那一格；所以顏色會決定機構能不能動。</li>
+    <li>站在平台上會被帶著走；牆與平台都會擋雷射。齒輪與齒條只是裝飾，沒有碰撞。</li>
+    <li>死亡重生時回到初始位置。</li>
+  </ul>
+  <p><strong>例</strong>：房間 7 的平台路徑上有一個紅色 8×8 方塊。紅色時攀爬，平台一出發就撞上；先跳一次變藍，方塊消失，平台才能滑滿 24 像素。</p>
+
+  <h3 id="spikes">相位尖刺</h3>
+  <p>尖刺有上、下、左、右四個方向，長度以 8 像素為一格。它不是實體，站不上去；只有齒根那條 3 像素寬的帶狀區域會致命，而且只在 mask 包含目前相位時有效。失效時保留暗色齒形，雙色尖刺只在第一格標記顏色。碰撞檢查涵蓋整段移動路徑，包括衝刺、換色瞬間與被平台載運。</p>
+  <p><strong>例</strong>：房間 5 地上有一排綠色朝上尖刺。保持藍色衝刺過去是安全的；如果在上面跳一下變綠，尖刺立刻生效。</p>
+
+  <h3 id="lasers">常亮雷射</h3>
+  <p>8×8 發射器朝一個方向射出 4 像素寬的光束，沒有計時、不閃爍。光束停在第一個<strong>目前存在</strong>的實體（石材、移動平台、齒輪牆或平台）或房間邊緣。</p>
+  <ul>
+    <li>白色雷射在所有相位都致命；其他顏色照 mask 規則。</li>
+    <li>失效的光束以低透明度保留，仍看得見位置；致命時有暗色外框與亮芯。</li>
+    <li>失效（虛線）石材、延後實體化中的石材都擋不住光束。</li>
+    <li>發射器本身只是美術，沒有碰撞。</li>
+  </ul>
+  <p><strong>例</strong>：房間 3 的白色雷射從下往上直射。貼地橋往右滑到它上方後，光束被橋面截斷；橋面以外的區域仍須避開。</p>
+</section>
+
+<section id="rooms" aria-labelledby="rooms-h">
+  <h2 id="rooms-h">十一個房間</h2>
+  <p>前八關是 <code>PhaseDemo1</code>–<code>PhaseDemo8</code>，由 <a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/DemoRooms.json"><code>DemoRooms.json</code></a> 產生。前三關各介紹一個核心：跳躍換色、衝刺驅動平台、攀爬驅動齒輪；後五關把它們和尖刺、雷射、混色平台組合起來。解法預設折疊，下方是測試裡重播的參考路線，不代表唯一解。</p>
+
+  <article class="room" id="room-1" aria-labelledby="room-1-h">
+    <h3 id="room-1-h"><span class="num">1</span>換色階梯</h3>
+    <figure class="shot">
+      <img src="images/room-1-start.png" width="320" height="180" loading="lazy" alt="房間 1 起點：Wick 在左下石地上，右方依序升高的藍、綠、紅三塊平台，紅色為實體，藍綠為虛線；最右是白色出口平台與青色雷射發射器。">
+      <figcaption>起點</figcaption>
+    </figure>
+    <p class="q">每次跳躍後，哪一塊平台會存在？</p>
+    <p class="parts">藍／綠／紅單色平台・青色雷射（向下）</p>
+    <details>
+      <summary>看解法</summary>
+      <ol>
+        <li>從地面跳上藍色平台：起跳讓你變藍，藍平台出現。</li>
+        <li>再跳上綠色平台（變綠），再跳上紅色平台（變紅）。</li>
+        <li>走到白色出口。青色雷射是藍＋綠，紅色時無害。</li>
+      </ol>
+      <figure class="shot">
+        <img src="images/room-1-end.png" width="320" height="180" loading="lazy" alt="房間 1 終點：Wick 以紅色站在右側白色出口平台，青色雷射呈半透明的安全狀態。">
+        <figcaption>參考路線終點：跳 3 次、衝刺 0 次，紅色</figcaption>
+      </figure>
+    </details>
+  </article>
+
+  <article class="room" id="room-2" aria-labelledby="room-2-h">
+    <h3 id="room-2-h"><span class="num">2</span>低頂渡船</h3>
+    <figure class="shot">
+      <img src="images/room-2-start.png" width="320" height="180" loading="lazy" alt="房間 2 起點：中央是巨大的低垂石頂，下方是虛空，左側停著一艘白灰渡船；石頂底部有一座向下射的紅色雷射，左右各一段石地。">
+      <figcaption>起點</figcaption>
+    </figure>
+    <p class="q">渡船該在什麼時候開？</p>
+    <p class="parts">兩站循環移動平台・低垂石頂・紅色雷射（向下）</p>
+    <details>
+      <summary>看解法</summary>
+      <ol>
+        <li>先跳上停在左站的渡船。這一跳讓你變藍，紅色雷射失效。</li>
+        <li>站穩後衝刺，渡船把你載到右站。</li>
+        <li>走上右側石地。若先衝刺再上船，渡船會自己開走；再衝刺一次它才會開回來。</li>
+      </ol>
+      <figure class="shot">
+        <img src="images/room-2-end.png" width="320" height="180" loading="lazy" alt="房間 2 終點：渡船停在右站，Wick 站在右側石地出口。">
+        <figcaption>參考路線終點：跳 1 次、衝刺 1 次，藍色</figcaption>
+      </figure>
+    </details>
+  </article>
+
+  <article class="room" id="room-3" aria-labelledby="room-3-h">
+    <h3 id="room-3-h"><span class="num">3</span>齒輪抬門</h3>
+    <figure class="shot">
+      <img src="images/room-3-start.png" width="320" height="180" loading="lazy" alt="房間 3 起點：白色攀爬牆封住貼地通道，旁邊是四顆齒輪連動的貼地橋；上方封頂，右側低走廊有向上白色雷射。">
+      <figcaption>起點</figcaption>
+    </figure>
+    <p class="q">封住的通道要怎麼打開？</p>
+    <p class="parts">攀爬連動齒輪・白色雷射（向上，所有相位致命）</p>
+    <details>
+      <summary>看解法</summary>
+      <ol>
+        <li>抓住白牆往上爬，讓牆升 24 像素、貼地橋同步右滑 24 像素；上方石頂擋住翻越，牆底才是打開的通道。</li>
+        <li>放手落回牆下，從抬起的閘門底部向右衝刺上橋，走到邊緣。</li>
+        <li>起跳（變藍）後再向右衝刺，落在出口平台。</li>
+      </ol>
+      <figure class="shot">
+        <img src="images/room-3-end.png" width="320" height="180" loading="lazy" alt="房間 3 終點：齒輪平台已右移並截斷白色雷射，Wick 站在右側出口平台。">
+        <figcaption>參考路線終點：跳 1 次、衝刺 2 次、機構升 24 像素，藍色</figcaption>
+      </figure>
+    </details>
+  </article>
+
+  <article class="room" id="room-4" aria-labelledby="room-4-h">
+    <h3 id="room-4-h"><span class="num">4</span>五連跳</h3>
+    <figure class="shot">
+      <img src="images/room-4-start.png" width="320" height="180" loading="lazy" alt="房間 4 起點：五塊單色平台向右上排成階梯，最後接白色出口平台；下方有一座向上射的綠色雷射。">
+      <figcaption>起點</figcaption>
+    </figure>
+    <p class="q">能不能事先讀出整段色序？</p>
+    <p class="parts">五塊單色平台・綠色雷射（向上）</p>
+    <details>
+      <summary>看解法</summary>
+      <ol>
+        <li>五塊平台依序是藍、綠、紅、藍、綠，剛好是連跳五次的顏色。</li>
+        <li>站在紅平台上時，紅平台擋住下方綠光；從紅平台起跳變藍後才越過光束，綠光此時無害。</li>
+        <li>第五跳變綠，落在綠平台，再走上出口。</li>
+      </ol>
+      <figure class="shot">
+        <img src="images/room-4-end.png" width="320" height="180" loading="lazy" alt="房間 4 終點：Wick 站在右上角出口平台。">
+        <figcaption>參考路線終點：跳 5 次、衝刺 0 次，綠色</figcaption>
+      </figure>
+    </details>
+  </article>
+
+  <article class="room" id="room-5" aria-labelledby="room-5-h">
+    <h3 id="room-5-h"><span class="num">5</span>保色穿刺</h3>
+    <figure class="shot">
+      <img src="images/room-5-start.png" width="320" height="180" loading="lazy" alt="房間 5 起點：低垂石頂下方有兩塊藍色平台，中間夾著一排綠色朝上尖刺，一道黃色雷射由下往上穿過尖刺區；右側是白色出口。">
+      <figcaption>起點</figcaption>
+    </figure>
+    <p class="q">什麼時候「再跳一次」反而是錯的？</p>
+    <p class="parts">藍色平台・綠色尖刺・黃色雷射（紅＋綠，向上）</p>
+    <details>
+      <summary>看解法</summary>
+      <ol>
+        <li>跳上第一塊藍平台，你變成藍色。</li>
+        <li>不要再跳。用衝刺保持藍色，越過綠色尖刺與黃色雷射，落在第二塊藍平台。</li>
+        <li>如果在這裡再跳一次會變綠：尖刺與雷射同時生效，兩塊藍平台也會消失。</li>
+      </ol>
+      <figure class="shot">
+        <img src="images/room-5-end.png" width="320" height="180" loading="lazy" alt="房間 5 終點：Wick 以藍色站在右側出口。">
+        <figcaption>參考路線終點：跳 1 次、衝刺 1 次，藍色</figcaption>
+      </figure>
+    </details>
+  </article>
+
+  <article class="room" id="room-6" aria-labelledby="room-6-h">
+    <h3 id="room-6-h"><span class="num">6</span>三站轉乘</h3>
+    <figure class="shot">
+      <img src="images/room-6-start.png" width="320" height="180" loading="lazy" alt="房間 6 起點：渡船停在左站，軌道上有三個站點；右方有青色平台、其下的紅色尖刺、更高的黃色平台與白色出口，一道青色雷射由下往上射。">
+      <figcaption>起點</figcaption>
+    </figure>
+    <p class="q">再衝刺一次有用，還是會開過頭？</p>
+    <p class="parts">三站循環渡船・青色與黃色平台・紅色尖刺・青色雷射（向上）</p>
+    <details>
+      <summary>看解法</summary>
+      <ol>
+        <li>跳上渡船（變藍），衝刺一次，讓渡船停在中站。</li>
+        <li>跳上青色平台（變綠；青＝藍＋綠，仍存在）。</li>
+        <li>再跳上黃色平台（變紅；黃＝紅＋綠）。此時穿過青色光束，紅色時它無害。</li>
+        <li>多衝刺會讓渡船開往右站，再下一次直接回左站，可以重來。</li>
+      </ol>
+      <figure class="shot">
+        <img src="images/room-6-end.png" width="320" height="180" loading="lazy" alt="房間 6 終點：渡船停在中站，Wick 站在右側出口，紅色尖刺亮起、青色雷射呈安全狀態。">
+        <figcaption>參考路線終點：跳 3 次、衝刺 1 次，紅色</figcaption>
+      </figure>
+    </details>
+  </article>
+
+  <article class="room" id="room-7" aria-labelledby="room-7-h">
+    <h3 id="room-7-h"><span class="num">7</span>相位卡齒</h3>
+    <figure class="shot">
+      <img src="images/room-7-start.png" width="320" height="180" loading="lazy" alt="房間 7 起點：與房間 3 相同的齒輪牆與平台，平台路徑上多了一個紅色小方塊；右邊有一排藍色尖刺、洋紅色雷射與綠色出口平台。">
+      <figcaption>起點</figcaption>
+    </figure>
+    <p class="q">連動機構為什麼卡住了？</p>
+    <p class="parts">攀爬連動齒輪・紅色阻擋塊・藍色尖刺・洋紅色雷射（紅＋藍，向上）・綠色出口</p>
+    <details>
+      <summary>看解法</summary>
+      <ol>
+        <li>攀爬前先原地跳一次，變藍。紅色方塊消失，平台才能滑滿。</li>
+        <li>爬牆把閘門抬滿，再放手落回牆下；從門底向右衝刺上貼地橋，走到邊緣。</li>
+        <li>起跳變綠：藍色尖刺與洋紅雷射失效，綠色出口出現。接著向右衝刺登上出口。</li>
+      </ol>
+      <figure class="shot">
+        <img src="images/room-7-end.png" width="320" height="180" loading="lazy" alt="房間 7 終點：Wick 以綠色站在右側綠色出口平台。">
+        <figcaption>參考路線終點：跳 2 次、衝刺 2 次、機構升 24 像素，綠色</figcaption>
+      </figure>
+    </details>
+  </article>
+
+  <article class="room" id="room-8" aria-labelledby="room-8-h">
+    <h3 id="room-8-h"><span class="num">8</span>色序預算</h3>
+    <figure class="shot">
+      <img src="images/room-8-start.png" width="320" height="180" loading="lazy" alt="房間 8 起點：齒輪牆與平台、紅色阻擋塊、較低的洋紅色平台、軌道上的渡船與一排藍色尖刺，右上角是黃色出口，一道藍色雷射由下往上射。">
+      <figcaption>起點</figcaption>
+    </figure>
+    <p class="q">哪些動作應該保留顏色？</p>
+    <p class="parts">齒輪・三站渡船・藍色尖刺・藍色雷射・洋紅色低台・黃色出口</p>
+    <details>
+      <summary>看解法</summary>
+      <ol>
+        <li>原地跳一次變藍，再爬牆把平台推滿。</li>
+        <li>放手落回牆下，從門底向右衝刺上貼地橋；這次衝刺同時把渡船從 x＝208 叫到較近的 x＝176 站。</li>
+        <li>跳上渡船，變綠。</li>
+        <li>衝刺：渡船把你往右載，綠色時藍尖刺與藍雷射都無害。</li>
+        <li>向上衝刺，登上黃色出口（紅＋綠，綠色時存在）。</li>
+      </ol>
+      <p>藍色時，洋紅色低台可以接住失手的你。</p>
+      <figure class="shot">
+        <img src="images/room-8-end.png" width="320" height="180" loading="lazy" alt="房間 8 終點：Wick 站在右上角黃色出口平台。">
+        <figcaption>參考路線終點：跳 2 次、衝刺 3 次、機構升 24 像素，綠色</figcaption>
+      </figure>
+    </details>
+  </article>
+
+  <article class="room" id="room-9" aria-labelledby="room-9-h">
+    <h3 id="room-9-h"><span class="num">9</span>空中換色</h3>
+    <figure class="shot"><img src="images/crystal-1-start.png" width="320" height="180" loading="lazy" alt="水晶關卡 9：空中換色起點。"><figcaption>起點</figcaption></figure>
+    <p class="parts">藍色圓水晶・綠色落點</p>
+    <details><summary>看解法</summary><p>先跳成藍色，吃到圓水晶；離開上一道光束後補跳成綠色，落在右側綠台。</p><figure class="shot"><img src="images/crystal-1-end.png" width="320" height="180" loading="lazy" alt="水晶關卡 9：Wick 抵達參考路線落點。"><figcaption>2 次跳躍、0 次衝刺，綠色</figcaption></figure></details>
+  </article>
+  <article class="room" id="room-10" aria-labelledby="room-10-h">
+    <h3 id="room-10-h"><span class="num">10</span>三色光網</h3>
+    <figure class="shot"><img src="images/crystal-2-start.png" width="320" height="180" loading="lazy" alt="水晶關卡 10：三色光網起點。"><figcaption>起點</figcaption></figure>
+    <p class="parts">三顆配色圓水晶・十道常亮雷射</p>
+    <details><summary>看解法</summary><p>沿藍→綠→紅的色序向上走。三顆圓水晶各補一次跳躍，讓你在空中離開上一道閘後再換色，最後以紅色落在右上石台。</p><figure class="shot"><img src="images/crystal-2-end.png" width="320" height="180" loading="lazy" alt="水晶關卡 10：Wick 抵達參考路線落點。"><figcaption>6 次跳躍、0 次衝刺，紅色</figcaption></figure></details>
+  </article>
+  <article class="room" id="room-11" aria-labelledby="room-11-h">
+    <h3 id="room-11-h"><span class="num">11</span>保色接力</h3>
+    <figure class="shot"><img src="images/crystal-3-start.png" width="320" height="180" loading="lazy" alt="水晶關卡 11：保色接力起點。"><figcaption>起點</figcaption></figure>
+    <p class="parts">藍色方水晶・同色雙衝刺</p>
+    <details><summary>看解法</summary><p>先跳成藍色，向右衝刺吃到藍色方水晶；保持藍色再衝刺一次，跨過缺口後落地。</p><figure class="shot"><img src="images/crystal-3-end.png" width="320" height="180" loading="lazy" alt="水晶關卡 11：Wick 抵達參考路線落點。"><figcaption>1 次跳躍、2 次衝刺，藍色</figcaption></figure></details>
+  </article>
+</section>
+
+<section id="scenes" aria-labelledby="scenes-h">
+  <h2 id="scenes-h">其他場景</h2>
+  <p>以下場景都不屬於正式十一關，也不在網頁版的建置清單（<code>BuildWeb.py</code> 建置 <code>PhaseDemo1</code>–<code>8</code> 與 <code>PhaseCrystal1</code>–<code>3</code>）。請在 Unity Editor 開啟後按 Play。</p>
+
+  <article class="scene" id="scene-sandbox" aria-labelledby="scene-sandbox-h">
+    <h3 id="scene-sandbox-h">PhaseSandbox 與 PhaseRoom2</h3>
+    <div class="pair">
+      <figure class="shot">
+        <img src="images/sandbox.png" width="320" height="180" loading="lazy" alt="PhaseSandbox：整片石地、紅藍綠三塊小平台向右升高、右側一面白色攀爬牆與一塊會回彈的移動平台。">
+        <figcaption>PhaseSandbox</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="images/room-2-sandbox.png" width="320" height="180" loading="lazy" alt="PhaseRoom2：整片石地、左側一面白色攀爬牆、紅藍綠三塊平台與右側一塊會回彈的移動平台。">
+        <figcaption>PhaseRoom2</figcaption>
+      </figure>
+    </div>
+    <p>最早的兩個測試房間，以左右邊緣互通，<strong>沒有</strong>入場檢查點：換房時保留顏色、速度與跳躍／衝刺狀態。移動平台是 <code>returns</code> 模式。</p>
+    <p>想試玩就直接開既有場景。選單 <code>PHASE/Create minimal sandbox</code> 會<strong>覆寫這兩個場景，並把 Build Settings 重設成只剩這兩個</strong>，十一關與齒輪 Demo 都會從清單消失。</p>
+  </article>
+
+  <article class="scene" id="scene-gear" aria-labelledby="scene-gear-h">
+    <h3 id="scene-gear-h">PhaseGearDemo</h3>
+    <figure class="shot">
+      <img src="images/gear-demo.png" width="320" height="180" loading="lazy" alt="PhaseGearDemo：左側白色齒輪牆與橫平台，右方有藍、綠、紅平台、一塊會回彈的移動平台與右上角的休息台。">
+      <figcaption>PhaseGearDemo</figcaption>
+    </figure>
+    <p>齒輪機構的獨立實驗，沒有房間連結。爬牆推出平台後，用跳躍換色、衝刺接上綠、紅平台，最後到右上角休息台。由選單 <code>PHASE/Create gear demo</code> 建立；再執行會覆寫這個場景，試玩請直接開啟既有檔案。</p>
+  </article>
+
+  <article class="scene" id="scene-demo11" aria-labelledby="scene-demo11-h">
+    <h3 id="scene-demo11-h">PhaseDemo1.1（同學製作的手工關卡）</h3>
+    <figure class="shot">
+      <img src="images/demo-1-1.png" width="320" height="180" loading="lazy" alt="PhaseDemo1.1：左下一段石地，上方是三欄五列、每塊 80 像素寬的紅藍綠平台方陣，右上角一塊白色平台。">
+      <figcaption>同學製作的 PhaseDemo1.1，可作為手工編關的參考。</figcaption>
+    </figure>
+    <p>同學在 Inspector 中手工擺放的關卡，可作為編關範例。三欄平台從左下起點向上鋪開，右上角接永久白色平台。每塊彩色平台 80×8 像素（10 格長、1 格厚），同一列的三欄緊鄰，換色後會改變整列可站立的區域。</p>
+    <table>
+      <caption>實際平台配置：由上往下，座標為原生像素</caption>
+      <thead><tr><th scope="col">列 Y</th><th scope="col">左欄 X＝32</th><th scope="col">中欄 X＝112</th><th scope="col">右欄 X＝192</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">32</th><td>藍</td><td>綠</td><td>綠</td></tr>
+        <tr><th scope="row">56</th><td>藍</td><td>綠</td><td>綠</td></tr>
+        <tr><th scope="row">88</th><td>紅</td><td>藍</td><td>紅</td></tr>
+        <tr><th scope="row">112</th><td>藍</td><td>藍</td><td>綠</td></tr>
+        <tr><th scope="row">136</th><td>藍</td><td>綠</td><td>紅</td></tr>
+      </tbody>
+    </table>
+    <h4 id="demo11-reference">可以參考的設計</h4>
+    <ul>
+      <li><strong>換色決定選路</strong>：最下列左藍、中綠、右紅，讓相位循環對應到不同落腳區；編關時可先畫出每次跳躍後可站的平台。</li>
+      <li><strong>重複尺寸、改變色序</strong>：統一 80×8 的平台尺寸，再調整各列顏色，便於比較色序如何影響路線。</li>
+      <li><strong>高度差要逐段試玩</strong>：多數相鄰列差 24 像素，y＝88 到 56 則差 32。不要只看排列就認定能直接跳上去，需核對起跳相位、可落腳處與攀爬／衝刺空間。</li>
+    </ul>
+    <p>在 Unity 開啟 <code>Assets/Scenes/PhaseDemo1.1.unity</code> 即可試玩；要拿來修改，先用 File › Save As 另存自己的場景。以上是場景配置分析，<strong>完整通關路線尚未實測確認</strong>。</p>
+    <p>它獨立於正式十一關：不在 <code>DemoRooms.json</code>、Build Settings 或網頁建置清單，<code>rightScene</code> 指向 <code>PhaseDemo2</code>。目前地形已對齊 8 像素格線，右上白台在 (272, 32)、大小 112×8；重建八關不會覆寫這個檔案。</p>
+  </article>
+</section>
+
+<section id="editing" aria-labelledby="editing-h">
+  <h2 id="editing-h">關卡編輯</h2>
+  <p>先試編一張圖可用<a href="#web-map">網頁地圖編輯器</a>。需要移動平台、齒輪、雷射或水晶時，用 <a href="#grid-paint">Unity 格線繪圖與 Inspector</a>；正式八關則改 <a href="#json">DemoRooms.json</a> 再重建。</p>
+
+  <h3 id="web-map">網頁：畫圖、試玩與保存</h3>
+  <ol>
+    <li>開啟<a href="https://phase-gamejam1-20261016.swear01.chatgpt.site">遊戲預覽</a>，等載入完成，點右上角四格圖示「選擇關卡」。此版本可直接選第 1–11 關，或按「地圖編輯」；公開預覽若尚未更新，仍會顯示舊清單。</li>
+    <li>選地板或四個方向的尖刺，再選永久白、紅、藍、綠、黃、洋紅或青。於格線點一下或拖曳；一格是 8×8 原生像素。</li>
+    <li>選「出生點」後點空白處放置 Wick；出生時是紅色，身體不能與紅色有效的地形或尖刺重疊。用橡皮擦刪除。</li>
+    <li>按「試玩」將這張圖載入遊戲。若驗證失敗，編輯器會保留並顯示原因；調整後重試。</li>
+    <li>用「匯出 JSON」下載備份或分享；之後以「匯入 JSON」接續修改。</li>
+  </ol>
+  <figure class="shot interface selector"><img src="images/room-selector.png" width="400" height="306" loading="lazy" alt="網頁選關視窗：第 1 到 8 關的按鈕，下方是地圖編輯入口。"><figcaption>選關與編輯入口。直接選關會從該房間檢查點重新開始。</figcaption></figure>
+  <figure class="shot interface"><img src="images/map-editor.png" width="720" height="696" loading="lazy" alt="實際網頁地圖編輯器：上方是地板、四向尖刺、出生點、橡皮擦及七色工具，中間為格線，下方可復原、重做、匯入、匯出與試玩。範例有底部白地、藍平台與綠尖刺。"><figcaption>公開遊戲的實際編輯介面，圖中為示範草稿。</figcaption></figure>
+  <p>格線取得焦點後，可用方向鍵移動選格、<kbd>Space</kbd> 繪製；<kbd>Ctrl</kbd>／<kbd>⌘</kbd>＋<kbd>Z</kbd> 復原，加 <kbd>Shift</kbd> 重做。也可按復原／重做按鈕。</p>
+  <p><strong>草稿只存在目前瀏覽器、目前網址</strong>（<code>phase.map.v1</code>），沒有雲端同步。換裝置、網址或清除網站資料前先匯出。試玩不會改寫 Unity 場景或正式十一關；開啟選關與編輯視窗會暫停遊戲。</p>
+  <p>目前可編<strong>靜態地形、四向尖刺與出生點</strong>，範圍 40×22 格（320×176 像素）。移動平台、齒輪、雷射與房間串接需使用 Unity。</p>
+
+  <h4 id="custom-json">網頁自訂地圖 JSON</h4>
+  <p>匯入的是<strong>單張地圖</strong>，只有下列五個頂層欄位；不是 <code>{"rooms": […]}</code>，也不能直接貼入 Demo 房間的 <code>goal</code>、<code>route</code> 或機構欄位。下例可直接匯入：</p>
+<pre><code>{
+  "name": "第一張地圖",
+  "blocks": [
+    {"x": 0, "y": 168, "w": 320, "h": 8, "phase": -1, "phaseMask": 7},
+    {"x": 80, "y": 144, "w": 32, "h": 8, "phase": -1, "phaseMask": 2}
+  ],
+  "spikes": [{"x": 144, "y": 160, "length": 8, "direction": 0, "phaseMask": 4}],
+  "spawnX": 24,
+  "spawnY": 152
+}</code></pre>
+  <p>座標與寬高／尖刺長度皆為 8 的倍數、在 320×176 內，物件不可占同一格。地形用 <code>phase: -1</code> 並以 <code>phaseMask</code> 指定七色；尖刺方向 0 上、1 下、2 左、3 右。至少一格地形，出生點 x＝0–312、y＝0–160 且對齊 8；名稱至多 64 字元，JSON 至多 200,000 字元。</p>
+
+  <h3 id="grid-paint">Unity：用格線畫地形</h3>
+  <ol>
+    <li>先<a href="#hand-scene">另存一個房間</a>，保持編輯模式。</li>
+    <li>選單 <code>PHASE › Paint Grid terrain</code> 開啟「PHASE Grid」，勾選「畫地磚」，在「顏色」選七種相位色之一。</li>
+    <li>在 Scene View 以滑鼠左鍵點或拖曳，每次畫一格 8×8 石材；已占用的地形格會略過，支援 Undo。</li>
+    <li>關閉「畫地磚」後，使用一般選取、Inspector 與 Delete 調整。要畫大石台，修改 <code>PhaseTerrain.size</code> 的像素寬高。</li>
+    <li>尖刺、雷射、移動平台與齒輪使用下列元件；儲存場景再 Play。Play 中不能繪圖。</li>
+  </ol>
+  <p>原生 <code>BoxCollider2D</code> 提供模型矩形並同步相位和機構移動；Wick 的接觸仍由固定步進控制器計算，Unity 物理引擎不推動角色。</p>
+
+  <h3 id="coords">座標與格線</h3>
+  <ul>
+    <li>單位是<strong>原生像素</strong>。房間至少 320×180，原點在左上，<strong>Y 向下</strong>。</li>
+    <li>放在 Transform 上的位置用 <strong>Unity Y ＝ −原生 Y</strong>：原生 (80, 144) 要填 Position (80, −144)。Transform 是物件左上角，透過 Unity <code>Grid</code> 對齊最近的 8 像素格。</li>
+    <li>Inspector 欄位裡的座標（出生點、平台站點、齒輪平台與行程）直接填<strong>原生 Y</strong>，不加負號。</li>
+    <li>地形寬高取最近的 8 倍數（最小 8）。Inspector 仍填<strong>像素</strong>：7 格長的石台填 56，不是 7；站點與機構端點也要對齊格線，移動途中則逐像素前進。</li>
+    <li>Wick 高 11 像素，所以要站在 y＝160 的地面上，出生點 Y 填 149。</li>
+    <li>視窗較寬時，房間右側與碰到右緣的地形會延伸；較高時，遊戲區上下置中並補上石頂與虛空漸暗。八關原生 y＝0–8 也有實體石頂。左右擴展會延長邊界地形的碰撞；上下補景則不新增落腳處。</li>
+  </ul>
+
+  <h3 id="inspector">Inspector 元件</h3>
+  <p>每個房間是一個掛著 <code>PhaseSandbox</code>、<code>PhaseGrid</code> 與 Unity <code>Grid</code> 的根物件（cellSize＝8, 8, 1；無間隔、無旋轉、縮放為 1），其餘元件放在它的子物件上；啟動時從子物件收集。</p>
+
+  <div class="component">
+  <h4 id="c-sandbox"><code>PhaseSandbox</code>（房間根物件）</h4>
+  <table>
+    <thead><tr><th scope="col">欄位</th><th scope="col">意義</th></tr></thead>
+    <tbody>
+      <tr><th scope="row"><code>pixelCamera</code></th><td>場景中的正交 Camera。</td></tr>
+      <tr><th scope="row"><code>pixelMaterial</code></th><td><code>Assets/Phase/PixelSurface.mat</code>。</td></tr>
+      <tr><th scope="row"><code>leftScene</code>／<code>rightScene</code></th><td>走出左／右緣要載入的場景名稱；留空表示那一側封閉。目標場景必須在 Build Settings 中。</td></tr>
+      <tr><th scope="row"><code>checkpointOnEntry</code></th><td>勾選時，進房重設為紅色、補滿衝刺與耐力，從 <code>spawn</code> 開始（十一關都勾選）。不勾則從邊緣同高度接續，保留顏色與速度。</td></tr>
+      <tr><th scope="row"><code>spawn</code></th><td>出生點，原生座標（Y 不加負號）。</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="component">
+  <h4 id="c-terrain"><code>PhaseTerrain</code>（石材）</h4>
+  <table>
+    <thead><tr><th scope="col">欄位</th><th scope="col">意義</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Transform</th><td>左上角，(x, −y)。</td></tr>
+      <tr><th scope="row"><code>size</code></th><td>寬高像素，自動取 8 的倍數。</td></tr>
+      <tr><th scope="row"><code>phaseMask</code></th><td>1–7 照<a href="#masks">上表</a>；0 表示改用 <code>phase</code>。</td></tr>
+      <tr><th scope="row"><code>phase</code></th><td>只在 <code>phaseMask</code>＝0 時有用：−1 白、0 紅、1 藍、2 綠。</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="component">
+  <h4 id="c-spike"><code>PhaseSpike</code>（尖刺）</h4>
+  <table>
+    <thead><tr><th scope="col">欄位</th><th scope="col">意義</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Transform</th><td>尖刺 8 像素格的左上角，(x, −y)。</td></tr>
+      <tr><th scope="row"><code>length</code></th><td><strong>格數</strong>（1 格＝8 像素），沿尖刺底邊延伸。</td></tr>
+      <tr><th scope="row"><code>direction</code></th><td>Up／Down／Left／Right，齒尖所指的方向。</td></tr>
+      <tr><th scope="row"><code>phaseMask</code></th><td>1–7，不能是 0。</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="component">
+  <h4 id="c-laser"><code>PhaseLaser</code>（雷射）</h4>
+  <table>
+    <thead><tr><th scope="col">欄位</th><th scope="col">意義</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Transform</th><td>8×8 發射器的左上角，(x, −y)。</td></tr>
+      <tr><th scope="row"><code>direction</code></th><td>Up／Down／Left／Right，光束射出的方向。</td></tr>
+      <tr><th scope="row"><code>phaseMask</code></th><td>1–7；7（白）永遠致命。</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3 id="prefabs">用 Prefab 放置機關</h3>
+  <p>從 <code>PHASE/Add</code> 新增，或把 <code>Assets/Phase/Prefabs/</code> 的平台、齒輪、雷射、尖刺與圓／方水晶拖到 PHASE Grid 下。地磚繼續用 Grid painter。</p>
+  <p>移動或複製<strong>整個 Prefab 根物件</strong>，路線會一起移動。選 <code>Platform</code>／<code>Mechanism</code> 子物件調整參數；各實例可獨立覆寫。保持旋轉 0、縮放 1，使用 8 像素移動吸附。根物件 (80, −144) 配節點 (0, 0)→(0, −64)，就是向上移動 64 像素的橫平台。</p>
+  <p>圓／方水晶使用 <code>PhaseCrystal</code>：<code>kind</code> 選 Jump／Dash、<code>phaseMask</code> 選 1–7，Transform 為 8×8 拾取格左上角。</p>
+
+  <div class="component">
+  <h4 id="c-platform"><code>PhaseMovingPlatform</code>（衝刺平台）</h4>
+  <table>
+    <thead><tr><th scope="col">欄位</th><th scope="col">意義</th></tr></thead>
+    <tbody>
+      <tr><th scope="row"><code>size</code></th><td>寬高像素，至少 8，且必須是 8 的倍數。</td></tr>
+      <tr><th scope="row"><code>nodes</code></th><td>至少兩個站點的左上角，相對父物件的原生 X／Y 向下偏移。移動 Prefab 根物件會平移整條路線。</td></tr>
+      <tr><th scope="row"><code>returns</code></th><td>見<a href="#platform">移動平台</a>。開啟時只能兩個不重合的水平或垂直站點。</td></tr>
+      <tr><th scope="row"><code>start</code></th><td>起始站點索引。JSON 與 builder 沒有這個欄位，一律從 0 開始。</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="component">
+  <h4 id="c-gear"><code>PhaseClimbGear</code>（攀爬連動）</h4>
+  <table>
+    <thead><tr><th scope="col">欄位</th><th scope="col">意義</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Transform</th><td>攀爬牆的左上角起始位置，(x, −y)。</td></tr>
+      <tr><th scope="row"><code>wallSize</code></th><td>攀爬牆寬高。</td></tr>
+      <tr><th scope="row"><code>wallTop</code></th><td>相對父物件的牆頂原生 Y，必須小於牆的起始相對 Y。兩者差值就是行程。</td></tr>
+      <tr><th scope="row"><code>platformStart</code></th><td>橫平台起始左上角，相對父物件的原生座標。</td></tr>
+      <tr><th scope="row"><code>platformSize</code></th><td>橫平台寬高。</td></tr>
+      <tr><th scope="row"><code>platformEndX</code></th><td>牆爬到頂時平台相對父物件的 X。</td></tr>
+    </tbody>
+  </table>
+  <p>建立時會檢查兩件事，不符就丟出例外：</p>
+  <ul>
+    <li><strong>行程相等</strong>：<code>platformEndX − platformStart.x</code> 必須等於牆的行程。因此往上爬時平台一定往右移。</li>
+    <li><strong>齒輪咬合</strong>：輸出齒輪位於 x＝牆 x＋牆寬＋39，必須介於 <code>platformEndX + 6</code> 與 <code>platformStart.x + platformSize.x − 6</code> 之間，也就是平台在兩端位置都蓋住齒輪且各留 6 像素。</li>
+  </ul>
+  <p>既有八關可用 Prefab 根物件 Unity 座標 (72, −104)、牆子物件 (0, 0)、8×56、<code>wallTop</code> −24；<code>platformStart</code> (16, 56)、56×8、<code>platformEndX</code> 40。行程 24，轉成世界座標後齒輪仍在 x＝119。</p>
+  </div>
+
+  <h3 id="hand-scene">手工做一個房間</h3>
+  <ol>
+    <li>在 Editor 開啟既有房間（例如 <code>PhaseDemo1.unity</code>），用 File › Save As 另存新檔，例如 <code>Assets/Scenes/MyRoom.unity</code>。不要用 <code>PhaseDemo1</code>–<code>8</code> 的檔名，重建八關會覆寫它們。</li>
+    <li>保留根物件 <code>PHASE</code> 上的 <code>PhaseSandbox</code>、<code>PhaseGrid</code> 與 <code>Grid</code>，以及它指向的 <code>pixelCamera</code>（場景中的 Camera）與 <code>pixelMaterial</code>（<code>PixelSurface.mat</code>）。</li>
+    <li>在 <code>PHASE</code> 底下修改、複製或刪除子物件。Transform 位置填 (x, −y)；平台站點、齒輪平台與 <code>wallTop</code> 填原生 Y。</li>
+    <li>調整 <code>spawn</code>。獨立試玩時清空 <code>leftScene</code> 與 <code>rightScene</code>，兩側就會封閉；從 <code>PhaseDemo1</code> 另存的場景原本會連到 <code>PhaseDemo2</code>。</li>
+    <li>儲存場景，再按 Play。</li>
+  </ol>
+
+  <h3 id="json">DemoRooms.json</h3>
+  <p>檔案是 <code>{"rooms": [ … ]}</code>，<strong>必須剛好 8 個房間</strong>。所有座標都是原生像素、Y 向下，<strong>不加負號</strong>。方向用數字：0 上、1 下、2 左、3 右。</p>
+  <table class="fields">
+    <caption>每個房間的欄位</caption>
+    <thead><tr><th scope="col">欄位</th><th scope="col">內容</th></tr></thead>
+    <tbody>
+      <tr><th scope="row"><code>name</code></th><td>房間名稱。</td></tr>
+      <tr><th scope="row"><code>spawnX</code>, <code>spawnY</code></th><td>出生點。</td></tr>
+      <tr><th scope="row"><code>blocks</code></th><td>石材 <code>{x, y, w, h, phase, phaseMask}</code>。<code>phase</code> 請寫明（−1 為白）；<code>phaseMask</code> 省略時為 0。</td></tr>
+      <tr><th scope="row"><code>spikes</code></th><td><code>{x, y, length, direction, phaseMask}</code>。<strong><code>length</code> 是像素</strong>，必須是 8 的倍數（Inspector 是格數）。</td></tr>
+      <tr><th scope="row"><code>crystals</code></th><td><code>{x, y, kind, phaseMask}</code>，kind 0＝圓形補跳、1＝方形補衝刺。</td></tr>
+      <tr><th scope="row"><code>lasers</code></th><td><code>{x, y, direction, phaseMask}</code>。</td></tr>
+      <tr><th scope="row"><code>nodeX</code>, <code>nodeY</code>, <code>moverW</code>, <code>moverH</code>, <code>returns</code></th><td>移動平台：站點 X、Y 兩個等長陣列（至少 2 個）、寬高、模式。不需要就省略 <code>nodeX</code>。</td></tr>
+      <tr><th scope="row"><code>hasGear</code>, <code>gearWall</code>, <code>gearTop</code>, <code>gearPlatform</code>, <code>gearEndX</code></th><td>齒輪：<code>hasGear</code> 為 true 才建立。牆與平台用 <code>{x, y, w, h}</code>，限制與 <a href="#c-gear"><code>PhaseClimbGear</code></a> 相同。</td></tr>
+      <tr><th scope="row"><code>route</code>, <code>goal</code></th><td>只給測試用：<code>route</code> 是逐段輸入（<code>frames</code>、<code>x</code>、<code>y</code>、<code>jump</code>、<code>dash</code>、<code>grab</code>），<code>goal</code> 是終點的 x、落腳 y、顏色、跳躍與衝刺次數與機構升高量。</td></tr>
+    </tbody>
+  </table>
+
+  <p>房間 1 的資料（刪去 <code>route</code>、調整排版）就是一個真實的最小例子：</p>
+<pre><code>{
+  "name": "換色階梯",
+  "spawnX": 24,
+  "spawnY": 149,
+  "blocks": [
+    {"x": 0, "y": 160, "w": 64, "h": 24, "phase": -1},
+    {"x": 80, "y": 144, "w": 32, "h": 8, "phase": 1},
+    {"x": 128, "y": 128, "w": 32, "h": 8, "phase": 2},
+    {"x": 176, "y": 112, "w": 32, "h": 8, "phase": 0},
+    {"x": 208, "y": 112, "w": 112, "h": 8, "phase": -1},
+    {"x": 0, "y": 0, "w": 320, "h": 8, "phase": -1}
+  ],
+  "goal": {"x": 296, "y": 112, "phase": 0, "jumps": 3, "dashes": 0, "lift": 0},
+  "hasGear": false,
+  "lasers": [{"x": 232, "y": 88, "direction": 1, "phaseMask": 6}]
+}</code></pre>
+
+  <p><strong>修改例</strong>：在房間 1 藍、綠平台之間的下方加一排紅色朝上尖刺。在該房間物件裡加入：</p>
+<pre><code>"spikes": [{"x": 112, "y": 152, "length": 16, "direction": 0, "phaseMask": 1}]</code></pre>
+  <p>這是 2 格寬（16 像素）的尖刺，對應 Inspector 的 <code>length</code> 2。改了幾何後，請一併檢查該房的 <code>route</code> 與 <code>goal</code> 是否仍成立。</p>
+
+  <h3 id="rebuild">重建八關</h3>
+  <div class="warn" role="note">
+    <p><strong>重建會從零覆寫 <code>Assets/Scenes/PhaseDemo1</code>–<code>8.unity</code></strong>。在這八個場景裡用 Inspector 做的手工修改都會消失。重建前先儲存開啟中的場景，並用 Git commit 或複製檔案備份。<code>PhaseDemo1.1</code>、沙盒與齒輪 Demo 不受影響。</p>
+  </div>
+  <p>透過常駐的 Unity GUI Editor 與 Pipeline 執行，不使用 <code>-batchmode</code>。在專案根目錄：</p>
+<pre><code>unity status --project-path "$PWD" --until-ready --json
+unity command --project-path "$PWD" run_script -- --file Verification/BackgroundEditor.cs --entry BackgroundEditor.Run
+unity command --project-path "$PWD" eval 'PhaseSandboxBuilder.CreateDemoRooms();'</code></pre>
+  <p>Builder 會依序建立八個場景、讓第 N 關的 <code>rightScene</code> 指向第 N＋1 關、全部勾選 <code>checkpointOnEntry</code>，並補入 Build Settings，保留其他場景；第 8 關會連到 <code>PhaseCrystal1</code>。水晶三關另用 <code>PhaseSandboxBuilder.CreateCrystalRooms()</code> 重建，會覆寫這三個生成場景。</p>
+
+  <h3 id="verify">驗證</h3>
+  <p>重建後跑關卡測試：每個房間的 <code>route</code> 都要零死亡抵達 <code>goal</code>。</p>
+<pre><code>unity command --project-path "$PWD" run_tests -- --mode editor --filter DemoRoomTests --async_tests true
+unity command --project-path "$PWD" test_status</code></pre>
+  <p>重複 <code>test_status</code> 直到狀態是 <code>completed</code> 並檢查摘要。若改了 C# 原始碼，先執行 <code>recompile -- --focus false</code> 並等 <code>recompile_status</code> 成功。實際遊玩、鍵盤輸入與截圖檢查見 <a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Documentation/Demo.md#verification"><code>Demo.md</code></a> 與 <a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Documentation/Development.md"><code>Development.md</code></a>。</p>
+
+  <h3 id="web-release">網頁版是另一個步驟</h3>
+  <p>Unity 場景更新<strong>不會</strong>自動更新網頁預覽。本機建置與瀏覽器檢查：</p>
+<pre><code>python3 Verification/BuildWeb.py
+node Verification/DemoWebSmoke.cjs Builds/Web</code></pre>
+  <p>發布到公開網址需要另外上傳，或由擁有者先完成 runner 與 Pages 設定後交給 CI，見 <a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Documentation/Web.md"><code>Web.md</code></a>。</p>
+
+  <h3 id="new-room">新增更多關卡</h3>
+  <p>目前的 builder <strong>不是</strong>任意數量的關卡編輯器。它目前分成固定八關 <code>PhaseDemo1</code>–<code>8</code> 與三關 <code>PhaseCrystal1</code>–<code>3</code>；第 8 關接水晶三關，最後一關右緣封閉。新增房間需要另外修改並驗證：</p>
+  <ul>
+    <li><code>PhaseSandboxBuilder.CreateDemoRooms()</code> 的房間數量檢查與連結；</li>
+    <li>新場景與 Build Settings；</li>
+    <li><code>BuildWeb.py</code> 的場景清單與 <code>DemoWebSmoke.cjs</code> 的路線；</li>
+    <li><code>DemoRoomTests</code> 的房間數與測試案例。</li>
+  </ul>
+  <p>只想試做的話，可以像 <code>PhaseDemo1.1</code> 一樣另開場景、手工擺元件，不經過 builder。</p>
+</section>
+
+<section id="sources" aria-labelledby="sources-h">
+  <h2 id="sources-h">來源</h2>
+  <p>原始碼連結指向 <code>main</code>；各張圖片的拍攝版本見 <code>images/README.md</code>。</p>
+  <ul class="sources">
+    <li><a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Runtime/PhaseController.cs"><code>PhaseController.cs</code></a>：移動、相位、衝刺平台、齒輪、危險判定</li>
+    <li><a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Runtime/Laser.cs"><code>Laser.cs</code></a>：光束長度與遮擋</li>
+    <li><a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Runtime/PhaseSandbox.cs"><code>PhaseSandbox.cs</code></a>：房間、轉場、鍵位</li>
+    <li><a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Runtime/PhasePixels.cs"><code>PhasePixels.cs</code></a>：色盤與角色外觀</li>
+    <li><a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Runtime/PhaseTerrain.cs"><code>PhaseTerrain.cs</code></a>、<a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Runtime/PhaseSpike.cs"><code>PhaseSpike.cs</code></a>、<a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Runtime/PhaseLaser.cs"><code>PhaseLaser.cs</code></a>、<a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Runtime/PhaseMovingPlatform.cs"><code>PhaseMovingPlatform.cs</code></a>、<a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Runtime/PhaseClimbGear.cs"><code>PhaseClimbGear.cs</code></a>：Inspector 元件</li>
+    <li><a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Runtime/PhaseDemoRooms.cs"><code>PhaseDemoRooms.cs</code></a>、<a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/DemoRooms.json"><code>DemoRooms.json</code></a>：房間資料格式與內容</li>
+    <li><a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Editor/PhaseSandboxBuilder.cs"><code>PhaseSandboxBuilder.cs</code></a>：十一關、沙盒與齒輪 Demo 的建立</li>
+    <li><a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Tests/Editor/DemoRoomTests.cs"><code>DemoRoomTests.cs</code></a>：參考路線測試</li>
+    <li><a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Scenes/PhaseDemo1.1.unity"><code>PhaseDemo1.1.unity</code></a>、<a href="https://github.com/Tr1p0re/Gamejam1/blob/main/ProjectSettings/EditorBuildSettings.asset"><code>EditorBuildSettings.asset</code></a></li>
+    <li><a href="https://github.com/Tr1p0re/Gamejam1/blob/main/DESIGN.md"><code>DESIGN.md</code></a>：美術方向；<a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Documentation/ThirdPartyNotices.md"><code>ThirdPartyNotices.md</code></a>：移動手感參考與授權</li>
+    <li><a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Editor/PhaseGridPainter.cs"><code>PhaseGridPainter.cs</code></a>、<a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Runtime/PhaseGrid.cs"><code>PhaseGrid.cs</code></a>：Unity 格線繪圖與碰撞幾何</li>
+    <li><a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/WebGLTemplates/Phase/maps.js"><code>maps.js</code></a>、<a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/WebGLTemplates/Phase/map-model.js"><code>map-model.js</code></a>、<a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Runtime/PhaseCustomMap.cs"><code>PhaseCustomMap.cs</code></a>：網頁地圖編輯與格式驗證</li>
+  </ul>
+</section>
+</main>
+</div>
+</body>
+</html>

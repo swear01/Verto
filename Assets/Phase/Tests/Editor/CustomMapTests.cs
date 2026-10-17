@@ -22,9 +22,10 @@ public class CustomMapTests
         // Block's computed Mask is not part of the wire schema.
         foreach(JObject block in data["blocks"])block.Remove("Mask");
         string json=data.ToString(Formatting.None);var map=PhaseCustomMap.Parse(json);
-        Assert.That(map.gearWall,Is.Null);Assert.That(map.gearPlatform,Is.Null);Assert.That(map.CreateMover(),Is.Null);
+        Assert.That(map.crystals,Is.Null);Assert.That(map.gearWall,Is.Null);Assert.That(map.gearPlatform,Is.Null);Assert.That(map.CreateMover(),Is.Null);
         Assert.That(map.blocks.Length,Is.EqualTo(1));Assert.That(map.spikes.Length,Is.EqualTo(1));
         foreach(var mutate in new Action<JObject>[] {
+            d=>d["crystals"]=new JArray(),d=>d["crystals"]=new JArray(new JObject{["x"]=80,["y"]=80,["kind"]=0,["phaseMask"]=7}),
             d=>d["gears"]=new JArray(),d=>d["gearWall"]=new JObject(),d=>d["nodeX"]=new JArray(),
             d=>d["spawnX"]="24",d=>d.Remove("spawnY"),d=>d["spawnX"]=double.NaN,
             d=>d["name"]=new string('x',65),d=>d["blocks"][0]["unknown"]=1,
@@ -79,6 +80,7 @@ public class CustomMapTests
             m=>m.spikes=new[]{new DemoSpike{x=24,y=152,length=8,direction=SpikeDirection.Down,phaseMask=1}},
             m=>m.blocks[0].phaseMask=0,m=>m.blocks[0].phaseMask=8,m=>m.blocks[0].phase=3,
             m=>m.spikes[0].phaseMask=0,m=>m.spikes[0].direction=(SpikeDirection)4,
+            m=>m.crystals=new[]{new DemoCrystal{x=80,y=80,kind=CrystalKind.Jump,phaseMask=7}},
             m=>m.lasers=new[]{new DemoLaser{x=80,y=8,direction=LaserDirection.Down,phaseMask=7}},
             m=>m.nodeX=new[]{0.0},m=>m.nodeY=new[]{0.0},m=>m.hasGear=true,
             m=>m.gearWall=new Block(0,0,8,8),m=>m.gearPlatform=new Block(0,0,8,8),
