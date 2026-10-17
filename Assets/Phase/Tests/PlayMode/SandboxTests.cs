@@ -118,7 +118,7 @@ public class SandboxTests : InputTestFixture
             yield return new WaitForSeconds(.2f);
             Assert.That(sandbox.Controller.dashes,Is.EqualTo(1));Assert.That(sandbox.Controller.phase,Is.EqualTo(1));
             yield return new WaitForFixedUpdate(); CheckNativeShapes(sandbox);
-            sandbox.Controller.ResizeRoom(427); yield return new WaitForFixedUpdate(); CheckNativeShapes(sandbox);
+            sandbox.Controller.ResizeRoom(view.x + 8); yield return new WaitForFixedUpdate(); CheckNativeShapes(sandbox);
             sandbox.Controller.ResizeRoom(view.x); yield return new WaitForFixedUpdate(); CheckNativeShapes(sandbox);
             Assert.That(Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None),Is.Empty);
             Assert.That(Object.FindObjectsByType<TextMesh>(FindObjectsSortMode.None),Is.Empty);
@@ -151,6 +151,16 @@ public class SandboxTests : InputTestFixture
                 }
                 finally { Object.Destroy(rendered); }
             }
+            yield return SceneManager.LoadSceneAsync("PhaseDemo3");
+            sandbox=Object.FindAnyObjectByType<PhaseSandbox>();
+            InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow));
+            for(int i=0;i<25;i++) yield return null;
+            InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow,Key.UpArrow,Key.C));
+            for(int i=0;i<40;i++) yield return null;
+            InputSystem.QueueStateEvent(k,new KeyboardState());
+            yield return new WaitForFixedUpdate();
+            Assert.That(sandbox.Controller.gears[0].Lift,Is.GreaterThan(0)); CheckNativeShapes(sandbox);
+            sandbox.Controller.Reset(); yield return new WaitForFixedUpdate(); CheckNativeShapes(sandbox);
         }
         finally { InputSystem.RemoveDevice(k); }
     }
