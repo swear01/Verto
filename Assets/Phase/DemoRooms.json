@@ -899,41 +899,52 @@
             "grab": true
           },
           {
-            "frames": 24,
-            "x": 1,
+            "frames": 8,
             "y": -1,
             "dash": true
           },
           {
             "frames": 40,
             "x": 1,
-            "jump": true,
+            "y": -1,
             "grab": true
           },
           {
-            "frames": 16,
+            "frames": 24,
+            "x": 1,
+            "dash": true
+          },
+          {
+            "frames": 8,
             "x": 1,
             "jump": true
           },
           {
-            "frames": 16,
+            "frames": 40,
             "x": 1,
             "dash": true
           },
           {
             "frames": 40,
-            "x": 1,
-            "jump": true,
-            "grab": true
-          },
-          {
-            "frames": 16,
-            "x": 1,
-            "dash": true
+            "x": 1
           }
         ],
         [
           {
+            "frames": 38,
+            "jump": true
+          },
+          {
+            "frames": 1
+          },
+          {
+            "frames": 38,
+            "jump": true
+          },
+          {
+            "frames": 1
+          },
+          {
             "frames": 24,
             "x": 1,
             "jump": true,
@@ -944,31 +955,29 @@
             "x": 1,
             "y": -1,
             "dash": true
-          },
-          {
-            "frames": 24,
-            "x": 1,
-            "jump": true,
-            "grab": true
-          },
-          {
-            "frames": 16,
-            "x": 1,
-            "dash": true
-          },
-          {
-            "frames": 24,
-            "x": 1,
-            "jump": true
           },
           {
             "frames": 40,
             "x": 1,
-            "y": -1,
+            "jump": true,
+            "grab": true
+          },
+          {
+            "frames": 10,
+            "x": 1
+          },
+          {
+            "frames": 4,
+            "x": 1,
+            "jump": true
+          },
+          {
+            "frames": 12,
+            "x": 1,
             "dash": true
           },
           {
-            "frames": 24,
+            "frames": 80,
             "x": 1
           }
         ]
