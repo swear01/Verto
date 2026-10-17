@@ -40,7 +40,7 @@ function setupControls(instance, canvas) {
     for (let slot = 0; slot < 2; slot++) {
       const index = i * 2 + slot;
       const button = document.createElement('button'); button.className = 'key'; button.dataset.action = i; button.dataset.slot = slot;
-      button.addEventListener('click', () => { pending = index; render(); status.textContent = '按下新鍵；Delete 清除此格，Esc 取消。'; });
+      button.addEventListener('click', () => { pending = index; render(); status.textContent = '按下新鍵；Esc 清除此格，Tab 取消。'; });
       buttons.push(button); row.append(button);
     }
     const reset = document.createElement('button'); reset.className = 'restore'; reset.dataset.reset = i; reset.textContent = '還原';
@@ -83,11 +83,10 @@ function setupControls(instance, canvas) {
     if (!dialog.open) { if (event.target !== canvas || event.code === 'Tab') event.stopImmediatePropagation(); activate(); return; }
     event.stopImmediatePropagation();
     if (pending < 0) { activate(); return; }
-    if (event.code === 'Escape') { event.preventDefault(); pending = -1; status.textContent = ''; render(); return; }
     if (event.code === 'Tab') { pending = -1; status.textContent = ''; render(); return; }
     event.preventDefault(); event.stopPropagation();
     if (event.repeat) return;
-    const key = event.code === 'Delete' ? '' : keyFor(event.code);
+    const key = event.code === 'Escape' ? '' : keyFor(event.code);
     if (key === undefined || event.ctrlKey || event.altKey || event.metaKey) { status.textContent = '請使用字母、數字、方向鍵或一般按鍵。'; return; }
     const candidate = [...keys]; candidate[pending] = key;
     if (!valid(candidate)) { status.textContent = key ? '此鍵已設定，請換一個鍵。' : '每個動作至少保留一個鍵。'; return; }

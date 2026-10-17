@@ -41,9 +41,9 @@ message. Loading failures remain visible.
 
 The top-right settings button opens keyboard bindings and pauses the game. Select
 either of an action’s two slots, then press a key; the other slot is preserved.
-Shift is one logical binding that accepts either left or right Shift. Delete clears
-the selected slot; each action must keep at least one key. Esc cancels capture or
-closes settings; Tab cancels capture and moves focus. Duplicate keys and browser modifier shortcuts
+Shift is one logical binding that accepts either left or right Shift. During capture,
+Esc clears the selected slot; each action must keep at least one key. Tab cancels
+capture and moves focus. Outside capture, Esc closes settings. Duplicate keys and browser modifier shortcuts
 are rejected. Changes apply immediately and are stored on this browser/origin;
 blocked storage displays a warning while keeping the current session usable.
 Release held keys after closing settings to resume. Each action has its own Restore
