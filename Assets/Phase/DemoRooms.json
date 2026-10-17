@@ -83,7 +83,15 @@
         "dashes": 0,
         "lift": 0
       },
-      "hasGear": false
+      "hasGear": false,
+      "lasers": [
+        {
+          "x": 232,
+          "y": 88,
+          "direction": 1,
+          "phaseMask": 6
+        }
+      ]
     },
     {
       "name": "低頂渡船",
@@ -154,7 +162,15 @@
         "dashes": 1,
         "lift": 0
       },
-      "hasGear": false
+      "hasGear": false,
+      "lasers": [
+        {
+          "x": 176,
+          "y": 128,
+          "direction": 1,
+          "phaseMask": 1
+        }
+      ]
     },
     {
       "name": "齒輪抬橋",
@@ -242,7 +258,15 @@
         "dashes": 2,
         "lift": 24
       },
-      "hasGear": true
+      "hasGear": true,
+      "lasers": [
+        {
+          "x": 144,
+          "y": 168,
+          "direction": 0,
+          "phaseMask": 7
+        }
+      ]
     },
     {
       "name": "五連跳",
@@ -369,7 +393,15 @@
         "dashes": 0,
         "lift": 0
       },
-      "hasGear": false
+      "hasGear": false,
+      "lasers": [
+        {
+          "x": 176,
+          "y": 168,
+          "direction": 0,
+          "phaseMask": 4
+        }
+      ]
     },
     {
       "name": "保色穿刺",
@@ -461,7 +493,15 @@
         "dashes": 1,
         "lift": 0
       },
-      "hasGear": false
+      "hasGear": false,
+      "lasers": [
+        {
+          "x": 136,
+          "y": 168,
+          "direction": 0,
+          "phaseMask": 5
+        }
+      ]
     },
     {
       "name": "三站轉乘",
@@ -648,7 +688,15 @@
           "x": 1
         }
       ],
-      "hasGear": false
+      "hasGear": false,
+      "lasers": [
+        {
+          "x": 224,
+          "y": 168,
+          "direction": 0,
+          "phaseMask": 6
+        }
+      ]
     },
     {
       "name": "相位卡齒",
@@ -757,7 +805,15 @@
           "phaseMask": 2
         }
       ],
-      "hasGear": true
+      "hasGear": true,
+      "lasers": [
+        {
+          "x": 184,
+          "y": 168,
+          "direction": 0,
+          "phaseMask": 3
+        }
+      ]
     },
     {
       "name": "色序預算",
@@ -901,7 +957,15 @@
       "moverW": 32,
       "moverH": 8,
       "returns": false,
-      "hasGear": true
+      "hasGear": true,
+      "lasers": [
+        {
+          "x": 264,
+          "y": 168,
+          "direction": 0,
+          "phaseMask": 2
+        }
+      ]
     }
   ]
 }

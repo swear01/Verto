@@ -34,6 +34,12 @@ public static class PhaseSandboxBuilder
                 teeth.length = (int)(spike.direction == SpikeDirection.Up || spike.direction == SpikeDirection.Down ? spike.w : spike.h) / 8;
             }
             var drive = room.CreateGear();
+            foreach (var laser in room.CreateLasers())
+            {
+                var go = new GameObject("Phase laser"); go.transform.SetParent(root.transform);
+                go.transform.position = new Vector3((float)laser.x, -(float)laser.y);
+                var emitter = go.AddComponent<PhaseLaser>(); emitter.direction = laser.direction; emitter.phaseMask = laser.Mask;
+            }
             if (drive != null)
             {
                 var go = new GameObject("White gear drive"); go.transform.SetParent(root.transform);
