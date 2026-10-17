@@ -60,3 +60,11 @@ View and Console as described in [Development](Development.md).
 
 Difficulty, visual readability and creative alternative routes still need human
 playtesting. The Unity scenes do not by themselves update the hosted Web preview.
+
+## Web release
+
+`python3 Verification/BuildWeb.py` builds the eight rooms, starting at
+`PhaseDemo1`. Run `node Verification/DemoWebSmoke.cjs Builds/Web` to verify the
+actual browser build; pass the published URL instead of the build directory
+to check the public deployment. Runner/Pages prerequisites are in
+[Web preview](Web.md#enable-automatic-builds-and-online-play).

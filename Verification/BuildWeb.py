@@ -7,6 +7,7 @@ import time
 
 PROJECT = Path(__file__).resolve().parent.parent
 REPORTS = PROJECT / "TestResults/Web"
+SCENES = [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(1, 9)]
 
 
 def command(name, *args):
@@ -68,9 +69,13 @@ def main():
             raise RuntimeError(f"{mode}: expected {expected} passing tests, got {summary}")
         print(f"{test_filter}: {expected} passed", flush=True)
     wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)
-    command("open_scene", "--", "--path", "Assets/Scenes/PhaseSandbox.unity")
+    for scene in SCENES:
+        if not (PROJECT / scene).is_file():
+            raise RuntimeError(f"Missing demo scene: {scene}")
+    save("scenes", SCENES)
+    command("open_scene", "--", "--path", SCENES[0])
     queued = command("build", "--", "--target", "WebGL", "--outputPath", str(args.output.resolve()),
-                     "--scenes", '["Assets/Scenes/PhaseSandbox.unity","Assets/Scenes/PhaseRoom2.unity"]', "--confirm")
+                     "--scenes", json.dumps(SCENES), "--confirm")
     if queued.get("status") != "queued":
         raise RuntimeError(f"Build was not queued: {queued}")
     result = wait("build_status", lambda r: r.get("status") == "completed" and r.get("buildId") == queued["buildId"], 1200)

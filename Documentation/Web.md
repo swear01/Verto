@@ -1,7 +1,7 @@
 # Web preview
 
 [Play online](https://phase-gamejam1-20261016.swear01.chatgpt.site). This is a
-manually published two-room preview; automatic CI/Pages still needs the owner
+manually published eight-room demo; automatic CI/Pages still needs the owner
 setup below.
 
 Unity **6000.4.7f1**, Web Build Support and Unity CLI are required. Open the GUI
@@ -13,13 +13,14 @@ cd Verification
 npm ci
 npx --no-install playwright install chromium --no-shell
 cd ..
-node Verification/WebSmoke.cjs Builds/Web
+node Verification/DemoWebSmoke.cjs Builds/Web
 python3 -m http.server 8765 --bind 127.0.0.1 --directory Builds/Web
 ```
 
 Open <http://127.0.0.1:8765/>. Click the canvas for keyboard focus: arrows/WASD
-move, Space/Z jumps, X dashes, and C/Shift grabs. Cross the first room’s right
-edge to continue, or the second room’s left edge to return. Room changes use a
+move, Space/Z jumps, X dashes, and C/Shift grabs. Cross each room’s right
+edge to continue through the eight rooms. Each arrival resets phase, dash, stamina
+and mechanisms while preserving run statistics. Room changes use a
 0.18-second horizontal pixel slide; input/physics pause until it finishes.
 The Unity splash screen and logo are disabled in PlayerSettings.
 The build verifies both flags and records them in `TestResults/Web/splash.json`;
@@ -78,13 +79,14 @@ the warning.
 ## Enable automatic builds and online play
 
 `Web build and preview` runs only on `main`, after push or manual dispatch.
-It uses Unity CLI + live Pipeline for 33 Editor tests, three Play Mode tests and
-the Web build, then verifies browser rendering, keyboard input, both scene-edge
-transitions, minimum view/tall-sky extension/wide-floor travel, resizing, visible
-load failures, and absence of browser errors/warnings. Only a passing build is
+It uses Unity CLI + live Pipeline for 55 Editor tests, three Play Mode tests and
+the Web build, then verifies browser rendering, keyboard routes through all eight rooms and seven scene-edge transitions,
+adaptive viewport sizing, keyboard settings, fullscreen, visible load failures,
+and absence of browser errors/warnings. Only a passing build is
 uploaded and deployed. `web-verification` contains the reports/captures.
 
-The repository owner must complete this setup first:
+The repository owner must complete runner/Pages setup first. Write access cannot
+register a runner for this personal repository:
 
 1. Register a **dedicated macOS ARM64 runner** under Settings → Actions → Runners,
    with the custom label `gamejam1-unity`. Run it in a logged-in desktop session
@@ -97,7 +99,9 @@ The repository owner must complete this setup first:
    `Web build and preview` on `main`. The successful deployment reports the
    playable URL in its `github-pages` environment.
 
-Until this setup is complete the Web job is explicitly skipped. The existing
+Until this setup is complete the Web build/deploy jobs are explicitly skipped.
+The hosted setup job fails with this blocker in the workflow summary, so a
+missing setup cannot produce a green Web workflow. The existing
 GitHub-hosted controller/compatibility checks still run on pull requests and
 `main`. A local build passing does not prove that the runner or Pages is enabled.
 
