@@ -8,7 +8,9 @@ The renderer SHA-256 is `b7178e0f6c0a613a10a92d276a2b6f9c37db75420a0ec3426545042
 `Verification/ArtReference.json` and `.png` preserve its independent reference frames.
 The hood now uses the scarf dash-charge palette at the user's request. Pixel tests
 explicitly remap the hood, spent scarf and permanent geometry palettes, and
-account for the added climbing stamina gauge. Permanent stone, moving platforms,
+tint low-stamina body pixels. The user-requested character warning replaces the
+previous detached stamina gauge; its progressive tint/shake and sustained30px/s
+exhausted-grab slide are PHASE-specific tuning. Permanent stone, moving platforms,
 routes and stops now use white and gray at the user's request; the immutable
 reference images and all remaining pixels stay checked.
 No commercial game art or music is included.
