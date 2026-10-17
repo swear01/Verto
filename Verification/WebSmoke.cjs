@@ -90,7 +90,9 @@ function character(buffer) {
     const wallAt = (buffer, x, viewWidth = 320) => {
       const image = PNG.sync.read(buffer);
       const scale = image.width / viewWidth;
-      const i = (Math.floor(image.height - (180 - (x < 160 ? 96 : 80) - .5) * scale) * image.width + Math.floor((x + .5) * scale)) * 4;
+      const viewHeight = Math.max(180,Math.ceil(320*image.height/image.width));
+      const originY = Math.trunc((180-viewHeight)/2);
+      const i = (Math.floor(((x < 160 ? 96 : 80)-originY+.5)*image.height/viewHeight) * image.width + Math.floor((x + .5) * scale)) * 4;
       return Array.from(image.data.subarray(i, i + 3));
     };
     const isWall = (frame, x, viewWidth) => wallAt(frame, x, viewWidth).every((value, i) => Math.abs(value - [169, 184, 197][i]) <= 2);
@@ -147,8 +149,12 @@ function character(buffer) {
     const portrait=await capture('portrait-minimum-view');
     assert(portrait,'Portrait must keep the player visible');
     assert(portrait.width<24 && portrait.height<24,'Portrait must not magnify the player by cropping the room');
+    assert(portrait.y>844*.5 && portrait.y<844*.65,'Tall view must center the playable area');
+    const centered=PNG.sync.read(await canvas.screenshot());
+    const top=(20*centered.width+20)*4, bottom=((centered.height-20)*centered.width+20)*4;
+    assert.notDeepEqual(Array.from(centered.data.subarray(top,top+3)),Array.from(centered.data.subarray(bottom,bottom+3)),'The bottom must extend stone instead of copying the sky');
     assert(isWall(await canvas.screenshot(),242),'Portrait must show the far wall of the original room');
-    result.minimumView=true; result.adaptiveViewport=true; result.narrowLayout=true;
+    result.centeredPlayArea=true; result.minimumView=true; result.adaptiveViewport=true; result.narrowLayout=true;
     await page.setViewportSize({width:2560,height:1080}); await page.waitForTimeout(300);
     await page.keyboard.press('ArrowRight',{delay:1600}); await page.waitForTimeout(100);
     const extended=await capture('wide-extended-floor');

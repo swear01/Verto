@@ -58,7 +58,7 @@ public class PixelTests
             Assert.That(pixels.Texture.GetPixel(400,140).a,Is.EqualTo(1));
             pixels.SetView(320,180,0);s.ResizeRoom(320);pixels.Draw(s);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32(),"resizing back restores the original room");
             pixels.SetView(320,693,0);pixels.Draw(s);var portrait=pixels.Texture.GetPixels32();
-            for(int y=0;y<180;y++)for(int x=0;x<320;x++)Assert.That(portrait[y*320+x],Is.EqualTo(original[y*320+x]),"portrait retains the entire original play area");
+            for(int y=20;y<180;y++)for(int x=0;x<320;x++)Assert.That(portrait[(y+257)*320+x],Is.EqualTo(original[y*320+x]),"portrait retains playable pixels above the extended floor");
             foreach(var pixel in portrait)Assert.That(pixel.a,Is.EqualTo(255),"extended sky is opaque");
             Assert.That(PhaseSandbox.ViewSize(390,844),Is.EqualTo(new Vector2Int(320,693)));
             Assert.That(PhaseSandbox.ViewSize(2560,1080),Is.EqualTo(new Vector2Int(427,180)));
@@ -71,6 +71,30 @@ public class PixelTests
             for(int i=0;i<portrait.Length;i++)Assert.That(taller[i],Is.EqualTo(portrait[i]),"height resize keeps sky fixed in world coordinates");
             for(int height=180;height<=1400;height++)Assert.That(PhaseSandbox.ViewSize(320,height),Is.EqualTo(new Vector2Int(320,height)),"native viewport size must not drift on repeat calculation");
             pixels.SetView(320,180,0);pixels.Draw(s);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32(),"portrait resize restores the original art");
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
+    [Test]
+    public void TallViewCentersPlayAreaAndExtendsOnlyBottomTerrain()
+    {
+        var pixels=new PhasePixels();
+        var blocks=new[]{new Block(0,160,112,24),new Block(208,160,112,24),new Block(128,96,64,8)};
+        var room=new PhaseController(blocks,32,149);room.flash=0;
+        try
+        {
+            pixels.SetView(320,693,0);pixels.Draw(room);
+            Assert.That(pixels.OriginY,Is.EqualTo(-256));
+            Assert.That(Math.Abs(-pixels.OriginY+90-pixels.Height/2.0),Is.LessThanOrEqualTo(.5),"play area is centered");
+            var stone=pixels.Texture.GetPixel(32,40);var gap=pixels.Texture.GetPixel(160,40);
+            Assert.That(stone,Is.Not.EqualTo(gap),"bottom stone extends while the gap remains void");
+            Assert.That(blocks[0].h,Is.EqualTo(24),"visual extension must not enlarge collision terrain");
+            var voidRoom=new PhaseController(new[]{new Block(128,96,64,8)},32,64);voidRoom.flash=0;
+            pixels.Draw(voidRoom);
+            Assert.That(pixels.Texture.GetPixel(32,40),Is.EqualTo(gap),"a bottom void must not acquire a floor");
+            Assert.That(pixels.Texture.GetPixel(160,40),Is.EqualTo(gap),"floating terrain must not extend to the bottom");
+            pixels.SetView(320,180,0);pixels.Draw(room);Assert.That(pixels.OriginY,Is.Zero);
+            pixels.SetView(320,693,0);pixels.Draw(room);Assert.That(pixels.Texture.GetPixel(32,40),Is.EqualTo(stone),"resize rebuilds extended terrain");
         }
         finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
     }
