@@ -47,15 +47,15 @@ To recreate the sandbox, call its existing builder through the connected Editor:
 edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 31 controller cases and 13 demo-route/authoring cases, one 48-frame art
-comparison (hood/spent-scarf/permanent-solid colors remapped plus low-stamina body tint), one bidirectional pixel-slide
+starting the next test run. There are 32 controller cases and 13 demo-route/authoring cases, one 48-frame art
+comparison (permanent-solid colors remapped outside the deliberately revised character), one bidirectional pixel-slide
 test, one adaptive-view test, one centered-view stone/void extension test, one
-dash-charge hood lifecycle test, one character-fatigue/recovery test, one mixed-inlay/spike rendering test, three
+dash-charge hood lifecycle test, one helmet-fatigue/recovery test, one mixed-inlay/spike rendering test, three
 gear-rack attachment positions, one full-travel rigid-rack/engagement test, and three
 Play Mode cases, including custom bindings, pause/release gating and room persistence.
 The three immutable reference files preserve 40 movement/action/climb traces.
 The exhaustion case uses explicit revised Y/speed expectations for its final17
-frames under the new30px/s held-grab cap; all earlier frames and other traces
+frames under the new45px/s held-grab cap; all earlier frames and other traces
 retain their original expectations. None of the immutable reference files are edited.
 Production steps at 1/60 s; reference replays use the recorded 0.0166667 s.
 

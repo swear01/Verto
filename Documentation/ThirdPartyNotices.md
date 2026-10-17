@@ -6,13 +6,14 @@ The current Wick character, connected stone terrain, riveted platform and night
 backdrop are ported from the user's [published demo](https://phase-three-color.swear01.chatgpt.site/).
 The renderer SHA-256 is `b7178e0f6c0a613a10a92d276a2b6f9c37db75420a0ec342654504278a982c1d`;
 `Verification/ArtReference.json` and `.png` preserve its independent reference frames.
-The hood now uses the scarf dash-charge palette at the user's request. Pixel tests
-explicitly remap the hood, spent scarf and permanent geometry palettes, and
-tint low-stamina body pixels. The user-requested character warning replaces the
-previous detached stamina gauge; its progressive tint/shake and sustained30px/s
-exhausted-grab slide are PHASE-specific tuning. Permanent stone, moving platforms,
-routes and stops now use white and gray at the user's request; the immutable
-reference images and all remaining pixels stay checked.
+The user-requested character revision enlarges the phase-colored eyes and
+moves the progressive fatigue tint/shake onto the helmet, keeping the cloak
+bone white. The scarf independently shows dash charge. A45px/s exhausted-grab
+slide and neutral high-speed landing dust are PHASE-specific tuning.
+Permanent stone, moving platforms, routes and stops use white and gray at the
+user's request. The immutable reference images remain unchanged; pixel tests
+check terrain and mechanisms outside the revised character, while separate
+character tests verify phase, dash, helmet fatigue and recovery.
 The phase-mask mapping, mixed-phase inlays, four-direction spike glyphs and swept
 3-pixel root-strip collision are also ported from the frozen local HTML v10.
 That HTML file remains unchanged; Unity adds the authoring components separately.

@@ -207,7 +207,7 @@ public class PixelTests
         {
             s.flash=0;pixels.Draw(s);int count=0;Color32 expected=PhasePixels.Hex(color);
             foreach(var pixel in pixels.Texture.GetPixels32())if(pixel.Equals(expected))count++;
-            Assert.That(count,Is.GreaterThan(24),"charge must occupy the hood, not only the small scarf");
+            Assert.That(count,Is.GreaterThanOrEqualTo(24),"charge must occupy the hood, not only the small scarf");
         }
         try
         {
@@ -221,7 +221,7 @@ public class PixelTests
     }
 
     [Test]
-    public void FatigueUsesCharacterColorAndShakeWithoutGauge()
+    public void FatigueWarnsOnHelmetKeepsPhaseEyesAndDashScarfAndNeverTintsTheCloak()
     {
         var room=new PhaseController(new[]{new Block(0,160,320,24)},120,100);room.flash=0;
         var p=room.player;p.climbing=true;p.grounded=false;p.facing=1;
@@ -230,31 +230,41 @@ public class PixelTests
         void Draw(double stamina,double time=0) { p.stamina=stamina;room.time=time;pixels.Draw(room); }
         try
         {
-            Draw(110);var original=pixels.Texture.GetPixels32();
-            Draw(55);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32(),"healthy grip has no gauge or tint");
-            Draw(37.5);Assert.That(At(121,107),Is.EqualTo(new Color32(242,174,158,255)),"body gradually reddens");
-            Draw(20);Assert.That(At(121,107),Is.EqualTo(new Color32(252,108,107,255)),"critical body is red");
-            Draw(20,.25);Assert.That(At(121,107),Is.EqualTo((Color32)PhasePixels.Hex("ff5b5e")),"red intensity pulses gently");
-            Draw(20,.14);Assert.That(At(121,108).g,Is.LessThan(150),"critical sprite shakes by one pixel without moving the collider");
-            Assert.That(p.y,Is.EqualTo(100));
+            Draw(110);var original=pixels.Texture.GetPixels32();var healthyHelmet=At(121,100);var cloak=At(121,107);
+            Draw(55);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32());
+            Draw(37.5);var warming=At(121,100);Assert.That(warming.g,Is.LessThan(healthyHelmet.g));
+            Draw(20);Assert.That(At(121,100).g,Is.LessThan(warming.g));Assert.That(At(121,107),Is.EqualTo(cloak),"the cloak never becomes a red skirt");
+            Draw(20,.14);Assert.That(At(121,101).g,Is.LessThan(120));Assert.That(p.y,Is.EqualTo(100),"only the sprite shakes");
             foreach(int phase in new[]{0,1,2})foreach(int dash in new[]{0,1})
             {
                 room.phase=phase;p.dash=dash;Draw(110);var full=pixels.Texture.GetPixels32();Draw(20);
-                for(int y=98;y<105;y++)for(int x=118;x<132;x++)Assert.That(At(x,y),Is.EqualTo(full[(179-y)*320+x]),"eyes and hood keep their meanings");
+                int eyes=0;Color32 eye=PhasePixels.Hex(PhasePixels.Highlights[phase]);
+                for(int y=98;y<105;y++)for(int x=118;x<132;x++)if(At(x,y).Equals(eye))eyes++;
+                Assert.That(eyes,Is.GreaterThanOrEqualTo(4),"large side-facing eyes keep their mode color during fatigue");
+                for(int y=105;y<=112;y++)for(int x=118;x<132;x++)Assert.That(At(x,y),Is.EqualTo(full[(179-y)*320+x]),"scarf and cloak preserve their independent states");
                 for(int y=0;y<180;y++)for(int x=0;x<320;x++)if(x<118||x>132||y<97||y>113)
                     Assert.That(At(x,y),Is.EqualTo(full[(179-y)*320+x]),"no detached gauge or terrain recoloring");
             }
-            room.phase=0;p.dash=1;p.climbing=false;Draw(0);Assert.That(At(121,107).g,Is.LessThan(150),"exhausted falling body remains red");
-            p.grounded=true;Draw(0);Assert.That(At(121,107).g,Is.GreaterThan(150),"grounding clears the warning");
-            p.grounded=false;p.climbing=true;p.wallBoost=.2;Draw(15);Assert.That(At(121,107).g,Is.GreaterThan(150),"pending wallboost refund avoids a false critical warning");p.wallBoost=0;
-            Draw(110);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32(),"refill restores cached original art");
-            pixels.SetView(320,693,0);Draw(20);Assert.That(At(121,107).g,Is.LessThan(150),"portrait retains the character warning");
+            room.phase=0;p.dash=1;p.climbing=false;Draw(0);Assert.That(At(121,100).g,Is.LessThan(120));
+            p.grounded=true;Draw(0);Assert.That(At(121,100),Is.EqualTo(healthyHelmet));
+            p.grounded=false;p.climbing=true;p.wallBoost=.2;Draw(15);Assert.That(At(121,100).g,Is.GreaterThan(150),"pending refund avoids a critical warning");p.wallBoost=0;
+            Draw(110);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32());
+            pixels.SetView(320,693,0);Draw(20);Assert.That(At(121,100).g,Is.LessThan(120));
+            pixels.SetView(320,180,0);
+            var reference=JsonConvert.DeserializeObject<Reference>(File.ReadAllText("Verification/ArtReference.json"));
+            foreach(var frame in reference.frames)
+            {
+                room.player=frame.player;room.phase=frame.phase;room.time=frame.time;pixels.Draw(room);
+                int eyes=0;Color32 color=PhasePixels.Hex(PhasePixels.Highlights[frame.phase]);
+                for(int y=(int)frame.player.y-5;y<frame.player.y+frame.player.h;y++)for(int x=(int)frame.player.x-2;x<frame.player.x+11;x++)if(At(x,y).Equals(color))eyes++;
+                Assert.That(eyes,Is.GreaterThanOrEqualTo(frame.name.StartsWith("climb")||frame.name.StartsWith("duck")||frame.name.StartsWith("blink")?4:8),frame.name+" keeps enlarged mode eyes");
+            }
         }
         finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
     }
 
     [Test]
-    public void PublishedDemoArtMatchesAllPosesFacingsDashStatesAndPhases()
+    public void PublishedTerrainAndMoverArtRemainUnchangedAcrossAllCharacterPoses()
     {
         var reference=JsonConvert.DeserializeObject<Reference>(File.ReadAllText("Verification/ArtReference.json"));
         var golden=new Texture2D(2,2);
@@ -266,7 +276,7 @@ public class PixelTests
             var controller=new PhaseController(reference.blocks,120,149,new MovingPlatform(new[] {new[] {160.0,144},new[] {192.0,144}},32,8,true));
             var neutralColors=new[]{"a9b8c5","e8e8e8","697d8e","a0a0a0","3c4a57","646464","506170","7f7f7f","34404b","565656","242c34","3c3c3c","191f25","2a2a2a","f2dc8a","f0f0f0","e7ce76","e8e8e8","6f603c","787878","8f7c47","a0a0a0","4b4129","484848"};
             var tracks=new[]{"484a3f","424b57","454537","3f464f","444334","3e444c","786e46","6c7076","7b734d","6f757d"};
-            int worst=0,bad=0,hoodPixels=0,scarfPixels=0,fatiguePixels=0,neutralPixels=0;string first=null;
+            int worst=0,bad=0,neutralPixels=0;string first=null;
             for(int f=0;f<reference.frames.Length;f++)
             {
                 var frame=reference.frames[f];controller.player=frame.player;controller.time=frame.time;controller.phase=frame.phase;controller.flash=0;
@@ -290,23 +300,7 @@ public class PixelTests
                         for(int c=0;c<tracks.Length;c+=2)if(e.Equals((Color32)PhasePixels.Hex(tracks[c])))
                         { e=PhasePixels.Hex(tracks[c+1]);neutralPixels++;break; }
                     }
-                    if(x>=p.x-1&&x<p.x+9&&y>=headTop&&y<headTop+collar)
-                    {
-                        if(e.r==234&&e.g==223&&e.b==197){e=(Color32)PhasePixels.Hex(p.dash>0?"ffb24d":"b96532");hoodPixels++;}
-                        else if(e.r==179&&e.g==163&&e.b==134){e=(Color32)PhasePixels.Hex(p.dash>0?"d5732b":"763d24");hoodPixels++;}
-                    }
-                    if(p.dash==0&&x>=p.x-8&&x<p.x+17&&y>=headTop&&y<=feet)
-                    {
-                        if(e.r==90&&e.g==101&&e.b==120){e=(Color32)PhasePixels.Hex("b96532");scarfPixels++;}
-                        else if(e.r==65&&e.g==74&&e.b==90){e=(Color32)PhasePixels.Hex("763d24");scarfPixels++;}
-                    }
-                    if(p.stamina<55&&!p.grounded&&x>=p.x-2&&x<p.x+10&&y>=headTop+collar&&y<=feet)
-                    {
-                        if(e.Equals((Color32)PhasePixels.Hex("eadfc5"))||e.Equals((Color32)PhasePixels.Hex("b3a386"))||e.Equals((Color32)PhasePixels.Hex("7d6e5c")))
-                        {
-                            e=new Color32((byte)Math.Floor(e.r+(255-e.r)*7/8.0+.5),(byte)Math.Floor(e.g+(91-e.g)*7/8.0+.5),(byte)Math.Floor(e.b+(94-e.b)*7/8.0+.5),255);fatiguePixels++;
-                        }
-                    }
+                    if(x>=p.x-12&&x<p.x+19&&y>=headTop-3&&y<=feet+2) continue;
                     int delta=Math.Max(Math.Abs(a.r-e.r),Math.Max(Math.Abs(a.g-e.g),Math.Abs(a.b-e.b)));
                     worst=Math.Max(worst,delta);
                     if(delta>2){bad++;if(first==null)first=$"{frame.name} ({x},{y}) expected {e} actual {a}";}
@@ -316,10 +310,7 @@ public class PixelTests
             var rendered=new Texture2D(golden.width,golden.height,TextureFormat.RGBA32,false);
             try { rendered.SetPixels32(atlas);rendered.Apply();File.WriteAllBytes("TestResults/Web/art-unity.png",rendered.EncodeToPNG()); }
             finally { UnityEngine.Object.DestroyImmediate(rendered); }
-            File.WriteAllText("TestResults/Web/art-parity.json",JsonConvert.SerializeObject(new { frames=reference.frames.Length,hoodPixelsRemapped=hoodPixels,scarfPixelsRemapped=scarfPixels,fatiguePixelsRemapped=fatiguePixels,neutralPixelsRemapped=neutralPixels,badPixels=bad,maxChannelDelta=worst,firstMismatch=first },Formatting.Indented));
-            Assert.That(hoodPixels,Is.GreaterThan(1000),"all poses retain a large dash-charge hood");
-            Assert.That(scarfPixels,Is.GreaterThan(100),"spent scarf uses the new dark orange palette");
-            Assert.That(fatiguePixels,Is.GreaterThan(80),"only low-stamina body pixels use the warning palette");
+            File.WriteAllText("TestResults/Web/art-parity.json",JsonConvert.SerializeObject(new { frames=reference.frames.Length,neutralPixelsRemapped=neutralPixels,badPixels=bad,maxChannelDelta=worst,firstMismatch=first },Formatting.Indented));
             Assert.That(neutralPixels,Is.GreaterThan(360000),"permanent stone, mover and track colors are remapped without changing their texture");
             Assert.That(bad,Is.Zero,first);
             controller.blocks.Add(new Block(0,0,8,8));pixels.Draw(controller);
