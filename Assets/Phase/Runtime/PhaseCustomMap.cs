@@ -1,11 +1,74 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Phase
 {
     public static class PhaseCustomMap
     {
         public const int Width = 320, Height = 176, MaxJsonLength = 200000;
+        public static PhaseDemoRoom Parse(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json) || json.Length > MaxJsonLength)
+                throw new ArgumentException("地圖檔案過大或空白。");
+            try
+            {
+                var data = JObject.Parse(json, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error });
+                CheckFields(data, new[] { "name", "blocks", "spikes", "spawnX", "spawnY" });
+                CheckNumbers(data, "spawnX", "spawnY");
+                if (data["name"] != null && (data["name"].Type != JTokenType.String || data["name"].Value<string>().Length > 64))
+                    throw new ArgumentException("地圖名稱最多64字元。");
+                if (!(data["blocks"] is JArray blocks) || (data["spikes"] != null && !(data["spikes"] is JArray)))
+                    throw new ArgumentException("地形與尖刺必須是陣列。");
+                var spikes = data["spikes"] as JArray;
+                if (blocks.Count + (spikes?.Count ?? 0) > 880) throw new ArgumentException("地圖超過880格。");
+                foreach (var item in blocks)
+                {
+                    var block = item as JObject;
+                    CheckFields(block, new[] { "x", "y", "w", "h", "phase", "phaseMask" });
+                    CheckNumbers(block, "x", "y", "w", "h", "phaseMask");
+                    if (block["phase"] != null) CheckNumbers(block, "phase");
+                }
+                foreach (var item in spikes ?? new JArray())
+                {
+                    var spike = item as JObject;
+                    CheckFields(spike, new[] { "x", "y", "length", "direction", "phaseMask" });
+                    CheckNumbers(spike, "x", "y", "length", "direction", "phaseMask");
+                }
+                var room = new PhaseDemoRoom {
+                    name=data["name"]?.Value<string>(),spawnX=data["spawnX"].Value<double>(),spawnY=data["spawnY"].Value<double>(),
+                    blocks=blocks.Select(b=>new Block(b["x"].Value<double>(),b["y"].Value<double>(),b["w"].Value<double>(),b["h"].Value<double>(),
+                        b["phase"]?.Value<int>() ?? -1,b["phaseMask"].Value<int>())).ToArray(),
+                    spikes=(spikes ?? new JArray()).Select(s=>new DemoSpike {
+                        x=s["x"].Value<double>(),y=s["y"].Value<double>(),length=s["length"].Value<double>(),
+                        direction=(SpikeDirection)s["direction"].Value<int>(),phaseMask=s["phaseMask"].Value<int>()
+                    }).ToArray()
+                };
+                Validate(room); return room;
+            }
+            catch (JsonException error) { throw new ArgumentException("地圖JSON格式無效。", error); }
+            catch (OverflowException error) { throw new ArgumentException("地圖數值超出範圍。", error); }
+        }
+        static void CheckFields(JObject data, string[] allowed)
+        {
+            if (data == null) throw new ArgumentException("地圖物件格式無效。");
+            foreach (var property in data.Properties())
+                if (Array.IndexOf(allowed, property.Name) < 0) throw new ArgumentException("地圖包含不支援的欄位：" + property.Name);
+        }
+        static void CheckNumbers(JObject data, params string[] fields)
+        {
+            foreach (var field in fields)
+            {
+                var value = data[field];
+                if (value == null || (value.Type != JTokenType.Integer && value.Type != JTokenType.Float))
+                    throw new ArgumentException("地圖欄位必須是數值：" + field);
+                double number = value.Value<double>();
+                if (double.IsNaN(number) || double.IsInfinity(number) || number % 1 != 0)
+                    throw new ArgumentException("地圖欄位必須是有限整數：" + field);
+            }
+        }
         public static void Validate(PhaseDemoRoom room)
         {
             if (room == null || room.blocks == null || room.blocks.Length == 0)

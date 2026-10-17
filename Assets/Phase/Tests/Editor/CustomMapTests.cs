@@ -1,5 +1,7 @@
 using System;
 using NUnit.Framework;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Phase;
 
 public class CustomMapTests
@@ -9,6 +11,32 @@ public class CustomMapTests
         blocks=new[]{new Block(0,168,320,8,phaseMask:7)},
         spikes=new[]{new DemoSpike{x=80,y=160,length=8,direction=SpikeDirection.Up,phaseMask=7}}
     };
+    [Test]
+    public void JsonBoundaryUsesOnlySupportedFieldsAndPreservesNullMechanisms()
+    {
+        var source=Simple();
+        var data=new JObject {
+            ["name"]=source.name,["spawnX"]=source.spawnX,["spawnY"]=source.spawnY,
+            ["blocks"]=JArray.FromObject(source.blocks),["spikes"]=JArray.FromObject(source.spikes)
+        };
+        // Block's computed Mask is not part of the wire schema.
+        foreach(JObject block in data["blocks"])block.Remove("Mask");
+        string json=data.ToString(Formatting.None);var map=PhaseCustomMap.Parse(json);
+        Assert.That(map.gearWall,Is.Null);Assert.That(map.gearPlatform,Is.Null);Assert.That(map.CreateMover(),Is.Null);
+        Assert.That(map.blocks.Length,Is.EqualTo(1));Assert.That(map.spikes.Length,Is.EqualTo(1));
+        foreach(var mutate in new Action<JObject>[] {
+            d=>d["gears"]=new JArray(),d=>d["gearWall"]=new JObject(),d=>d["nodeX"]=new JArray(),
+            d=>d["spawnX"]="24",d=>d.Remove("spawnY"),d=>d["spawnX"]=double.NaN,
+            d=>d["name"]=new string('x',65),d=>d["blocks"][0]["unknown"]=1,
+            d=>d["blocks"][0]["phaseMask"]=1.5,d=>((JObject)d["spikes"][0]).Remove("direction")
+        }) {
+            var bad=(JObject)data.DeepClone();mutate(bad);
+            Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(bad.ToString(Formatting.None)));
+        }
+        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(json.Replace("\"spawnX\":24", "\"spawnX\":24,\"spawnX\":32")));
+        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(new string(' ',PhaseCustomMap.MaxJsonLength+1)));
+        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse("[]"));
+    }
     [Test]
     public void SafeMapMovesJumpsAndRespawnsAtItsOwnCheckpoint()
     {

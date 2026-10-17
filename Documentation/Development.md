@@ -260,8 +260,10 @@ Invalid input preserves the current map and produces a failure callback without
 logging a gameplay error. `PhaseSandbox.LastMapError` exposes the last failure
 message for native verification and clears on success. Serialize only the supported
 five-field map shape: Unity serializes null nested `PhaseDemoRoom` gear fields as
-empty objects, which the custom-map validator deliberately rejects.
-Controller validation runs in the three `CustomMapTests`;
+empty objects. The runtime uses the installed Newtonsoft.Json parser with a strict
+five-field schema, rejecting unknown/duplicate fields and non-numeric coordinates
+before constructing the room; it preserves absent mechanisms as null.
+Parsing and controller validation run in the four `CustomMapTests`;
 `MapBridgeTests` adds one Play Mode import/keyboard/respawn/scene-selection case.
 
 For live verification, enter a demo in Play mode and run

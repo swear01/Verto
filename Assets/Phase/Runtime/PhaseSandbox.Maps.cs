@@ -8,7 +8,6 @@ namespace Phase
     public sealed partial class PhaseSandbox
     {
         public static string LastMapError { get; private set; } = "";
-        [Serializable] sealed class UnsupportedMapMechanisms { public Block[] movers, gears; }
 #if UNITY_WEBGL && !UNITY_EDITOR
         [DllImport("__Internal")] static extern void PhaseMapResult(int success, string message);
 #endif
@@ -42,13 +41,7 @@ namespace Phase
             GameObject root = null;
             try
             {
-                if (string.IsNullOrWhiteSpace(json) || json.Length > PhaseCustomMap.MaxJsonLength)
-                    throw new ArgumentException("地圖檔案過大或空白。");
-                var room = JsonUtility.FromJson<PhaseDemoRoom>(json);
-                var unsupported = JsonUtility.FromJson<UnsupportedMapMechanisms>(json);
-                if ((unsupported?.movers?.Length ?? 0) != 0 || (unsupported?.gears?.Length ?? 0) != 0)
-                    throw new ArgumentException("自訂地圖目前支援靜態地形與尖刺。");
-                PhaseCustomMap.Validate(room);
+                var room = PhaseCustomMap.Parse(json);
                 root = new GameObject("PHASE"); root.SetActive(false);
                 var grid = root.AddComponent<Grid>(); grid.cellSize = new Vector3(8,8,1);
                 root.AddComponent<PhaseGrid>();
