@@ -1,0 +1,383 @@
+{
+  "rooms": [
+    {
+      "name": "空中換色",
+      "spawnX": 24,
+      "spawnY": 149,
+      "blocks": [
+        {
+          "x": 0,
+          "y": 160,
+          "w": 80,
+          "h": 24,
+          "phase": -1,
+          "phaseMask": 7
+        },
+        {
+          "x": 168,
+          "y": 144,
+          "w": 152,
+          "h": 8,
+          "phase": -1,
+          "phaseMask": 4
+        }
+      ],
+      "crystals": [
+        {
+          "x": 96,
+          "y": 128,
+          "kind": 0,
+          "phaseMask": 2
+        }
+      ],
+      "lasers": [
+        {
+          "x": 88,
+          "y": 32,
+          "phaseMask": 5,
+          "direction": 1
+        },
+        {
+          "x": 144,
+          "y": 32,
+          "phaseMask": 3,
+          "direction": 1
+        }
+      ],
+      "route": [
+        {
+          "frames": 26,
+          "x": 1
+        },
+        {
+          "frames": 22,
+          "x": 1,
+          "jump": true
+        },
+        {
+          "frames": 3,
+          "x": 1
+        },
+        {
+          "frames": 26,
+          "x": 1,
+          "jump": true
+        },
+        {
+          "frames": 120,
+          "x": 1
+        }
+      ],
+      "goal": {
+        "x": 296,
+        "y": 144,
+        "phase": 2,
+        "jumps": 2,
+        "dashes": 0,
+        "lift": 0
+      }
+    },
+    {
+      "name": "三色光網",
+      "spawnX": 24,
+      "spawnY": 149,
+      "blocks": [
+        {
+          "x": 0,
+          "y": 160,
+          "w": 64,
+          "h": 24,
+          "phase": -1,
+          "phaseMask": 7
+        },
+        {
+          "x": 112,
+          "y": 128,
+          "w": 40,
+          "h": 8,
+          "phase": -1,
+          "phaseMask": 4
+        },
+        {
+          "x": 208,
+          "y": 96,
+          "w": 40,
+          "h": 8,
+          "phase": -1,
+          "phaseMask": 2
+        },
+        {
+          "x": 280,
+          "y": 64,
+          "w": 40,
+          "h": 8,
+          "phase": -1,
+          "phaseMask": 1
+        }
+      ],
+      "crystals": [
+        {
+          "x": 80,
+          "y": 132,
+          "kind": 0,
+          "phaseMask": 2
+        },
+        {
+          "x": 176,
+          "y": 100,
+          "kind": 0,
+          "phaseMask": 1
+        },
+        {
+          "x": 264,
+          "y": 68,
+          "kind": 0,
+          "phaseMask": 4
+        }
+      ],
+      "lasers": [
+        {
+          "x": 56,
+          "y": 32,
+          "phaseMask": 1,
+          "direction": 1
+        },
+        {
+          "x": 64,
+          "y": 32,
+          "phaseMask": 5,
+          "direction": 1
+        },
+        {
+          "x": 104,
+          "y": 32,
+          "phaseMask": 1,
+          "direction": 1
+        },
+        {
+          "x": 112,
+          "y": 32,
+          "phaseMask": 3,
+          "direction": 1
+        },
+        {
+          "x": 160,
+          "y": 16,
+          "phaseMask": 4,
+          "direction": 1
+        },
+        {
+          "x": 168,
+          "y": 16,
+          "phaseMask": 6,
+          "direction": 1
+        },
+        {
+          "x": 200,
+          "y": 16,
+          "phaseMask": 1,
+          "direction": 1
+        },
+        {
+          "x": 208,
+          "y": 16,
+          "phaseMask": 5,
+          "direction": 1
+        },
+        {
+          "x": 248,
+          "y": 0,
+          "phaseMask": 2,
+          "direction": 1
+        },
+        {
+          "x": 256,
+          "y": 0,
+          "phaseMask": 3,
+          "direction": 1
+        }
+      ],
+      "route": [
+        {
+          "frames": 16,
+          "x": 1
+        },
+        {
+          "frames": 20,
+          "x": 1,
+          "jump": true
+        },
+        {
+          "frames": 3,
+          "x": 1
+        },
+        {
+          "frames": 24,
+          "x": 1,
+          "jump": true
+        },
+        {
+          "frames": 12
+        },
+        {
+          "frames": 12,
+          "x": 1
+        },
+        {
+          "frames": 20,
+          "x": 1,
+          "jump": true
+        },
+        {
+          "frames": 3,
+          "x": 1
+        },
+        {
+          "frames": 24,
+          "x": 1,
+          "jump": true
+        },
+        {
+          "frames": 12
+        },
+        {
+          "frames": 8,
+          "x": 1
+        },
+        {
+          "frames": 20,
+          "x": 1,
+          "jump": true
+        },
+        {
+          "frames": 3,
+          "x": 1
+        },
+        {
+          "frames": 16,
+          "x": 1,
+          "jump": true
+        },
+        {
+          "frames": 8,
+          "jump": true
+        },
+        {
+          "frames": 16
+        },
+        {
+          "frames": 40,
+          "x": 1
+        }
+      ],
+      "goal": {
+        "x": 296,
+        "y": 64,
+        "phase": 0,
+        "jumps": 6,
+        "dashes": 0,
+        "lift": 0
+      }
+    },
+    {
+      "name": "保色接力",
+      "spawnX": 24,
+      "spawnY": 149,
+      "blocks": [
+        {
+          "x": 0,
+          "y": 160,
+          "w": 64,
+          "h": 24,
+          "phase": -1,
+          "phaseMask": 7
+        },
+        {
+          "x": 208,
+          "y": 160,
+          "w": 112,
+          "h": 8,
+          "phase": -1,
+          "phaseMask": 2
+        }
+      ],
+      "crystals": [
+        {
+          "x": 144,
+          "y": 124,
+          "kind": 1,
+          "phaseMask": 2
+        }
+      ],
+      "lasers": [
+        {
+          "x": 80,
+          "y": 16,
+          "phaseMask": 1,
+          "direction": 1
+        },
+        {
+          "x": 104,
+          "y": 16,
+          "phaseMask": 5,
+          "direction": 1
+        },
+        {
+          "x": 160,
+          "y": 16,
+          "phaseMask": 4,
+          "direction": 1
+        },
+        {
+          "x": 184,
+          "y": 16,
+          "phaseMask": 5,
+          "direction": 1
+        },
+        {
+          "x": 208,
+          "y": 16,
+          "phaseMask": 1,
+          "direction": 1
+        }
+      ],
+      "route": [
+        {
+          "frames": 20,
+          "x": 1
+        },
+        {
+          "frames": 16,
+          "x": 1,
+          "jump": true
+        },
+        {
+          "frames": 20,
+          "x": 1,
+          "dash": true
+        },
+        {
+          "frames": 2,
+          "x": 1
+        },
+        {
+          "frames": 20,
+          "x": 1,
+          "dash": true
+        },
+        {
+          "frames": 90,
+          "x": 1
+        }
+      ],
+      "goal": {
+        "x": 296,
+        "y": 160,
+        "phase": 1,
+        "jumps": 1,
+        "dashes": 2,
+        "lift": 0
+      }
+    }
+  ]
+}

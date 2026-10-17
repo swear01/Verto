@@ -6,8 +6,8 @@ import BuildWeb
 
 
 class PipelineFailures(unittest.TestCase):
-    def test_release_contains_all_eight_scenes_in_order(self):
-        self.assertEqual(BuildWeb.SCENES, [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(1, 9)])
+    def test_release_contains_demo_and_crystal_scenes_in_order(self):
+        self.assertEqual(BuildWeb.SCENES, [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(1, 9)] + [f"Assets/Scenes/PhaseCrystal{i}.unity" for i in range(1, 4)])
         for scene in BuildWeb.SCENES:
             self.assertTrue((BuildWeb.PROJECT / scene).is_file(), scene)
 
@@ -34,6 +34,11 @@ class PipelineFailures(unittest.TestCase):
         with patch.object(BuildWeb, "command", side_effect=[stale, current]), patch.object(BuildWeb.time, "sleep"):
             result = BuildWeb.wait("build_status", lambda r: r.get("buildId") == "new", 10)
         self.assertEqual(result, current)
+
+    def test_failed_recompile_blocks_export(self):
+        with patch.object(BuildWeb, "command", return_value={"status": "completed", "compilationFailed": True}):
+            with self.assertRaisesRegex(RuntimeError, "compilationFailed"):
+                BuildWeb.wait("recompile_status", lambda r: r.get("status") == "completed", 10)
 
     def test_cancelled_run_fails_immediately(self):
         with patch.object(BuildWeb, "command", return_value={"status": "cancelled"}):

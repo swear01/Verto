@@ -53,7 +53,9 @@ test, one adaptive-view test, one centered-view stone/void extension test, one
 dash-charge hood lifecycle test, one character-fatigue/recovery test, one mixed-inlay/spike rendering test, three
 gear-rack attachment positions, one full-travel rigid-rack/engagement test, and three
 Play Mode cases, including custom bindings, pause/release gating and room persistence.
-The three immutable reference files preserve 40 movement/action/climb traces.
+There are also15 crystal mechanics cases,18 crystal-route/authoring cases
+(including45 independent timing variants), and two crystal-rendering cases.
+The three immutable reference files preserve40 movement/action/climb traces.
 The exhaustion case uses explicit revised Y/speed expectations for its final17
 frames under the new30px/s held-grab cap; all earlier frames and other traces
 retain their original expectations. None of the immutable reference files are edited.
@@ -152,9 +154,9 @@ Each room uses `checkpointOnEntry`, resetting player color/dash/stamina and
 mechanism positions while preserving elapsed time and action/death counts.
 The original sandbox links retain their momentum/color carry behavior.
 See [room designs and live input verification](Demo.md).
-`BuildWeb.py` verifies these tests and builds only `PhaseDemo1` through
-`PhaseDemo8`, in that order. `DemoWebSmoke.cjs` replays keyboard routes through
-the eight Web scenes and checks settings, sizing, fullscreen and loading failure.
+`BuildWeb.py` verifies these tests and builds `PhaseDemo1` through
+`PhaseDemo8`, followed by `PhaseCrystal1` through3. `DemoWebSmoke.cjs` replays keyboard routes through
+all eleven Web scenes and checks settings, sizing, fullscreen and loading failure.
 The older `WebSmoke.cjs` remains a verifier for the original two-sandbox build.
 
 ## CI
@@ -245,3 +247,27 @@ Run `LaserTests` through Pipeline `run_tests --mode editor`, then `PixelTests`.
 `Verification/LaserLiveInput.cs`, entry `LaserLiveInput.Run`, verifies the
 authored white gear shield and a colored beam's keyboard-triggered activation
 and respawn. It restores its temporary input/settings and controller content.
+
+## Colored crystals
+
+`PhaseCrystal` authors an8×8 pickup at native-X/negative-Unity-Y coordinates.
+`kind` is Jump (round) or Dash (square); `phaseMask` is1–7 using the same seven
+colors as terrain and lasers. White works in every phase; other colors can only
+be collected in an active phase and appear faint otherwise. Pickups never change
+phase. A round crystal stores at most one air jump; releasing and pressing jump
+spends it and advances phase through the usual jump action. Ground, coyote and
+wall jumps take priority. The cloak's small hollow ring shows the stored jump.
+A square crystal unconditionally sets the dash charge to1, even when it was
+already full or a dash is in progress, without cancelling that dash or refilling
+stamina. Actual landing clears unused air jump and rearms consumed crystals;
+death/reset also restores them. There is no respawn timer. Swept movement and
+platform/gear carry collect pickups; lethal hazards take priority.
+
+The three rooms in `Assets/Phase/CrystalRooms.json` follow `PhaseDemo8` and are
+also independently playable as `Assets/Scenes/PhaseCrystal1.unity` through3.
+They introduce airborne recoloring, a ten-emitter ascent and a same-color
+midair dash relay. Rebuild only these three scenes through the connected Editor:
+`unity command eval 'PhaseSandboxBuilder.CreateCrystalRooms();'`.
+The manually edited `PhaseDemo1.1` is separate from these builders.
+`DemoLiveInput.Run` checks either demo or crystal scenes and saves keyboard-route
+captures under `TestResults/DemoRooms/` or `TestResults/CrystalRooms/`.

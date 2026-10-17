@@ -8,10 +8,19 @@ public static class PhaseSandboxBuilder
     [MenuItem("PHASE/Create eight-room demo")]
     public static void CreateDemoRooms()
     {
+        CreateRooms("Assets/Phase/DemoRooms.json", "PhaseDemo", 8, "PhaseCrystal1");
+    }
+    [MenuItem("PHASE/Create crystal rooms")]
+    public static void CreateCrystalRooms()
+    {
+        CreateRooms("Assets/Phase/CrystalRooms.json", "PhaseCrystal", 3, "");
+    }
+    static void CreateRooms(string source, string prefix, int count, string exit)
+    {
         if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
-        var data = JsonUtility.FromJson<PhaseDemoRooms>(System.IO.File.ReadAllText("Assets/Phase/DemoRooms.json"));
-        if (data?.rooms == null || data.rooms.Length != 8) throw new System.InvalidOperationException("Demo requires eight rooms.");
-        var scenes = new System.Collections.Generic.List<EditorBuildSettingsScene>();
+        var data = JsonUtility.FromJson<PhaseDemoRooms>(System.IO.File.ReadAllText(source));
+        if (data?.rooms == null || data.rooms.Length != count) throw new System.InvalidOperationException("Unexpected room count: " + source);
+        var scenes = new System.Collections.Generic.List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
         for (int i = 0; i < data.rooms.Length; i++)
         {
             var room = data.rooms[i]; room.CreateController();
@@ -24,7 +33,7 @@ public static class PhaseSandboxBuilder
             sandbox.pixelMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Phase/PixelSurface.mat");
             sandbox.spawn = new Vector2Int((int)room.spawnX, (int)room.spawnY);
             sandbox.checkpointOnEntry = true;
-            sandbox.rightScene = i < 7 ? "PhaseDemo" + (i + 2) : "";
+            sandbox.rightScene = i < count - 1 ? prefix + (i + 2) : exit;
             foreach (var b in room.blocks) Add(root, "Terrain", (int)b.x, (int)b.y, (int)b.w, (int)b.h, b.phase, b.phaseMask);
             foreach (var spike in room.CreateSpikes())
             {
@@ -39,6 +48,12 @@ public static class PhaseSandboxBuilder
                 var go = new GameObject("Phase laser"); go.transform.SetParent(root.transform);
                 go.transform.position = new Vector3((float)laser.x, -(float)laser.y);
                 var emitter = go.AddComponent<PhaseLaser>(); emitter.direction = laser.direction; emitter.phaseMask = laser.Mask;
+            }
+            foreach (var crystal in room.CreateCrystals())
+            {
+                var go = new GameObject("Phase crystal"); go.transform.SetParent(root.transform);
+                go.transform.position = new Vector3((float)crystal.x, -(float)crystal.y);
+                var pickup = go.AddComponent<PhaseCrystal>(); pickup.kind = crystal.kind; pickup.phaseMask = crystal.Mask;
             }
             if (drive != null)
             {
@@ -58,15 +73,13 @@ public static class PhaseSandboxBuilder
                 mover.nodes = System.Array.ConvertAll(platform.nodes, n => new Vector2Int((int)n[0], (int)n[1]));
                 mover.returns = platform.returns;
             }
-            string path = "Assets/Scenes/PhaseDemo" + (i + 1) + ".unity";
+            string path = "Assets/Scenes/" + prefix + (i + 1) + ".unity";
             EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), path);
-            scenes.Add(new EditorBuildSettingsScene(path, true));
+            if (!scenes.Exists(s => s.path == path)) scenes.Add(new EditorBuildSettingsScene(path, true));
         }
-        foreach (var scene in EditorBuildSettings.scenes)
-            if (!scenes.Exists(s => s.path == scene.path)) scenes.Add(scene);
         EditorBuildSettings.scenes = scenes.ToArray();
         AssetDatabase.SaveAssets();
-        EditorSceneManager.OpenScene("Assets/Scenes/PhaseDemo1.unity");
+        EditorSceneManager.OpenScene("Assets/Scenes/" + prefix + "1.unity");
     }
     [MenuItem("PHASE/Create gear demo")]
     public static void CreateGearDemo()

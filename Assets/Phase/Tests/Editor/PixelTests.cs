@@ -11,6 +11,72 @@ public class PixelTests
     public class Frame { public string name; public double time; public int phase; public int[] blocked; public Player player; }
 
     [Test]
+    public void CrystalShapesColorsAndGhostsKeepTheirPickupMeaning()
+    {
+        var pixels = new PhasePixels();
+        Color32 At(int x,int y) => pixels.Texture.GetPixel(x,179-y);
+        int Distance(Color32 a,Color32 b) => Math.Abs(a.r-b.r)+Math.Abs(a.g-b.g)+Math.Abs(a.b-b.b);
+        try
+        {
+            var empty = new PhaseController(Array.Empty<Block>(),32,149); empty.flash=0;
+            pixels.Draw(empty,false); var background=pixels.Texture.GetPixels32();
+            foreach (CrystalKind kind in Enum.GetValues(typeof(CrystalKind))) for (int mask=1;mask<=7;mask++)
+            {
+                var crystal=new Crystal(120,80,kind,mask);
+                var room=new PhaseController(Array.Empty<Block>(),32,149,crystals:new[]{crystal});room.flash=0;
+                for(int phase=0;phase<3;phase++)if(crystal.ActiveInPhase(phase))
+                {
+                    room.phase=phase;pixels.Draw(room,false);
+                    Assert.That(At(123,80),Is.EqualTo((Color32)PhasePixels.SurfaceColor(mask)),"active rim uses the shared phase palette");
+                    Assert.That(At(120,80),kind==CrystalKind.Jump?Is.EqualTo(background[(179-80)*320+120]):Is.EqualTo((Color32)PhasePixels.SurfaceColor(mask)),"round corners are cut away; dash crystals keep square corners");
+                }
+                room.time=2;pixels.Draw(room,false);var active=pixels.Texture.GetPixels32();
+                room.time=5;pixels.Draw(room,false);CollectionAssert.AreEqual(active,pixels.Texture.GetPixels32(),"crystals do not blink or add competing motion");
+                for(int phase=0;phase<3;phase++)if(!crystal.ActiveInPhase(phase))
+                {
+                    room.phase=phase;pixels.Draw(room,false);
+                    int index=(179-80)*320+123;
+                    Assert.That(Distance(At(123,80),background[index]),Is.GreaterThan(0),"unavailable crystals remain discoverable");
+                    Assert.That(Distance(At(123,80),background[index]),Is.LessThan(Distance(active[index],background[index])),"wrong-phase crystals are visibly translucent");
+                }
+                crystal.collected=true;pixels.Draw(room,false);CollectionAssert.AreEqual(background,pixels.Texture.GetPixels32(),"consumed crystals cannot look available");
+            }
+            var covered=new PhaseController(Array.Empty<Block>(),32,149,lasers:new[]{new Laser(8,80,LaserDirection.Right)},crystals:new[]{new Crystal(120,80,CrystalKind.Jump)});covered.flash=0;
+            pixels.Draw(covered,false);
+            Assert.That(At(123,83),Is.EqualTo((Color32)PhasePixels.Hex("f6f6f6")),"a pickup never hides a lethal beam crossing it");
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
+    [Test]
+    public void ExtraJumpRingChangesOnlyTheCloakAndClearsWhenSpent()
+    {
+        var pixels=new PhasePixels();
+        var room=new PhaseController(Array.Empty<Block>(),120,100);room.flash=0;
+        try
+        {
+            foreach(int facing in new[]{-1,1})foreach(int dash in new[]{0,1})foreach(int phase in new[]{0,1,2})
+            {
+                room.player.facing=facing;room.player.dash=dash;room.phase=phase;
+                room.player.airJump=0;pixels.Draw(room);var plain=pixels.Texture.GetPixels32();
+                room.player.airJump=1;pixels.Draw(room);var bonus=pixels.Texture.GetPixels32();
+                int changed=0,feet=(int)Math.Floor(room.player.y+room.player.h+.5);
+                for(int y=0;y<180;y++)for(int x=0;x<320;x++)
+                {
+                    int index=(179-y)*320+x;
+                    if(bonus[index].Equals(plain[index]))continue;
+                    changed++;
+                    Assert.That(x,Is.InRange(122,124));Assert.That(y,Is.InRange(feet-6,feet-4),"hood, eyes and scarf keep their existing meanings");
+                }
+                Assert.That(changed,Is.GreaterThan(4));
+                Assert.That((Color32)pixels.Texture.GetPixel(123,179-(feet-6)),Is.EqualTo((Color32)PhasePixels.Hex("e8e8e8")),"bonus is a neutral ring independent of current phase and dash");
+                room.player.airJump=0;pixels.Draw(room);CollectionAssert.AreEqual(plain,pixels.Texture.GetPixels32(),"spending the jump restores original art exactly");
+            }
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
+    [Test]
     public void LasersStaySteadyAndSafeColorsAreTransparent()
     {
         var pixels = new PhasePixels();

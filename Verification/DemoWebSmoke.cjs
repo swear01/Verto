@@ -50,6 +50,7 @@ function character(buffer) {
     result.browser = browser.version();
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
     page.setDefaultTimeout(30000);
+    await page.clock.install();
     const statuses=new WeakMap();
     page.on('console', message => {
       if (message.type() === 'error') result.errors.push(message.text());
@@ -75,21 +76,23 @@ function character(buffer) {
     await page.goto(url); await ready(); await canvas.click();
     assert.equal(await page.title(),'PHASE');
     assert.equal(await page.locator('body').innerText(),'');
-    const rooms=JSON.parse(fs.readFileSync(path.join(__dirname,'../Assets/Phase/DemoRooms.json'))).rooms;
+    await page.clock.pauseAt(await page.evaluate(()=>Date.now()+100));
+    result.routeClock='Controlled browser time; production physics at 1/60s';
+    const rooms=['DemoRooms','CrystalRooms'].flatMap(course=>JSON.parse(fs.readFileSync(path.join(__dirname,`../Assets/Phase/${course}.json`))).rooms);
     for(let index=0;index<rooms.length;index++) {
       const room=rooms[index];
       const start=character(await canvas.screenshot({path:path.join(reports,`demo-${index+1}-start.png`)}));
       assert(start && Math.abs(start.x/4-room.spawnX-4)<1,`Room ${index+1} checkpoint spawn`);
       let held=new Set();
       for(const step of room.route.slice(0,-1)) {
-        const started=performance.now(), next=new Set();
+        const next=new Set();
         if(step.x)next.add(step.x<0?'ArrowLeft':'ArrowRight');
         if(step.y)next.add(step.y<0?'ArrowUp':'ArrowDown');
         for(const [flag,key] of [['jump','z'],['dash','x'],['grab','c']])if(step[flag])next.add(key);
         await Promise.all([...held].filter(k=>!next.has(k)).map(k=>page.keyboard.up(k)));
         await Promise.all([...next].filter(k=>!held.has(k)).map(k=>page.keyboard.down(k)));
         held=next;
-        await page.waitForTimeout(Math.max(0,step.frames*1000/60-(performance.now()-started)));
+        await page.clock.runFor(Math.round(step.frames*1000/60));
       }
       await Promise.all([...held].map(k=>page.keyboard.up(k)));
       const last=room.route.at(-1);
@@ -97,30 +100,31 @@ function character(buffer) {
       await page.keyboard.down('ArrowRight');
       const deadline=Date.now()+5000;
       while(Date.now()<deadline) {
+        await page.clock.runFor(32);
         const player=character(await canvas.screenshot());
         if(player&&player.x/4>=room.goal.x+3&&Math.abs(player.y/4-(room.goal.y-5))<5)break;
-        await page.waitForTimeout(16);
       }
       await page.keyboard.up('ArrowRight');
       const end=character(await canvas.screenshot({path:path.join(reports,`demo-${index+1}-end.png`)}));
       assert(end && end.x/4>=room.goal.x-2,`Room ${index+1} route reaches exit landing: ${JSON.stringify(end)}`);
       assert(Math.abs(end.y/4-(room.goal.y-5))<5,`Room ${index+1} exit height`);
       result.rooms.push({room:index+1,start,end});
-      if(index<7) {
+      if(index<rooms.length-1) {
         await page.keyboard.down('ArrowRight');
         const travelDeadline=Date.now()+5000;
         let arrived=false;
         while(Date.now()<travelDeadline) {
+          await page.clock.runFor(32);
           const player=character(await canvas.screenshot());
           if(player&&player.x/4<room.goal.x-12){arrived=true;break;}
-          await page.waitForTimeout(16);
         }
         await page.keyboard.up('ArrowRight');
         assert(arrived,`Room ${index+1} right edge loads the next checkpoint`);
-        await page.waitForTimeout(350);
+        await page.clock.runFor(350);
       }
     }
-    result.checkpointTransitions=7;console.log('Passed eight routes and seven transitions');
+    result.checkpointTransitions=rooms.length-1;console.log(`Passed ${rooms.length} routes and ${result.checkpointTransitions} transitions`);
+    await page.clock.resume();
     await page.reload(); await ready(); await canvas.click();
     for(const [width,height] of [[320,407],[800,600],[2560,1080],[844,390],[390,844]]) {
       await page.setViewportSize({width,height}); await page.waitForTimeout(250);

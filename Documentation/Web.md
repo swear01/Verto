@@ -19,7 +19,7 @@ python3 -m http.server 8765 --bind 127.0.0.1 --directory Builds/Web
 
 Open <http://127.0.0.1:8765/>. Click the canvas for keyboard focus: arrows/WASD
 move, Space/Z jumps, X dashes, and C/Shift grabs. Cross each room’s right
-edge to continue through the eight rooms. Each arrival resets phase, dash, stamina
+edge to continue through the eight demo rooms and three crystal rooms. Each arrival resets phase, dash, stamina
 and mechanisms while preserving run statistics. Room changes use a
 0.18-second horizontal pixel slide; input/physics pause until it finishes.
 The Unity splash screen and logo are disabled in PlayerSettings.
@@ -79,10 +79,12 @@ the warning.
 ## Enable automatic builds and online play
 
 `Web build and preview` runs only on `main`, after push or manual dispatch.
-It uses Unity CLI + live Pipeline for 55 Editor tests, three Play Mode tests and
-the Web build, then verifies browser rendering, keyboard routes through all eight rooms and seven scene-edge transitions,
+It uses Unity CLI + live Pipeline for 100 Editor tests, three Play Mode tests and
+the Web build, then verifies browser rendering, keyboard routes through all eleven rooms and ten scene-edge transitions,
 adaptive viewport sizing, keyboard settings, fullscreen, visible load failures,
-and absence of browser errors/warnings. Only a passing build is
+and absence of browser errors/warnings. Route replay controls browser time to
+keep screenshot and command latency from extending held keys; settings, sizing
+and fullscreen checks resume real time. This is not a human timing/playtest. Only a passing build is
 uploaded and deployed. `web-verification` contains the reports/captures.
 
 The repository owner must complete runner/Pages setup first. Write access cannot

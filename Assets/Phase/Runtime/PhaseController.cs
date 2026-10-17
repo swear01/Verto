@@ -83,7 +83,7 @@ namespace Phase
         public double dashTime, dashCooldown, dx, dy, wallLock, slide, maxFall = 160;
         public double climbWait, wallBoost, retention, retained, dashRefill, beforeDash;
         public double varTime, varSpeed = -105, stamina = 110;
-        public int facing = 1, dash = 1, wall, forceX, climbMove, hopX, boostDir;
+        public int facing = 1, dash = 1, airJump, wall, forceX, climbMove, hopX, boostDir;
         public bool grounded = true, hopMover, dashPending, dashRide, dashStartedOnGround;
         public bool ducking, autoJump, climbing;
         public Player(double x, double y) : base(x, y, 8, 11) { }
@@ -99,6 +99,7 @@ namespace Phase
         public readonly List<Block> blocks;
         public readonly List<Spike> spikes;
         public readonly List<Laser> lasers;
+        public readonly List<Crystal> crystals;
         public readonly HashSet<int> blocked = new HashSet<int>();
         public readonly List<Trail> trails = new List<Trail>();
         public readonly List<Particle> particles = new List<Particle>();
@@ -106,6 +107,7 @@ namespace Phase
         readonly MovingPlatform platformTemplate;
         readonly ClimbGear[] gearTemplates;
         readonly Random random = new Random(1);
+        bool airJumpCollected, airJumpRequested;
         public Player player;
         public MovingPlatform mover;
         public ClimbGear[] gears;
@@ -128,26 +130,30 @@ namespace Phase
         public void EnterFrom(PhaseController previous, int direction)
         {
             player = previous.player; phase = previous.phase; time = previous.time;
+            airJumpRequested = previous.airJumpRequested;
             jumps = previous.jumps; dashes = previous.dashes; deaths = previous.deaths;
             freeze = previous.freeze; flash = previous.flash;
             player.x = direction > 0 ? 0 : Width - player.w;
             player.wall = player.hopX = player.forceX = 0;
             player.wallLock = player.retention = player.slide = 0;
             player.climbing = player.hopMover = player.dashRide = false;
-            player.grounded = player.vy >= 0 && OnGround(player, Solid());
+            UpdateGrounded(Solid());
         }
 
-        public PhaseController(IEnumerable<Block> blocks, double spawnX, double spawnY, MovingPlatform platform = null, IEnumerable<ClimbGear> gears = null, IEnumerable<Spike> spikes = null, IEnumerable<Laser> lasers = null)
+        public PhaseController(IEnumerable<Block> blocks, double spawnX, double spawnY, MovingPlatform platform = null, IEnumerable<ClimbGear> gears = null, IEnumerable<Spike> spikes = null, IEnumerable<Laser> lasers = null, IEnumerable<Crystal> crystals = null)
         {
             this.blocks = blocks.ToList(); this.spawnX = spawnX; this.spawnY = spawnY;
             this.spikes = spikes?.ToList() ?? new List<Spike>();
             this.lasers = lasers?.ToList() ?? new List<Laser>();
+            this.crystals = crystals?.ToList() ?? new List<Crystal>();
             platformTemplate = platform; gearTemplates = gears?.Select(g => g.Fresh()).ToArray() ?? Array.Empty<ClimbGear>(); Reset();
         }
         public void Reset()
         {
             phase = 0; respawn = freeze = 0; blocked.Clear();
             player = new Player(spawnX, spawnY); mover = platformTemplate?.Fresh();
+            airJumpCollected = airJumpRequested = false;
+            foreach (var crystal in crystals) crystal.collected = false;
             gears = gearTemplates.Select(g => g.Fresh()).ToArray();
             trails.Clear(); flash = .08;
         }
@@ -226,12 +232,43 @@ namespace Phase
                 { Kill(); return true; }
             return false;
         }
+        void CollectCrystals(Block from = null)
+        {
+            foreach (var crystal in crystals)
+            {
+                if (crystal.collected || !crystal.ActiveInPhase(phase) || !HitsSweep(crystal, from ?? player)) continue;
+                CollectCrystal(crystal);
+            }
+        }
+        void CollectCrystal(Crystal crystal)
+        {
+            crystal.collected = true;
+            if (crystal.kind == CrystalKind.Jump) { player.airJump = 1; airJumpCollected = true; airJumpRequested = false; }
+            else player.dash = 1;
+            Burst(crystal.x + 4, crystal.y + 4, crystal.Mask == 7 ? -1 : phase);
+        }
+        bool CheckInteractions(Block from = null)
+        {
+            if (CheckHazards(from)) return true;
+            CollectCrystals(from);
+            return false;
+        }
+        void UpdateGrounded(List<Block> solids)
+        {
+            bool grounded = player.vy >= 0 && OnGround(player, solids);
+            if (grounded && !player.grounded)
+            {
+                player.airJump = 0;
+                foreach (var crystal in crystals) crystal.collected = false;
+            }
+            player.grounded = grounded;
+        }
         void Shift()
         {
             int previous = phase; phase = (phase + 1) % 3; flash = .08;
             for (int i = 0; i < blocks.Count; i++) if (!blocks[i].ActiveInPhase(previous) && blocks[i].ActiveInPhase(phase) && Occupied(blocks[i])) blocked.Add(i);
             Burst(player.x + 4, player.y + 5, phase);
-            CheckHazards();
+            CheckInteractions();
         }
         static bool Duck(Player p, List<Block> solids, bool value)
         {
@@ -240,7 +277,7 @@ namespace Phase
             if (!value && solids.Any(b => Overlap(new Block(p.x, y, p.w, h), b))) return false;
             p.y = y; p.h = h; p.ducking = value; return true;
         }
-        void Jump(int wall, Controls input)
+        void Jump(int wall, Controls input, bool airborne = false)
         {
             var p = player;
             bool upDash = p.dashAttack > 0 && p.dx == 0 && p.dy == -1;
@@ -248,6 +285,8 @@ namespace Phase
             double speed = -105, variable = .2;
             bool crouched = p.ducking;
             if ((wall != 0 || (p.dashTime > 0 && p.dy == 0)) && !Duck(p, Solid(), false)) return;
+            airJumpRequested = false;
+            if (airborne) p.airJump = 0;
             if (p.climbing) p.retention = 0;
             if (p.climbing || p.dashTime > 0) p.maxFall = 160;
             p.wallBoost = 0; p.autoJump = false;
@@ -259,7 +298,7 @@ namespace Phase
             }
             else
             {
-                if (wall == 0 && p.dashTime > 0 && p.dy == 0)
+                if (!airborne && wall == 0 && p.dashTime > 0 && p.dy == 0)
                 { p.vx = p.facing * 260; if (crouched) { p.vx *= 1.25; speed *= .5; } }
                 else p.vx += input.x * 40;
                 if (climbJump)
@@ -319,11 +358,12 @@ namespace Phase
                 else if (Overlap(p, m))
                 { if (dx > 0) p.x = m.x + m.w; else if (dx < 0) p.x = m.x - p.w; else if (dy > 0) p.y = m.y + m.h; else if (dy < 0) p.y = m.y - p.h; }
                 if (CheckHazards(before) || walls.Any(b => Overlap(p, b)) || !WithinSides(p.x, p.w)) { Kill(); break; }
+                CollectCrystals(before);
             }
             if (t >= 1) { m.moving = false; if (m.returns && m.index == 1) m.hold = .2; }
             return dx;
         }
-        bool MoveGearBlock(Block block, int dx, int dy, Controls input)
+        bool MoveGearBlock(Block block, int dx, int dy, Controls input, List<Crystal> pickups)
         {
             var p = player;
             bool rider = p.vy >= 0 && OnGround(p, new List<Block> { block });
@@ -342,11 +382,14 @@ namespace Phase
                     else if (dy > 0) p.y = block.y + block.h; else p.y = block.y - p.h;
                 }
                 if (CheckHazards(before) || obstacles.Any(b => Overlap(p, b)) || !WithinSides(p.x, p.w) || p.y < 0) return false;
+                if (pickups != null) foreach (var crystal in crystals)
+                    if (!crystal.collected && crystal.ActiveInPhase(phase) && HitsSweep(crystal, before)) pickups.Add(crystal);
             }
             return true;
         }
         void DriveGear(ClimbGear gear, int climb, Controls input)
         {
+            var pickups = crystals.Count == 0 ? null : new List<Crystal>();
             for (int i = 0; i < Math.Abs(climb); i++)
             {
                 int dy = Math.Sign(climb);
@@ -354,7 +397,12 @@ namespace Phase
                 if (y < gear.top || y > gear.bottom) break;
                 double wallY = gear.wall.y, platformX = gear.platform.x, px = player.x, py = player.y;
                 int dx = PixelRound(gear.startX + (gear.endX - gear.startX) * (gear.bottom - y) / (gear.bottom - gear.top)) - (int)gear.platform.x;
-                if (MoveGearBlock(gear.wall, 0, dy, input) && MoveGearBlock(gear.platform, dx, 0, input)) continue;
+                pickups?.Clear();
+                if (MoveGearBlock(gear.wall, 0, dy, input, pickups) && MoveGearBlock(gear.platform, dx, 0, input, pickups))
+                {
+                    if (pickups != null) foreach (var crystal in pickups) if (!crystal.collected) CollectCrystal(crystal);
+                    continue;
+                }
                 gear.wall.y = wallY; gear.platform.x = platformX; player.x = px; player.y = py;
                 break;
             }
@@ -368,14 +416,17 @@ namespace Phase
             { var q = trails[i]; q.life -= dt; if (q.life <= 0) trails.RemoveAt(i); else trails[i] = q; }
             if (respawn > 0) { respawn = Math.Max(0, respawn - dt); if (respawn == 0) Reset(); return; }
             var p = player; if (CheckHazards()) return;
+            airJumpCollected = false;
             p.buffer = input.jump ? .08 : input.jumpHeld ? Math.Max(0, p.buffer - dt) : 0;
+            if (p.buffer <= 0) airJumpRequested = false;
+            if (input.jump && p.airJump > 0) airJumpRequested = true;
             p.dashBuffer = input.dash ? .08 : input.dashHeld ? Math.Max(0, p.dashBuffer - dt) : 0;
             if (freeze > 1e-9) { freeze = Math.Max(0, freeze - dt); return; }
             blocked.RemoveWhere(i => !Occupied(blocks[i]));
             double platformDX = MovePlatform(input, dt); if (respawn > 0) return;
             p.dashAttack = Math.Max(0, p.dashAttack - dt);
             var solids = Solid(); int contact = WallAt(p, solids, input.x != 0 ? input.x : p.facing, p.dashAttack > 0 && p.dx == 0 && p.dy == -1 ? 5 : 3);
-            p.wall = contact; p.grounded = p.vy >= 0 && OnGround(p, solids);
+            p.wall = contact; UpdateGrounded(solids); CollectCrystals();
             int move = p.wallLock > 0 ? p.forceX : input.x;
             p.coyote = p.grounded ? .1 : Math.Max(0, (double)((float)p.coyote - (float)dt)); if (p.coyote < 1e-8) p.coyote = 0;
             p.wallLock = Math.Max(0, p.wallLock - dt); if (p.wallLock == 0) p.hopMover = false;
@@ -416,6 +467,7 @@ namespace Phase
             if (p.dashTime > 0)
             {
                 if (p.buffer > 0 && (contact != 0 || (p.coyote > 0 && p.dy == 0))) Jump(p.coyote > 0 && p.dy == 0 ? 0 : contact, input);
+                else if (airJumpRequested && !airJumpCollected && p.airJump > 0 && !p.grounded) Jump(0, input, true);
                 else if ((int)Math.Floor(time / Dt) % 3 == 0) trails.Add(new Trail { x = p.x, y = p.y, life = .16, phase = phase });
             }
             else if (p.climbing)
@@ -467,6 +519,7 @@ namespace Phase
                 if (!p.grounded) { double gravity = Math.Abs(p.vy) < 40 && (input.jumpHeld || p.autoJump) ? 450 : 900; p.vy = Approach(p.vy, maxFall, gravity * dt); }
                 if (p.varTime > 1e-9) { if (input.jumpHeld) p.vy = Math.Min(p.vy, p.varSpeed); else p.varTime = 0; }
                 if (p.buffer > 0 && (p.coyote > 0 || contact != 0)) { var jumpInput = input; jumpInput.x = move; Jump(p.coyote > 0 ? 0 : contact, jumpInput); }
+                else if (airJumpRequested && !airJumpCollected && p.airJump > 0 && !p.grounded) Jump(0, input, true);
             }
             if (respawn > 0 || CheckHazards()) return;
             if (p.dashPending)
@@ -502,7 +555,7 @@ namespace Phase
                 }
                 if (!exitLeft) p.x = Math.Max(0, p.x);
                 if (!exitRight) p.x = Math.Min(Width - p.w, p.x);
-                if (CheckHazards(before)) return;
+                if (CheckInteractions(before)) return;
             }
             var drivenGear = p.climbing && input.grab && input.y != 0 && p.climbWait <= 0 && p.climbMove == input.y
                 ? gears.FirstOrDefault(g => Collides(p, new List<Block> { g.wall }, p.facing)) : null;
@@ -530,13 +583,14 @@ namespace Phase
                         p.vy = p.dashAttack = 0; hitY = true; if (vy > 0 || p.varTime < .2 - .05) p.varTime = 0;
                     }
                 }
-                if (CheckHazards(before)) return;
+                if (CheckInteractions(before)) return;
             }
             if (drivenGear != null && Math.Sign(p.y - climbY) == input.y) DriveGear(drivenGear, PixelRound(p.y - climbY), input);
             if (p.y < 0) { p.y = 0; p.vy = Math.Max(0, p.vy); p.varTime = p.remY = p.dashAttack = 0; }
-            solids = Solid(); p.grounded = p.vy >= 0 && OnGround(p, solids); p.wall = WallAt(p, solids, input.x != 0 ? input.x : p.facing);
+            solids = Solid(); UpdateGrounded(solids); p.wall = WallAt(p, solids, input.x != 0 ? input.x : p.facing);
             if (p.grounded && p.dashRefill <= 0 && p.dashTime <= 0) p.dash = 1;
             if (p.y > 180 + 14) Kill();
+            if (respawn <= 0) CollectCrystals();
         }
     }
 }

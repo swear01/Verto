@@ -7,7 +7,7 @@ import time
 
 PROJECT = Path(__file__).resolve().parent.parent
 REPORTS = PROJECT / "TestResults/Web"
-SCENES = [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(1, 9)]
+SCENES = [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(1, 9)] + [f"Assets/Scenes/PhaseCrystal{i}.unity" for i in range(1, 4)]
 
 
 def command(name, *args):
@@ -33,7 +33,7 @@ def wait(name, ready, seconds):
         except (RuntimeError, json.JSONDecodeError, subprocess.TimeoutExpired) as error:
             last = str(error)
         if isinstance(last, dict):
-            if last.get("status") in ("error", "cancelled"):
+            if last.get("status") in ("error", "cancelled") or last.get("failed") or last.get("compilationFailed"):
                 raise RuntimeError(f"{name}: {last}")
             if ready(last):
                 return last
@@ -59,11 +59,13 @@ def main():
         raise RuntimeError("Unity splash screen and logo must be disabled")
     command("set_autotick")
     command("run_script", "--", "--file", "Verification/BackgroundEditor.cs", "--entry", "BackgroundEditor.Run")
-    for mode, test_filter, expected in [("editor", "ControllerTests", 31), ("editor", "LaserTests", 8), ("editor", "DemoRoomTests", 13), ("editor", "PixelTests", 13), ("playmode", "SandboxTests", 3)]:
+    command("recompile", "--", "--focus", "false")
+    wait("recompile_status", lambda r: r.get("status") in ("completed", "up_to_date"), 120)
+    for mode, test_filter, expected in [("editor", "ControllerTests", 31), ("editor", "LaserTests", 8), ("editor", "DemoRoomTests", 13), ("editor", "CrystalTests", 15), ("editor", "CrystalRoomTests", 18), ("editor", "PixelTests", 15), ("playmode", "SandboxTests", 3)]:
         wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)
         command("run_tests", "--", "--mode", mode, "--filter", test_filter, "--async_tests")
         result = wait("test_status", lambda r: r.get("status") == "completed", 300)
-        save({"ControllerTests": "editor", "LaserTests": "lasers", "DemoRoomTests": "demo", "PixelTests": "pixels", "SandboxTests": "playmode"}[test_filter], result)
+        save({"ControllerTests": "editor", "LaserTests": "lasers", "DemoRoomTests": "demo", "PixelTests": "pixels", "CrystalTests": "crystals", "CrystalRoomTests": "crystal-rooms", "SandboxTests": "playmode"}[test_filter], result)
         summary = result["summary"]
         if summary.get("total") != expected or summary.get("passed") != expected:
             raise RuntimeError(f"{mode}: expected {expected} passing tests, got {summary}")

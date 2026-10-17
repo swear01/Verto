@@ -19,20 +19,24 @@ public static class DemoLiveInput
     {
         var sandbox = UnityEngine.Object.FindAnyObjectByType<PhaseSandbox>();
         string scene = SceneManager.GetActiveScene().name;
-        if (!Application.isPlaying || sandbox == null || !scene.StartsWith("PhaseDemo") || !int.TryParse(scene.Substring(9),out int number))
-            throw new InvalidOperationException("Open an eight-room demo scene in Play mode.");
-        var room = Newtonsoft.Json.JsonConvert.DeserializeObject<Routes>(File.ReadAllText("Assets/Phase/DemoRooms.json")).rooms[number-1];
+        string prefix = scene.StartsWith("PhaseCrystal") ? "PhaseCrystal" : "PhaseDemo";
+        string course = prefix == "PhaseCrystal" ? "CrystalRooms" : "DemoRooms";
+        if (!Application.isPlaying || sandbox == null || !scene.StartsWith(prefix) || !int.TryParse(scene.Substring(prefix.Length),out int number))
+            throw new InvalidOperationException("Open a demo or crystal scene in Play mode.");
+        var room = Newtonsoft.Json.JsonConvert.DeserializeObject<Routes>(File.ReadAllText("Assets/Phase/" + course + ".json")).rooms[number-1];
         var result = new TaskCompletionSource<string>();
-        UnityEngine.Events.UnityAction<Scene,Scene> changed = (a,b) => result.TrySetException(new InvalidOperationException("Route crossed the exit before its landing check: "+scene));
+        var controller = sandbox.Controller;
+        UnityEngine.Events.UnityAction<Scene,Scene> changed = (a,b) => result.TrySetException(new InvalidOperationException(
+            $"Route crossed the exit before its landing check: {scene}, x={controller.player.x}, feet={controller.player.y+controller.player.h}, phase={controller.phase}, jumps={controller.jumps}, dashes={controller.dashes}, deaths={controller.deaths}"));
         SceneManager.activeSceneChanged += changed;
         try
         {
-            sandbox.StartCoroutine(Check(sandbox,room,number,result));
+            sandbox.StartCoroutine(Check(sandbox,room,number,course,result));
             return await result.Task;
         }
         finally { SceneManager.activeSceneChanged -= changed; }
     }
-    static IEnumerator Check(PhaseSandbox sandbox, Room room, int number, TaskCompletionSource<string> result)
+    static IEnumerator Check(PhaseSandbox sandbox, Room room, int number, string course, TaskCompletionSource<string> result)
     {
         bool background = Application.runInBackground;
         var focus = InputSystem.settings.backgroundBehavior;
@@ -49,9 +53,12 @@ public static class DemoLiveInput
             var s = sandbox.Controller; s.Reset();
             int deaths = s.deaths, jumps = s.jumps, dashes = s.dashes, frame = Time.frameCount;
             double time = s.time;
-            Directory.CreateDirectory("TestResults/DemoRooms");
-            File.WriteAllBytes($"TestResults/DemoRooms/{number}-start.png",sandbox.Frame.EncodeToPNG());
-            for (int i=0;i<room.route.Length;i++)
+            Directory.CreateDirectory("TestResults/" + course);
+            File.WriteAllBytes($"TestResults/{course}/{number}-start.png",sandbox.Frame.EncodeToPNG());
+            string trace = $"TestResults/{course}/{number}-trace.txt";
+            File.WriteAllText(trace, $"start jumps={jumps}, dashes={dashes}, deaths={deaths}\n");
+            bool landed = false;
+            for (int i=0;i<room.route.Length && !landed;i++)
             {
                 var step=room.route[i];
                 var keys = new System.Collections.Generic.List<Key>();
@@ -62,8 +69,11 @@ public static class DemoLiveInput
                 for (int n = 0; n < step.frames; n++)
                 {
                     yield return null;
-                    if (i==room.route.Length-1 && s.player.x>=room.goal.x && s.player.grounded && s.player.y+s.player.h==room.goal.y) break;
+                    if (s.player.x>=room.goal.x && s.player.grounded && s.player.y+s.player.h==room.goal.y &&
+                        s.phase==room.goal.phase && s.jumps-jumps==room.goal.jumps && s.dashes-dashes==room.goal.dashes)
+                    { landed = true; break; }
                 }
+                File.AppendAllText(trace, $"step={i}, x={s.player.x}, feet={s.player.y+s.player.h}, phase={s.phase}, jumps={s.jumps-jumps}, dashes={s.dashes-dashes}, deaths={s.deaths-deaths}, bonus={s.player.airJump}\n");
             }
             InputSystem.QueueStateEvent(keyboard,new KeyboardState());
             var p = s.player; var goal = room.goal;
@@ -74,9 +84,9 @@ public static class DemoLiveInput
                 result.TrySetException(new InvalidOperationException($"Room {number}: x={p.x}, feet={p.y+p.h}, phase={s.phase}, jumps={s.jumps-jumps}, dashes={s.dashes-dashes}, deaths={s.deaths-deaths}, lift={(s.gears.Length>0?s.gears[0].Lift:0)}"));
                 yield break;
             }
-            File.WriteAllBytes($"TestResults/DemoRooms/{number}-end.png",sandbox.Frame.EncodeToPNG());
+            File.WriteAllBytes($"TestResults/{course}/{number}-end.png",sandbox.Frame.EncodeToPNG());
             string report = $"Room {number} passed: frames={Time.frameCount-frame}, seconds={s.time-time:F3}, jumps={s.jumps-jumps}, dashes={s.dashes-dashes}, deaths=0";
-            File.WriteAllText($"TestResults/DemoRooms/{number}.txt",report);
+            File.WriteAllText($"TestResults/{course}/{number}.txt",report);
             result.SetResult(report);
         }
         finally
