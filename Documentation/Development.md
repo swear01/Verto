@@ -236,3 +236,25 @@ with entry `HazardLiveInput.Run`. The first helper creates only
 `Assets/Temp/PhaseHazardProbe.unity`; it does not replace a product scene or add
 levels to Build Settings. The live script checks component collection, keyboard
 jump activation/death, respawn and phase-preserving dash.
+
+## Runtime map bridge
+
+The active `PHASE` object accepts `SelectDemoRoom("1".."8")` and
+`LoadCustomMap(json)`. Scene selection uses only the eight built demo scene names.
+Custom maps use the `PhaseDemoRoom` fields `name`, `blocks`, `spikes`, `spawnX`,
+`spawnY`; blocks require explicit `phaseMask`1–7 and the Web editor sends
+`phase:-1`. Spike direction is Up0/Down1/Left2/Right3; length is native pixels.
+
+Custom geometry occupies non-overlapping8px cells within320×176, at most880cells.
+Spawn X is0–312 and Y0–160 on the same grid, with an8×11 player clear of initially
+red-active terrain and spike hitboxes. Empty terrain, invalid numbers/masks,
+non-grid geometry, moving nodes and gear data are rejected. JSON is limited to
+200000characters. Validation completes before replacing the current runtime root;
+no saved scene changes. The runtime map has no room-edge links.
+
+Web completion dispatches `window` event `phase-map-result` with
+`detail:{success:boolean,message:string}`. Scene success waits for asynchronous
+loading; custom-map success waits for the new root's controller and pixel surface.
+Invalid input preserves the current map and produces a failure callback without
+logging a gameplay error. Controller validation runs in the three `CustomMapTests`;
+`MapBridgeTests` adds one Play Mode import/keyboard/respawn/scene-selection case.

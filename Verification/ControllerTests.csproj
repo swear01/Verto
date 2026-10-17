@@ -12,8 +12,10 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <Compile Include="../Assets/Phase/Runtime/PhaseController.cs" />
     <Compile Include="../Assets/Phase/Runtime/PhaseDemoRooms.cs" />
+    <Compile Include="../Assets/Phase/Runtime/PhaseCustomMap.cs" />
     <Compile Include="../Assets/Phase/Tests/Editor/ControllerTests.cs" />
     <Compile Include="../Assets/Phase/Tests/Editor/DemoRoomTests.cs" />
+    <Compile Include="../Assets/Phase/Tests/Editor/CustomMapTests.cs" />
     <None Include="../Assets/Phase/DemoRooms.json" Link="Assets/Phase/DemoRooms.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../Assets/Phase/Tests/Fixtures/*.json"
           Link="Assets/Phase/Tests/Fixtures/%(Filename)%(Extension)"
