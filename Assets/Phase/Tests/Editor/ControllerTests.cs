@@ -45,6 +45,80 @@ public class ControllerTests
             }
         }
     }
+    [Test]
+    public void PhaseMasksKeepLegacyAndAllSevenCombinations()
+    {
+        foreach(int legacy in new[]{-1,0,1,2})foreach(int phase in new[]{0,1,2})
+            Assert.That(new Block(0,0,8,8,legacy).ActiveInPhase(phase),Is.EqualTo(legacy<0||legacy==phase));
+        for(int mask=1;mask<=7;mask++)for(int phase=0;phase<3;phase++)
+        {
+            var block=new Block(0,160,320,24,phaseMask:mask);var room=new PhaseController(new[]{block},32,120);room.phase=phase;
+            Assert.That(block.Mask,Is.EqualTo(mask));Assert.That(room.Solid().Contains(block),Is.EqualTo((mask&(1<<phase))!=0));
+        }
+        Assert.That(new Block(0,0,8,8,phase:3,phaseMask:5).Mask,Is.EqualTo(5),"HTML mixed-phase metadata is overridden by its explicit mask");
+        Assert.Throws<ArgumentOutOfRangeException>(()=>new Block(0,0,8,8,phaseMask:8));
+        Assert.Throws<ArgumentOutOfRangeException>(()=>new Block(0,0,8,8,phaseMask:-1));
+    }
+    [Test]
+    public void MixedMaterializationDefersOnlyNewlySolidBlocks()
+    {
+        foreach(int mask in new[]{3,5,6,7})
+        {
+            var b=new Block(120,100,8,16,phaseMask:mask);var room=new PhaseController(new[]{b},120,100);
+            room.player.grounded=false;room.player.coyote=.1;
+            room.Step(new Controls{jump=true});
+            Assert.That(room.blocked.Contains(0),Is.EqualTo((mask&1)==0&&(mask&2)!=0));
+            if(room.blocked.Contains(0)) { room.player.x=160;room.Step(new Controls());Assert.That(room.blocked,Is.Empty);Assert.That(room.Solid(),Does.Contain(b)); }
+        }
+    }
+    [Test]
+    public void PhaseSpikesUseRootStripsAndSweptCollisionInEveryDirection()
+    {
+        foreach(SpikeDirection direction in Enum.GetValues(typeof(SpikeDirection)))
+        {
+            var spike=new Spike(80,80,16,direction,3);var hit=spike.Hitbox;
+            Assert.That(direction==SpikeDirection.Up||direction==SpikeDirection.Down?hit.h:hit.w,Is.EqualTo(3));
+            for(int phase=0;phase<3;phase++)
+            {
+                var room=new PhaseController(Array.Empty<Block>(),32,40,spikes:new[]{spike});room.phase=phase;
+                room.player.x=hit.x;room.player.y=hit.y;
+                Assert.That(room.CheckSpikes(),Is.EqualTo(phase!=2));Assert.That(room.deaths,Is.EqualTo(phase!=2?1:0));
+                room.CheckSpikes();Assert.That(room.deaths,Is.LessThanOrEqualTo(1),"a death is counted once");
+            }
+            var sweep=new PhaseController(Array.Empty<Block>(),32,40,spikes:new[]{spike});
+            var from=new Block(hit.x-40,hit.y,8,11);sweep.player.x=hit.x+40;sweep.player.y=hit.y;
+            Assert.That(sweep.CheckSpikes(from),Is.True,"a dash cannot tunnel through a thin root");
+            var reverse=new PhaseController(Array.Empty<Block>(),32,40,spikes:new[]{spike});from.x=hit.x+40;reverse.player.x=hit.x-40;reverse.player.y=hit.y;
+            Assert.That(reverse.CheckSpikes(from),Is.True,"reverse sweep");
+            var diagonal=new PhaseController(Array.Empty<Block>(),32,40,spikes:new[]{spike});from=new Block(hit.x-40,hit.y-40,8,11);diagonal.player.x=hit.x+40;diagonal.player.y=hit.y+40;Assert.That(diagonal.CheckSpikes(from),Is.True,"diagonal sweep");
+            var tangent=new PhaseController(Array.Empty<Block>(),32,40,spikes:new[]{spike});from.x=hit.x-40;from.y=hit.y-11;tangent.player.x=hit.x+40;tangent.player.y=hit.y-11;
+            Assert.That(tangent.CheckSpikes(from),Is.False,"touching the strip boundary is not overlap");
+        }
+        for(int mask=1;mask<=7;mask++)for(int phase=0;phase<3;phase++)
+        { var spike=new Spike(80,80,8,SpikeDirection.Up,mask);Assert.That(spike.ActiveInPhase(phase),Is.EqualTo((mask&(1<<phase))!=0)); }
+        Assert.Throws<ArgumentOutOfRangeException>(()=>new Spike(0,0,7,SpikeDirection.Up));
+        Assert.Throws<ArgumentOutOfRangeException>(()=>new Spike(0,0,8,(SpikeDirection)4));
+        Assert.Throws<ArgumentOutOfRangeException>(()=>new Spike(0,0,8,SpikeDirection.Up,0));
+    }
+    [Test]
+    public void SpikesActivateOnJumpKillPlatformRidersAndReset()
+    {
+        var blue=new Spike(120,100,8,SpikeDirection.Up,2);
+        var room=new PhaseController(Array.Empty<Block>(),32,40,spikes:new[]{blue});room.player.x=120;room.player.y=100;room.player.grounded=false;room.player.coyote=.1;
+        room.Step(new Controls{jump=true});Assert.That(room.phase,Is.EqualTo(1));Assert.That(room.deaths,Is.EqualTo(1));Assert.That(room.respawn,Is.GreaterThan(0));
+        Ticks(room,20);Assert.That(room.player.x,Is.EqualTo(32));Assert.That(room.phase,Is.Zero);Assert.That(room.player.stamina,Is.EqualTo(110));
+        var mover=new MovingPlatform(new[]{new[]{72.0,72},new[]{216.0,72}},48,8);
+        var red=new Spike(104,56,16,SpikeDirection.Left,1);
+        room=new PhaseController(Array.Empty<Block>(),88,61,mover,spikes:new[]{red});
+        room.mover.fromX=72;room.mover.fromY=72;room.mover.index=1;room.mover.duration=.3;room.mover.moving=true;
+        for(int i=0;i<30&&room.deaths==0;i++)room.Step(new Controls());
+        Assert.That(room.deaths,Is.EqualTo(1),"platform carry checks the complete swept path");
+        Ticks(room,20);Assert.That(room.mover.x,Is.EqualTo(72));Assert.That(room.mover.moving,Is.False);
+        room=new PhaseController(Array.Empty<Block>(),32,40,spikes:new[]{new Spike(40,40,16,SpikeDirection.Left,1)});
+        room.player.grounded=false;room.player.dashTime=.3;room.player.vx=240;room.player.dx=1;
+        room.Step(new Controls(),.1);Assert.That(room.deaths,Is.EqualTo(1),"an in-progress dash crossing the complete strip cannot tunnel");
+
+    }
     static PhaseController Arena(double width = 320) => new PhaseController(new[] { new Block(0,150,width,8), new Block(200,33,8,117) }, 67,139);
     static void Ticks(PhaseController s, int count, Controls input = default)
     { for (int i = 0; i < count; i++) { var a = input; a.jump &= i == 0; a.dash &= i == 0; s.Step(a); } }

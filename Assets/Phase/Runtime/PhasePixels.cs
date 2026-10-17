@@ -6,9 +6,15 @@ namespace Phase
 {
     public sealed class PhasePixels : IDisposable
     {
-        public static readonly string[] Highlights = { "ff8f91", "79c9ff", "78d892", "e8e8e8", "e8e8e8" };
-        static readonly string[] Fills = { "833e54", "356487", "316d4a", "646464" };
-        static readonly string[] Edges = { "b35c70", "4d91b3", "56a271", "a0a0a0" };
+        public static readonly string[] Highlights = { "ff8f91", "79c9ff", "78d892", "e8e8e8", "f1dc81", "d7a3ed", "85e4dc" };
+        static readonly string[] Fills = { "833e54", "356487", "316d4a", "646464", "796d38", "684c7e", "386f78" };
+        static readonly string[] Edges = { "b35c70", "4d91b3", "56a271", "a0a0a0", "b3a35b", "a17cb9", "5ba6ac" };
+        static readonly int[] surfaceIndices = {3,0,1,5,2,4,6,3};
+        public static UnityEngine.Color SurfaceColor(int mask)
+        {
+            if (mask < 1 || mask > 7) throw new ArgumentOutOfRangeException(nameof(mask));
+            return Hex(Highlights[surfaceIndices[mask]]);
+        }
         const string Ink = "0b0f16";
         static readonly Dictionary<string, Color32> colors = new Dictionary<string, Color32>();
         Color32[] buffer = new Color32[320 * 180];
@@ -119,7 +125,7 @@ namespace Phase
             if (terrainBlocks != s.blocks || terrainBlockCount != s.blocks.Count)
             {
                 terrainBlocks = s.blocks; terrainBlockCount = s.blocks.Count; cells.Clear(); terrain.Clear();
-                foreach (var b in s.blocks) for (int y = (int)b.y; y < RenderBottom(b); y += 8) for (int x = (int)b.x; x < b.x + b.w; x += 8) cells[(x,y)] = b.phase;
+                foreach (var b in s.blocks) for (int y = (int)b.y; y < RenderBottom(b); y += 8) for (int x = (int)b.x; x < b.x + b.w; x += 8) cells[(x,y)] = b.Mask;
             }
             var blocked = new List<int>(s.blocked); blocked.Sort();
             string key = s.phase + "|" + string.Join(",", blocked);
@@ -127,13 +133,13 @@ namespace Phase
             Background();
             for (int i = 0; i < s.blocks.Count; i++)
             {
-                var b = s.blocks[i]; int color = b.phase < 0 ? 3 : b.phase;
+                var b = s.blocks[i]; int color = surfaceIndices[b.Mask];
                 Color32 cap = Color(Highlights[color]), rim = Color(Edges[color]), body = Color(Fills[color]);
                 Color32 lift = Mix(body, rim, .45), dim = Mix(body, Color("000000"), .14), seam = Mix(body, Color("000000"), .4), deep = Mix(body, Color("000000"), .58);
-                bool active = (b.phase < 0 || b.phase == s.phase) && !s.blocked.Contains(i), deferred = s.blocked.Contains(i);
+                bool active = b.ActiveInPhase(s.phase) && !s.blocked.Contains(i), deferred = s.blocked.Contains(i);
                 for (int Y = (int)b.y; Y < RenderBottom(b); Y += 8) for (int X = (int)b.x; X < b.x + b.w; X += 8)
                 {
-                    bool Neighbor(int dx, int dy) => cells.TryGetValue((X + dx * 8, Y + dy * 8), out var kind) && kind == b.phase;
+                    bool Neighbor(int dx, int dy) => cells.TryGetValue((X + dx * 8, Y + dy * 8), out var kind) && kind == b.Mask;
                     bool u = Neighbor(0,-1), d = Neighbor(0,1), l = Neighbor(-1,0), r = Neighbor(1,0);
                     if (!active)
                     {
@@ -147,6 +153,7 @@ namespace Phase
                             if (!l && dy) Rect(X, Y + n, 1, 1, rim, alpha);
                             if (!r && dy) Rect(X + 7, Y + n, 1, 1, rim, alpha);
                         }
+                        if (Mixed(b.Mask) && (((X-(int)b.x+Y-(int)b.y)>>3)&1)==0) Pips(X,Y,b.Mask,.6);
                         continue;
                     }
                     for (int y = 0; y < 8; y++)
@@ -170,10 +177,55 @@ namespace Phase
                     if (u && l && !Neighbor(-1,-1)) Rect(X, Y, 1, 1, seam);
                     if (u && r && !Neighbor(1,-1)) Rect(X + 7, Y, 1, 1, seam);
                     if (u && d && l && r && Hash(X,Y) % 11 == 0) { Rect(X + 2, Y + 1, 1, 1, seam); Rect(X + 3, Y + 2, 1, 1, seam); Rect(X + 3, Y + 4, 1, 1, deep); }
+                    if (Mixed(b.Mask) && (((X-(int)b.x+Y-(int)b.y)>>3)&1)==0) Pips(X,Y,b.Mask,1);
                 }
             }
             if (terrain.Count > 12) terrain.Clear();
             terrain[key] = (Color32[])buffer.Clone();
+        }
+        static bool Mixed(int mask) => mask == 3 || mask == 5 || mask == 6;
+        void Pips(int x, int y, int mask, double alpha)
+        {
+            int dot = 0;
+            for (int phase = 0; phase < 3; phase++) if ((mask & (1<<phase)) != 0)
+            { int at=x+2+dot++*3; Rect(at,y+6,2,1,Ink,alpha); Rect(at,y+4,2,2,Highlights[phase],alpha); }
+        }
+        static readonly string[] spikeRows = {".oo..oo.","oTMooTMo","oLMooLMo","oLMooLMo","LLMMLLMM","LMMDLMMD","MMDDMMDD","DDDDDDDD"};
+        readonly Dictionary<(int,SpikeDirection,bool),Bitmap> spikeTiles = new Dictionary<(int,SpikeDirection,bool),Bitmap>();
+        void Spikes(PhaseController s)
+        {
+            foreach (var spike in s.spikes)
+            {
+                bool active=spike.ActiveInPhase(s.phase);var key=(spike.Mask,spike.direction,active);
+                if (!spikeTiles.TryGetValue(key,out var tile))
+                {
+                    int color=surfaceIndices[spike.Mask];var cap=Color(Highlights[color]);var rim=Color(Edges[color]);var body=Color(Fills[color]);
+                    var palette=new Dictionary<char,Color32>{['T']=active?Mix(cap,Color("ffffff"),.6):Mix(rim,Color("101a26"),.45),['L']=active?cap:Mix(body,Color("101a26"),.4),['M']=active?rim:Mix(body,Color("101a26"),.6),['D']=active?body:Mix(body,Color("101a26"),.6)};
+                    if(active)palette['o']=Color(Ink);
+                    var rows=new char[8][];for(int v=0;v<8;v++)rows[v]=new char[8];
+                    for(int v=0;v<8;v++)for(int u=0;u<8;u++)
+                    {
+                        int x=spike.direction==SpikeDirection.Left?v:spike.direction==SpikeDirection.Right?7-v:u;
+                        int y=spike.direction==SpikeDirection.Down?7-v:spike.direction==SpikeDirection.Left||spike.direction==SpikeDirection.Right?u:v;
+                        rows[y][x]=spikeRows[v][u];
+                    }
+                    var text=new string[8];for(int v=0;v<8;v++)text[v]=new string(rows[v]);
+                    spikeTiles[key]=tile=Paint(text,palette);
+                }
+                for(int y=(int)spike.y;y<spike.y+spike.h;y+=8)for(int x=(int)spike.x;x<spike.x+spike.w;x+=8)
+                {
+                    Blit(tile,x-1,y-1);
+                    if(Mixed(spike.Mask)&&(active||(x==spike.x&&y==spike.y)))
+                    {
+                        int dot=0;for(int phase=0;phase<3;phase++)if(spike.ActiveInPhase(phase))
+                        {
+                            int at=2+dot++*3;
+                            if(spike.direction==SpikeDirection.Up||spike.direction==SpikeDirection.Down)Rect(x+at,y+(spike.direction==SpikeDirection.Up?6:1),2,1,Highlights[phase],active?1:.6);
+                            else Rect(x+(spike.direction==SpikeDirection.Left?6:1),y+at,1,2,Highlights[phase],active?1:.6);
+                        }
+                    }
+                }
+            }
         }
         sealed class Bitmap { public int width, height; public Color32[] pixels; }
         static Bitmap Paint(string[] rows, Dictionary<char,Color32> palette, bool flip = false, bool outline = false)
@@ -272,6 +324,7 @@ namespace Phase
         public void Draw(PhaseController s, bool playerVisible = true)
         {
             Terrain(s);
+            Spikes(s);
             if (s.mover != null) Mover(s.mover);
             foreach (var t in s.trails) Blit(Sprite("dash", s.player.facing, t.phase, 0, true), Round(t.x) - 2, Round(t.y) - 3, t.life * 2);
             if (playerVisible && s.respawn <= 0) DrawPlayer(s.player, s.time, s.phase);
