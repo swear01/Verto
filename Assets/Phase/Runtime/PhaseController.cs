@@ -8,9 +8,35 @@ namespace Phase
     public class Block
     {
         public double x, y, w, h;
-        public int phase = -1;
-        public Block(double x, double y, double w, double h, int phase = -1)
-        { this.x = x; this.y = y; this.w = w; this.h = h; this.phase = phase; }
+        public int phase = -1, phaseMask;
+        public int Mask => phaseMask == 0 ? (phase < 0 ? 7 : 1 << phase) : phaseMask;
+        public bool ActiveInPhase(int state) => (Mask & (1 << state)) != 0;
+        public Block(double x, double y, double w, double h, int phase = -1, int phaseMask = 0)
+        {
+            if (phaseMask == 0 && (phase < -1 || phase > 2)) throw new ArgumentOutOfRangeException(nameof(phase));
+            if (phaseMask < 0 || phaseMask > 7) throw new ArgumentOutOfRangeException(nameof(phaseMask));
+            this.x = x; this.y = y; this.w = w; this.h = h; this.phase = phase; this.phaseMask = phaseMask;
+        }
+    }
+
+    public enum SpikeDirection { Up, Down, Left, Right }
+
+    [Serializable]
+    public sealed class Spike : Block
+    {
+        public SpikeDirection direction;
+        public Spike(double x, double y, double length, SpikeDirection direction, int phaseMask = 7)
+            : base(x,y,direction == SpikeDirection.Up || direction == SpikeDirection.Down ? length : 8,
+                direction == SpikeDirection.Up || direction == SpikeDirection.Down ? 8 : length,phaseMask:phaseMask)
+        {
+            if (length < 8 || length % 8 != 0) throw new ArgumentOutOfRangeException(nameof(length));
+            if ((int)direction < 0 || (int)direction > 3) throw new ArgumentOutOfRangeException(nameof(direction));
+            if (phaseMask == 0) throw new ArgumentOutOfRangeException(nameof(phaseMask));
+            this.direction = direction;
+        }
+        public Block Hitbox => new Block(x+(direction == SpikeDirection.Left ? 5 : 0),y+(direction == SpikeDirection.Up ? 5 : 0),
+            direction == SpikeDirection.Left || direction == SpikeDirection.Right ? 3 : w,
+            direction == SpikeDirection.Up || direction == SpikeDirection.Down ? 3 : h);
     }
 
     [Serializable]
@@ -68,6 +94,7 @@ namespace Phase
     {
         public const double Dt = 1.0 / 60;
         public readonly List<Block> blocks;
+        public readonly List<Spike> spikes;
         public readonly HashSet<int> blocked = new HashSet<int>();
         public readonly List<Trail> trails = new List<Trail>();
         public readonly List<Particle> particles = new List<Particle>();
@@ -106,9 +133,10 @@ namespace Phase
             player.grounded = player.vy >= 0 && OnGround(player, Solid());
         }
 
-        public PhaseController(IEnumerable<Block> blocks, double spawnX, double spawnY, MovingPlatform platform = null, IEnumerable<ClimbGear> gears = null)
+        public PhaseController(IEnumerable<Block> blocks, double spawnX, double spawnY, MovingPlatform platform = null, IEnumerable<ClimbGear> gears = null, IEnumerable<Spike> spikes = null)
         {
             this.blocks = blocks.ToList(); this.spawnX = spawnX; this.spawnY = spawnY;
+            this.spikes = spikes?.ToList() ?? new List<Spike>();
             platformTemplate = platform; gearTemplates = gears?.Select(g => g.Fresh()).ToArray() ?? Array.Empty<ClimbGear>(); Reset();
         }
         public void Reset()
@@ -126,7 +154,7 @@ namespace Phase
             foreach (var gear in gears) { result.Add(gear.wall); result.Add(gear.platform); }
             return result;
         }
-        List<Block> Walls() => blocks.Where((b, i) => (b.phase < 0 || b.phase == phase) && !blocked.Contains(i)).ToList();
+        List<Block> Walls() => blocks.Where((b, i) => b.ActiveInPhase(phase) && !blocked.Contains(i)).ToList();
         static bool Collides(Player p, List<Block> solids, double x = 0, double y = 0) => solids.Any(b => Overlap(p, b, x, y));
         static int WallAt(Player p, List<Block> solids, int preferred, double reach = 3)
         {
@@ -154,11 +182,34 @@ namespace Phase
             if (respawn > 0) return;
             deaths++; respawn = .28; Burst(player.x + 4, player.y + 5, -1, 18);
         }
+        public bool CheckSpikes(Block from = null)
+        {
+            if (respawn > 0) return true;
+            var p = player; from = from ?? p;
+            foreach (var spike in spikes)
+            {
+                if (!spike.ActiveInPhase(phase)) continue;
+                var b = spike.Hitbox; double enter = 0, leave = 1;
+                foreach (var axis in new[] { (at:p.x,start:from.x,lo:b.x-p.w,hi:b.x+b.w), (at:p.y,start:from.y,lo:b.y-p.h,hi:b.y+b.h) })
+                {
+                    double delta = axis.at-axis.start;
+                    if (delta == 0) { if (axis.at <= axis.lo || axis.at >= axis.hi) { leave = 0; break; } }
+                    else
+                    {
+                        double a = (axis.lo-axis.start)/delta, z = (axis.hi-axis.start)/delta;
+                        enter = Math.Max(enter,Math.Min(a,z)); leave = Math.Min(leave,Math.Max(a,z));
+                    }
+                }
+                if (enter < leave) { Kill(); return true; }
+            }
+            return false;
+        }
         void Shift()
         {
-            phase = (phase + 1) % 3; flash = .08;
-            for (int i = 0; i < blocks.Count; i++) if (blocks[i].phase == phase && Overlap(player, blocks[i])) blocked.Add(i);
+            int previous = phase; phase = (phase + 1) % 3; flash = .08;
+            for (int i = 0; i < blocks.Count; i++) if (!blocks[i].ActiveInPhase(previous) && blocks[i].ActiveInPhase(phase) && Overlap(player, blocks[i])) blocked.Add(i);
             Burst(player.x + 4, player.y + 5, phase);
+            CheckSpikes();
         }
         static bool Duck(Player p, List<Block> solids, bool value)
         {
@@ -240,11 +291,12 @@ namespace Phase
             foreach (var gear in gears) { walls.Add(gear.wall); walls.Add(gear.platform); }
             for (int i = 0; i < steps; i++)
             {
+                var before = new Block(p.x,p.y,p.w,p.h);
                 m.x += dx / steps; m.y += dy / steps;
                 if (rider || clinger) { p.x += dx / steps; p.y += dy / steps; }
                 else if (Overlap(p, m))
                 { if (dx > 0) p.x = m.x + m.w; else if (dx < 0) p.x = m.x - p.w; else if (dy > 0) p.y = m.y + m.h; else if (dy < 0) p.y = m.y - p.h; }
-                if (walls.Any(b => Overlap(p, b)) || !WithinSides(p.x, p.w)) { Kill(); break; }
+                if (CheckSpikes(before) || walls.Any(b => Overlap(p, b)) || !WithinSides(p.x, p.w)) { Kill(); break; }
             }
             if (t >= 1) { m.moving = false; if (m.returns && m.index == 1) m.hold = .2; }
             return dx;
@@ -292,7 +344,7 @@ namespace Phase
             for (int i = trails.Count - 1; i >= 0; i--)
             { var q = trails[i]; q.life -= dt; if (q.life <= 0) trails.RemoveAt(i); else trails[i] = q; }
             if (respawn > 0) { respawn = Math.Max(0, respawn - dt); if (respawn == 0) Reset(); return; }
-            var p = player;
+            var p = player; if (CheckSpikes()) return;
             p.buffer = input.jump ? .08 : input.jumpHeld ? Math.Max(0, p.buffer - dt) : 0;
             p.dashBuffer = input.dash ? .08 : input.dashHeld ? Math.Max(0, p.dashBuffer - dt) : 0;
             if (freeze > 1e-9) { freeze = Math.Max(0, freeze - dt); return; }
@@ -393,6 +445,7 @@ namespace Phase
                 if (p.varTime > 1e-9) { if (input.jumpHeld) p.vy = Math.Min(p.vy, p.varSpeed); else p.varTime = 0; }
                 if (p.buffer > 0 && (p.coyote > 0 || contact != 0)) { var jumpInput = input; jumpInput.x = move; Jump(p.coyote > 0 ? 0 : contact, jumpInput); }
             }
+            if (respawn > 0 || CheckSpikes()) return;
             if (p.dashPending)
             {
                 int dx = input.x, dy = input.y; if (dx == 0 && dy == 0) dx = p.facing;
@@ -414,6 +467,7 @@ namespace Phase
             bool hitX = false;
             for (int n = 0; n < Math.Abs(moveX) && !hitX; n++)
             {
+                var before = new Block(p.x,p.y,p.w,p.h);
                 solids = Solid(); int vx = Math.Sign(moveX); p.x += vx;
                 foreach (var b in solids) if (Overlap(p, b))
                 {
@@ -425,6 +479,7 @@ namespace Phase
                 }
                 if (!exitLeft) p.x = Math.Max(0, p.x);
                 if (!exitRight) p.x = Math.Min(Width - p.w, p.x);
+                if (CheckSpikes(before)) return;
             }
             var drivenGear = p.climbing && input.grab && input.y != 0 && p.climbWait <= 0 && p.climbMove == input.y
                 ? gears.FirstOrDefault(g => Collides(p, new List<Block> { g.wall }, p.facing)) : null;
@@ -433,6 +488,7 @@ namespace Phase
             bool hitY = false;
             for (int n = 0; n < Math.Abs(moveY) && !hitY; n++)
             {
+                var before = new Block(p.x,p.y,p.w,p.h);
                 solids = Solid(); int vy = Math.Sign(moveY); p.y += vy;
                 foreach (var b in solids) if (Overlap(p, b))
                 {
@@ -451,6 +507,7 @@ namespace Phase
                         p.vy = p.dashAttack = 0; hitY = true; if (vy > 0 || p.varTime < .2 - .05) p.varTime = 0;
                     }
                 }
+                if (CheckSpikes(before)) return;
             }
             if (drivenGear != null && Math.Sign(p.y - climbY) == input.y) DriveGear(drivenGear, PixelRound(p.y - climbY), input);
             if (p.y < 0) { p.y = 0; p.vy = Math.Max(0, p.vy); p.varTime = p.remY = p.dashAttack = 0; }

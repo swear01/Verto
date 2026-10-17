@@ -47,10 +47,10 @@ To recreate the sandbox, call its existing builder through the connected Editor:
 edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 24 controller cases, one 48-frame art
+starting the next test run. There are 28 controller cases, one 48-frame art
 comparison (hood/spent-scarf/permanent-solid colors remapped plus low-stamina body tint), one bidirectional pixel-slide
 test, one adaptive-view test, one centered-view stone/void extension test, one
-dash-charge hood lifecycle test, one character-fatigue/recovery test, three
+dash-charge hood lifecycle test, one character-fatigue/recovery test, one mixed-inlay/spike rendering test, three
 gear-rack attachment positions, one full-travel rigid-rack/engagement test, and three
 Play Mode cases, including custom bindings, pause/release gating and room persistence.
 The three immutable reference files preserve 40 movement/action/climb traces.
@@ -143,7 +143,7 @@ restores its keyboard, input focus and fixed capture timing settings.
 
 ## CI
 
-GitHub Actions runs the production `PhaseController.cs` and the same 24
+GitHub Actions runs the production `PhaseController.cs` and the same 28
 `ControllerTests` on .NET 10, including the 40 immutable reference traces.
 The test fixture parser uses Json.NET, already included by Unity Pipeline.
 The hosted runner requires no Unity license or repository secrets.
@@ -167,3 +167,36 @@ Both axes fill the viewport without stretching native pixels.
 Full-width terrain and room edges still expand above320pixels. Resizing preserves
 controller state and rebuilds the pixel surface/cache; resizing during a slide
 completes its handoff, including a height-only resize.
+
+## Phase masks and spikes
+
+`Block(..., phase: -1, phaseMask: 0)` keeps the existing legacy phase behavior.
+An explicit mask overrides phase metadata: R=1, B=2, G=4, Y=5, M=3, C=6, W=7.
+Masks3/5/6 use paired inlays showing their two active phases; mask7 keeps the
+current white permanent-solid palette. Only newly solid overlapping blocks defer
+materialization; previously solid mixed blocks do not become ghosts on a shared
+phase transition.
+
+`PhaseTerrain.phaseMask` uses0 for the legacy phase field or1–7 for an explicit
+mask. `PhaseSpike` uses `direction` (Up/Down/Left/Right), `length` in8px cells and
+`phaseMask`1–7. Its transform follows the existing native-X/negative-Unity-Y
+convention. The pure controller `Spike(x,y,length,direction,phaseMask)` takes its
+length in native pixels (positive multiples of8).
+
+Pass `spikes:` by name when constructing `PhaseController`; the gear branch also
+adds a `gears:` parameter and positional fifth arguments are not interchangeable.
+Spikes are hazards, never solid blocks. Their lethal strip is the drawn3px root:
+Up offsets Y by5; Left offsets X by5; Down/Right use the top/left3px. All four
+orientations kill on swept overlap in an active phase, including dash, phase
+changes and moving-platform carry. Inactive spikes keep dark teeth and a first
+mixed-color marker. Respawn restores the original player/platform state.
+`CheckSpikes(before)` is the hook for other mechanisms that displace the player;
+call it inside each movement step with a snapshot of the pre-move player bounds.
+The separate gear/room worktree owns integration of that hook in its gear carry.
+
+For an isolated connected-Editor probe, run `Verification/HazardScene.cs` with
+entry `HazardScene.Run`, then enter Play and run `Verification/HazardLiveInput.cs`
+with entry `HazardLiveInput.Run`. The first helper creates only
+`Assets/Temp/PhaseHazardProbe.unity`; it does not replace a product scene or add
+levels to Build Settings. The live script checks component collection, keyboard
+jump activation/death, respawn and phase-preserving dash.
