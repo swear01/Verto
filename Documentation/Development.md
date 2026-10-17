@@ -6,6 +6,9 @@ captures and Console inspection all run through the live Pipeline connection.
 Do not use direct Editor `-batchmode` / `-executeMethod` invocations or cold
 `unity run` / `unity test` jobs for this workflow. Fix a failed Pipeline connection
 before continuing. Reuse the connected Editor instead of reopening it.
+Parallel agents may edit isolated worktrees, but consolidate verification in one
+owned resident Editor. Finish or cancel tests and stop Play before changing C#;
+wait for builds to finish before importing code or rebuilding scenes.
 Keep Unity's completed URP material-upgrade record in version control; resetting
 it can reopen a startup confirmation dialog and block Pipeline commands.
 Do not restore the Unity Hub one-time `HubForceResolve.cs` bootstrap. Its delayed
@@ -50,12 +53,13 @@ To recreate the sandbox, call its existing builder through the connected Editor:
 edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 32 controller cases and 13 demo-route/authoring cases, one 48-frame art
+starting the next test run. There are 32 controller cases and 17 demo-route/authoring cases, one 48-frame art
 comparison (permanent-solid colors remapped outside the deliberately revised character), one bidirectional pixel-slide
 test, one adaptive-view test, one centered-view stone/void extension test, one
 dash-charge hood lifecycle test, one helmet-fatigue/recovery test, one checkpoint-respawn cue test, one mixed-inlay/spike rendering test, three
-gear-rack attachment positions, one full-travel rigid-rack/engagement test, and three
-Play Mode cases, including custom bindings, pause/release gating and room persistence.
+gear-rack attachment positions, one full-travel rigid-rack/engagement test and one floor-level rack test (13 pixel cases total).
+Two Grid authoring cases and four custom-map validation cases also run in Edit Mode.
+The four Play Mode cases cover bindings, pause/release gating, room persistence and imported maps.
 The three immutable reference files preserve 40 movement/action/climb traces.
 The exhaustion case uses explicit revised Y/speed expectations for its final17
 frames under the new45px/s held-grab cap; all earlier frames and other traces
@@ -148,7 +152,8 @@ same direction and the platform between its X endpoints, carrying riders.
 Hanging, release, slipping, blocked climbing and dashing do not drive it.
 Both parts stop at the travel limits or an obstruction; reset/respawn restores
 the authored start positions. White gears and racks are visual only.
-The horizontal rack fills the lower three pixels inside the 56-pixel platform,
+The horizontal rack fills three pixels inside the 56-pixel platform,
+on its upper face for floor-level bridges and lower face for elevated bridges,
 with no overhang. Matching 24-pixel wall/platform travel keeps the fixed output
 pinion engaged. The vertical rack translates rigidly and can enter its lower
 housing. Gear carrying also checks spike sweeps. Newly solid terrain waits while
@@ -199,7 +204,7 @@ At wider aspects, height stays180 and width grows; at taller aspects, width
 stays320 and height grows around the vertically centered180-pixel play area.
 Stone fills the area above the native top boundary; terrain touching the last
 complete 8px row (bottom176) extends below. Gaps and voids remain open, with a
-short fade to black between native Y180 and the existing Y194 death boundary. This is visual padding; collision stays unchanged.
+short fade to black between native Y180 and the existing Y194 death boundary. This extension is visual padding. Each built-in demo also has a visible, solid 8px ceiling at Y0; custom maps use their authored terrain.
 Both axes fill the viewport without stretching native pixels.
 Terrain ending at the right room edge and room bounds expand above320pixels. Resizing preserves
 controller state and rebuilds the pixel surface/cache; resizing during a slide

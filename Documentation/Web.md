@@ -29,11 +29,12 @@ The build verifies both flags and records them in `TestResults/Web/splash.json`;
 browser checks preserve initial canvas frames before the first player frame.
 The hood and scarf are amber with one dash available and dark orange after use;
 landing refills them. Eye colors continue to indicate phase.
-Below55 stamina, the airborne cloak body gradually reddens and shakes by one
-native pixel with increasing frequency; at20 it reaches its strongest red and
-gently pulses. Landing restores the original art. The hood/scarf still indicate
-dash charge and eyes indicate phase. There is no detached stamina gauge.
-Holding grab against a wall after exhaustion caps downward speed at30native
+Below55 stamina, the whole helmet gradually reddens and shakes by one native
+pixel with increasing frequency; at20 the red gently pulses. The cloak stays
+bone-white, larger eyes indicate phase, and the scarf independently indicates
+dash charge. Landing restores the helmet. There is no detached stamina gauge.
+Fast landings add neutral white dust; respawns end with a brief pixel convergence.
+Holding grab against a wall after exhaustion caps downward speed at45native
 pixels/second; releasing, moving away or pressing down restores ordinary falling.
 [Celeste’s original player source](https://github.com/NoelFB/Celeste/blob/1b0ce45c75e05649ae91b44a8bb6b196684e4352/Source/Player/Player.cs)
 flashes its sprite below20 and releases climbing at0; its normal wall slide ramps
@@ -42,13 +43,14 @@ cap are intentional PHASE tuning for this user request, not exact Celeste parity
 Touch controls are not provided.
 The canvas fills the entire viewport and always shows at least the original
 320x180 native-pixel play area. Wide views extend horizontally; tall views keep
-320pixels across and center the original180-pixel play area. Sky extends above;
-stone at the lower room edge continues below, while gaps/voids stay open. Point/pixelated sampling preserves
+320pixels across and center the original180-pixel play area. Built-in rooms have a visible, solid 8px ceiling; stone fills above the top boundary;
+stone touching the last complete grid row continues below. Gaps fade into dark void
+from Y180 to the existing Y194 death limit, rather than suggesting more playable space. Point/pixelated sampling preserves
 square pixels without cropping the room to enlarge the player. Wide rooms extend
 quarry scenery, full-width floor collision and their right exit. Resizing preserves
 movement/color state and clamps positions within a shortened room; resizing during
 a slide completes the handoff safely. Fixed obstacles and movers retain their
-world coordinates. The fullscreen button includes keyboard settings. Fullscreen
+world coordinates. The toolbar includes fullscreen and keyboard settings. Fullscreen
 needs a user click and browser/iframe permission; denied requests show a recovery
 message. Loading failures remain visible.
 
@@ -103,7 +105,7 @@ the warning.
 ## Enable automatic builds and online play
 
 `Web build and preview` runs only on `main`, after push or manual dispatch.
-It uses Unity CLI + live Pipeline for 55 Editor tests, three Play Mode tests and
+It uses Unity CLI + live Pipeline for 68 Editor tests, four Play Mode tests and
 the Web build, then verifies browser rendering, keyboard routes through all eight rooms and seven scene-edge transitions,
 adaptive viewport sizing, keyboard settings, fullscreen, visible load failures,
 and absence of browser errors/warnings. Only a passing build is

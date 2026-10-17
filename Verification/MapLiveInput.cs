@@ -26,6 +26,12 @@ public static class MapLiveInput
     { if(!value)throw new InvalidOperationException(message); }
     static void Capture(PhaseSandbox sandbox,string name)
     { File.WriteAllBytes("TestResults/CustomMap/"+name+".png",sandbox.Frame.EncodeToPNG()); }
+    static string State(PhaseController s, Keyboard keyboard) => Newtonsoft.Json.JsonConvert.SerializeObject(new {
+        frame=Time.frameCount, time=s.time, phase=s.phase, jumps=s.jumps, dashes=s.dashes, deaths=s.deaths,
+        x=s.player.x, y=s.player.y, vx=s.player.vx, vy=s.player.vy, charge=s.player.dash, grounded=s.player.grounded, freeze=s.freeze, pending=s.player.dashPending, dx=s.player.dx, dy=s.player.dy,
+        inputX=PhaseSandbox.ReadControls(keyboard).x, inputY=PhaseSandbox.ReadControls(keyboard).y,
+        dashHeld=keyboard.xKey.isPressed, dashPressed=keyboard.xKey.wasPressedThisFrame
+    },Newtonsoft.Json.Formatting.Indented);
     public static async Task<string> Run()
     {
         var original=UnityEngine.Object.FindAnyObjectByType<PhaseSandbox>();
@@ -50,7 +56,7 @@ public static class MapLiveInput
             Require(PhaseSandbox.LastMapError=="",PhaseSandbox.LastMapError);await Frames(2);
             var sandbox=UnityEngine.Object.FindAnyObjectByType<PhaseSandbox>();
             Require(original==null&&sandbox!=null&&sandbox.Controller!=old,"Map root was not replaced.");
-            Require(UnityEngine.Object.FindObjectsByType<PhaseSandbox>(FindObjectsSortMode.None).Length==1,"Map import left multiple players.");
+            Require(UnityEngine.Object.FindObjectsByType<PhaseSandbox>().Length==1,"Map import left multiple players.");
             Require(sandbox.GetComponent<Grid>().cellSize==new Vector3(8,8,1),"Map grid is not 8px.");
             var s=sandbox.Controller;int frame=Time.frameCount;double time=s.time;
             Directory.CreateDirectory("TestResults/CustomMap");await Frames(30);Capture(sandbox,"start");
@@ -60,9 +66,14 @@ public static class MapLiveInput
             InputSystem.QueueStateEvent(keyboard,new KeyboardState(Key.RightArrow,Key.Z));await Frames(8);
             Require(s.jumps==1&&s.phase==1,"Imported map jump did not switch phase once.");Capture(sandbox,"jump");
             InputSystem.QueueStateEvent(keyboard,new KeyboardState());await Frames(50);
-            InputSystem.QueueStateEvent(keyboard,new KeyboardState(Key.X,Key.UpArrow));await Frames(1);
+            File.WriteAllText("TestResults/CustomMap/dash-before.json",State(s,keyboard));
+            // Dash aim is sampled after hit-stop; keep Up held through it.
+            InputSystem.QueueStateEvent(keyboard,new KeyboardState(Key.X,Key.UpArrow));await Frames(8);
+            File.WriteAllText("TestResults/CustomMap/dash-held.json",State(s,keyboard));
+            Require(s.dashes==1&&!s.player.dashPending&&s.player.dy==-1&&s.deaths==0,"Upward dash did not launch: "+State(s,keyboard));
             InputSystem.QueueStateEvent(keyboard,new KeyboardState());await Frames(60);
-            Require(s.dashes==1&&s.phase==1&&s.deaths==0,"Imported map dash changed phase or failed.");
+            File.WriteAllText("TestResults/CustomMap/dash-after.json",State(s,keyboard));
+            Require(s.dashes==1&&s.phase==1&&s.deaths==0,"Imported map dash changed phase or failed: "+State(s,keyboard));
             InputSystem.QueueStateEvent(keyboard,new KeyboardState(Key.RightArrow));
             for(int i=0;i<100&&s.deaths==0;i++)await Frames(1);
             InputSystem.QueueStateEvent(keyboard,new KeyboardState());

@@ -30,8 +30,9 @@ the scenes. The original finalized HTML demo is a separate, unchanged artifact.
 
 ## Gear geometry
 
-The horizontal rack occupies the last three pixels **inside** the platform's
-collision rectangle, with exactly the platform's width. The 56-pixel platform
+The horizontal rack occupies three pixels **inside** the platform's collision
+rectangle, with exactly the platform's width. Floor-level bridges use the upper
+face and place all three pinions above the platform; elevated bridges use the lower face. The 56-pixel platform
 travels 24 pixels. Its fixed output pinion stays within the overlap of both end
 positions, with a full tooth of margin. The high-mounted bridge uses three gears; the floor-level bridge uses four
 alternating gears above its upper rack so the same upward input drives the
@@ -44,7 +45,9 @@ wall and platform remain the only moving colliders. Both are seven 8px cells lon
 and one cell thick. Rooms 3, 7 and 8 use the wall as a visible closed gate: it
 meets the floor at rest, and the adjoining solid ceiling prevents climbing over
 it. Raising it opens a real passage underneath. There is no progress flag or
-invisible barrier. The vertical shaft has a visible stone cap.
+invisible barrier. The vertical shaft has a visible stone cap. Every built-in room also has a
+full-width, permanent 8px ceiling inside the play area, so players hit visible
+terrain before the upper coordinate clamp.
 
 Two zero-lift wall-jump/up-dash routes found in the original room geometry, and
 one found in room 8, are retained as `bypassRoutes`. Regression tests check that

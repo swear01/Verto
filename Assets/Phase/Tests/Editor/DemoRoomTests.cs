@@ -75,6 +75,8 @@ public class DemoRoomTests
         foreach (var room in rooms)
         {
             var data = room.ToObject<PhaseDemoRoom>(); data.CreateController();
+            Assert.That(data.blocks.Any(b => b.x == 0 && b.y == 0 && b.w == 320 && b.h >= 8 && b.Mask == 7),
+                Is.True, "Every built-in room shows a solid ceiling before the upper movement boundary.");
             if (!data.hasGear) continue;
             Assert.That(data.gearWall.h, Is.EqualTo(data.gearPlatform.w));
             Assert.That(data.gearWall.w, Is.EqualTo(data.gearPlatform.h));

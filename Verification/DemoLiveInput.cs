@@ -29,12 +29,19 @@ public static class DemoLiveInput
         var reports = new System.Collections.Generic.List<string>();
         for (int i = 0; i < routes.Length; i++)
         {
-            var result = new TaskCompletionSource<string>();
+            // Awaiters must start the next fixture after this coroutine restores timing/input.
+            var result = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
             var trial = new Room { route = routes[i], goal = bypass ? null : room.goal, suffix = bypass ? "-bypass-"+(i+1) : "" };
+            float beforeCapture=Time.captureDeltaTime;bool beforeBackground=Application.runInBackground;
+            var beforeFocus=InputSystem.settings.backgroundBehavior;
+            var beforeEditorInput=InputSystem.settings.editorInputBehaviorInPlayMode;
             UnityEngine.Events.UnityAction<Scene,Scene> changed = (a,b) => result.TrySetException(new InvalidOperationException("Route crossed the exit before its landing check: "+scene));
             SceneManager.activeSceneChanged += changed;
             try { sandbox.StartCoroutine(Check(sandbox,trial,number,result)); reports.Add(await result.Task); }
             finally { SceneManager.activeSceneChanged -= changed; }
+            if(Time.captureDeltaTime!=beforeCapture||Application.runInBackground!=beforeBackground||
+                InputSystem.settings.backgroundBehavior!=beforeFocus||InputSystem.settings.editorInputBehaviorInPlayMode!=beforeEditorInput)
+                throw new InvalidOperationException("Fixture timing/input was not restored before the next route.");
         }
         return string.Join("\n", reports);
     }

@@ -154,9 +154,9 @@ public class SandboxTests : InputTestFixture
             yield return SceneManager.LoadSceneAsync("PhaseDemo3");
             sandbox=Object.FindAnyObjectByType<PhaseSandbox>();
             InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow));
-            for(int i=0;i<25;i++) yield return null;
+            yield return new WaitForSeconds(25f / 60);
             InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow,Key.UpArrow,Key.C));
-            for(int i=0;i<40;i++) yield return null;
+            yield return new WaitForSeconds(40f / 60);
             InputSystem.QueueStateEvent(k,new KeyboardState());
             yield return new WaitForFixedUpdate();
             Assert.That(sandbox.Controller.gears[0].Lift,Is.GreaterThan(0)); CheckNativeShapes(sandbox);
