@@ -11,6 +11,60 @@ public class PixelTests
     public class Frame { public string name; public double time; public int phase; public int[] blocked; public Player player; }
 
     [Test]
+    public void LasersStaySteadyAndSafeColorsAreTransparent()
+    {
+        var pixels = new PhasePixels();
+        try
+        {
+            foreach (LaserDirection direction in Enum.GetValues(typeof(LaserDirection))) for (int mask = 1; mask <= 7; mask++)
+            {
+                var laser = new Laser(120,80,direction,mask);
+                var s = new PhaseController(Array.Empty<Block>(),32,149,lasers:new[]{laser}); s.flash=0;
+                var empty = new PhaseController(Array.Empty<Block>(),32,149); empty.flash=0;
+                pixels.Draw(empty,false); var background=pixels.Texture.GetPixels32();
+                s.phase=mask==2||mask==6?1:mask==4?2:0;
+                pixels.Draw(s,false); var active=pixels.Texture.GetPixels32();
+                var b=s.LaserBeam(laser);
+                for(int y=(int)b.y;y<b.y+b.h;y++)for(int x=(int)b.x;x<b.x+b.w;x++)
+                    Assert.That(active[(179-y)*320+x],Is.Not.EqualTo(background[(179-y)*320+x]),"every lethal pixel is visible");
+                s.time+=3; pixels.Draw(s,false); CollectionAssert.AreEqual(active,pixels.Texture.GetPixels32(),"steady light has no time cycle");
+                for(int phase=0;phase<3;phase++)if(!laser.ActiveInPhase(phase))
+                {
+                    s.phase=phase; pixels.Draw(s,false);var safe=pixels.Texture.GetPixels32();
+                    int at=(179-(int)(b.y+b.h/2))*320+(int)(b.x+b.w/2);
+                    int Distance(Color32 a,Color32 z)=>Math.Abs(a.r-z.r)+Math.Abs(a.g-z.g)+Math.Abs(a.b-z.b);
+                    Assert.That(Distance(safe[at],background[at]),Is.GreaterThan(0),"safe beams remain visible");
+                    Assert.That(Distance(safe[at],background[at]),Is.LessThan(Distance(active[at],background[at])),"safe beams reveal the backdrop");
+                }
+            }
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
+    [Test]
+    public void LaserArtStopsAtCurrentCoverAndIgnoresGhostCover()
+    {
+        var pixels=new PhasePixels();
+        try
+        {
+            var laser=new Laser(8,80,LaserDirection.Right);
+            var s=new PhaseController(new[]{new Block(80,80,8,8,0)},32,149,lasers:new[]{laser});s.flash=0;
+            pixels.Draw(s,false);var solid=pixels.Texture.GetPixels32();
+            s.phase=1;pixels.Draw(s,false);var ghost=pixels.Texture.GetPixels32();
+            int before=(179-83)*320+60,after=(179-83)*320+100;
+            Assert.That(solid[before],Is.EqualTo(ghost[before]),"beam stays bright before the blocker");
+            Assert.That(solid[after],Is.Not.EqualTo(ghost[after]),"ghost terrain no longer truncates the drawn beam");
+            s.phase=0;s.time=5;pixels.Draw(s,false);CollectionAssert.AreEqual(solid,pixels.Texture.GetPixels32());
+            var gear=new ClimbGear(new Block(72,104,8,56),80,new Block(88,80,48,8),112);
+            s=new PhaseController(Array.Empty<Block>(),32,149,gears:new[]{gear},lasers:new[]{new Laser(80,8,LaserDirection.Down)});s.flash=0;
+            pixels.Draw(s,false);
+            Assert.That((Color32)pixels.Texture.GetPixel(83,179-120),Is.EqualTo((Color32)PhasePixels.Hex("f6f6f6")),
+                "decorative racks cannot hide a lethal beam that passes beside the solid wall");
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
+    [Test]
     public void GearRacksTranslateRigidlyAndStayEngagedAcrossFullTravel()
     {
         var s = new PhaseController(Array.Empty<Block>(), 0, 149, gears: new[] {

@@ -19,6 +19,7 @@ public class DemoRoomTests
             Assert.That(actual.gears.Length,Is.EqualTo(expected.gears.Length));
             Assert.That(actual.mover == null,Is.EqualTo(expected.mover == null));
             Assert.That(actual.spikes.Count,Is.EqualTo(expected.spikes.Count));
+            CollectionAssert.AreEqual(expected.lasers.Select(l => (l.x,l.y,l.direction,l.Mask)), actual.lasers.Select(l => (l.x,l.y,l.direction,l.Mask)));
             CollectionAssert.AreEqual(expected.blocks.Select(b => b.Mask),actual.blocks.Select(b => b.Mask));
         }
     }

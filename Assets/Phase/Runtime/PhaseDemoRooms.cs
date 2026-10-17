@@ -22,6 +22,7 @@ namespace Phase
         public bool hasGear;
         public double gearTop, gearEndX;
         public DemoSpike[] spikes;
+        public DemoLaser[] lasers;
 
         public MovingPlatform CreateMover()
         {
@@ -32,11 +33,12 @@ namespace Phase
         }
         public ClimbGear CreateGear() => hasGear ? new ClimbGear(gearWall, gearTop, gearPlatform, gearEndX) : null;
         public Spike[] CreateSpikes() => spikes?.Select(s => new Spike(s.x,s.y,s.length,s.direction,s.phaseMask)).ToArray() ?? Array.Empty<Spike>();
+        public Laser[] CreateLasers() => lasers?.Select(l => new Laser(l.x,l.y,l.direction,l.phaseMask)).ToArray() ?? Array.Empty<Laser>();
         public PhaseController CreateController()
         {
             var gear = CreateGear();
             return new PhaseController(blocks.Select(b => new Block(b.x,b.y,b.w,b.h,b.phase,b.phaseMask)), spawnX, spawnY,
-                CreateMover(), gears: gear == null ? null : new[] { gear }, spikes: CreateSpikes());
+                CreateMover(), gears: gear == null ? null : new[] { gear }, spikes: CreateSpikes(), lasers: CreateLasers());
         }
     }
     [Serializable]
@@ -44,6 +46,13 @@ namespace Phase
     {
         public double x,y,length;
         public SpikeDirection direction;
+        public int phaseMask;
+    }
+    [Serializable]
+    public sealed class DemoLaser
+    {
+        public double x, y;
+        public LaserDirection direction;
         public int phaseMask;
     }
 }

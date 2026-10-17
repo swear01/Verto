@@ -8,18 +8,18 @@ tutorial messages, menus or added controls.
 
 | Room | Question | Intended solution |
 | --- | --- | --- |
-| 1 — 換色階梯 | Which landing exists after a jump? | Jump onto blue, green, then red. |
-| 2 — 低頂渡船 | When should the ferry move? | Board first, then dash; the ferry carries the player and the color stays blue. |
-| 3 — 齒輪抬橋 | How can a parked platform bridge the corridor? | Climb to move the wall and platform, release to park them, then cross the low ceiling gap. |
-| 4 — 五連跳 | Can the complete color sequence be read ahead? | Five rising landings require B/G/R/B/G; the reference route uses five jumps and no dashes. |
-| 5 — 保色穿刺 | When is another jump the wrong action? | Keep blue through the low corridor using dash; another jump activates the green spikes and removes the blue landings. |
-| 6 — 三站轉乘 | Is another dash useful or does it overshoot? | Stop the ferry at its middle station, jump onto cyan, then onto yellow. Extra dashes can cycle the ferry back. |
-| 7 — 相位卡齒 | Why did the linked mechanism stop? | Change to blue before climbing so the red obstruction is absent; the crossing jump turns green, making the blue spikes safe and the exit solid. |
-| 8 — 色序預算 | Which moves should preserve color? | Prepare blue, position the gear and ferry, jump green to board, dash through blue spikes, then dash upward onto the yellow exit. A magenta lower ledge offers recovery while blue. |
+| 1 — 換色階梯 | Which landing exists after a jump? | Jump onto blue, green, then red; cyan light is safe at the red exit. |
+| 2 — 低頂渡船 | When should the ferry move? | Board first, then dash; the ferry carries the player and blue stays safe under the red beam. |
+| 3 — 齒輪抬橋 | How can a parked platform bridge the corridor? | Climb to move the platform over the upward white laser, then cross above the shield. |
+| 4 — 五連跳 | Can the complete color sequence be read ahead? | Five rising landings require B/G/R/B/G; cross the green beam while blue. |
+| 5 — 保色穿刺 | When is another jump the wrong action? | Keep blue through the yellow laser using dash; another jump activates the beam and green spikes and removes the blue landings. |
+| 6 — 三站轉乘 | Is another dash useful or does it overshoot? | Stop the ferry at its middle station, jump onto cyan, then cross the cyan beam while red onto yellow. Extra dashes can cycle the ferry back. |
+| 7 — 相位卡齒 | Why did the linked mechanism stop? | Change to blue before climbing so the red obstruction is absent; the crossing jump turns green, making the magenta beam and blue spikes safe and the exit solid. |
+| 8 — 色序預算 | Which moves should preserve color? | Prepare blue, position the gear and ferry, jump green to board, dash through blue spikes and laser, then dash upward onto the yellow exit. A magenta lower ledge offers recovery while blue. |
 
 The first three rooms isolate the core causes; later rooms combine color,
 mechanism position and landing decisions. Single-color and mixed-color surfaces
-use the existing phase masks. Spikes have the same mask meanings. A mask never
+use the existing phase masks. Spikes and continuous lasers have the same mask meanings. A mask never
 adds a new player action.
 
 `Assets/Phase/DemoRooms.json` is the authored geometry and reference-input source.

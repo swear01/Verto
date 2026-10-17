@@ -47,7 +47,7 @@ To recreate the sandbox, call its existing builder through the connected Editor:
 edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 31 controller cases and 13 demo-route/authoring cases, one 48-frame art
+starting the next test run. There are 31 controller cases, 8 laser cases, 13 demo-route/authoring cases, two laser-rendering cases, one 48-frame art
 comparison (hood/spent-scarf/permanent-solid colors remapped plus low-stamina body tint), one bidirectional pixel-slide
 test, one adaptive-view test, one centered-view stone/void extension test, one
 dash-charge hood lifecycle test, one character-fatigue/recovery test, one mixed-inlay/spike rendering test, three
@@ -207,9 +207,9 @@ Up offsets Y by5; Left offsets X by5; Down/Right use the top/left3px. All four
 orientations kill on swept overlap in an active phase, including dash, phase
 changes and moving-platform carry. Inactive spikes keep dark teeth and a first
 mixed-color marker. Respawn restores the original player/platform state.
-`CheckSpikes(before)` is the hook for other mechanisms that displace the player;
-call it inside each movement step with a snapshot of the pre-move player bounds.
-The separate gear/room worktree owns integration of that hook in its gear carry.
+`CheckSpikes(before)` checks spikes alone. Movement hooks call
+`CheckHazards(before)` inside each step with a snapshot of the pre-move player
+bounds so both spikes and lasers are checked.
 
 For an isolated connected-Editor probe, run `Verification/HazardScene.cs` with
 entry `HazardScene.Run`, then enter Play and run `Verification/HazardLiveInput.cs`
@@ -217,3 +217,31 @@ with entry `HazardLiveInput.Run`. The first helper creates only
 `Assets/Temp/PhaseHazardProbe.unity`; it does not replace a product scene or add
 levels to Build Settings. The live script checks component collection, keyboard
 jump activation/death, respawn and phase-preserving dash.
+
+## Continuous lasers
+
+`PhaseLaser` authors an 8×8 emitter with `LaserDirection` Up/Down/Left/Right
+and `phaseMask` 1–7. Its transform uses native X and negative Unity Y, like
+terrain. `DemoLaser` stores the same fields in `DemoRooms.json`; rebuilding
+the rooms collects these into the saved scenes. All seven masks appear in
+the eight-room demo.
+
+Lasers are continuous, with no timer or pulse. The 4px beam starts at the
+emitter cell's mouth and ends at the nearest current solid or the room edge.
+White is always lethal; other masks use the same active phases as terrain
+and spikes. Inactive beams remain visible at reduced opacity. Ghost and
+deferred terrain do not block beams. Dash platforms and both gear parts do;
+decorative racks/gears do not. Moving cover updates the beam immediately.
+The emitter artwork is not an additional solid collider.
+
+`Laser.Beam` supplies the same bounds to rendering and swept hazard checks.
+Every player movement hook uses `CheckHazards`, including jumps that change
+phase, dash correction, moving-platform carry and gear displacement. Death
+uses the existing checkpoint reset and preserves the authored emitters.
+The renderer adds a dark 1px surround, bright 2px core and static contact cap;
+safe beams omit the surround and blend into the backdrop. No flashing or text.
+
+Run `LaserTests` through Pipeline `run_tests --mode editor`, then `PixelTests`.
+`Verification/LaserLiveInput.cs`, entry `LaserLiveInput.Run`, verifies the
+authored white gear shield and a colored beam's keyboard-triggered activation
+and respawn. It restores its temporary input/settings and controller content.
