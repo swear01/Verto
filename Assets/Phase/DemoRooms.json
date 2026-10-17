@@ -318,35 +318,33 @@
             "grab": true
           },
           {
-            "frames": 24,
-            "x": 1,
+            "frames": 8,
             "y": -1,
             "dash": true
           },
           {
-            "frames": 24,
+            "frames": 40,
             "x": 1,
-            "jump": true,
+            "y": -1,
             "grab": true
           },
           {
-            "frames": 16,
+            "frames": 24,
             "x": 1,
             "dash": true
           },
           {
-            "frames": 24,
+            "frames": 8,
             "x": 1,
             "jump": true
           },
           {
             "frames": 40,
             "x": 1,
-            "y": -1,
             "dash": true
           },
           {
-            "frames": 24,
+            "frames": 40,
             "x": 1
           }
         ]
