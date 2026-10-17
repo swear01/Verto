@@ -32,7 +32,13 @@ public class ControllerTests
             for (int i = 0; i < c.inputs.Length; i++)
             {
                 var a = c.inputs[i]; s.Step(new Controls { x = name == "movement" ? 1 : (a.right ? 1 : 0) - (a.left ? 1 : 0), y = (a.down ? 1 : 0) - (a.up ? 1 : 0), jump = a.jump && !previous.jump, jumpHeld = a.jump, dash = a.dash && !previous.dash, dashHeld = a.dash, grab = a.grab }, f.dt);
-                previous = a; var e = c.expected[i]; string frame = c.name + " frame " + (i + 1);
+                previous = a; var e = c.expected[i];
+                if (c.name == "climb_to_exhaustion" && i >= 133)
+                {
+                    int[] slowY = {143,143,144,144,145,145,146,146,147,147,148,148,149,149,150,150,151};
+                    e = new Expected { x=e.x,y=slowY[i-133],vx=e.vx,vy=30,stamina=e.stamina };
+                }
+                string frame = c.name + " frame " + (i + 1);
                 Assert.That(p.x + 4, Is.EqualTo(e.x), frame + " x"); Assert.That(p.y + p.h, Is.EqualTo(e.y), frame + " y");
                 Assert.That(p.vx, Is.EqualTo(e.vx).Within(.002), frame + " vx"); Assert.That(p.vy, Is.EqualTo(e.vy).Within(.002), frame + " vy");
                 if (name != "movement") Assert.That(p.stamina, Is.EqualTo(e.stamina).Within(.002), frame + " stamina");
@@ -152,6 +158,18 @@ public class ControllerTests
         s=Arena();p=s.player;p.x=192;p.y=56;p.grounded=false;p.coyote=0;p.dash=0;
         for(int i=0;i<140&&!p.grounded;i++)s.Step(new Controls { x=1,y=-1,grab=true });
         Assert.That(p.grounded,Is.True);Assert.That(p.y,Is.EqualTo(22));Assert.That(p.dash,Is.EqualTo(1));Assert.That(s.phase,Is.Zero);
+        foreach(int facing in new[]{-1,1})
+        {
+            var wall=new Block(facing>0?200:184,0,8,180);s=new PhaseController(new[]{wall},192,40);p=s.player;
+            p.grounded=false;p.facing=facing;p.stamina=.1;p.climbing=true;
+            Ticks(s,1,new Controls{grab=true});Assert.That(p.climbing,Is.False,"exhaustion releases the grip");
+            Ticks(s,90,new Controls{grab=true});Assert.That(p.vy,Is.EqualTo(30));Assert.That(p.y,Is.InRange(82,85),"held exhausted grab remains a slow slide beyond the normal slide timer");
+            Ticks(s,8,new Controls());Assert.That(p.vy,Is.GreaterThan(100),"release permits normal fall");
+            p.y=40;p.vy=0;Ticks(s,8,new Controls{grab=true,y=1});Assert.That(p.vy,Is.GreaterThan(100),"down bypasses slow slide");
+            p.y=40;p.vy=0;Ticks(s,8,new Controls{grab=true,x=-facing});Assert.That(p.vy,Is.GreaterThan(100),"moving away permits normal fall");
+            s=new PhaseController(new[]{wall,new Block(0,160,320,24)},192,120);p=s.player;p.grounded=false;p.stamina=0;p.facing=facing;
+            Ticks(s,100,new Controls{grab=true});Assert.That(p.grounded,Is.True);Ticks(s,1);Assert.That(p.stamina,Is.EqualTo(110),"landing refills");
+        }
     }
     static PhaseController Board(bool returns=false, int direction=1)
     {

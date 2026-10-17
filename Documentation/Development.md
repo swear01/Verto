@@ -48,12 +48,15 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 24 controller cases, one 48-frame art
-comparison (hood/spent-scarf colors remapped plus the eight climbing-frame stamina gauges), one bidirectional pixel-slide
+comparison (hood/spent-scarf/permanent-solid colors remapped plus low-stamina body tint), one bidirectional pixel-slide
 test, one adaptive-view test, one centered-view stone/void extension test, one
-dash-charge hood lifecycle test, one stamina-gauge depletion/recovery test, three
+dash-charge hood lifecycle test, one character-fatigue/recovery test, three
 gear-rack attachment positions, one full-travel rigid-rack/engagement test, and three
 Play Mode cases, including custom bindings, pause/release gating and room persistence.
-The three immutable reference files cover 40 movement/action/climb traces.
+The three immutable reference files preserve 40 movement/action/climb traces.
+The exhaustion case uses explicit revised Y/speed expectations for its final17
+frames under the new30px/s held-grab cap; all earlier frames and other traces
+retain their original expectations. None of the immutable reference files are edited.
 Production steps at 1/60 s; reference replays use the recorded 0.0166667 s.
 
 Before tests or live Play checks, `BackgroundEditor.Run` sets every existing
