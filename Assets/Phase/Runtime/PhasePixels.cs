@@ -14,7 +14,8 @@ namespace Phase
         Color32[] buffer = new Color32[320 * 180];
         public int Width => Texture.width;
         public int Height => Texture.height;
-        public int OriginY => 180 - Height;
+        public int OriginY => (180 - Height) / 2;
+        int BottomY => OriginY + Height;
         public int OriginX { get; private set; }
         readonly Dictionary<(string, int, int, int, bool), Bitmap> sprites = new Dictionary<(string, int, int, int, bool), Bitmap>();
         readonly Dictionary<(int, int), int> cells = new Dictionary<(int, int), int>();
@@ -55,7 +56,7 @@ namespace Phase
         void Rect(double x, double y, double w, double h, Color32 color, double alpha = 1)
         {
             int left = Round(x), top = Round(y);
-            for (int py = Math.Max(OriginY, top); py < Math.Min(180, top + h); py++)
+            for (int py = Math.Max(OriginY, top); py < Math.Min(BottomY, top + h); py++)
                 for (int px = Math.Max(OriginX, left); px < Math.Min(OriginX + Width, left + w); px++) Put(px, py, color, alpha);
         }
         static uint Hash(int x, int y)
@@ -65,6 +66,7 @@ namespace Phase
             if (backdrop != null) { Array.Copy(backdrop, buffer, buffer.Length); return; }
             var bands = new[] { "0a1018", "0c131d", "0e1520", "101a26", "121e2b" };
             Rect(OriginX, OriginY, Width, -OriginY, bands[0]);
+            Rect(OriginX, 180, Width, BottomY - 180, "0b111a");
             for (int y = (int)Math.Floor(OriginY / 18.0) * 18; y < 0; y += 18) for (int x = OriginX / 24 * 24; x < OriginX + Width; x += 24)
                 if (Hash(x, y) % 4 == 0) Rect(x + Hash(x, y) % 17, y + Hash(y, x) % 13, 1, 1, "2a394c");
             for (int i = 0; i < bands.Length; i++)
@@ -109,13 +111,15 @@ namespace Phase
             backdrop = (Color32[])buffer.Clone();
         }
         static int Hill(int x) => Round(146 + 5 * Math.Sin(x * .031 + 2) + 3 * Math.Sin(x * .09));
+        double RenderBottom(Block block) => block.y < 180 && block.y + block.h >= 180
+            ? Math.Max(block.y + block.h, BottomY) : block.y + block.h;
         // shortcut: Same-count terrain edits need a revision when live terrain editing is supported.
         void Terrain(PhaseController s)
         {
             if (terrainBlocks != s.blocks || terrainBlockCount != s.blocks.Count)
             {
                 terrainBlocks = s.blocks; terrainBlockCount = s.blocks.Count; cells.Clear(); terrain.Clear();
-                foreach (var b in s.blocks) for (int y = (int)b.y; y < b.y + b.h; y += 8) for (int x = (int)b.x; x < b.x + b.w; x += 8) cells[(x,y)] = b.phase;
+                foreach (var b in s.blocks) for (int y = (int)b.y; y < RenderBottom(b); y += 8) for (int x = (int)b.x; x < b.x + b.w; x += 8) cells[(x,y)] = b.phase;
             }
             var blocked = new List<int>(s.blocked); blocked.Sort();
             string key = s.phase + "|" + string.Join(",", blocked);
@@ -127,7 +131,7 @@ namespace Phase
                 Color32 cap = Color(Highlights[color]), rim = Color(Edges[color]), body = Color(Fills[color]);
                 Color32 lift = Mix(body, rim, .45), dim = Mix(body, Color("000000"), .14), seam = Mix(body, Color("000000"), .4), deep = Mix(body, Color("000000"), .58);
                 bool active = (b.phase < 0 || b.phase == s.phase) && !s.blocked.Contains(i), deferred = s.blocked.Contains(i);
-                for (int Y = (int)b.y; Y < b.y + b.h; Y += 8) for (int X = (int)b.x; X < b.x + b.w; X += 8)
+                for (int Y = (int)b.y; Y < RenderBottom(b); Y += 8) for (int X = (int)b.x; X < b.x + b.w; X += 8)
                 {
                     bool Neighbor(int dx, int dy) => cells.TryGetValue((X + dx * 8, Y + dy * 8), out var kind) && kind == b.phase;
                     bool u = Neighbor(0,-1), d = Neighbor(0,1), l = Neighbor(-1,0), r = Neighbor(1,0);

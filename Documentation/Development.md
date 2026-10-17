@@ -44,7 +44,8 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 22 controller cases, one 48-frame art
-comparison, one bidirectional pixel-slide test, one adaptive-view test, and three
+comparison, one bidirectional pixel-slide test, one adaptive-view test, one
+centered-view stone/void extension test, and three
 Play Mode cases, including custom bindings, pause/release gating and room persistence.
 The three immutable reference files cover 40 movement/action/climb traces.
 Production steps at 1/60 s; reference replays use the recorded 0.0166667 s.
@@ -121,8 +122,10 @@ and deploys only after browser verification. It requires owner setup before use.
 
 The view always contains at least the original 320x180 native-pixel play area.
 At wider aspects, height stays180 and width grows; at taller aspects, width
-stays320 and height grows upward into the night sky. The ground remains at the
-bottom, and both axes fill the viewport without stretching native pixels.
+stays320 and height grows around the vertically centered180-pixel play area.
+Sky extends above; terrain touching the lower room edge extends below. Gaps
+and voids remain open. This is visual padding; collision stays unchanged.
+Both axes fill the viewport without stretching native pixels.
 Full-width terrain and room edges still expand above320pixels. Resizing preserves
 controller state and rebuilds the pixel surface/cache; resizing during a slide
 completes its handoff, including a height-only resize.

@@ -24,7 +24,8 @@ edge to continue, or the second room’s left edge to return. Room changes use a
 Touch controls are not provided.
 The canvas fills the entire viewport and always shows at least the original
 320x180 native-pixel play area. Wide views extend horizontally; tall views keep
-320pixels across and extend the sky upward. Point/pixelated sampling preserves
+320pixels across and center the original180-pixel play area. Sky extends above;
+stone at the lower room edge continues below, while gaps/voids stay open. Point/pixelated sampling preserves
 square pixels without cropping the room to enlarge the player. Wide rooms extend
 quarry scenery, full-width floor collision and their right exit. Resizing preserves
 movement/color state and clamps positions within a shortened room; resizing during
@@ -56,7 +57,7 @@ the warning.
 ## Enable automatic builds and online play
 
 `Web build and preview` runs only on `main`, after push or manual dispatch.
-It uses Unity CLI + live Pipeline for 25 Editor tests, three Play Mode tests and
+It uses Unity CLI + live Pipeline for 26 Editor tests, three Play Mode tests and
 the Web build, then verifies browser rendering, keyboard input, both scene-edge
 transitions, minimum view/tall-sky extension/wide-floor travel, resizing, visible
 load failures, and absence of browser errors/warnings. Only a passing build is

@@ -74,11 +74,11 @@ namespace Phase
         {
             if (sprite != null) Destroy(sprite);
             sprite = Sprite.Create(Frame, new Rect(0, 0, pixels.Width, pixels.Height), new Vector2(.5f, .5f), 1, 0, SpriteMeshType.FullRect);
-            surface.sprite = sprite; surface.transform.position = new Vector3(pixels.Width / 2f, pixels.Height / 2f - 180, 0);
+            surface.sprite = sprite; surface.transform.position = new Vector3(pixels.Width / 2f, -pixels.OriginY - pixels.Height / 2f, 0);
             pixelCamera.rect = new Rect(0, 0, 1, 1);
             pixelCamera.aspect = pixels.Width / (float)pixels.Height;
             pixelCamera.orthographicSize = pixels.Height / 2f;
-            pixelCamera.transform.position = new Vector3(pixels.Width / 2f, pixels.Height / 2f - 180, -10);
+            pixelCamera.transform.position = new Vector3(pixels.Width / 2f, -pixels.OriginY - pixels.Height / 2f, -10);
         }
         void ResizeCamera()
         {
