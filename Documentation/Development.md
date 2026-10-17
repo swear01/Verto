@@ -119,7 +119,10 @@ they are not covered by this hosted controller job. The separate
 [Web build and preview](Web.md) workflow runs them through a licensed GUI runner
 and deploys only after browser verification. It requires owner setup before use.
 
-The view fills the Game View at every aspect: 180 native pixels high, variable
-width. Full-width terrain and room edges expand above 320 pixels; narrower views
-follow the player within a 320-pixel room. Resize preserves controller state and
-rebuilds the pixel surface/cache; resizing during a slide completes its handoff.
+The view always contains at least the original 320x180 native-pixel play area.
+At wider aspects, height stays180 and width grows; at taller aspects, width
+stays320 and height grows upward into the night sky. The ground remains at the
+bottom, and both axes fill the viewport without stretching native pixels.
+Full-width terrain and room edges still expand above320pixels. Resizing preserves
+controller state and rebuilds the pixel surface/cache; resizing during a slide
+completes its handoff, including a height-only resize.
