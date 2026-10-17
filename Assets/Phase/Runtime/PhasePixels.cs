@@ -227,7 +227,7 @@ namespace Phase
             ["climb1"] = new[] { "..cc......","..dcc.....",".dccccc...",".dccccccd.",".dcccfffd.",".dccffefd.",".dcccfffd.","..kkkkkkd.",".dccccccd.",".dcccccc..",".ssssss...","..BBB.bb..","......bb.." },
             ["duck"] = new[] { "..........","..cc......",".dcccccc..",".dccfffff.",".dcffefef.","..kkkkkk..","sdcccccccs",".bbssssbb." },
         };
-        static readonly string[][] Scarf = { new[] { "5a6578","414a5a" }, new[] { "ffb24d","d5732b" } };
+        static readonly string[][] Scarf = { new[] { "b96532","763d24" }, new[] { "ffb24d","d5732b" } };
         Bitmap Sprite(string pose, int facing, int phase, int dash, bool silhouette = false)
         {
             var key = (pose, facing, phase, dash, silhouette);
