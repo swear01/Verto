@@ -21,7 +21,10 @@ Open <http://127.0.0.1:8765/>. Click the canvas for keyboard focus: arrows/WASD
 move, Space/Z jumps, X dashes, and C/Shift grabs. Cross the first room’s right
 edge to continue, or the second room’s left edge to return. Room changes use a
 0.18-second horizontal pixel slide; input/physics pause until it finishes.
-The hood and scarf are amber with one dash available and slate gray after use;
+The Unity splash screen and logo are disabled in PlayerSettings.
+The build verifies both flags and records them in `TestResults/Web/splash.json`;
+browser checks preserve initial canvas frames before the first player frame.
+The hood and scarf are amber with one dash available and dark orange after use;
 landing refills them. Eye colors continue to indicate phase.
 Touch controls are not provided.
 The canvas fills the entire viewport and always shows at least the original

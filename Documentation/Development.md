@@ -46,7 +46,7 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 22 controller cases, one 48-frame art
-comparison (only hood colors intentionally remapped), one bidirectional pixel-slide
+comparison (only hood and spent-scarf colors intentionally remapped), one bidirectional pixel-slide
 test, one adaptive-view test, one centered-view stone/void extension test, one
 dash-charge hood lifecycle test, and three
 Play Mode cases, including custom bindings, pause/release gating and room persistence.

@@ -112,9 +112,9 @@ public class PixelTests
         }
         try
         {
-            Check("ffb24d");s.Step(new Controls{dash=true});Assert.That(s.player.dash,Is.Zero);Check("5a6578");
+            Check("ffb24d");s.Step(new Controls{dash=true});Assert.That(s.player.dash,Is.Zero);Check("b96532");
             int used=s.dashes;for(int i=0;i<15;i++)s.Step(new Controls());
-            s.Step(new Controls{dash=true});Assert.That(s.dashes,Is.EqualTo(used));Check("5a6578");
+            s.Step(new Controls{dash=true});Assert.That(s.dashes,Is.EqualTo(used));Check("b96532");
             for(int i=0;i<120&&!s.player.grounded;i++)s.Step(new Controls());
             Assert.That(s.player.grounded,Is.True);Assert.That(s.player.dash,Is.EqualTo(1));Check("ffb24d");
         }
@@ -132,7 +132,7 @@ public class PixelTests
             Assert.That(golden.LoadImage(File.ReadAllBytes("Verification/ArtReference.png")),Is.True);
             var expected=golden.GetPixels32();var atlas=new Color32[expected.Length];
             var controller=new PhaseController(reference.blocks,120,149,new MovingPlatform(new[] {new[] {160.0,144},new[] {192.0,144}},32,8,true));
-            int worst=0,bad=0,hoodPixels=0;string first=null;
+            int worst=0,bad=0,hoodPixels=0,scarfPixels=0;string first=null;
             for(int f=0;f<reference.frames.Length;f++)
             {
                 var frame=reference.frames[f];controller.player=frame.player;controller.time=frame.time;controller.phase=frame.phase;controller.flash=0;
@@ -146,8 +146,13 @@ public class PixelTests
                     var a=actual[(179-y)*320+x];var e=expected[index];atlas[index]=a;
                     if(x>=p.x-1&&x<p.x+9&&y>=headTop&&y<headTop+collar)
                     {
-                        if(e.r==234&&e.g==223&&e.b==197){e=(Color32)PhasePixels.Hex(p.dash>0?"ffb24d":"5a6578");hoodPixels++;}
-                        else if(e.r==179&&e.g==163&&e.b==134){e=(Color32)PhasePixels.Hex(p.dash>0?"d5732b":"414a5a");hoodPixels++;}
+                        if(e.r==234&&e.g==223&&e.b==197){e=(Color32)PhasePixels.Hex(p.dash>0?"ffb24d":"b96532");hoodPixels++;}
+                        else if(e.r==179&&e.g==163&&e.b==134){e=(Color32)PhasePixels.Hex(p.dash>0?"d5732b":"763d24");hoodPixels++;}
+                    }
+                    if(p.dash==0&&x>=p.x-8&&x<p.x+17&&y>=headTop&&y<=feet)
+                    {
+                        if(e.r==90&&e.g==101&&e.b==120){e=(Color32)PhasePixels.Hex("b96532");scarfPixels++;}
+                        else if(e.r==65&&e.g==74&&e.b==90){e=(Color32)PhasePixels.Hex("763d24");scarfPixels++;}
                     }
                     int delta=Math.Max(Math.Abs(a.r-e.r),Math.Max(Math.Abs(a.g-e.g),Math.Abs(a.b-e.b)));
                     worst=Math.Max(worst,delta);
@@ -158,8 +163,9 @@ public class PixelTests
             var rendered=new Texture2D(golden.width,golden.height,TextureFormat.RGBA32,false);
             try { rendered.SetPixels32(atlas);rendered.Apply();File.WriteAllBytes("TestResults/Web/art-unity.png",rendered.EncodeToPNG()); }
             finally { UnityEngine.Object.DestroyImmediate(rendered); }
-            File.WriteAllText("TestResults/Web/art-parity.json",JsonConvert.SerializeObject(new { frames=reference.frames.Length,hoodPixelsRemapped=hoodPixels,badPixels=bad,maxChannelDelta=worst,firstMismatch=first },Formatting.Indented));
+            File.WriteAllText("TestResults/Web/art-parity.json",JsonConvert.SerializeObject(new { frames=reference.frames.Length,hoodPixelsRemapped=hoodPixels,scarfPixelsRemapped=scarfPixels,badPixels=bad,maxChannelDelta=worst,firstMismatch=first },Formatting.Indented));
             Assert.That(hoodPixels,Is.GreaterThan(1000),"all poses retain a large dash-charge hood");
+            Assert.That(scarfPixels,Is.GreaterThan(100),"spent scarf uses the new dark orange palette");
             Assert.That(bad,Is.Zero,first);
             controller.blocks.Add(new Block(0,0,8,8));pixels.Draw(controller);
             Color32 added=pixels.Texture.GetPixel(1,179);

@@ -43,7 +43,7 @@ function dashCharge(buffer, player) {
   for(let y=Math.max(0,Math.floor(player.y-16*scale));y<Math.min(image.height,player.y+4*scale);y++)
     for(let x=Math.max(0,Math.floor(player.x-10*scale));x<Math.min(image.width,player.x+10*scale);x++) {
       const i=(y*image.width+x)*4;
-      for(const [key,rgb] of [['ready',[255,178,77]],['spent',[90,101,120]]])
+      for(const [key,rgb] of [['ready',[255,178,77]],['spent',[185,101,50]]])
         if(rgb.every((v,k)=>Math.abs(image.data[i+k]-v)<=2))count[key]++;
     }
   return {ready:count.ready/(scale*scale),spent:count.spent/(scale*scale)};
@@ -73,8 +73,9 @@ function dashCharge(buffer, player) {
     await canvas.click();
     const capture = async name => character(await canvas.screenshot({ path: path.join(reports, `${name}.png`) }));
     for (let i = 0; i < 40; i++) {
-      result.initial = await capture('initial');
-      if (result.initial) break;
+      const frame=await canvas.screenshot({path:path.join(reports,`startup-${i}.png`)});
+      result.initial=character(frame);result.startupFrames=i+1;
+      if (result.initial) { fs.writeFileSync(path.join(reports,'initial.png'),frame);break; }
       await page.waitForTimeout(250);
     }
     assert(result.initial, 'Player pixels did not render');
@@ -105,7 +106,7 @@ function dashCharge(buffer, player) {
     }
     await page.keyboard.up('ArrowRight');await page.keyboard.up('Space');
     assert(result.dashed && result.dashed.x > result.jumped.x + 30, 'X did not dash');
-    assert(result.chargeSpent.spent>24 && result.chargeSpent.ready===0,'Used air dash must show a slate hood');
+    assert(result.chargeSpent.spent>24 && result.chargeSpent.ready===0,'Used air dash must show a dark orange hood');
     await page.waitForTimeout(650);
     const landed=await capture('dash-refilled');
     result.chargeRefilled=dashCharge(await canvas.screenshot(),landed);

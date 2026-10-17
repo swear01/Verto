@@ -7,7 +7,8 @@ backdrop are ported from the user's [published demo](https://phase-three-color.s
 The renderer SHA-256 is `b7178e0f6c0a613a10a92d276a2b6f9c37db75420a0ec342654504278a982c1d`;
 `Verification/ArtReference.json` and `.png` preserve its independent reference frames.
 The hood now uses the scarf dash-charge palette at the user's request. Pixel tests
-remap only those original hood pixels; every other reference pixel remains checked.
+remap only the original hood and spent-scarf pixels; every other reference pixel
+remains checked.
 No commercial game art or music is included.
 
 Movement behavior was informed by [Celeste Player.cs](https://github.com/NoelFB/Celeste/blob/1b0ce45c75e05649ae91b44a8bb6b196684e4352/Source/Player/Player.cs).
