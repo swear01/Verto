@@ -77,7 +77,10 @@ public static class DemoLiveInput
             if (goal == null)
             {
                 if (s.deaths != deaths || s.gears[0].Lift != 0 || p.x+p.w > 80 || Time.frameCount <= frame || s.time <= time)
-                    throw new InvalidOperationException($"Room {label} bypass escaped: x={p.x}, lift={s.gears[0].Lift}, deaths={s.deaths-deaths}");
+                {
+                    result.TrySetException(new InvalidOperationException($"Room {label} bypass escaped: x={p.x}, lift={s.gears[0].Lift}, deaths={s.deaths-deaths}"));
+                    yield break;
+                }
                 File.WriteAllBytes($"TestResults/DemoRooms/{label}-end.png",sandbox.Frame.EncodeToPNG());
                 string blocked = $"Room {label} blocked: frames={Time.frameCount-frame}, seconds={s.time-time:F3}, x={p.x}, lift=0, deaths=0";
                 File.WriteAllText($"TestResults/DemoRooms/{label}.txt",blocked); result.SetResult(blocked); yield break;
