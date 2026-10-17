@@ -17,7 +17,7 @@ public class DemoRoomTests
         {
             var actual = unity.rooms[i].CreateController(); var expected = json[i].ToObject<PhaseDemoRoom>().CreateController();
             Assert.That(actual.gears.Length,Is.EqualTo(expected.gears.Length));
-            Assert.That(actual.mover == null,Is.EqualTo(expected.mover == null));
+            Assert.That(actual.movers.Length,Is.EqualTo(expected.movers.Length));
             Assert.That(actual.spikes.Count,Is.EqualTo(expected.spikes.Count));
             CollectionAssert.AreEqual(expected.lasers.Select(l => (l.x,l.y,l.direction,l.Mask)), actual.lasers.Select(l => (l.x,l.y,l.direction,l.Mask)));
             CollectionAssert.AreEqual(expected.blocks.Select(b => b.Mask),actual.blocks.Select(b => b.Mask));
@@ -130,7 +130,7 @@ public class DemoRoomTests
         var s=room.ToObject<PhaseDemoRoom>().CreateController();Replay(s,room["recoveryRoute"]);
         Assert.That(s.deaths,Is.Zero);Assert.That(s.player.x,Is.GreaterThanOrEqualTo(296));
         Assert.That(s.player.y+s.player.h,Is.EqualTo(112));Assert.That(s.player.grounded,Is.True);
-        Assert.That(s.dashes,Is.EqualTo(4));Assert.That(s.mover.x,Is.EqualTo(152));
+        Assert.That(s.dashes,Is.EqualTo(4));Assert.That(s.movers[0].x,Is.EqualTo(152));
     }
 
 }

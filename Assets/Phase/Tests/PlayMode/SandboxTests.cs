@@ -229,6 +229,67 @@ public class SandboxTests : InputTestFixture
         finally { InputSystem.RemoveDevice(k); }
     }
 
+    [UnityTest]
+    public IEnumerator MultipleAuthoredPlatformsReceiveKeyboardDashAndSyncTheirColliders()
+    {
+        yield return SceneManager.LoadSceneAsync("PhaseSandbox");
+        var original=Object.FindAnyObjectByType<PhaseSandbox>();
+        var root=new GameObject("Multi-platform probe");root.SetActive(false);
+        var cameraParent=original.pixelCamera.transform.parent;
+        root.AddComponent<Grid>().cellSize=new Vector3(8,8,1);root.AddComponent<PhaseGrid>();
+        foreach(var route in new[]{new[]{new Vector2Int(80,144),new Vector2Int(80,80)},
+            new[]{new Vector2Int(216,112),new Vector2Int(272,112)}})
+        {
+            var go=new GameObject("Dash platform");go.transform.SetParent(root.transform,false);
+            var platform=go.AddComponent<PhaseMovingPlatform>();platform.nodes=route;
+            platform.size=route[0].x==80?new Vector2Int(80,8):new Vector2Int(32,8);
+            platform.returns=route[0].x==80;
+        }
+        var sandbox=root.AddComponent<PhaseSandbox>();sandbox.pixelCamera=original.pixelCamera;
+        sandbox.pixelMaterial=original.pixelMaterial;sandbox.spawn=new Vector2Int(96,133);
+        if(original.pixelCamera.transform.IsChildOf(original.transform))original.pixelCamera.transform.SetParent(null,true);
+        var k=InputSystem.AddDevice<Keyboard>();
+        var background=Application.runInBackground;var capture=Time.captureDeltaTime;
+        var focus=InputSystem.settings.backgroundBehavior;var editorInput=InputSystem.settings.editorInputBehaviorInPlayMode;
+        try
+        {
+            Application.runInBackground=true;Time.captureDeltaTime=1f/60;
+            InputSystem.settings.backgroundBehavior=InputSettings.BackgroundBehavior.IgnoreFocus;
+            InputSystem.settings.editorInputBehaviorInPlayMode=InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+            original.gameObject.SetActive(false);root.SetActive(true);sandbox.SetControlsOpen("false");
+            InputSystem.QueueStateEvent(k,new KeyboardState());yield return null;yield return null;
+            Assert.That(sandbox.Controller.movers.Length,Is.EqualTo(2));
+            int frame=Time.frameCount;double time=sandbox.Controller.time;
+            Directory.CreateDirectory("TestResults/MultiPlatforms");
+            File.WriteAllBytes("TestResults/MultiPlatforms/start.png",sandbox.Frame.EncodeToPNG());
+            InputSystem.QueueStateEvent(k,new KeyboardState(Key.X,Key.RightArrow));yield return new WaitForSeconds(.1f);
+            InputSystem.QueueStateEvent(k,new KeyboardState());
+            double deadline=Time.realtimeSinceStartupAsDouble+10;
+            while((sandbox.Controller.movers[0].y!=80||sandbox.Controller.movers[1].x!=272)&&Time.realtimeSinceStartupAsDouble<deadline)yield return null;
+            Assert.That(Time.frameCount,Is.GreaterThan(frame));Assert.That(sandbox.Controller.time,Is.GreaterThan(time));
+            Assert.That(sandbox.Controller.dashes,Is.EqualTo(1));
+            Assert.That(sandbox.Controller.movers[0].y,Is.EqualTo(80));
+            Assert.That(sandbox.Controller.movers[1].x,Is.EqualTo(272));
+            Assert.That(sandbox.Controller.player.y+sandbox.Controller.player.h,Is.EqualTo(80).Within(.01));
+            yield return new WaitForFixedUpdate();CheckNativeShapes(sandbox);
+            File.WriteAllBytes("TestResults/MultiPlatforms/forward.png",sandbox.Frame.EncodeToPNG());
+            yield return new WaitForSeconds(1.6f);yield return new WaitForFixedUpdate();
+            Assert.That(sandbox.Controller.movers[0].y,Is.EqualTo(144));
+            Assert.That(sandbox.Controller.player.y+sandbox.Controller.player.h,Is.EqualTo(144).Within(.01));
+            Assert.That(sandbox.Controller.deaths,Is.Zero);CheckNativeShapes(sandbox);
+            File.WriteAllBytes("TestResults/MultiPlatforms/returned.png",sandbox.Frame.EncodeToPNG());
+            LogAssert.NoUnexpectedReceived();
+        }
+        finally
+        {
+            InputSystem.RemoveDevice(k);InputSystem.settings.backgroundBehavior=focus;
+            InputSystem.settings.editorInputBehaviorInPlayMode=editorInput;
+            Application.runInBackground=background;Time.captureDeltaTime=capture;
+            if(original!=null){original.pixelCamera.transform.SetParent(cameraParent,true);original.gameObject.SetActive(true);}
+            Object.Destroy(root);
+        }
+    }
+
     static void CheckNativeShapes(PhaseSandbox sandbox)
     {
         void Match(BoxCollider2D shape, Block model, bool active = true)
@@ -242,8 +303,9 @@ public class SandboxTests : InputTestFixture
         var s = sandbox.Controller; var terrain = sandbox.GetComponentsInChildren<PhaseTerrain>();
         for (int i = 0; i < terrain.Length; i++)
             Match(terrain[i].GetComponent<BoxCollider2D>(),s.blocks[i],s.blocks[i].ActiveInPhase(s.phase)&&!s.blocked.Contains(i));
-        var mover = sandbox.GetComponentInChildren<PhaseMovingPlatform>();
-        if (mover != null) Match(mover.GetComponent<BoxCollider2D>(),s.mover);
+        var movers = sandbox.GetComponentsInChildren<PhaseMovingPlatform>();
+        Assert.That(movers.Length, Is.EqualTo(s.movers.Length));
+        for (int i = 0; i < movers.Length; i++) Match(movers[i].GetComponent<BoxCollider2D>(),s.movers[i]);
         var gears = sandbox.GetComponentsInChildren<PhaseClimbGear>();
         for (int i = 0; i < gears.Length; i++)
         {

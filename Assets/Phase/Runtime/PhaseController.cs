@@ -45,10 +45,19 @@ namespace Phase
         public double[][] nodes;
         public bool returns, moving;
         public int start, index, pending;
-        public double elapsed, fromX, fromY, duration, hold;
+        public double elapsed, fromX, fromY, duration, hold, stepX;
         public MovingPlatform(double[][] nodes, double w, double h, bool returns = false, int start = 0)
-            : base(nodes[start][0], nodes[start][1], w, h)
-        { this.nodes = nodes; this.returns = returns; this.start = start; index = start; }
+            : base(0, 0, w, h)
+        {
+            bool Finite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
+            if (!Finite(w) || !Finite(h) || w <= 0 || h <= 0 || nodes == null || nodes.Length < 2 || start < 0 || start >= nodes.Length ||
+                nodes.Any(n => n == null || n.Length != 2 || !Finite(n[0]) || !Finite(n[1])))
+                throw new ArgumentException("Platform requires positive size, finite nodes and a valid start.");
+            if (returns && (nodes.Length != 2 || (nodes[0][0] == nodes[1][0]) == (nodes[0][1] == nodes[1][1])))
+                throw new ArgumentException("Return platform requires two distinct horizontal or vertical nodes.");
+            this.nodes = nodes; this.returns = returns; this.start = start; index = start;
+            x = nodes[start][0]; y = nodes[start][1];
+        }
         public MovingPlatform Fresh() => new MovingPlatform(nodes, w, h, returns, start);
     }
 
@@ -84,7 +93,8 @@ namespace Phase
         public double climbWait, wallBoost, retention, retained, dashRefill, beforeDash;
         public double varTime, varSpeed = -105, stamina = 110;
         public int facing = 1, dash = 1, wall, forceX, climbMove, hopX, boostDir;
-        public bool grounded = true, hopMover, dashPending, dashRide, dashStartedOnGround;
+        public bool grounded = true, dashPending, dashStartedOnGround;
+        public MovingPlatform hopPlatform, dashPlatform;
         public bool ducking, autoJump, climbing;
         public Player(double x, double y) : base(x, y, 8, 11) { }
     }
@@ -103,11 +113,11 @@ namespace Phase
         public readonly List<Trail> trails = new List<Trail>();
         public readonly List<Particle> particles = new List<Particle>();
         public readonly double spawnX, spawnY;
-        readonly MovingPlatform platformTemplate;
+        readonly MovingPlatform[] platformTemplates;
         readonly ClimbGear[] gearTemplates;
         readonly Random random = new Random(1);
         public Player player;
-        public MovingPlatform mover;
+        public MovingPlatform[] movers;
         public ClimbGear[] gears;
         public int phase, jumps, dashes, deaths;
         public double time, flash, freeze, respawn;
@@ -133,21 +143,22 @@ namespace Phase
             player.x = direction > 0 ? 0 : Width - player.w;
             player.wall = player.hopX = player.forceX = 0;
             player.wallLock = player.retention = player.slide = 0;
-            player.climbing = player.hopMover = player.dashRide = false;
+            player.climbing = false; player.hopPlatform = player.dashPlatform = null;
             player.grounded = player.vy >= 0 && OnGround(player, Solid());
         }
 
-        public PhaseController(IEnumerable<Block> blocks, double spawnX, double spawnY, MovingPlatform platform = null, IEnumerable<ClimbGear> gears = null, IEnumerable<Spike> spikes = null, IEnumerable<Laser> lasers = null)
+        public PhaseController(IEnumerable<Block> blocks, double spawnX, double spawnY, IEnumerable<MovingPlatform> platforms = null, IEnumerable<ClimbGear> gears = null, IEnumerable<Spike> spikes = null, IEnumerable<Laser> lasers = null)
         {
             this.blocks = blocks.ToList(); this.spawnX = spawnX; this.spawnY = spawnY;
             this.spikes = spikes?.ToList() ?? new List<Spike>();
             this.lasers = lasers?.ToList() ?? new List<Laser>();
-            platformTemplate = platform; gearTemplates = gears?.Select(g => g.Fresh()).ToArray() ?? Array.Empty<ClimbGear>(); Reset();
+            platformTemplates = platforms?.Select(m => m.Fresh()).ToArray() ?? Array.Empty<MovingPlatform>();
+            gearTemplates = gears?.Select(g => g.Fresh()).ToArray() ?? Array.Empty<ClimbGear>(); Reset();
         }
         public void Reset()
         {
             phase = 0; respawn = freeze = 0; blocked.Clear();
-            player = new Player(spawnX, spawnY); mover = platformTemplate?.Fresh();
+            player = new Player(spawnX, spawnY); movers = platformTemplates.Select(m => m.Fresh()).ToArray();
             gears = gearTemplates.Select(g => g.Fresh()).ToArray();
             trails.Clear(); flash = .08;
         }
@@ -155,12 +166,12 @@ namespace Phase
             a.x + x < b.x + b.w && a.x + a.w + x > b.x && a.y + y < b.y + b.h && a.y + a.h + y > b.y;
         public List<Block> Solid()
         {
-            var result = Walls(); if (mover != null) result.Add(mover);
+            var result = Walls(); result.AddRange(movers);
             foreach (var gear in gears) { result.Add(gear.wall); result.Add(gear.platform); }
             return result;
         }
         List<Block> Walls() => blocks.Where((b, i) => b.ActiveInPhase(phase) && !blocked.Contains(i)).ToList();
-        bool Occupied(Block b) => Overlap(player,b) || (mover != null && Overlap(mover,b)) || gears.Any(g => Overlap(g.wall,b) || Overlap(g.platform,b));
+        bool Occupied(Block b) => Overlap(player,b) || movers.Any(m => Overlap(m,b)) || gears.Any(g => Overlap(g.wall,b) || Overlap(g.platform,b));
         static bool Collides(Player p, List<Block> solids, double x = 0, double y = 0) => solids.Any(b => Overlap(p, b, x, y));
         static int WallAt(Player p, List<Block> solids, int preferred, double reach = 3)
         {
@@ -267,7 +278,7 @@ namespace Phase
             }
             p.dashTime = p.dashAttack = 0; p.dashPending = false; p.vy = p.varSpeed = speed; p.varTime = variable;
             p.grounded = false; p.coyote = p.buffer = 0; p.climbing = false; p.slide = p.hopX = 0;
-            p.hopMover = p.dashRide = false; jumps++; Shift(); Burst(p.x + 4, p.y + 11, -1, 4);
+            p.hopPlatform = p.dashPlatform = null; jumps++; Shift(); Burst(p.x + 4, p.y + 11, -1, 4);
         }
         static bool SlipCheck(Player p, List<Block> solids, double addY = 0)
         {
@@ -277,51 +288,87 @@ namespace Phase
         void ClimbHop(List<Block> solids)
         {
             var p = player; bool touching = Collides(p, solids, p.facing);
-            p.hopX = touching ? p.facing : 0; p.hopMover = mover != null && Collides(p, new List<Block> { mover }, p.facing);
+            p.hopX = touching ? p.facing : 0;
+            p.hopPlatform = movers.FirstOrDefault(m => Collides(p, new List<Block> { m }, p.facing));
             p.vx = touching ? 0 : p.facing * 100; p.vy = Math.Min(p.vy, -120); p.forceX = 0; p.wallLock = .2;
             p.climbing = false; p.retention = 0; p.maxFall = 160;
         }
         void ActivatePlatform()
         {
-            var m = mover; if (m == null) return;
-            if (!m.returns) { m.pending++; return; }
-            m.fromX = m.x; m.fromY = m.y; m.index = 1; m.elapsed = 0; m.hold = .2;
-            m.duration = .2 * Math.Abs(m.nodes[1][0] - m.x) / Math.Abs(m.nodes[1][0] - m.nodes[0][0]); m.moving = m.duration > 1e-9;
+            foreach (var m in movers)
+            {
+                if (!m.returns) { m.pending++; continue; }
+                m.fromX = m.x; m.fromY = m.y; m.index = 1; m.elapsed = 0; m.hold = .2;
+                m.duration = .2 * Math.Max(Math.Abs(m.nodes[1][0] - m.x), Math.Abs(m.nodes[1][1] - m.y)) /
+                    Math.Max(Math.Abs(m.nodes[1][0] - m.nodes[0][0]), Math.Abs(m.nodes[1][1] - m.nodes[0][1]));
+                m.moving = m.duration > 1e-9;
+            }
         }
-        double MovePlatform(Controls input, double dt)
+        void MovePlatforms(Controls input, double dt)
         {
-            var m = mover; if (m == null) return 0;
+            if (movers.Length == 0) return;
+            var p = player;
+            var moves = movers.Select(m =>
+            {
+                var delta = PlatformMotion(m, dt); m.stepX = delta.dx;
+                return (platform: m, x: m.x, y: m.y, dx: delta.dx, dy: delta.dy);
+            }).ToArray();
+            var carried = moves.Where(m => p.vy >= 0 && Math.Abs(p.y + p.h - m.y) < .6 && p.x + p.w > m.x && p.x < m.x + m.platform.w)
+                .OrderBy(m => m.dy).FirstOrDefault().platform ??
+                movers.FirstOrDefault(m => (p.climbing && input.grab && p.stamina > 0 && p.dashTime <= 0 && Collides(p, new List<Block> { m }, p.facing)) ||
+                    (p.hopPlatform == m && p.wallLock > 0));
+            int steps = (int)Math.Ceiling(moves.Max(m => Math.Max(Math.Abs(m.dx), Math.Abs(m.dy))));
+            var solids = Solid();
+            if (carried != null && p.vy >= 0 && moves.Any(m => m.platform == carried && m.dy > 0) &&
+                solids.Any(b => !(b is MovingPlatform) && Overlap(p, b, 0, 1) && p.y + p.h <= b.y)) carried = null;
+            for (int i = 1; i <= steps; i++)
+            {
+                var before = new Block(p.x,p.y,p.w,p.h); double carryX = 0, carryY = 0;
+                // Use one time point for every platform before checking crush or hazard contact.
+                foreach (var move in moves)
+                {
+                    var m = move.platform;
+                    double x = PixelRound(move.x + move.dx * i / steps), y = PixelRound(move.y + move.dy * i / steps);
+                    if (m == carried) { carryX = x - m.x; carryY = y - m.y; }
+                    m.x = x; m.y = y;
+                }
+                p.x += carryX; p.y += carryY;
+                foreach (var move in moves)
+                {
+                    var m = move.platform;
+                    if (m != carried && Overlap(p, m))
+                    {
+                        double oldX = PixelRound(move.x + move.dx * (i - 1) / steps), oldY = PixelRound(move.y + move.dy * (i - 1) / steps);
+                        if (before.x + before.w <= oldX) p.x = m.x - p.w;
+                        else if (before.x >= oldX + m.w) p.x = m.x + m.w;
+                        else if (before.y + before.h <= oldY) p.y = m.y - p.h;
+                        else if (before.y >= oldY + m.h) p.y = m.y + m.h;
+                    }
+                }
+                if (CheckHazards(before) || solids.Any(b => Overlap(p, b)) || !WithinSides(p.x, p.w) || p.y < 0) { Kill(); return; }
+            }
+        }
+        (double dx, double dy) PlatformMotion(MovingPlatform m, double dt)
+        {
             if (m.returns)
             {
                 if (!m.moving && m.index == 1)
                 {
-                    m.hold = Math.Max(0, m.hold - dt); if (m.hold > 1e-9) return 0;
+                    m.hold = Math.Max(0, m.hold - dt); if (m.hold > 1e-9) return (0, 0);
                     m.fromX = m.x; m.fromY = m.y; m.index = 0; m.elapsed = 0;
-                    m.duration = 1.2 * Math.Abs(m.x - m.nodes[0][0]) / Math.Abs(m.nodes[1][0] - m.nodes[0][0]); m.moving = m.duration > 1e-9;
+                    m.duration = 1.2 * Math.Max(Math.Abs(m.x - m.nodes[0][0]), Math.Abs(m.y - m.nodes[0][1])) /
+                        Math.Max(Math.Abs(m.nodes[1][0] - m.nodes[0][0]), Math.Abs(m.nodes[1][1] - m.nodes[0][1]));
+                    m.moving = m.duration > 1e-9;
                 }
             }
             else if (!m.moving && m.pending > 0)
             { m.pending--; m.fromX = m.x; m.fromY = m.y; m.index = (m.index + 1) % m.nodes.Length; m.elapsed = 0; m.duration = .3; m.moving = true; }
-            if (!m.moving) return 0;
+            if (!m.moving) return (0, 0);
             m.elapsed = Math.Min(m.duration, m.elapsed + dt); double t = m.elapsed / m.duration;
             double dx = PixelRound(m.fromX + (m.nodes[m.index][0] - m.fromX) * t) - m.x;
             double dy = PixelRound(m.fromY + (m.nodes[m.index][1] - m.fromY) * t) - m.y;
-            var p = player;
-            bool rider = p.vy >= 0 && Math.Abs(p.y + p.h - m.y) < .6 && p.x + p.w > m.x && p.x < m.x + m.w;
-            bool clinger = (p.climbing && input.grab && p.stamina > 0 && p.dashTime <= 0 && Collides(p, new List<Block> { m }, p.facing)) || (p.hopMover && p.wallLock > 0);
-            int steps = Math.Max(1, (int)Math.Ceiling(Math.Max(Math.Abs(dx), Math.Abs(dy)))); var walls = Walls();
-            foreach (var gear in gears) { walls.Add(gear.wall); walls.Add(gear.platform); }
-            for (int i = 0; i < steps; i++)
-            {
-                var before = new Block(p.x,p.y,p.w,p.h);
-                m.x += dx / steps; m.y += dy / steps;
-                if (rider || clinger) { p.x += dx / steps; p.y += dy / steps; }
-                else if (Overlap(p, m))
-                { if (dx > 0) p.x = m.x + m.w; else if (dx < 0) p.x = m.x - p.w; else if (dy > 0) p.y = m.y + m.h; else if (dy < 0) p.y = m.y - p.h; }
-                if (CheckHazards(before) || walls.Any(b => Overlap(p, b)) || !WithinSides(p.x, p.w)) { Kill(); break; }
-            }
             if (t >= 1) { m.moving = false; if (m.returns && m.index == 1) m.hold = .2; }
-            return dx;
+            return (dx, dy);
         }
         bool MoveGearBlock(Block block, int dx, int dy, Controls input)
         {
@@ -372,13 +419,13 @@ namespace Phase
             p.dashBuffer = input.dash ? .08 : input.dashHeld ? Math.Max(0, p.dashBuffer - dt) : 0;
             if (freeze > 1e-9) { freeze = Math.Max(0, freeze - dt); return; }
             blocked.RemoveWhere(i => !Occupied(blocks[i]));
-            double platformDX = MovePlatform(input, dt); if (respawn > 0) return;
+            MovePlatforms(input, dt); if (respawn > 0) return;
             p.dashAttack = Math.Max(0, p.dashAttack - dt);
             var solids = Solid(); int contact = WallAt(p, solids, input.x != 0 ? input.x : p.facing, p.dashAttack > 0 && p.dx == 0 && p.dy == -1 ? 5 : 3);
             p.wall = contact; p.grounded = p.vy >= 0 && OnGround(p, solids);
             int move = p.wallLock > 0 ? p.forceX : input.x;
             p.coyote = p.grounded ? .1 : Math.Max(0, (double)((float)p.coyote - (float)dt)); if (p.coyote < 1e-8) p.coyote = 0;
-            p.wallLock = Math.Max(0, p.wallLock - dt); if (p.wallLock == 0) p.hopMover = false;
+            p.wallLock = Math.Max(0, p.wallLock - dt); if (p.wallLock == 0) p.hopPlatform = null;
             p.dashCooldown = Math.Max(0, p.dashCooldown - dt); p.varTime = Math.Max(0, p.varTime - dt); p.wallBoost = Math.Max(0, p.wallBoost - dt);
             bool refillReady = p.dashRefill <= 0; p.dashRefill = Math.Max(0, p.dashRefill - dt);
             if (p.grounded) { if (!p.climbing) p.autoJump = false; p.stamina = 110; p.slide = 0; if (refillReady && !p.dashPending) p.dash = 1; }
@@ -401,7 +448,7 @@ namespace Phase
                 if (correction >= 0)
                 {
                     enteredClimb = true; p.y -= correction; p.climbing = true; p.autoJump = false; p.vx = 0; p.vy *= .2; p.climbWait = .1;
-                    p.climbMove = 0; p.wallBoost = p.slide = p.retention = p.hopX = 0; p.hopMover = false;
+                    p.climbMove = 0; p.wallBoost = p.slide = p.retention = p.hopX = 0; p.hopPlatform = null;
                     for (int i = 0; i < 2 && !Collides(p, solids, p.facing); i++) p.x += p.facing;
                 }
             }
@@ -410,8 +457,8 @@ namespace Phase
                 if (p.climbing) p.retention = 0;
                 p.dashStartedOnGround = p.grounded; p.beforeDash = p.vx; p.vx = p.vy = p.dx = p.dy = 0;
                 p.dashTime = .15 + 2 * dt; p.dashCooldown = .2; p.dashRefill = .1; p.dashAttack = .3;
-                p.dashBuffer = p.dash = 0; p.varTime = 0; p.climbing = p.hopMover = false; p.wallLock = p.wallBoost = 0;
-                p.dashPending = true; p.dashRide = false; p.slide = 0; dashes++; ActivatePlatform(); freeze = .05; return;
+                p.dashBuffer = p.dash = 0; p.varTime = 0; p.climbing = false; p.hopPlatform = null; p.wallLock = p.wallBoost = 0;
+                p.dashPending = true; p.dashPlatform = null; p.slide = 0; dashes++; ActivatePlatform(); freeze = .05; return;
             }
             if (p.dashTime > 0)
             {
@@ -478,15 +525,16 @@ namespace Phase
                 if (p.grounded && p.dx != 0 && p.dy > 0) { p.dx = Math.Sign(p.dx); p.dy = p.vy = 0; p.vx *= 1.2; Duck(p, solids, true); }
                 p.dashPending = false;
             }
-            bool onMover = mover != null && p.grounded && p.y + p.h == mover.y && p.x + p.w > mover.x && p.x < mover.x + mover.w;
-            p.dashRide = p.dashTime > 0 && p.dy == 0 && p.dx != 0 && onMover && (Math.Sign(platformDX) == Math.Sign(p.dx) || (p.dashRide && platformDX == 0 && !mover.moving));
+            var mover = movers.FirstOrDefault(m => p.grounded && p.y + p.h == m.y && p.x + p.w > m.x && p.x < m.x + m.w);
+            p.dashPlatform = p.dashTime > 0 && p.dy == 0 && p.dx != 0 && mover != null &&
+                (Math.Sign(mover.stepX) == Math.Sign(p.dx) || (p.dashPlatform == mover && mover.stepX == 0 && !mover.moving)) ? mover : null;
             if (p.dashTime > 0)
             {
                 p.dashTime = Math.Max(0, p.dashTime - dt);
                 if (p.dashTime < 1e-9) { p.dashTime = 0; p.maxFall = 160; p.autoJump = true; if (p.dy <= 0) { p.vx = p.dx * 160; p.vy = p.dy * 160 * (p.dy < 0 ? .75 : 1); } }
             }
             if (p.vy > 0 && !p.grounded && p.ducking) Duck(p, Solid(), false);
-            p.remX += (p.dashRide ? 0 : p.vx) * dt; int moveX = PixelRound(p.remX); p.remX -= moveX;
+            p.remX += (p.dashPlatform != null ? 0 : p.vx) * dt; int moveX = PixelRound(p.remX); p.remX -= moveX;
             bool hitX = false;
             for (int n = 0; n < Math.Abs(moveX) && !hitX; n++)
             {

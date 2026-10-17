@@ -53,13 +53,12 @@ To recreate the sandbox, call its existing builder through the connected Editor:
 edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 32 controller cases, 8 laser cases and 17 demo-route/authoring cases, two laser-rendering cases, one 48-frame art
-comparison (permanent-solid colors remapped outside the deliberately revised character), one bidirectional pixel-slide
-test, one adaptive-view test, one centered-view stone/void extension test, one
-dash-charge hood lifecycle test, one helmet-fatigue/recovery test, one checkpoint-respawn cue test, one mixed-inlay/spike rendering test, three
-gear-rack attachment positions, one full-travel rigid-rack/engagement test and one floor-level rack test (15 pixel cases total).
-Two Grid authoring cases and four custom-map validation cases also run in Edit Mode.
-The four Play Mode cases cover bindings, pause/release gating, room persistence and imported maps.
+starting the next test run. There are 47 controller cases, 9 laser cases, 17 demo-route/authoring cases,
+16 pixel cases, 3 Grid authoring cases and 4 custom-map validation cases in Edit
+Mode. The five Play Mode cases cover bindings, pause/release gating, room
+persistence, multiple authored platforms and imported maps. Platform checks cover
+vertical return travel, independent routes/reset, rider and climb-hop attachment,
+crush/hazard sweeps, native collider synchronization and rendering.
 The three immutable reference files preserve 40 movement/action/climb traces.
 The exhaustion case uses explicit revised Y/speed expectations for its final17
 frames under the new45px/s held-grab cap; all earlier frames and other traces
@@ -70,6 +69,9 @@ Before tests or live Play checks, `BackgroundEditor.Run` sets every existing
 Game/Simulator view to Play Unfocused. This is an Editor layout preference, not
 a game setting; Unity’s public `SetPlayModeFocused(false)` maximizes the view
 instead. The script fails if the installed Editor API changes or no view exists.
+Run it with Play stopped. It also initializes Unity6000.4's local
+`UserSettings/Search.index` before Play, preventing first-use
+`SearchDatabase.EnumerateAll` exceptions. The index stays untracked.
 Never pass `--focus true` to `recompile` or call `editor_focus`. Wait for a
 successful `recompile_status` before tests; a connection drop during domain reload
 is not a reason to activate the Editor.
@@ -140,6 +142,26 @@ with two adjacent slots per action; empty strings disable a slot. The native
 validator rejects duplicate physical keys, reserved keys and actions with no key,
 then applies the entire map atomically. Browser storage/migration is described
 in [Web preview](Web.md).
+
+## Dash platforms
+
+Add or duplicate `PhaseMovingPlatform` objects under the scene's PHASE root;
+each active component creates its own platform. Keep Transform rotation at zero
+and scale at one. `Size` controls the body independently of its route: a horizontal
+40×8 platform stays horizontal while moving up or down.
+
+Set each platform's `Nodes` in native pixel coordinates, with Y increasing down.
+For example, `(80,144)` → `(80,80)` moves upward at the same X. Nodes determine the
+start position; moving only the Transform does not change the authored route.
+Use the native 8px Grid for sizes and stops.
+
+Every valid player dash activates all platforms, each with its own route and
+timing. With `Returns` enabled, use two distinct horizontal or vertical stops:
+the platform travels to node1 in0.2s, waits0.2s, then returns in1.2s. Without
+`Returns`, each dash queues one move to the next node. Respawn restores every
+platform to its authored start. Riders and climb hops stay attached to the
+specific platform they contact. The Web custom-map painter still authors terrain
+and spikes; author dash platforms in Unity.
 
 ## Climb gear demo
 

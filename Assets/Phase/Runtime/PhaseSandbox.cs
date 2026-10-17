@@ -46,9 +46,8 @@ namespace Phase
 
         void Awake()
         {
-            var platform = GetComponentInChildren<PhaseMovingPlatform>();
             Controller = new PhaseController(GetComponentsInChildren<PhaseTerrain>().Select(t => t.CreateBlock()), spawn.x, spawn.y,
-                platform != null ? platform.CreatePlatform() : null, gears: GetComponentsInChildren<PhaseClimbGear>().Select(g => g.CreateGear()),
+                GetComponentsInChildren<PhaseMovingPlatform>().Select(m => m.CreatePlatform()), gears: GetComponentsInChildren<PhaseClimbGear>().Select(g => g.CreateGear()),
                 spikes: GetComponentsInChildren<PhaseSpike>().Select(t => t.CreateSpike()),
                 lasers: GetComponentsInChildren<PhaseLaser>().Select(t => t.CreateLaser()));
             Controller.exitLeft = !string.IsNullOrEmpty(leftScene);

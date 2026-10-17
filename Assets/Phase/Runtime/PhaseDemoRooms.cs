@@ -42,9 +42,9 @@ namespace Phase
             foreach (var laser in CreateLasers()) { Cell(laser.x); Cell(laser.y); }
             if (nodeX != null) { foreach (var x in nodeX) Cell(x); if (nodeY != null) foreach (var y in nodeY) Cell(y); Cell(moverW); Cell(moverH); }
             if (hasGear) { foreach (var b in new[] { gearWall, gearPlatform }) { Cell(b.x); Cell(b.y); Cell(b.w); Cell(b.h); } Cell(gearTop); Cell(gearEndX); }
-            var gear = CreateGear();
+            var gear = CreateGear(); var mover = CreateMover();
             return new PhaseController(blocks.Select(b => new Block(b.x,b.y,b.w,b.h,b.phase,b.phaseMask)), spawnX, spawnY,
-                CreateMover(), gears: gear == null ? null : new[] { gear }, spikes: CreateSpikes(), lasers: CreateLasers());
+                mover == null ? null : new[] { mover }, gears: gear == null ? null : new[] { gear }, spikes: CreateSpikes(), lasers: CreateLasers());
         }
     }
     [Serializable]

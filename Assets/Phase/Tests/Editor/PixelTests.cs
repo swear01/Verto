@@ -11,6 +11,27 @@ public class PixelTests
     public class Frame { public string name; public double time; public int phase; public int[] blocked; public Player player; }
 
     [Test]
+    public void EveryPlatformIsDrawnAndVerticalMotionKeepsItsHorizontalShape()
+    {
+        var pixels=new PhasePixels();
+        try
+        {
+            var s=new PhaseController(System.Array.Empty<Block>(),32,149,new[]{
+                new MovingPlatform(new[]{new[]{80.0,112},new[]{112.0,112}},32,8),
+                new MovingPlatform(new[]{new[]{216.0,144},new[]{216.0,80}},48,8,true)});
+            s.flash=0;pixels.Draw(s);
+            var cap=(Color32)PhasePixels.Hex("f0f0f0");
+            Assert.That((Color32)pixels.Texture.GetPixel(84,67),Is.EqualTo(cap));
+            Assert.That((Color32)pixels.Texture.GetPixel(220,35),Is.EqualTo(cap));
+            s.movers[1].y=80;pixels.Draw(s);
+            Assert.That((Color32)pixels.Texture.GetPixel(84,67),Is.EqualTo(cap));
+            Assert.That((Color32)pixels.Texture.GetPixel(220,99),Is.EqualTo(cap));
+            Assert.That((Color32)pixels.Texture.GetPixel(260,99),Is.EqualTo(cap),"the second platform stays48px wide");
+            Assert.That((Color32)pixels.Texture.GetPixel(220,35),Is.Not.EqualTo(cap));
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+    [Test]
     public void LasersStaySteadyAndSafeColorsAreTransparent()
     {
         var pixels = new PhasePixels();
@@ -238,10 +259,10 @@ public class PixelTests
             for(int i=0;i<portrait.Length;i++)Assert.That(taller[i],Is.EqualTo(portrait[i]),"height resize keeps sky fixed in world coordinates");
             for(int height=180;height<=1400;height++)Assert.That(PhaseSandbox.ViewSize(320,height),Is.EqualTo(new Vector2Int(320,height)),"native viewport size must not drift on repeat calculation");
             pixels.SetView(320,180,0);pixels.Draw(s);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32(),"portrait resize restores the original art");
-            s.mover=new MovingPlatform(new[]{new[]{160.0,144},new[]{192.0,144}},32,8,true);
+            s.movers=new[]{new MovingPlatform(new[]{new[]{160.0,144},new[]{192.0,144}},32,8,true)};
             foreach(int phase in new[]{0,1,2})foreach(double x in new[]{160.0,176.0,192.0})
             {
-                s.phase=phase;s.mover.x=x;pixels.Draw(s);
+                s.phase=phase;s.movers[0].x=x;pixels.Draw(s);
                 Assert.That((Color32)pixels.Texture.GetPixel(24,19),Is.EqualTo((Color32)PhasePixels.Hex("e8e8e8")),"permanent floor stays white in every phase");
                 Assert.That((Color32)pixels.Texture.GetPixel((int)x+4,35),Is.EqualTo((Color32)PhasePixels.Hex("f0f0f0")),"moving platform stays white along its path in every phase");
                 Assert.That((Color32)pixels.Texture.GetPixel((int)x+2,33),Is.EqualTo((Color32)PhasePixels.Hex("787878")),"platform retains gray texture");
@@ -385,7 +406,7 @@ public class PixelTests
         {
             Assert.That(golden.LoadImage(File.ReadAllBytes("Verification/ArtReference.png")),Is.True);
             var expected=golden.GetPixels32();var atlas=new Color32[expected.Length];
-            var controller=new PhaseController(reference.blocks,120,149,new MovingPlatform(new[] {new[] {160.0,144},new[] {192.0,144}},32,8,true));
+            var controller=new PhaseController(reference.blocks,120,149,new[]{new MovingPlatform(new[] {new[] {160.0,144},new[] {192.0,144}},32,8,true)});
             var neutralColors=new[]{"a9b8c5","e8e8e8","697d8e","a0a0a0","3c4a57","646464","506170","7f7f7f","34404b","565656","242c34","3c3c3c","191f25","2a2a2a","f2dc8a","f0f0f0","e7ce76","e8e8e8","6f603c","787878","8f7c47","a0a0a0","4b4129","484848"};
             var tracks=new[]{"484a3f","424b57","454537","3f464f","444334","3e444c","786e46","6c7076","7b734d","6f757d"};
             int worst=0,bad=0,neutralPixels=0;string first=null;

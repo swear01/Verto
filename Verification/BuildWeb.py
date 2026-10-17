@@ -69,9 +69,9 @@ def main():
     save("recompile", recompile())
     command("run_script", "--", "--file", "Verification/BackgroundEditor.cs", "--entry", "BackgroundEditor.Run")
     for mode, test_filter, expected in [
-        ("editor", "ControllerTests", 32), ("editor", "LaserTests", 8), ("editor", "DemoRoomTests", 17),
-        ("editor", "PixelTests", 15), ("editor", "GridGeometryTests", 2),
-        ("editor", "CustomMapTests", 4), ("playmode", "SandboxTests", 3),
+        ("editor", "ControllerTests", 47), ("editor", "LaserTests", 9), ("editor", "DemoRoomTests", 17),
+        ("editor", "PixelTests", 16), ("editor", "GridGeometryTests", 3),
+        ("editor", "CustomMapTests", 4), ("playmode", "SandboxTests", 4),
         ("playmode", "MapBridgeTests", 1),
     ]:
         wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)
