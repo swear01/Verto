@@ -295,15 +295,27 @@ namespace Phase
             Rect(left - 1, platform.y + 1, 1, platform.h - 2, "646464");
             Rect(right, platform.y + 1, 1, platform.h - 2, "646464");
             // Keep one full tooth beyond the fixed pinion at the top stop.
-            int rackHeight = Round(Math.Max(wall.h, cy + side * 14 + 9 + 6 - gear.top));
+            int rackHeight = side < 0 ? Round(wall.h) : Round(Math.Max(wall.h, cy + 14 + 9 + 6 - gear.top));
             int rackBottom = Math.Min(Round(wall.y) + rackHeight, Round(gear.bottom + wall.h));
             Rect(rackX, wall.y, 2, rackBottom - Round(wall.y), "a0a0a0");
             for (int y = Round(wall.y); y < rackBottom; y += 6) Rect(rackX + 2, y, 3, Math.Min(3, rackBottom - y), "a0a0a0");
             Rect(rackX - 1, gear.bottom + wall.h, 7, 4, "646464");
             Rect(rackX - 1, gear.bottom + wall.h + 2, 7, 2, Highlights[3]);
             double angle = gear.Lift * Math.PI / 24, mesh = 2 * Math.Atan2(-7,14) + Math.PI / 8;
-            GearWheel(rackX + 11, cy + side * 14, side * angle);
-            GearWheel(rackX + 25, cy + side * 7, -side * angle + side * mesh);
+            double outputAngle = angle;
+            if (side < 0)
+            {
+                double diagonal = 2 * Math.Atan2(8,14) + Math.PI / 8, vertical = Math.PI + Math.PI / 8;
+                GearWheel(rackX + 11, cy - 32, angle);
+                GearWheel(rackX + 25, cy - 24, -angle + diagonal);
+                GearWheel(rackX + 25, cy - 8, angle - diagonal + vertical);
+                outputAngle = -angle + 2 * diagonal - vertical;
+            }
+            else
+            {
+                GearWheel(rackX + 11, cy + 14, angle);
+                GearWheel(rackX + 25, cy + 7, -angle + mesh);
+            }
             foreach (var block in new[] { wall, platform })
             {
                 Rect(block.x - 1, block.y - 1, block.w + 2, block.h + 2, Ink);
@@ -317,7 +329,7 @@ namespace Phase
             Rect(platform.x, rackY + (side > 0 ? 1 : -2), platform.w, 2, Ink);
             for (int x = Round(platform.x) + 3; x < platform.x + platform.w; x += 6)
                 Rect(x, rackY + (side > 0 ? 1 : -2), Math.Min(3, platform.x + platform.w - x), 2, "a0a0a0");
-            GearWheel(rackX + 39, cy, side * angle);
+            GearWheel(rackX + 39, cy, outputAngle);
         }
         // The visor shows phase; the helmet warns of fatigue and the scarf retains dash charge.
         static readonly Dictionary<string,string[]> Frames = new Dictionary<string,string[]> {

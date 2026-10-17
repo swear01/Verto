@@ -113,8 +113,10 @@ public class PixelTests
             {
                 room.gears[0].wall.y = 104-lift; room.gears[0].platform.x = 88+lift;
                 pixels.Draw(room,false);
-                foreach (var center in new[] { (x:91,y:139),(x:105,y:146),(x:119,y:153) })
+                foreach (var center in new[] { (x:91,y:121),(x:105,y:129),(x:105,y:145),(x:119,y:153) })
                     Assert.That((Color32)pixels.Texture.GetPixel(center.x,179-center.y),Is.EqualTo((Color32)PhasePixels.Hex("e8e8e8")),"fixed pinions remain visible and engaged above the floor-level rack");
+                Assert.That((Color32)pixels.Texture.GetPixel(80,179-(159-lift)), Is.EqualTo((Color32)PhasePixels.Hex("a0a0a0")),"vertical rack retains its full 56px length");
+                Assert.That((Color32)pixels.Texture.GetPixel(80,179-(160-lift)), Is.Not.EqualTo((Color32)PhasePixels.Hex("a0a0a0")),"vertical rack must not grow when the wall rises");
                 Assert.That((Color32)pixels.Texture.GetPixel(92+lift,179-162), Is.EqualTo((Color32)PhasePixels.Hex("a0a0a0")),"the rack base stays inside the platform rectangle");
             }
         }

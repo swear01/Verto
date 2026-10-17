@@ -33,8 +33,9 @@ the scenes. The original finalized HTML demo is a separate, unchanged artifact.
 The horizontal rack occupies the last three pixels **inside** the platform's
 collision rectangle, with exactly the platform's width. The 56-pixel platform
 travels 24 pixels. Its fixed output pinion stays within the overlap of both end
-positions, with a full tooth of margin. Three adjacent gears turn in alternating
-directions at matching pitch. The dark fixed guide and end marks sit behind the
+positions, with a full tooth of margin. The high-mounted bridge uses three gears; the floor-level bridge uses four
+alternating gears above its upper rack so the same upward input drives the
+platform right. The dark fixed guide and end marks sit behind the
 platform; they do not form another ledge. The vertical rack has a fixed length
 and may enter the lower guide housing. Mechanism decoration has no collision.
 
