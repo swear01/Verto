@@ -205,6 +205,46 @@ function dashCharge(buffer, player) {
     assert.deepEqual(result.warnings, [], 'Browser warnings');
     assert.deepEqual(result.failedRequests, [], 'Failed network requests');
     await page.setViewportSize({ width: 1280, height: 720 });
+    await page.waitForTimeout(250);
+    await page.keyboard.press('ArrowLeft', { delay: 1000 });
+    await page.keyboard.down('ArrowLeft'); await page.keyboard.down('c');
+    await page.keyboard.press('Space', { delay: 200 });
+    await page.keyboard.up('ArrowLeft'); await page.waitForTimeout(350);
+    const gauge = buffer => {
+      const image=PNG.sync.read(buffer), scale=image.width/320;
+      const height=Math.max(180,Math.ceil(320*image.height/image.width)), origin=Math.trunc((180-height)/2);
+      const rgb=(x,y)=>{const i=(Math.floor((y-origin+.5)*image.height/height)*image.width+Math.floor((x+.5)*scale))*4;return Array.from(image.data.subarray(i,i+3));};
+      const near=(a,b)=>a.every((v,i)=>Math.abs(v-b[i])<=2);
+      for(let y=80;y<149;y++) {
+        const border=rgb(260,y);
+        if(![[105,125,142],[255,91,94],[255,143,145]].some(c=>near(border,c)))continue;
+        if(!Array.from({length:12},(_,i)=>rgb(260,y+i)).every(c=>near(c,border)))continue;
+        if(![0,1,2,3].every(i=>near(rgb(260+i,y),border)&&near(rgb(260+i,y+11),border)))continue;
+        let fill=0,color=null;
+        for(let i=1;i<=10;i++)if(!near(rgb(261,y+i),[16,26,38])){fill++;color=rgb(261,y+i);}
+        return {x:260,y,fill,color,border,critical:border[0]>240};
+      }
+      return null;
+    };
+    const staminaFull=await canvas.screenshot();result.staminaFull=gauge(staminaFull);
+    assert(result.staminaFull && result.staminaFull.fill>=9 && result.staminaFull.color[1]>result.staminaFull.color[0],'Grab must show a nearly full green stamina gauge');
+    fs.writeFileSync(path.join(reports,'stamina-full.png'),staminaFull);
+    const deadline=Date.now()+12000;
+    while(Date.now()<deadline) {
+      await page.waitForTimeout(200);const frame=await canvas.screenshot();const value=gauge(frame);
+      if(!value)continue;
+      if(!result.staminaHalf && value.fill<=5 && value.fill>=3) {result.staminaHalf=value;fs.writeFileSync(path.join(reports,'stamina-half.png'),frame);}
+      if(value.critical) {result.staminaLow=value;fs.writeFileSync(path.join(reports,'stamina-low.png'),frame);break;}
+    }
+    assert(result.staminaHalf && result.staminaLow && result.staminaLow.fill<=2,'Holding grab must drain through amber to critical red');
+    assert(result.staminaHalf.color[0]>230 && result.staminaLow.border[0]>240 && result.staminaLow.border[1]<150);
+    await page.setViewportSize({width:390,height:844});await page.waitForTimeout(200);
+    assert(gauge(await canvas.screenshot()),'Stamina warning remains visible in portrait');
+    await page.screenshot({path:path.join(reports,'stamina-narrow.png')});
+    await page.keyboard.up('c');await page.waitForTimeout(900);
+    assert.equal(gauge(await canvas.screenshot()),null,'Landing refills stamina and hides warning');
+    result.staminaWarning=true;
+    await page.setViewportSize({ width: 1280, height: 720 });
     await page.reload();
     await page.locator('#controls-toggle').waitFor({ state: 'visible', timeout: 120000 });
     await canvas.click();

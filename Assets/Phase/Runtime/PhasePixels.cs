@@ -265,6 +265,23 @@ namespace Phase
             var end = segments[length - 1]; Rect(end.x - facing, end.y, 1, end.h, Ink);
             for (int i = 0; i < length; i++) { var q = segments[i]; Rect(q.x, q.y, 1, q.h, Scarf[dash][i == length - 1 ? 1 : 0]); }
             Blit(Sprite(name, facing, phase, dash), x - 2, feet - rows.Length - 1);
+            if (!p.grounded && (p.climbing || p.stamina <= 20)) DrawStamina(p, t);
+        }
+        void DrawStamina(Player p, double t)
+        {
+            double stamina = Math.Max(0, Math.Min(110, p.stamina));
+            var color = stamina >= 55
+                ? Mix(Color("ffb24d"), Color("78d892"), (stamina - 55) / 55)
+                : Mix(Color("ff5b5e"), Color("ffb24d"), Math.Max(0, (stamina - 20) / 35));
+            if (stamina <= 20 && (int)Math.Floor(t * 4) % 2 != 0) color = Color("ff8f91");
+            int x = Round(p.x) + (p.facing > 0 ? -8 : 12);
+            if (x < OriginX || x + 4 > OriginX + Width) x = Round(p.x) + (p.facing > 0 ? 12 : -8);
+            x = Math.Max(OriginX, Math.Min(OriginX + Width - 4, x));
+            int y = Math.Max(OriginY, Math.Min(BottomY - 12, Round(p.y) - 1));
+            int fill = (int)Math.Ceiling(stamina / 110 * 10);
+            Rect(x, y, 4, 12, stamina <= 20 ? color : Color("697d8e"));
+            Rect(x + 1, y + 1, 2, 10, "101a26");
+            Rect(x + 1, y + 11 - fill, 2, fill, color);
         }
         public void Draw(PhaseController s, bool playerVisible = true)
         {

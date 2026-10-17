@@ -26,6 +26,12 @@ The build verifies both flags and records them in `TestResults/Web/splash.json`;
 browser checks preserve initial canvas frames before the first player frame.
 The hood and scarf are amber with one dash available and dark orange after use;
 landing refills them. Eye colors continue to indicate phase.
+Grabbing a wall shows a 4x12 native-pixel stamina gauge beside the player, away
+from the wall. Its fill stays at the bottom as it shrinks, changing from green (110)
+through amber (55) to red (20). At 20 or below it pulses twice per second; an empty
+red outline remains while exhausted in the air. Landing refills stamina and hides
+the gauge. Normal flight has no gauge; the hood/eyes retain their separate meanings.
+This gauge follows the requested gradual stamina display; [Celeste’s original player source](https://github.com/NoelFB/Celeste/blob/master/Source/Player/Player.cs) uses a red sprite flash below its tired threshold.
 Touch controls are not provided.
 The canvas fills the entire viewport and always shows at least the original
 320x180 native-pixel play area. Wide views extend horizontally; tall views keep
@@ -68,7 +74,7 @@ the warning.
 ## Enable automatic builds and online play
 
 `Web build and preview` runs only on `main`, after push or manual dispatch.
-It uses Unity CLI + live Pipeline for 27 Editor tests, three Play Mode tests and
+It uses Unity CLI + live Pipeline for 28 Editor tests, three Play Mode tests and
 the Web build, then verifies browser rendering, keyboard input, both scene-edge
 transitions, minimum view/tall-sky extension/wide-floor travel, resizing, visible
 load failures, and absence of browser errors/warnings. Only a passing build is
