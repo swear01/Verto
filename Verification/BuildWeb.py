@@ -7,7 +7,7 @@ import time
 
 PROJECT = Path(__file__).resolve().parent.parent
 REPORTS = PROJECT / "TestResults/Web"
-SCENES = [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(1, 9)] + [f"Assets/Scenes/PhaseCrystal{i}.unity" for i in range(1, 4)]
+SCENES = [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(1, 9)] + [f"Assets/Scenes/PhaseCrystal{i}.unity" for i in range(1, 4)] + ["Assets/Scenes/PhaseDemo1.2.unity"]
 
 
 def command(name, *args):

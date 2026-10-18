@@ -84,7 +84,7 @@ Geometry occupies at most 880 non-overlapping cells inside 320×176; spawn uses 
 8-pixel grid, stays inside 312×160, and avoids solids/hazards active in red.
 Masks are 1 red, 2 blue, 4 green, 3 magenta, 5 yellow, 6 cyan and 7 permanent white.
 Moving platforms/gears/lasers and JSON over 200,000 characters are rejected. The Web UI
-sends `PHASE.SelectDemoRoom("1".."11")` or `PHASE.LoadCustomMap(json)` and closes
+sends `PHASE.SelectDemoRoom("1".."12")` or `PHASE.LoadCustomMap(json)` and closes
 only after `phase-map-result` reports success. All dialogs share the gameplay pause.
 `MapEditorBrowser.cjs` verifies UI events using a mock Unity bridge; it does not
 prove native map loading. Verify the native bridge through Pipeline and the final
@@ -152,3 +152,5 @@ schema; crystals are authored through Unity scenes and `CrystalRooms.json`.
 The three crystal routes use controlled browser time to prevent capture latency
 from extending held keys. Existing visible-checkpoint routes and UI checks use
 real time. This is functional verification, not a human timing/playtest.
+
+The selector also includes **1.2**, the classmate-authored `PhaseDemo1.2` scene (bridge index12). It is appended to the Web build without changing the original eleven room numbers or routes.

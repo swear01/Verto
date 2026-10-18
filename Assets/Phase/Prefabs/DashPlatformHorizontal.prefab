@@ -48,8 +48,8 @@ MonoBehaviour:
   size: {x: 40, y: 8}
   nodes:
   - {x: 0, y: 0}
-  - {x: 89, y: 0}
-  returns: 0
+  - {x: 80, y: 0}
+  returns: 1
   start: 0
 --- !u!61 &5992000567169469817
 BoxCollider2D:

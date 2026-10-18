@@ -270,15 +270,22 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
       const response=await page.evaluate(()=>window.__nativeMapResults.at(-1));assert.equal(response.success,true,response.message);
       return response;
     }
-    async function selectRoom(number) {
+    async function selectRoom(number, expected=rooms[number-1]) {
       const before=await page.evaluate(()=>window.__nativeMapResults.length);
       await page.locator('#rooms-toggle').click();await page.locator(`[data-room="${number}"]`).click();
       const response=await nativeResult(before);await page.locator('#rooms').waitFor({state:'hidden'});
-      const expected=rooms[number-1];
       const player=await visible(`select-${number}`,p=>Math.abs(p.x/4-expected.spawnX-4)<2&&p.phase===0);
       return {room:number,response,player};
     }
     result.selectedRooms=[];for(let number=1;number<=rooms.length;number++)result.selectedRooms.push(await selectRoom(number));
+    const handmade=await selectRoom(12,{spawnX:24});result.selectedRooms.push(handmade);
+    assert.equal(await page.locator('[data-room="12"]').innerText(),'1.2');
+    await page.keyboard.press('z',{delay:80});
+    const handmadeJump=await observe();assert(handmadeJump.phase===1&&handmadeJump.y<handmade.player.y-12,'Handmade1.2 accepts native jump');
+    await page.keyboard.down('ArrowRight');await page.keyboard.press('x',{delay:80});await page.keyboard.up('ArrowRight');
+    const handmadeDash=await observe();assert(handmadeDash.x>handmadeJump.x+40,'Handmade1.2 accepts native dash');
+    await capture({path:path.join(reports,'handmade-1-2-dash.png')});
+    result.handmade={start:handmade.player,jumped:handmadeJump,dashed:handmadeDash};
     await page.locator('#rooms-toggle').click();await page.locator('#map-open').click();
     const custom={name:'Browser native map',blocks:[{x:0,y:168,w:320,h:8,phase:-1,phaseMask:7}],spikes:[{x:200,y:160,length:8,direction:0,phaseMask:7}],spawnX:24,spawnY:152};
     const chooser=page.waitForEvent('filechooser');await page.locator('#map-import').click();

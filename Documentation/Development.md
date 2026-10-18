@@ -201,7 +201,7 @@ mechanism positions while preserving elapsed time and action/death counts.
 The original sandbox links retain their momentum/color carry behavior.
 See [room designs and live input verification](Demo.md).
 `BuildWeb.py` verifies these tests and builds `PhaseDemo1` through
-`PhaseDemo8`, followed by `PhaseCrystal1` through `PhaseCrystal3`. `DemoWebSmoke.cjs` replays keyboard routes through
+`PhaseDemo8`, followed by `PhaseCrystal1` through `PhaseCrystal3` and the hand-authored `PhaseDemo1.2`. `DemoWebSmoke.cjs` replays keyboard routes through
 the eleven Web scenes and checks settings, sizing, fullscreen and loading failure.
 The older `WebSmoke.cjs` remains a verifier for the original two-sandbox build.
 
@@ -269,7 +269,7 @@ jump activation/death, respawn and phase-preserving dash.
 
 ## Runtime map bridge
 
-The active `PHASE` object accepts `SelectDemoRoom("1".."11")` and
+The active `PHASE` object accepts `SelectDemoRoom("1".."12")` and
 `LoadCustomMap(json)`. Scene selection uses the eleven built demo and crystal scene names.
 Custom maps use the `PhaseDemoRoom` fields `name`, `blocks`, `spikes`, `spawnX`,
 `spawnY`; blocks require explicit `phaseMask`1–7 and the Web editor sends
@@ -363,7 +363,7 @@ terrain/spikes; these Prefabs are Unity authoring tools.
 `Assets/Scenes/PhaseDemo1.1.unity` is a separate authoring scene. It uses the same
 8px Grid and native collider shapes; imported sizes, phase masks and scene links
 are retained, with positions snapped by at most half a cell. Edit it with the Grid
-painter and normal Inspector tools. It is not included in the explicit eleven-room
+painter and normal Inspector tools. It is not included in the explicit
 Web build or the Web room selector. Use `PhaseSandboxBuilder` only to rebuild
 generated demo scenes; preserve hand-authored layouts.
 
@@ -391,3 +391,5 @@ midair dash relay. Rebuild only these three scenes through the connected Editor:
 The manually edited `PhaseDemo1.1` is separate from these builders.
 `DemoLiveInput.Run` checks either demo or crystal scenes and saves keyboard-route
 captures under `TestResults/DemoRooms/` or `TestResults/CrystalRooms/`.
+
+`PhaseDemo1.2` is included in the Web build and selectable as **1.2** (bridge index12). Its fourteen platform instances retain their authored routes, sizes and start nodes as scene overrides. Shared dash-platform Prefabs keep their original grid-aligned horizontal defaults; edit instance overrides for a single level. Preserve this handmade scene when rebuilding generated demos.
