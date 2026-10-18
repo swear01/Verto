@@ -8,24 +8,30 @@ namespace Phase
     public sealed partial class PhaseSandbox
     {
         public static string LastMapError { get; private set; } = "";
+        public static int MapResultCount { get; private set; }
 #if UNITY_WEBGL && !UNITY_EDITOR
         [DllImport("__Internal")] static extern void PhaseMapResult(int success, string message);
+        [DllImport("__Internal")] static extern void PhaseVictory();
+        static void Victory() => PhaseVictory();
+#else
+        static void Victory() { }
 #endif
         static void MapResult(bool success, string message = "")
         {
-            LastMapError = success ? "" : message;
+            LastMapError = success ? "" : message; MapResultCount++;
 #if UNITY_WEBGL && !UNITY_EDITOR
             PhaseMapResult(success ? 1 : 0, message);
 #endif
         }
+        // Only a pending scene load blocks; the arrival slide is visual and stays frozen while a dialog pauses play.
         public void SelectDemoRoom(string value)
         {
-            if (transitioning || InTransition) { MapResult(false,"請等轉場結束後再選擇地圖。"); return; }
+            if (transitioning) { MapResult(false,"請等轉場結束後再選擇地圖。"); return; }
             try
             {
-                if (!int.TryParse(value, out int index) || index < 1 || index > 12 || value != index.ToString())
+                if (!int.TryParse(value, out int index) || index < 1 || index > Levels.Length || value != index.ToString())
                     throw new ArgumentException("請選擇有效的關卡。");
-                string scene = index == 12 ? "PhaseDemo1.2" : index <= 8 ? "PhaseDemo" + index : "PhaseCrystal" + (index - 8);
+                string scene = Levels[index - 1];
                 if (!Application.CanStreamedLevelBeLoaded(scene)) throw new ArgumentException("此關卡尚未包含在遊戲中。");
                 ClearTravel(); jumpQueued = dashQueued = false; accumulator = 0;
                 transitioning = true;
@@ -37,7 +43,7 @@ namespace Phase
         }
         public void LoadCustomMap(string json)
         {
-            if (transitioning || InTransition) { MapResult(false,"請等轉場結束後再選擇地圖。"); return; }
+            if (transitioning) { MapResult(false,"請等轉場結束後再選擇地圖。"); return; }
             GameObject root = null;
             try
             {
@@ -59,7 +65,7 @@ namespace Phase
                     var hazard = tile.AddComponent<PhaseSpike>(); hazard.length = (int)spike.length / 8;
                     hazard.direction = spike.direction; hazard.phaseMask = spike.phaseMask;
                 }
-                var sandbox = root.AddComponent<PhaseSandbox>();
+                var sandbox = root.AddComponent<PhaseSandbox>(); sandbox.custom = true;
                 sandbox.pixelCamera = pixelCamera; sandbox.pixelMaterial = pixelMaterial;
                 sandbox.spawn = new Vector2Int((int)room.spawnX,(int)room.spawnY);
                 sandbox.checkpointOnEntry = true;

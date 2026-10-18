@@ -402,7 +402,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Phase.Runtime::Phase.PhaseSandbox
   pixelCamera: {fileID: 1579975864}
   pixelMaterial: {fileID: 2100000, guid: 5bd270b87f0174a5f9797bc29eed0fbe, type: 2}
-  leftScene: 
+  leftScene: PhaseDemo2
   rightScene: PhaseDemo4
   checkpointOnEntry: 1
   spawn: {x: 32, y: 149}

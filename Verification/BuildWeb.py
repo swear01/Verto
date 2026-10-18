@@ -7,7 +7,7 @@ import time
 
 PROJECT = Path(__file__).resolve().parent.parent
 REPORTS = PROJECT / "TestResults/Web"
-SCENES = [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(1, 9)] + [f"Assets/Scenes/PhaseCrystal{i}.unity" for i in range(1, 4)] + ["Assets/Scenes/PhaseDemo1.2.unity"]
+SCENES = [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(1, 9)] + [f"Assets/Scenes/PhaseCrystal{i}.unity" for i in range(1, 4)] + ["Assets/Scenes/PhaseDemo12.unity"]
 
 
 def command(name, *args):
@@ -69,10 +69,10 @@ def main():
     save("recompile", recompile())
     command("run_script", "--", "--file", "Verification/BackgroundEditor.cs", "--entry", "BackgroundEditor.Run")
     for mode, test_filter, expected in [
-        ("editor", "ControllerTests", 47), ("editor", "LaserTests", 9), ("editor", "DemoRoomTests", 17),
-        ("editor", "CrystalTests", 15), ("editor", "CrystalRoomTests", 18),
+        ("editor", "ControllerTests", 48), ("editor", "LaserTests", 9), ("editor", "DemoRoomTests", 17),
+        ("editor", "CrystalTests", 15), ("editor", "CrystalRoomTests", 26),
         ("editor", "PixelTests", 18), ("editor", "GridGeometryTests", 6),
-        ("editor", "CustomMapTests", 4), ("playmode", "SandboxTests", 5),
+        ("editor", "CustomMapTests", 4), ("playmode", "SandboxTests", 11),
         ("playmode", "MapBridgeTests", 1),
     ]:
         wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)

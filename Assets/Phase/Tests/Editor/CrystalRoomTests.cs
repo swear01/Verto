@@ -51,14 +51,14 @@ public class CrystalRoomTests
         Assert.That(landed, Is.True, $"{room["name"]}: authored landing must precede room travel");
         Assert.That(s.ExitDirection, Is.Zero);
     }
-    [TestCase(0, 0)] [TestCase(1, 0)] [TestCase(1, 1)] [TestCase(1, 2)] [TestCase(2, 0)]
+    [TestCase(0, 0)] [TestCase(1, 0)] [TestCase(1, 1)] [TestCase(2, 0)] [TestCase(2, 1)]
     public void RemovingAnyRequiredCrystalBreaksItsAuthoredRoute(int index, int crystal)
     {
         var room = Room(index); var s = room.ToObject<PhaseDemoRoom>().CreateController();
         s.crystals.RemoveAt(crystal); Replay(s, room["route"]);
         Assert.That(Reached(s, room["goal"]), Is.False);
     }
-    [TestCase(0, 3)] [TestCase(1, 3)] [TestCase(1, 8)] [TestCase(1, 13)] [TestCase(2, 4)]
+    [TestCase(0, 3)] [TestCase(0, 5)] [TestCase(1, 5)] [TestCase(1, 10)] [TestCase(2, 4)] [TestCase(2, 8)]
     public void AirActionTimingAllowsFourFramesEarlierOrLater(int index, int action)
     {
         var room = Room(index);
@@ -91,12 +91,52 @@ public class CrystalRoomTests
     }
 #endif
     [Test]
-    public void DenseRoomUsesThreeMatchingRoundCrystalsAndTenContinuousLasers()
+    public void FastDashJumpsCannotSkipTheRelayCrystalsOrLeaveTheBlueIslandByJumping()
     {
-        var s = Room(1).ToObject<PhaseDemoRoom>().CreateController();
-        Assert.That(s.lasers.Count, Is.EqualTo(10));
-        CollectionAssert.AreEqual(new[] { 2, 1, 4 }, s.crystals.Select(c => c.Mask));
-        Assert.That(s.crystals.All(c => c.kind == CrystalKind.Jump), Is.True);
-        Assert.That(s.blocks.All(b => b.Mask >= 1 && b.Mask <= 7), Is.True);
+        var room = Room(2); var s = room.ToObject<PhaseDemoRoom>().CreateController();
+        foreach (var route in room["bypassRoutes"])
+        {
+            s.Reset(); s.deaths = 0; Replay(s, route, () => s.deaths > 0);
+            Assert.That(s.deaths, Is.GreaterThan(0), $"{room["name"]}: recorded shortcut must hit a laser");
+        }
+    }
+    [TestCase(0)] [TestCase(2)]
+    public void JumpingInsteadOfTheFinalDashHitsALaser(int index)
+    {
+        var room = Room(index); var route = (JArray)room["route"].DeepClone();
+        var last = route.Last(step => (bool?)step["dash"] == true);
+        last["dash"] = false; last["jump"] = true;
+        var s = room.ToObject<PhaseDemoRoom>().CreateController(); Replay(s, route, () => s.deaths > 0);
+        Assert.That(s.deaths, Is.GreaterThan(0));
+    }
+    [Test]
+    public void SkippingTheStartingColorHopHitsTheFirstLaser()
+    {
+        var room = Room(1); var route = (JArray)room["route"].DeepClone(); route.RemoveAt(0);
+        var s = room.ToObject<PhaseDemoRoom>().CreateController(); Replay(s, route, () => s.deaths > 0);
+        Assert.That(s.deaths, Is.GreaterThan(0));
+    }
+    [TestCase(0)] [TestCase(1)] [TestCase(2)]
+    public void PermanentArrivalLandingsAtBothEdgesStayClearOfLasers(int index)
+    {
+        var room = Room(index); var s = room.ToObject<PhaseDemoRoom>().CreateController();
+        var goal = room["goal"];
+        foreach (var (x, feet) in new[] { (0.0, (double)room["spawnY"] + 11), (312.0, (double)goal["y"]) })
+            for (int phase = 0; phase < 3; phase++)
+            {
+                s.Reset(); s.phase = phase; s.player.x = x; s.player.y = feet - s.player.h;
+                for (int n = 0; n < 30; n++) s.Step(default);
+                Assert.That(s.deaths, Is.Zero, $"{room["name"]}: arrival at x={x} in phase {phase}");
+                Assert.That(s.player.grounded && s.player.y + s.player.h == feet, Is.True);
+            }
+        Assert.That(s.blocks.Any(b => b.x + b.w == 320 && b.y == (double)goal["y"] && b.Mask == 7), Is.True);
+    }
+    [Test]
+    public void RoomsMixRoundAndSquareCrystalsWithContinuousLasers()
+    {
+        var kinds = Enumerable.Range(0, 3).Select(i => Room(i).ToObject<PhaseDemoRoom>().CreateController()).ToArray();
+        CollectionAssert.AreEqual(new[] { 1, 2, 2 }, kinds.Select(s => s.crystals.Count));
+        Assert.That(kinds[2].crystals.Select(c => c.kind), Is.EqualTo(new[] { CrystalKind.Dash, CrystalKind.Jump }));
+        Assert.That(kinds.All(s => s.lasers.Count >= 3 && s.blocks.All(b => b.Mask >= 1 && b.Mask <= 7)), Is.True);
     }
 }

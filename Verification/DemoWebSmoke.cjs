@@ -181,9 +181,9 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
         for(let attempt=0;attempt<6;attempt++) {
           await inputSegment(['ArrowRight','ArrowUp','c'],attempt?200:920);
           const first=await capture();
-          if(pixelMatches(first,74,80,[232,232,232])) {
+          if(pixelMatches(first,74,80,[160,160,160])) {
             const second=await capture();
-            if(pixelMatches(second,74,80,[232,232,232])) {
+            if(pixelMatches(second,74,80,[160,160,160])) {
               fs.writeFileSync(path.join(reports,'demo-8-gear-top-stop.png'),second);lifted=true;break;
             }
           }
@@ -247,7 +247,7 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
       assert(end && end.x/4>=room.goal.x-2,`Room ${index+1} route reaches exit landing: ${JSON.stringify(end)}`);
       assert(Math.abs(end.y/4-exitY)<2,`Room ${index+1} exit height`);
       result.rooms.push({room:index+1,start,end});console.log(`Passed visible route ${index+1}`);
-      if(index<rooms.length-1&&!calibrationRoom) {
+      if(index<rooms.length&&!calibrationRoom) {
         const travelDeadline=Date.now()+5000;
         let arrived=false;
         while(Date.now()<travelDeadline) {
@@ -263,7 +263,7 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     }
     if(calibrationRoom){assert.deepEqual(result.errors,[]);assert.deepEqual(result.warnings,[]);assert.deepEqual(result.failedRequests,[]);result.calibrationRoom=calibrationRoom;result.passed=true;return;}
     await page.clock.resume();
-    result.checkpointTransitions=rooms.length-1;console.log(`Passed ${rooms.length} routes and ${rooms.length-1} transitions; checking native room selection and custom map`);
+    result.checkpointTransitions=rooms.length;console.log(`Passed ${rooms.length} routes and ${rooms.length} transitions; checking native room selection and custom map`);
 
     async function nativeResult(before) {
       await page.waitForFunction(n=>window.__nativeMapResults.length>n,before);
@@ -272,20 +272,75 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     }
     async function selectRoom(number, expected=rooms[number-1]) {
       const before=await page.evaluate(()=>window.__nativeMapResults.length);
-      await page.locator('#rooms-toggle').click();await page.locator(`[data-room="${number}"]`).click();
-      const response=await nativeResult(before);await page.locator('#rooms').waitFor({state:'hidden'});
+      await page.locator('#rooms-toggle').click();
+      await page.evaluate(()=>{window.__roomClosed=new Promise(resolve=>document.getElementById('rooms').addEventListener('close',()=>resolve(true),{once:true}));});
+      await page.locator(`[data-room="${number}"]`).click();
+      const response=await nativeResult(before);await page.evaluate(()=>window.__roomClosed);await page.locator('#rooms').waitFor({state:'hidden'});
       const player=await visible(`select-${number}`,p=>Math.abs(p.x/4-expected.spawnX-4)<2&&p.phase===0);
       return {room:number,response,player};
     }
     result.selectedRooms=[];for(let number=1;number<=rooms.length;number++)result.selectedRooms.push(await selectRoom(number));
     const handmade=await selectRoom(12,{spawnX:24});result.selectedRooms.push(handmade);
-    assert.equal(await page.locator('[data-room="12"]').innerText(),'1.2');
+    assert.equal(await page.locator('[data-room="12"]').innerText(),'12');
     await page.keyboard.press('z',{delay:80});
-    const handmadeJump=await observe();assert(handmadeJump.phase===1&&handmadeJump.y<handmade.player.y-12,'Handmade1.2 accepts native jump');
+    const handmadeJump=await observe();assert(handmadeJump.phase===1&&handmadeJump.y<handmade.player.y-12,'Room12 accepts native jump');
     await page.keyboard.down('ArrowRight');await page.keyboard.press('x',{delay:80});await page.keyboard.up('ArrowRight');
-    const handmadeDash=await observe();assert(handmadeDash.x>handmadeJump.x+40,'Handmade1.2 accepts native dash');
-    await capture({path:path.join(reports,'handmade-1-2-dash.png')});
+    const handmadeDash=await observe();assert(handmadeDash.x>handmadeJump.x+40,'Room12 accepts native dash');
+    await capture({path:path.join(reports,'room-12-dash.png')});
     result.handmade={start:handmade.player,jumped:handmadeJump,dashed:handmadeDash};
+    await selectRoom(12,{spawnX:24});
+    await page.evaluate(()=>{window.__victories=0;addEventListener('phase-victory',()=>window.__victories++);});
+    await page.clock.pauseAt(await page.evaluate(()=>Date.now()+100));
+    // Align input edges to fixed simulation steps using the measured browser frame cadence.
+    await page.locator('#controls-toggle').click();
+    await page.evaluate(()=>{window.__routeRaf=[];function tick(t){__routeRaf.push(t);if(__routeRaf.length<4)requestAnimationFrame(tick);}requestAnimationFrame(tick);});
+    await page.clock.runFor(100);
+    const routeRaf=await page.evaluate(()=>__routeRaf[1]-__routeRaf[0]);
+    assert(routeRaf>0&&Number.isFinite(routeRaf));
+    await page.evaluate(()=>{window.__routeControlsClosed=new Promise(resolve=>document.getElementById('controls').addEventListener('close',()=>resolve(true),{once:true}));});
+    await page.locator('#controls-close').click();await page.evaluate(()=>window.__routeControlsClosed);await page.clock.runFor(routeRaf);
+    let routeKeys=new Set(),routeFrames=0,lastRaf=0;
+    result.level12Steps=[];
+    const route12=JSON.parse(fs.readFileSync(path.join(__dirname,'Room12Route.json')));
+    for(const step of route12) {
+      const next=new Set();
+      if(step.x)next.add(step.x<0?'ArrowLeft':'ArrowRight');
+      if(step.y)next.add(step.y<0?'ArrowUp':'ArrowDown');
+      for(const [flag,key]of[['jump','z'],['dash','x'],['grab','c']])if(step[flag])next.add(key);
+      for(const key of routeKeys)if(!next.has(key))await page.keyboard.up(key);
+      for(const key of next)if(!routeKeys.has(key))await page.keyboard.down(key);
+      routeKeys=next;
+      routeFrames+=step.frames;
+      const targetRaf=Math.ceil(routeFrames*1000/60/routeRaf-1e-7);
+      await page.clock.runFor((targetRaf-lastRaf)*routeRaf);lastRaf=targetRaf;
+      result.level12Steps.push({frames:routeFrames,player:await observe()});
+    }
+    for(const key of routeKeys)await page.keyboard.up(key);
+    for(let n=0;n<20&&!await page.locator('#victory').isVisible();n++) {
+      await page.keyboard.down('ArrowRight');await page.clock.runFor(100);await page.keyboard.up('ArrowRight');
+    }
+    assert(await page.locator('#victory').isVisible(),'Full level12 keyboard route reaches the compiled victory bridge');
+    assert.equal(await page.evaluate(()=>window.__victories),1);
+    assert.equal(await page.locator('#victory-title').innerText(),'你贏了');
+    await page.screenshot({path:path.join(reports,'demo-12-victory.png')});
+    await page.setViewportSize({width:390,height:844});await page.clock.runFor(100);
+    assert(await page.evaluate(()=>document.getElementById('victory').getBoundingClientRect().right<=innerWidth));
+    await page.screenshot({path:path.join(reports,'demo-12-victory-portrait.png')});
+    await page.setViewportSize({width:1280,height:720});await page.clock.resume();
+    const beforeReplay=await page.evaluate(()=>window.__nativeMapResults.length);
+    await page.locator('#victory-retry').click();await nativeResult(beforeReplay);
+    await page.locator('#victory').waitFor({state:'hidden'});
+    result.victory={route:true,rafInterval:routeRaf,frames:route12.reduce((n,s)=>n+s.frames,0),restarted:await visible('victory-replay',p=>Math.abs(p.x/4-28)<2&&p.phase===0)};
+    result.backtracking=[];
+    for(const [number,previous] of [[2,1],[9,8],[12,11]]) {
+      await selectRoom(number,number===12?{spawnX:24}:rooms[number-1]);
+      await page.keyboard.press('ArrowLeft',{delay:450});
+      const returned=await visible(`back-${number}-to-${previous}`,p=>p.x/4>=280);
+      await page.waitForTimeout(250);
+      await page.keyboard.press('ArrowRight',{delay:550});
+      const resumed=await visible(`forward-${previous}-to-${number}`,p=>p.x/4<80);
+      result.backtracking.push({from:number,to:previous,returned,resumed});
+    }
     await page.locator('#rooms-toggle').click();await page.locator('#map-open').click();
     const custom={name:'Browser native map',blocks:[{x:0,y:168,w:320,h:8,phase:-1,phaseMask:7}],spikes:[{x:200,y:160,length:8,direction:0,phaseMask:7}],spawnX:24,spawnY:152};
     const chooser=page.waitForEvent('filechooser');await page.locator('#map-import').click();

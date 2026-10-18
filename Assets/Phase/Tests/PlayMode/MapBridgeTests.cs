@@ -74,7 +74,7 @@ public class MapBridgeTests : InputTestFixture
             yield return null;var next=Object.FindAnyObjectByType<PhaseSandbox>();
             Assert.That(next.Controller.phase,Is.Zero);Assert.That(next.Frame,Is.Not.Null);
             Assert.That(Object.FindObjectsByType<PhaseSandbox>(FindObjectsSortMode.None).Length,Is.EqualTo(1));
-            foreach (var room in new[] { ("9", "PhaseCrystal1", 1), ("10", "PhaseCrystal2", 3), ("11", "PhaseCrystal3", 1), ("12", "PhaseDemo1.2", 0) })
+            foreach (var room in new[] { ("9", "PhaseCrystal1", 1), ("10", "PhaseCrystal2", 2), ("11", "PhaseCrystal3", 2), ("12", "PhaseDemo12", 0) })
             {
                 next.SelectDemoRoom(room.Item1); deadline = Time.realtimeSinceStartupAsDouble + 5;
                 while (SceneManager.GetActiveScene().name != room.Item2 && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
@@ -86,6 +86,7 @@ public class MapBridgeTests : InputTestFixture
                 Assert.That(Object.FindObjectsByType<PhaseSandbox>(FindObjectsSortMode.None).Length, Is.EqualTo(1));
             }
             Assert.That(next.Controller.movers.Length, Is.EqualTo(14));
+            Assert.That(next.Won, Is.False, "selecting level12 is not a victory");
             var positions = System.Array.ConvertAll(next.Controller.movers, m => (m.x, m.y));
             InputSystem.QueueStateEvent(keyboard, new KeyboardState()); yield return null; yield return null;
             InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Z)); yield return new WaitForSeconds(.08f);

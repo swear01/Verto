@@ -23,6 +23,13 @@ namespace Phase
         bool jumpQueued, dashQueued, transitioning;
         public const float TransitionDuration = .18f;
         public bool InTransition => transitioning || departingFrame != null;
+        public bool Won { get; private set; }
+        public static readonly string[] Levels = {
+            "PhaseDemo1", "PhaseDemo2", "PhaseDemo3", "PhaseDemo4", "PhaseDemo5", "PhaseDemo6", "PhaseDemo7", "PhaseDemo8",
+            "PhaseCrystal1", "PhaseCrystal2", "PhaseCrystal3", "PhaseDemo12"
+        };
+        int level = -1;
+        bool custom;
         Color32[] departingFrame, arrivingFrame;
         float transitionElapsed = -1;
         int transitionDirection;
@@ -44,22 +51,63 @@ namespace Phase
         static void ResetSession() { ClearTravel(); keys = defaultKeys; controlsOpen = releaseControls = false; }
         static void ClearTravel() { traveler = null; travelFrame = null; travelSize = default; arrivalScene = null; arrivalDirection = 0; }
 
-        void Awake()
+        PhaseController Build(Vector2Int at, int width)
         {
-            Controller = new PhaseController(GetComponentsInChildren<PhaseTerrain>().Select(t => t.CreateBlock()), spawn.x, spawn.y,
+            var controller = new PhaseController(GetComponentsInChildren<PhaseTerrain>().Select(t => t.CreateBlock()), at.x, at.y,
                 GetComponentsInChildren<PhaseMovingPlatform>().Select(m => m.CreatePlatform()), gears: GetComponentsInChildren<PhaseClimbGear>().Select(g => g.CreateGear()),
                 spikes: GetComponentsInChildren<PhaseSpike>().Select(t => t.CreateSpike()),
                 lasers: GetComponentsInChildren<PhaseLaser>().Select(t => t.CreateLaser()),
                 crystals: GetComponentsInChildren<PhaseCrystal>().Select(t => t.CreateCrystal()));
-            Controller.exitLeft = !string.IsNullOrEmpty(leftScene);
-            Controller.exitRight = !string.IsNullOrEmpty(rightScene);
+            controller.exitLeft = !string.IsNullOrEmpty(leftScene);
+            controller.exitRight = !string.IsNullOrEmpty(rightScene) || level == Levels.Length - 1;
+            controller.ResizeRoom(width);
+            return controller;
+        }
+        // Enter near the current right edge, choosing a solid phase and clear standing cell.
+        public static (Vector2Int at, int phase)? RightEntry(PhaseController c, double preferY, int preferPhase = 0)
+        {
+            int authored = c.phase;
+            try
+            {
+                for (int x = (c.Width - 16) / 8 * 8; x >= c.Width / 2; x -= 8)
+                {
+                    foreach (int phase in new[] { 0, preferPhase, 1, 2 }.Distinct())
+                    {
+                        c.phase = phase;
+                        var blockers = c.Solid().Concat(c.spikes.Where(s => s.ActiveInPhase(phase)).Select(s => s.Hitbox))
+                            .Concat(c.lasers.Where(l => l.ActiveInPhase(phase)).Select(c.LaserBeam)).ToList();
+                        var spots = c.blocks.Where((b, i) => b.ActiveInPhase(phase) && !c.blocked.Contains(i) && b.x <= x && b.x + b.w >= x + 8 && b.y >= 11)
+                            .Select(b => new Block(x, b.y - 11, 8, 11)).Where(p => !blockers.Any(o => PhaseController.Overlap(p, o)))
+                            .OrderBy(p => Math.Abs(p.y - preferY)).ToList();
+                        if (spots.Count > 0) return (new Vector2Int(x, (int)spots[0].y), phase);
+                    }
+                }
+                return null;
+            }
+            finally { c.phase = authored; }
+        }
+        void Awake()
+        {
+            level = custom ? -1 : Array.IndexOf(Levels, gameObject.scene.name);
+            if (level >= 0)
+            {
+                leftScene = level > 0 ? Levels[level - 1] : "";
+                rightScene = level < Levels.Length - 1 ? Levels[level + 1] : "";
+            }
             bool arriving = traveler != null && gameObject.scene.name == arrivalScene;
             var size = arriving && travelFrame != null ? travelSize : ViewSize(Screen.width, Screen.height);
-            Controller.ResizeRoom(size.x);
+            Controller = Build(spawn, size.x);
             if (arriving)
             {
                 if (checkpointOnEntry)
                 {
+                    if (arrivalDirection < 0 && RightEntry(Controller, traveler.player.y, traveler.phase) is { } entry)
+                    {
+                        // Red floors become the checkpoint; other floors keep the authored respawn so a reset cannot drop into a void.
+                        if (entry.phase == 0) Controller = Build(entry.at, size.x);
+                        Controller.player.x = entry.at.x; Controller.player.y = entry.at.y;
+                        Controller.phase = entry.phase; Controller.player.facing = -1;
+                    }
                     Controller.time = traveler.time; Controller.jumps = traveler.jumps;
                     Controller.dashes = traveler.dashes; Controller.deaths = traveler.deaths;
                 }
@@ -98,8 +146,47 @@ namespace Phase
                 Controller.ResizeRoom(size.x);
                 departingFrame = arrivingFrame = null;
                 pixels.SetView(size.x, size.y, 0);
-                pixels.Draw(Controller); UpdateSurface();
+                Render(); UpdateSurface();
             }
+        }
+        void Render() { pixels.Draw(Controller, !Won); if (Won) StampVictory(); }
+        static readonly string[] victoryText = {
+            "...#....#................#..........................",
+            "...#...#...........##############.....###########...",
+            "..#...#########......#.........................#....",
+            ".##...........#......##########...............#.....",
+            "..#.......#..#...............................#......",
+            "..#.......#............######...............#.......",
+            "..#.......#............#....#...............#.......",
+            "..#....#..#.#..........######...............#.......",
+            "..#...#...#..#..............................#.......",
+            "..#..#....#...#...####.#####.####...........#.......",
+            "..#.......#.......#..#.#...#.#..#...........#.......",
+            "..#.......#.......####.#####.##.#...........#.......",
+            "..#.......#.......#..#.#...#.#..#...........#.......",
+            "..#.......#.......####.#####.#..#...........#.......",
+            "..#.......#.......#..#..#.#..#..#...........#.......",
+            "..#.....###.......#.##.#...#.#..##.......####......."
+        }, retryIcon = { "..####.#.", ".#....##.", "#....###.", "#........", "#.......#", "#.......#", ".#.....#.", "..#####.." };
+        static readonly Color32 VictoryInk = new Color32(11, 15, 22, 255), VictoryLight = new Color32(234, 223, 197, 255);
+        void StampVictory()
+        {
+            var frame = Frame.GetPixels32(); int w = pixels.Width, h = pixels.Height, top = h / 2 - 22;
+            void Set(int x, int y, Color32 color, float amount = 1)
+            { if (x >= 0 && x < w && y >= 0 && y < h) { int i = (h - 1 - y) * w + x; frame[i] = Color32.Lerp(frame[i], color, amount); } }
+            void Blit(string[] art, int left, int y0)
+            { for (int y = 0; y < art.Length; y++) for (int x = 0; x < art[y].Length; x++) if (art[y][x] == '#') Set(left + x, y0 + y, VictoryLight); }
+            for (int y = top; y < top + 44; y++) for (int x = 0; x < w; x++)
+                Set(x, y, y == top || y == top + 43 ? VictoryLight : VictoryInk, y == top || y == top + 43 ? .35f : .82f);
+            Blit(victoryText, (w - victoryText[0].Length) / 2, top + 8);
+            Blit(retryIcon, (w - retryIcon[0].Length) / 2, top + 29);
+            Frame.SetPixels32(frame); Frame.Apply(false);
+        }
+        void Win()
+        {
+            Won = true; jumpQueued = dashQueued = false; accumulator = 0;
+            Render();
+            Victory();
         }
         void Update()
         {
@@ -121,6 +208,7 @@ namespace Phase
                 if (t >= 1) departingFrame = arrivingFrame = null;
                 return;
             }
+            if (Won) { if (Pressed(k, 4, true)) SelectDemoRoom("1"); return; }
             var input = ReadControls(k);
             jumpQueued |= Pressed(k, 4, true);
             dashQueued |= Pressed(k, 5, true);
@@ -132,10 +220,11 @@ namespace Phase
                 accumulator -= PhaseController.Dt;
                 if (Controller.ExitDirection != 0) { Travel(Controller.ExitDirection); break; }
             }
-            pixels.Draw(Controller);
+            if (!Won) pixels.Draw(Controller);
         }
         void Travel(int direction)
         {
+            if (direction > 0 && level == Levels.Length - 1) { Win(); return; }
             string destination = direction < 0 ? leftScene : rightScene;
             if (!Application.CanStreamedLevelBeLoaded(destination))
             {
