@@ -45,7 +45,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aef970695423b4300910e4940921f65b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Phase.Runtime::Phase.PhaseMovingPlatform
-  size: {x: 40, y: 8}
+  size: {x: 8, y: 40}
   nodes:
   - {x: 0, y: 0}
   - {x: 0, y: -64}
