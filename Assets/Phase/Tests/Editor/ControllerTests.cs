@@ -522,4 +522,18 @@ public class ControllerTests
         next.Reset();Assert.That(next.player.x,Is.EqualTo(67));Assert.That(next.phase,Is.Zero);
     }
 
+    [Test]
+    public void RespawnClampsAWideRoomCheckpointAfterViewportShrinks()
+    {
+        var c = new PhaseController(new[] { new Block(0,160,320,24) },408,149);
+        c.exitRight = true; c.ResizeRoom(427); c.Reset();
+        Assert.That(c.player.x,Is.EqualTo(408));
+        c.ResizeRoom(320); c.player.y = 200;
+        Ticks(c,30,default);
+        Assert.That(c.deaths,Is.EqualTo(1));
+        Assert.That(c.player.x,Is.EqualTo(312));
+        Assert.That(c.player.y,Is.EqualTo(149));
+        Assert.That(c.ExitDirection,Is.Zero,"respawn must not travel through the newly narrowed edge");
+    }
+
 }

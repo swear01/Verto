@@ -1,7 +1,8 @@
 'use strict';
 function setupMaps(instance, gameCanvas) {
   const model = PhaseMapModel, colors = { 7:'#e8e8e8', 1:'#ff8f91', 2:'#79c9ff', 4:'#78d892', 5:'#f1dc81', 3:'#d7a3ed', 6:'#85e4dc' };
-  const rooms = document.getElementById('rooms'), editor = document.getElementById('map-editor');
+  const rooms = document.getElementById('rooms'), editor = document.getElementById('map-editor'), victory = document.getElementById('victory');
+  const timeout = '載入逾時，請重新整理後再試。', requests = '[data-room], #map-play, #victory-retry';
   const status = document.getElementById('map-status'), roomStatus = document.getElementById('rooms-status');
   const board = document.getElementById('map-board'), context = board.getContext('2d');
   const storageKey = 'phase.map.v1', undo = [], redo = [];
@@ -12,7 +13,7 @@ function setupMaps(instance, gameCanvas) {
   catch { notice = '無法讀取草稿，請匯入備份 JSON。'; }
   const snapshot = () => JSON.stringify(map);
   const pause = () => instance.SendMessage('PHASE','SetControlsOpen',String(document.hidden || !document.hasFocus() || window.phaseAnyDialogOpen()));
-  function open(dialog) { dialog.showModal(); pause(); }
+  function open(dialog) { if (!dialog.open) dialog.showModal(); pause(); }
   function closed() { if (!window.phaseAnyDialogOpen()) gameCanvas.focus(); pause(); }
   function save() {
     try { localStorage.setItem(storageKey, JSON.stringify(model.room(map))); status.textContent = ''; }
@@ -80,28 +81,36 @@ function setupMaps(instance, gameCanvas) {
   document.querySelectorAll('[data-map-mask]').forEach(b=>b.addEventListener('click',()=>{mask=Number(b.dataset.mapMask);render();}));
   document.getElementById('map-undo').addEventListener('click',()=>history(undo,redo));
   document.getElementById('map-redo').addEventListener('click',()=>history(redo,undo));
-  document.getElementById('rooms-toggle').addEventListener('click',()=>{roomStatus.textContent=stalled?'載入逾時，請重新整理後再試。':'';open(rooms);});
+  function openRooms() { roomStatus.textContent=stalled?timeout:'';open(rooms); }
+  document.getElementById('rooms-toggle').addEventListener('click',openRooms);
   document.getElementById('rooms-close').addEventListener('click',()=>rooms.close());
-  document.getElementById('map-open').addEventListener('click',()=>{open(editor);rooms.close();status.textContent=stalled?'載入逾時，請重新整理後再試。':notice;notice='';render();board.focus();});
+  document.getElementById('map-open').addEventListener('click',()=>{open(editor);rooms.close();status.textContent=stalled?timeout:notice;notice='';render();board.focus();});
   document.getElementById('map-close').addEventListener('click',()=>editor.close());
-  for(const dialog of [rooms,editor]) { dialog.addEventListener('close',closed);dialog.addEventListener('cancel',event=>{if(pending)event.preventDefault();}); }
+  for(const dialog of [rooms,editor,victory]) { dialog.addEventListener('close',closed);dialog.addEventListener('cancel',event=>{if(pending)event.preventDefault();}); }
   function request(method,value,dialog) {
     if(pending || stalled)return;
-    const target=dialog===rooms?roomStatus:status;target.textContent='載入中…';
-    pending={dialog,timer:setTimeout(()=>{stalled=true;finish(false,'載入逾時，請重新整理後再試。');},15000)};
+    dialog.querySelector('[role="status"]').textContent='載入中…';
+    pending={dialog,timer:setTimeout(()=>{stalled=true;finish(false,timeout);},15000)};
     for(const b of dialog.querySelectorAll('button')) b.disabled=true;
     try {instance.SendMessage('PHASE',method,value);} catch {finish(false,'無法載入，請再試一次。');}
   }
   function finish(success,message) {
-    if(!pending)return;
+    if(!pending) {
+      // A late answer to the timed-out request means Unity is responsive again; no other request can be outstanding.
+      if(stalled) { stalled=false; for(const b of document.querySelectorAll(requests)) b.disabled=false; for(const p of document.querySelectorAll('dialog [role="status"]')) if(p.textContent===timeout) p.textContent=''; pause(); }
+      return;
+    }
     const {dialog,timer}=pending;clearTimeout(timer);pending=null;
     for(const b of dialog.querySelectorAll('button')) b.disabled=false;
     render();
-    for(const b of document.querySelectorAll('[data-room], #map-play')) b.disabled=stalled;
+    for(const b of document.querySelectorAll(requests)) b.disabled=stalled;
     if(success) {dialog.close();closed();}
-    else (dialog===rooms?roomStatus:status).textContent=message || '無法載入，請檢查地圖。';
+    else dialog.querySelector('[role="status"]').textContent=message || '無法載入，請檢查地圖。';
   }
   addEventListener('phase-map-result',event=>finish(event.detail?.success===true,event.detail?.message));
+  addEventListener('phase-victory',()=>{victory.querySelector('[role="status"]').textContent='';open(victory);});
+  document.getElementById('victory-retry').addEventListener('click',()=>request('SelectDemoRoom','1',victory));
+  document.getElementById('victory-rooms').addEventListener('click',()=>{openRooms();victory.close();});
   document.querySelectorAll('[data-room]').forEach(b=>b.addEventListener('click',()=>request('SelectDemoRoom',b.dataset.room,rooms)));
   document.getElementById('map-play').addEventListener('click',()=>{
     try {const room=model.room(map);if(!room.blocks.length)throw Error('地圖至少需要一格地形。');const json=JSON.stringify(room);model.parse(json);request('LoadCustomMap',json,editor);}
@@ -123,7 +132,7 @@ function setupMaps(instance, gameCanvas) {
     } catch(error){status.textContent=error.message;}
   });
   addEventListener('keydown',event=>{
-    if(!rooms.open&&!editor.open)return;
+    if(!rooms.open&&!editor.open&&!victory.open)return;
     event.stopImmediatePropagation();
     if(pending){event.preventDefault();return;}
     if(event.target===board) {

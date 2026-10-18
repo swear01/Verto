@@ -19,12 +19,24 @@ const server=http.createServer((req,res)=>{
   await page.goto(`http://127.0.0.1:${server.address().port}/`);await page.locator('#rooms-toggle').waitFor({state:'visible'});
   await page.locator('#rooms-toggle').click();await page.locator('[data-room="5"]').click();await page.waitForFunction(()=>!document.getElementById('rooms').open);
   assert(await page.evaluate(()=>__calls.some(c=>c.m==='SelectDemoRoom'&&c.v==='5')));
-  assert.equal(await page.locator('[data-room]').count(),12,'selector includes crystals and handmade1.2');
+  assert.equal(await page.locator('[data-room]').count(),12,'selector includes crystals and level12');
+  assert.deepEqual(await page.locator('[data-room]').allInnerTexts(),Array.from({length:12},(_,i)=>String(i+1)),'levels are numbered1..12');
   for(const room of ['9','10','11','12']) {
     await page.locator('#rooms-toggle').click();await page.locator(`[data-room="${room}"]`).click();
     await page.waitForFunction(()=>!document.getElementById('rooms').open);
     assert(await page.evaluate(value=>__calls.some(c=>c.m==='SelectDemoRoom'&&c.v===value),room));
   }
+  await page.evaluate(()=>dispatchEvent(new CustomEvent('phase-victory')));await page.locator('#victory').waitFor({state:'visible'});
+  assert.equal(await page.locator('#victory-title').innerText(),'你贏了');
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'victory-retry','retry is the default action');
+  assert.equal(await page.evaluate(()=>__calls.filter(c=>c.m==='SetControlsOpen').at(-1).v),'true','victory pauses play');
+  await page.screenshot({path:path.join(reports,'victory-desktop.png')});
+  await page.locator('#victory-rooms').click();assert(await page.locator('#rooms').isVisible());assert.equal(await page.locator('#victory').isVisible(),false);
+  await page.locator('#rooms-close').click();
+  await page.evaluate(()=>dispatchEvent(new CustomEvent('phase-victory')));await page.locator('#victory-retry').click();
+  await page.waitForFunction(()=>!document.getElementById('victory').open);
+  assert.equal(await page.evaluate(()=>__calls.filter(c=>c.m==='SelectDemoRoom').at(-1).v),'1','retry restarts level1');
+  assert.equal(await page.evaluate(()=>__calls.filter(c=>c.m==='SetControlsOpen').at(-1).v),'false','retry resumes play');
 
   await page.locator('#rooms-toggle').click();await page.locator('#map-open').click();assert(await page.locator('#map-editor').isVisible());
   const board=page.locator('#map-board');await board.focus();
@@ -74,16 +86,21 @@ const server=http.createServer((req,res)=>{
    await page.locator('#fullscreen-toggle').click();await page.waitForFunction(()=>!document.fullscreenElement);
    assert.equal(await page.locator('#fullscreen-toggle').getAttribute('aria-pressed'),'false');
   }
-  await page.evaluate(()=>{window.__silent=true;const timeout=window.setTimeout;window.setTimeout=(f,ms)=>timeout(f,ms===15000?30:ms);});
+  await page.evaluate(()=>{window.__silent=true;const timeout=window.__timeout=window.setTimeout;window.setTimeout=(f,ms)=>timeout(f,ms===15000?30:ms);});
   await page.locator('#rooms-toggle').click();await page.locator('[data-room="2"]').click();
   await page.waitForFunction(()=>document.getElementById('rooms-status').textContent.includes('重新整理'));
   assert(await page.locator('[data-room="2"]').isDisabled(),'timeout cannot create overlapping uncorrelated bridge requests');
+  const pauses=await page.evaluate(()=>__calls.filter(c=>c.m==='SetControlsOpen').length);
   await page.evaluate(()=>dispatchEvent(new CustomEvent('phase-map-result',{detail:{success:true}})));
+  assert.equal(await page.evaluate(()=>__calls.filter(c=>c.m==='SetControlsOpen').length),pauses+1,'late completion reapplies the dialog pause');
+  assert.equal(await page.evaluate(()=>__calls.filter(c=>c.m==='SetControlsOpen').at(-1).v),'true');
   assert(await page.locator('#rooms').isVisible(),'late callback cannot close a new dialog');
-  await page.locator('#rooms-close').click();await page.locator('#rooms-toggle').click();
-  assert.match(await page.locator('#rooms-status').innerText(),/重新整理/);
-  await page.locator('#map-open').click();assert.match(await page.locator('#map-status').innerText(),/重新整理/);
-  assert(await page.locator('#map-play').isDisabled());
-  assert.deepEqual(errors,[]);console.log('PASS: mock bridge selection, painter keyboard/drag, history, JSON, failure retention, persistence, mobile and repeated resized fullscreen enter/exit');
+  assert(await page.locator('[data-room="2"]').isEnabled(),'late callback recovers selection');
+  assert.equal(await page.locator('#rooms-status').innerText(),'','late callback clears the timeout');
+  await page.evaluate(()=>{window.__silent=false;window.setTimeout=window.__timeout;});await page.locator('[data-room="3"]').click();
+  await page.waitForFunction(()=>!document.getElementById('rooms').open);
+  assert.equal(await page.evaluate(()=>__calls.filter(c=>c.m==='SelectDemoRoom').at(-1).v),'3','selection works after recovery');
+  await page.locator('#rooms-toggle').click();await page.locator('#map-open').click();assert(await page.locator('#map-play').isEnabled());
+  assert.deepEqual(errors,[]);console.log('PASS: mock bridge selection, victory dialog, timeout recovery, painter keyboard/drag, history, JSON, failure retention, persistence, mobile and repeated resized fullscreen enter/exit');
  }finally{if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}
 })().catch(error=>{console.error(error);process.exitCode=1;});

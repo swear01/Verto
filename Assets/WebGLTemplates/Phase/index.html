@@ -37,8 +37,13 @@
     #map-coordinate { font-variant-numeric: tabular-nums; white-space: nowrap; }
     #map-play { margin-left: auto; border-color: #eadfc5; color: #101a2b; background: #eadfc5; }
     #map-play:hover { background: #cfc1a5; }
-    #map-status:empty, #rooms-status:empty { display: none; }
-    #map-status, #rooms-status { color: #f1dc81; margin: 16px 0 0; }
+    #map-status:empty, #rooms-status:empty, #victory-status:empty { display: none; }
+    #map-status, #rooms-status, #victory-status { color: #f1dc81; margin: 16px 0 0; }
+    #victory { text-align: center; }
+    #victory h1 { margin: 8px 0 28px; font-size: 32px; letter-spacing: .08em; }
+    #victory-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    #victory-retry { border-color: #eadfc5; color: #101a2b; background: #eadfc5; }
+    #victory-retry:hover { background: #cfc1a5; }
     dialog { scrollbar-color: #697d8e #101a2b; }
     @media (max-width: 480px) { #map-tools, #map-colors { flex-wrap: nowrap; overflow-x: auto; padding: 4px; margin-left: -4px; margin-right: -4px; scrollbar-color: #697d8e #101a2b; } #map-tools button, #map-colors button { flex: 0 0 44px; } #map-editor { padding: 16px; } #map-play { margin-left: 0; } #game-tools { gap: 8px; } }
     #display-error { position: absolute; bottom: 16px; max-width: 80vw; padding: 8px 16px; background: #101a2b; }
@@ -68,7 +73,7 @@
   </nav>
   <dialog id="rooms" aria-labelledby="rooms-title">
     <header><h1 id="rooms-title">選擇關卡</h1><button id="rooms-close" class="icon" aria-label="返回遊戲"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
-    <div id="rooms-list"><button data-room="1" aria-label="第 1 關">1</button><button data-room="2" aria-label="第 2 關">2</button><button data-room="3" aria-label="第 3 關">3</button><button data-room="4" aria-label="第 4 關">4</button><button data-room="5" aria-label="第 5 關">5</button><button data-room="6" aria-label="第 6 關">6</button><button data-room="7" aria-label="第 7 關">7</button><button data-room="8" aria-label="第 8 關">8</button><button data-room="9" aria-label="第 9 關">9</button><button data-room="10" aria-label="第 10 關">10</button><button data-room="11" aria-label="第 11 關">11</button><button data-room="12" aria-label="同學關卡 1.2">1.2</button></div>
+    <div id="rooms-list"><button data-room="1" aria-label="第 1 關">1</button><button data-room="2" aria-label="第 2 關">2</button><button data-room="3" aria-label="第 3 關">3</button><button data-room="4" aria-label="第 4 關">4</button><button data-room="5" aria-label="第 5 關">5</button><button data-room="6" aria-label="第 6 關">6</button><button data-room="7" aria-label="第 7 關">7</button><button data-room="8" aria-label="第 8 關">8</button><button data-room="9" aria-label="第 9 關">9</button><button data-room="10" aria-label="第 10 關">10</button><button data-room="11" aria-label="第 11 關">11</button><button data-room="12" aria-label="第 12 關">12</button></div>
     <button id="map-open">地圖編輯</button>
     <p id="rooms-status" role="status" aria-live="polite"></p>
   </dialog>
@@ -92,6 +97,11 @@
     </div>
     <input id="map-file" type="file" accept="application/json,.json" hidden>
     <p id="map-status" role="status" aria-live="polite"></p>
+  </dialog>
+  <dialog id="victory" aria-labelledby="victory-title">
+    <h1 id="victory-title">你贏了</h1>
+    <div id="victory-actions"><button id="victory-retry">再玩一次</button><button id="victory-rooms">選擇關卡</button></div>
+    <p id="victory-status" role="status" aria-live="polite"></p>
   </dialog>
   <dialog id="controls" aria-labelledby="controls-title">
     <header><h1 id="controls-title">鍵位設定</h1><button id="controls-close" class="icon" aria-label="返回遊戲"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>

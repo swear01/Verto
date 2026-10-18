@@ -8,14 +8,14 @@ public static class PhaseSandboxBuilder
     [MenuItem("PHASE/Create eight-room demo")]
     public static void CreateDemoRooms()
     {
-        CreateRooms("Assets/Phase/DemoRooms.json", "PhaseDemo", 8, "PhaseCrystal1");
+        CreateRooms("Assets/Phase/DemoRooms.json", "PhaseDemo", 8);
     }
     [MenuItem("PHASE/Create crystal rooms")]
     public static void CreateCrystalRooms()
     {
-        CreateRooms("Assets/Phase/CrystalRooms.json", "PhaseCrystal", 3, "");
+        CreateRooms("Assets/Phase/CrystalRooms.json", "PhaseCrystal", 3);
     }
-    static void CreateRooms(string source, string prefix, int count, string exit)
+    static void CreateRooms(string source, string prefix, int count)
     {
         if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
         var data = JsonUtility.FromJson<PhaseDemoRooms>(System.IO.File.ReadAllText(source));
@@ -33,7 +33,9 @@ public static class PhaseSandboxBuilder
             sandbox.pixelMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Phase/PixelSurface.mat");
             sandbox.spawn = new Vector2Int((int)room.spawnX, (int)room.spawnY);
             sandbox.checkpointOnEntry = true;
-            sandbox.rightScene = i < count - 1 ? prefix + (i + 2) : exit;
+            int level = System.Array.IndexOf(PhaseSandbox.Levels, prefix + (i + 1));
+            sandbox.leftScene = level > 0 ? PhaseSandbox.Levels[level - 1] : "";
+            sandbox.rightScene = level < PhaseSandbox.Levels.Length - 1 ? PhaseSandbox.Levels[level + 1] : "";
             foreach (var b in room.blocks) Add(root, "Terrain", (int)b.x, (int)b.y, (int)b.w, (int)b.h, b.phase, b.phaseMask);
             foreach (var spike in room.CreateSpikes())
             {
@@ -77,6 +79,40 @@ public static class PhaseSandboxBuilder
         EditorBuildSettings.scenes = scenes.ToArray();
         AssetDatabase.SaveAssets();
         EditorSceneManager.OpenScene("Assets/Scenes/" + prefix + "1.unity");
+    }
+    // Renames the hand-authored level in place: same GUID, Prefab instances and overrides; Build Settings follow the GUID.
+    public static string RenameLevel12()
+    {
+        const string from = "Assets/Scenes/PhaseDemo1.2.unity", to = "Assets/Scenes/PhaseDemo12.unity";
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) throw new System.OperationCanceledException("Unsaved scenes were kept.");
+        string guid = AssetDatabase.AssetPathToGUID(from, AssetPathToGUIDOptions.OnlyExistingAssets);
+        if (guid == "")
+        {
+            guid = AssetDatabase.AssetPathToGUID(to, AssetPathToGUIDOptions.OnlyExistingAssets);
+            if (guid == "") throw new System.InvalidOperationException("Missing level 12 scene.");
+        }
+        else
+        {
+            string error = AssetDatabase.MoveAsset(from, to);
+            if (error != "") throw new System.InvalidOperationException(error);
+        }
+        if (AssetDatabase.AssetPathToGUID(to) != guid) throw new System.InvalidOperationException("Level 12 GUID changed.");
+        EditorBuildSettings.scenes = System.Array.ConvertAll(EditorBuildSettings.scenes,
+            s => s.guid.ToString() == guid ? new EditorBuildSettingsScene(to, s.enabled) : s);
+        AssetDatabase.SaveAssets();
+        var scene = EditorSceneManager.OpenScene(to);
+        int prefabs = 0, platforms = 0;
+        foreach (var root in scene.GetRootGameObjects())
+        {
+            foreach (var t in root.GetComponentsInChildren<Transform>(true)) if (PrefabUtility.IsOutermostPrefabInstanceRoot(t.gameObject)) prefabs++;
+            platforms += root.GetComponentsInChildren<PhaseMovingPlatform>(true).Length;
+        }
+        if (prefabs != 22 || platforms != 14) throw new System.InvalidOperationException($"Level 12 has {prefabs} Prefab instances and {platforms} platforms.");
+        var sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
+        sandbox.leftScene = "PhaseCrystal3"; sandbox.rightScene = "";
+        EditorUtility.SetDirty(sandbox);
+        EditorSceneManager.SaveScene(scene);
+        return guid;
     }
     [MenuItem("PHASE/Create gear demo")]
     public static void CreateGearDemo()

@@ -88,13 +88,14 @@ public static class DemoLiveInput
             var p = s.player; var goal = room.goal;
             if (goal == null)
             {
-                if (s.deaths != deaths || s.gears[0].Lift != 0 || p.x+p.w > 80 || Time.frameCount <= frame || s.time <= time)
+                bool failed = course == "CrystalRooms" ? s.deaths <= deaths : s.deaths != deaths || s.gears[0].Lift != 0 || p.x+p.w > 80;
+                if (failed || Time.frameCount <= frame || s.time <= time)
                 {
-                    result.TrySetException(new InvalidOperationException($"Room {label} bypass escaped: x={p.x}, lift={s.gears[0].Lift}, deaths={s.deaths-deaths}"));
+                    result.TrySetException(new InvalidOperationException($"Room {label} bypass escaped: x={p.x}, deaths={s.deaths-deaths}"));
                     yield break;
                 }
                 File.WriteAllBytes($"TestResults/{course}/{label}-end.png",sandbox.Frame.EncodeToPNG());
-                string blocked = $"Room {label} blocked: frames={Time.frameCount-frame}, seconds={s.time-time:F3}, x={p.x}, lift=0, deaths=0";
+                string blocked = $"Room {label} blocked: frames={Time.frameCount-frame}, seconds={s.time-time:F3}, x={p.x}, deaths={s.deaths-deaths}";
                 File.WriteAllText($"TestResults/{course}/{label}.txt",blocked); result.SetResult(blocked); yield break;
             }
             if (s.deaths != deaths || p.x < goal.x || p.y + p.h != goal.y || !p.grounded || s.phase != goal.phase ||

@@ -162,7 +162,7 @@ namespace Phase
         public void Reset()
         {
             phase = 0; respawn = freeze = 0; blocked.Clear();
-            player = new Player(spawnX, spawnY); movers = platformTemplates.Select(m => m.Fresh()).ToArray();
+            player = new Player(Math.Min(spawnX, Width - 8), spawnY); movers = platformTemplates.Select(m => m.Fresh()).ToArray();
             airJumpCollected = airJumpRequested = false;
             foreach (var crystal in crystals) crystal.collected = false;
             gears = gearTemplates.Select(g => g.Fresh()).ToArray();

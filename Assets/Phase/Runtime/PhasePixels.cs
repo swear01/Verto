@@ -330,7 +330,10 @@ namespace Phase
                     else Rect(x, y, 1, 1, "c8c8c8", .5);
                 }
             }
-            foreach (var n in m.nodes) Rect(n[0] + m.w / 2 - 1, n[1] + 2, 3, 3, "c8c8c8", .5);
+            bool vertical = true;
+            foreach (var n in m.nodes) vertical &= n[0] == m.nodes[0][0];
+            // Vertical stops mirror the horizontal marker across the track.
+            foreach (var n in m.nodes) Rect(n[0] + m.w / 2 - (vertical ? 2 : 1), vertical ? n[1] + m.h / 2 - 1 : n[1] + 2, 3, 3, "c8c8c8", .5);
             Rect(m.x - 1, m.y - 1, m.w + 2, m.h + 2, Ink);
             for (double y = m.y; y < m.y + m.h; y += 8) for (double x = m.x; x < m.x + m.w; x += 8) Blit(moverTile, Round(x) - 1, Round(y) - 1);
         }
@@ -347,54 +350,52 @@ namespace Phase
             Rect(cx - 1, cy - 1, 2, 2, "e8e8e8");
             Rect(cx + Round(4 * Math.Cos(angle)) - 1, cy + Round(4 * Math.Sin(angle)) - 1, 2, 2, "646464");
         }
+        static readonly (int x, int y)[] FloorTrain = { (6,-32),(19,-23),(25,-8),(39,0) };
+        static readonly (int x, int y)[] HangingTrain = { (6,16),(14,30),(30,30),(38,16),(39,0) };
+        // Wall and platform share one 8px profile; t=0 is the rack face, teeth fill t0-t1 and stay inside collision.
+        static string Profile(int t, int u, int length, int phase)
+        {
+            bool tooth = ((u - phase) % 6 + 6) % 6 < 3;
+            if (t == 0) return tooth ? "f0f0f0" : "646464";
+            if (t == 1) return tooth ? "a0a0a0" : "484848";
+            if (t == 2) return "a0a0a0";
+            if (t == 3 || u == length - 1) return "484848";
+            if (t == 7 || u == 0) return "a0a0a0";
+            return t == 5 && u % 8 == 4 ? "e8e8e8" : "787878";
+        }
         void Gear(ClimbGear gear)
         {
             var wall = gear.wall; var platform = gear.platform;
             int side = platform.y >= gear.bottom + wall.h - 16 ? -1 : 1;
-            int rackX = Round(wall.x + wall.w), rackY = side > 0 ? Round(platform.y + platform.h) - 3 : Round(platform.y) + 2, cy = rackY + side * 9;
-            Rect(wall.x + 2, gear.top - 4, wall.w - 4, gear.bottom + wall.h - gear.top + 8, "444444");
-            foreach (double y in new[] { gear.top - 4, gear.bottom + wall.h + 2 })
-                Rect(wall.x - 2, y, wall.w + 4, 2, Highlights[3]);
+            int face = Round(wall.x + wall.w), cy = side > 0 ? Round(platform.y + platform.h) + 6 : Round(platform.y) - 7;
+            var train = side > 0 ? HangingTrain : FloorTrain;
+            var angles = new double[train.Length];
+            angles[0] = gear.Lift * Math.PI / 24;
+            for (int i = 1; i < train.Length; i++)
+                angles[i] = -angles[i - 1] + 2 * Math.Atan2(train[i].y - train[i - 1].y, train[i].x - train[i - 1].x) + Math.PI / 8;
+            // Rack phases follow the pinions so every contact shows a tooth in a gap.
+            int inputY = cy + train[0].y, phaseV = inputY - Round(gear.bottom) - 4;
+            double contact = side > 0 ? -Math.PI / 2 : Math.PI / 2, rest = angles[angles.Length - 1] + (train.Length % 2 == 0 ? 1 : -1) * gear.Lift * Math.PI / 24;
+            double nearest = contact - Math.IEEERemainder(contact - rest, Math.PI / 4);
+            int phaseH = Round(face + train[train.Length - 1].x + 24 / Math.PI * Math.Cos(nearest) - gear.startX) - 4;
+            int rail = face - 5, track = side > 0 ? Round(platform.y + platform.h) - 5 : Round(platform.y) + 4;
+            Rect(rail, gear.top, 1, gear.bottom + wall.h - gear.top, "2a2a2a");
+            Rect(rail - 1, gear.top - 1, 3, 1, "484848");
             double left = Math.Min(gear.startX, gear.endX), right = Math.Max(gear.startX, gear.endX) + platform.w;
-            Rect(left, platform.y + 3, right - left, 1, "444444");
-            Rect(left - 1, platform.y + 1, 1, platform.h - 2, "646464");
-            Rect(right, platform.y + 1, 1, platform.h - 2, "646464");
-            // Keep one full tooth beyond the fixed pinion at the top stop.
-            int rackHeight = side < 0 ? Round(wall.h) : Round(Math.Max(wall.h, cy + 14 + 9 + 6 - gear.top));
-            int rackBottom = Math.Min(Round(wall.y) + rackHeight, Round(gear.bottom + wall.h));
-            Rect(rackX, wall.y, 2, rackBottom - Round(wall.y), "a0a0a0");
-            for (int y = Round(wall.y); y < rackBottom; y += 6) Rect(rackX + 2, y, 3, Math.Min(3, rackBottom - y), "a0a0a0");
-            Rect(rackX - 1, gear.bottom + wall.h, 7, 4, "646464");
-            Rect(rackX - 1, gear.bottom + wall.h + 2, 7, 2, Highlights[3]);
-            double angle = gear.Lift * Math.PI / 24, mesh = 2 * Math.Atan2(-7,14) + Math.PI / 8;
-            double outputAngle = angle;
-            if (side < 0)
-            {
-                double diagonal = 2 * Math.Atan2(8,14) + Math.PI / 8, vertical = Math.PI + Math.PI / 8;
-                GearWheel(rackX + 11, cy - 32, angle);
-                GearWheel(rackX + 25, cy - 24, -angle + diagonal);
-                GearWheel(rackX + 25, cy - 8, angle - diagonal + vertical);
-                outputAngle = -angle + 2 * diagonal - vertical;
-            }
-            else
-            {
-                GearWheel(rackX + 11, cy + 14, angle);
-                GearWheel(rackX + 25, cy + 7, -angle + mesh);
-            }
+            Rect(left, track, right - left, 1, "2a2a2a");
+            Rect(gear.endX > gear.startX ? right : left - 1, track - 1, 1, 3, "484848");
             foreach (var block in new[] { wall, platform })
             {
                 Rect(block.x - 1, block.y - 1, block.w + 2, block.h + 2, Ink);
-                Rect(block.x, block.y, block.w, block.h, Fills[3]);
-                Rect(block.x, block.y, block.w, 2, Highlights[3]);
-                Rect(block.x, block.y + 2, 1, block.h - 2, Edges[3]);
-                for (double y = block.y + 4; y < block.y + block.h - 2; y += 8)
-                    for (double x = block.x + 3; x < block.x + block.w - 2; x += 8) Rect(x, y, 2, 2, Edges[3]);
+                bool vertical = block == wall; int bx = Round(block.x), by = Round(block.y);
+                int length = Round(vertical ? block.h : block.w), phase = vertical ? phaseV : phaseH;
+                for (int y = by; y < by + block.h; y++) for (int x = bx; x < bx + block.w; x++)
+                {
+                    int t = vertical ? face - 1 - x : side > 0 ? by + Round(block.h) - 1 - y : y - by;
+                    Rect(x, y, 1, 1, Profile(t, vertical ? y - by : x - bx, length, phase));
+                }
             }
-            Rect(platform.x, rackY, platform.w, 1, "a0a0a0");
-            Rect(platform.x, rackY + (side > 0 ? 1 : -2), platform.w, 2, Ink);
-            for (int x = Round(platform.x) + 3; x < platform.x + platform.w; x += 6)
-                Rect(x, rackY + (side > 0 ? 1 : -2), Math.Min(3, platform.x + platform.w - x), 2, "a0a0a0");
-            GearWheel(rackX + 39, cy, outputAngle);
+            for (int i = 0; i < train.Length; i++) GearWheel(face + train[i].x, cy + train[i].y, angles[i]);
         }
         // The visor shows phase; the helmet warns of fatigue and the scarf retains dash charge.
         static readonly Dictionary<string,string[]> Frames = new Dictionary<string,string[]> {
@@ -474,7 +475,15 @@ namespace Phase
                 }
                 if (stone) continue;
                 for (int y = 180; y < Math.Min(194, BottomY); y++) Rect(x, y, 1, 1, Ink, (y - 180) / 14.0);
-                Rect(x, 194, 1, BottomY - 194, Ink);
+                Rect(x, 194, 1, 16, Ink);
+                // Quiet quarry terraces step down and darken below the death line; purely visual.
+                for (int i = 0, edge = 204; edge < BottomY; i++, edge += 26)
+                {
+                    double k = Math.Max(.1, .4 - i * .06);
+                    int top = edge + (int)(Hash((int)Math.Floor((x - i * 11) / 20.0), i) % 3) * 3;
+                    Rect(x, top, 1, edge + 32 - top, Mix(Color(Ink), Color("121e2b"), k));
+                    Rect(x, top, 1, 1, Mix(Color(Ink), Color("2a394c"), k));
+                }
             }
         }
         public void Draw(PhaseController s, bool playerVisible = true)

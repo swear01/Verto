@@ -328,6 +328,200 @@ public class SandboxTests : InputTestFixture
         finally { if (sandbox != null) sandbox.SetControlsOpen("false"); }
     }
 
+    [System.Serializable] sealed class RouteStep { public int frames,x,y; public bool jump,dash,grab; }
+    [System.Serializable] sealed class RouteSteps { public RouteStep[] steps; }
+
+    static IEnumerator WaitForScene(string name)
+    {
+        double deadline = Time.realtimeSinceStartupAsDouble + 5;
+        while (SceneManager.GetActiveScene().name != name && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
+        Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo(name));
+        yield return null;
+    }
+    static IEnumerator WaitForSlide(PhaseSandbox sandbox)
+    {
+        double deadline = Time.realtimeSinceStartupAsDouble + 5;
+        while (sandbox.InTransition && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
+        Assert.That(sandbox.InTransition, Is.False);
+    }
+
+    [UnityTest]
+    public IEnumerator SelectionDuringPausedArrivalIsAcknowledgedOncePerRequest()
+    {
+        yield return SceneManager.LoadSceneAsync("PhaseDemo2");
+        var k = InputSystem.AddDevice<Keyboard>();
+        UnityEngine.Events.UnityAction<Scene, LoadSceneMode> pauseArrival = (scene, mode) =>
+        { if (scene.name == "PhaseDemo1") Object.FindAnyObjectByType<PhaseSandbox>().SetControlsOpen("true"); };
+        SceneManager.sceneLoaded += pauseArrival;
+        try
+        {
+            var sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
+            var p = sandbox.Controller.player; p.x = .5; p.vx = -90;
+            InputSystem.QueueStateEvent(k, new KeyboardState(Key.LeftArrow));
+            yield return WaitForScene("PhaseDemo1");
+            InputSystem.QueueStateEvent(k, new KeyboardState());
+            sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
+            Assert.That(sandbox.InTransition, Is.True);
+            sandbox.SetControlsOpen("true");
+            yield return new WaitForSeconds(PhaseSandbox.TransitionDuration * 2);
+            Assert.That(sandbox.InTransition, Is.True, "a dialog pauses the arrival slide");
+            int count = PhaseSandbox.MapResultCount;
+            foreach (var room in new[] { ("5", "PhaseDemo5"), ("5", "PhaseDemo5"), ("12", "PhaseDemo12") })
+            {
+                sandbox.SetControlsOpen("true"); sandbox.SelectDemoRoom(room.Item1);
+                Assert.That(PhaseSandbox.MapResultCount, Is.EqualTo(count), "success waits for the async load");
+                double deadline = Time.realtimeSinceStartupAsDouble + 5;
+                while (PhaseSandbox.MapResultCount == count && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
+                Assert.That(PhaseSandbox.MapResultCount, Is.EqualTo(++count)); Assert.That(PhaseSandbox.LastMapError, Is.Empty);
+                Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo(room.Item2)); yield return null;
+                sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
+                Assert.That(Object.FindObjectsByType<PhaseSandbox>().Length, Is.EqualTo(1));
+            }
+            sandbox.SelectDemoRoom("3"); sandbox.SelectDemoRoom("4");
+            Assert.That(PhaseSandbox.MapResultCount, Is.EqualTo(++count)); Assert.That(PhaseSandbox.LastMapError, Is.Not.Empty, "overlapping request is refused");
+            yield return WaitForScene("PhaseDemo3");
+            Assert.That(PhaseSandbox.MapResultCount, Is.EqualTo(++count)); Assert.That(PhaseSandbox.LastMapError, Is.Empty);
+            sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
+            double time = sandbox.Controller.time;
+            yield return new WaitForSeconds(.2f);
+            Assert.That(sandbox.Controller.time, Is.GreaterThan(time), "play resumes after the acknowledged load");
+            LogAssert.NoUnexpectedReceived();
+        }
+        finally
+        {
+            SceneManager.sceneLoaded -= pauseArrival;
+            InputSystem.RemoveDevice(k);
+            var current = Object.FindAnyObjectByType<PhaseSandbox>(); if (current != null) current.SetControlsOpen("false");
+        }
+    }
+
+    [UnityTest]
+    public IEnumerator BackwardTravelEntersEveryPreviousLevelAtASafeRightCheckpoint()
+    {
+        var levels = PhaseSandbox.Levels;
+        yield return SceneManager.LoadSceneAsync(levels[levels.Length - 1]);
+        var k = InputSystem.AddDevice<Keyboard>();
+        try
+        {
+            var sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
+            Assert.That(sandbox.leftScene, Is.EqualTo(levels[levels.Length - 2]));
+            for (int i = levels.Length - 2; i >= 0; i--)
+            {
+                var before = sandbox.Controller; int deaths = before.deaths;
+                before.phase = 0; var p = before.player; p.x = .5; p.y = sandbox.spawn.y; p.vx = -90; p.vy = 0;
+                InputSystem.QueueStateEvent(k, new KeyboardState(Key.LeftArrow));
+                yield return WaitForScene(levels[i]);
+                InputSystem.QueueStateEvent(k, new KeyboardState());
+                sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
+                var s = sandbox.Controller;
+                Assert.That(s.player.x, Is.InRange(s.Width / 2, s.Width - 8), levels[i] + " enters at the right");
+                var checkpoint = s.phase == 0 ? (s.player.x, s.player.y) : (sandbox.spawn.x, sandbox.spawn.y);
+                Assert.That((s.spawnX, s.spawnY), Is.EqualTo(checkpoint), levels[i] + " respawns on terrain solid in red");
+                Assert.That(s.player.facing, Is.EqualTo(-1));
+                Assert.That(s.blocks.Any(b => b.ActiveInPhase(s.phase) && b.y == s.player.y + s.player.h && b.x <= s.player.x && b.x + b.w >= s.player.x + s.player.w),
+                    Is.True, levels[i] + " entry stands on terrain");
+                Assert.That(s.deaths, Is.EqualTo(deaths)); Assert.That(s.time, Is.GreaterThanOrEqualTo(before.time));
+                Assert.That(sandbox.rightScene, Is.EqualTo(levels[i + 1]));
+                yield return WaitForSlide(sandbox);
+                double x = s.player.x;
+                yield return new WaitForSeconds(.5f);
+                Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo(levels[i]), levels[i] + " does not bounce forward");
+                Assert.That((s.deaths, s.player.x), Is.EqualTo((deaths, x)), levels[i] + " entry is stable");
+            }
+            var first = sandbox.Controller; first.phase = 0; first.player.x = .5; first.player.y = sandbox.spawn.y; first.player.vx = -90;
+            InputSystem.QueueStateEvent(k, new KeyboardState(Key.LeftArrow)); yield return new WaitForSeconds(.1f);
+            InputSystem.QueueStateEvent(k, new KeyboardState());
+            Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo(levels[0])); Assert.That(first.player.x, Is.Zero, "level1 left edge stays closed");
+            LogAssert.NoUnexpectedReceived();
+        }
+        finally { InputSystem.RemoveDevice(k); }
+    }
+
+    [TestCase(320)] [TestCase(427)] [TestCase(640)]
+    public void RightArrivalUsesTheViewportEdgeAndIgnoresInactiveHazards(int width)
+    {
+        int right = (width - 16) / 8 * 8;
+        var c = new PhaseController(new[] { new Block(0,160,320,8,phaseMask:2) },24,149,
+            spikes:new[] { new Spike(right,144,8,SpikeDirection.Up,1) },
+            lasers:new[] { new Laser(right,144,LaserDirection.Down,1) });
+        c.ResizeRoom(width);
+        var entry = PhaseSandbox.RightEntry(c,149);
+        Assert.That(entry.HasValue,Is.True);
+        Assert.That(entry.Value.at,Is.EqualTo(new Vector2Int(right,149)));
+        Assert.That(entry.Value.phase,Is.EqualTo(1));
+        Assert.That(c.phase,Is.Zero,"searching must preserve the controller phase");
+    }
+
+    [UnityTest]
+    public IEnumerator LastLevelRightExitWinsAndJumpRestartsLevelOne()
+    {
+        yield return SceneManager.LoadSceneAsync("PhaseCrystal3");
+        var k = InputSystem.AddDevice<Keyboard>();
+        try
+        {
+            IEnumerator ExitRight(PhaseSandbox room)
+            {
+                var c = room.Controller;
+                var floor = c.blocks.Where(b => b.x < c.Width && b.x + b.w >= c.Width && b.y >= 11).OrderBy(b => b.y).FirstOrDefault();
+                Assert.That(floor, Is.Not.Null, room.gameObject.scene.name + " has an authored edge landing");
+                c.phase = System.Array.FindIndex(new[] { 0,1,2 }, floor.ActiveInPhase);
+                c.player.x = c.Width - c.player.w - .5; c.player.y = floor.y - c.player.h; c.player.vx = 90; c.player.vy = 0;
+                InputSystem.QueueStateEvent(k, new KeyboardState(Key.RightArrow)); yield return null; yield return null;
+            }
+            var sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
+            Assert.That(sandbox.rightScene, Is.EqualTo("PhaseDemo12"));
+            yield return ExitRight(sandbox);
+            yield return WaitForScene("PhaseDemo12");
+            InputSystem.QueueStateEvent(k, new KeyboardState());
+            sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
+            Assert.That(sandbox.Controller.player.x, Is.EqualTo(sandbox.spawn.x), "forward entry keeps the authored left spawn");
+            Assert.That(sandbox.Won, Is.False);
+            yield return WaitForSlide(sandbox);
+            float captureDelta = Time.captureDeltaTime;
+            int deaths = sandbox.Controller.deaths;
+            try
+            {
+                Time.captureDeltaTime = (float)PhaseController.Dt;
+                InputSystem.QueueStateEvent(k,new KeyboardState()); yield return null;
+                sandbox.Controller.Reset();
+                var route = JsonUtility.FromJson<RouteSteps>("{\"steps\":" + File.ReadAllText("Verification/Room12Route.json") + "}").steps;
+                foreach (var step in route)
+                {
+                    var keys = new System.Collections.Generic.List<Key>();
+                    if (step.x != 0) keys.Add(step.x < 0 ? Key.LeftArrow : Key.RightArrow);
+                    if (step.y != 0) keys.Add(step.y < 0 ? Key.UpArrow : Key.DownArrow);
+                    if (step.jump) keys.Add(Key.Z); if (step.dash) keys.Add(Key.X); if (step.grab) keys.Add(Key.C);
+                    InputSystem.QueueStateEvent(k,new KeyboardState(keys.ToArray()));
+                    for (int n = 0; n < step.frames && !sandbox.Won; n++) yield return null;
+                    if (sandbox.Won) break;
+                }
+                InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow));
+                double until = Time.realtimeSinceStartupAsDouble + 5;
+                while (!sandbox.Won && sandbox.Controller.deaths == deaths && Time.realtimeSinceStartupAsDouble < until) yield return null;
+                Assert.That(sandbox.Controller.deaths,Is.EqualTo(deaths),"full level12 keyboard route has no deaths");
+            }
+            finally { Time.captureDeltaTime = captureDelta; }
+            double deadline = Time.realtimeSinceStartupAsDouble + 2;
+            while (!sandbox.Won && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
+            InputSystem.QueueStateEvent(k, new KeyboardState());
+            Assert.That(sandbox.Won, Is.True, "level12 right edge wins");
+            Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo("PhaseDemo12"));
+            double time = sandbox.Controller.time; yield return new WaitForSeconds(.2f);
+            Assert.That(sandbox.Controller.time, Is.EqualTo(time), "victory freezes play");
+            var light = new Color32(234, 223, 197, 255);
+            Assert.That(sandbox.Frame.GetPixels32().Count(c => c.Equals(light)), Is.GreaterThan(150), "native frame shows the victory banner");
+            Directory.CreateDirectory("TestResults/Navigation");
+            File.WriteAllBytes("TestResults/Navigation/victory.png", sandbox.Frame.EncodeToPNG());
+            InputSystem.QueueStateEvent(k, new KeyboardState(Key.Z)); yield return null;
+            InputSystem.QueueStateEvent(k, new KeyboardState());
+            yield return WaitForScene("PhaseDemo1");
+            sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
+            Assert.That(sandbox.Won, Is.False); Assert.That(sandbox.Controller.player.x, Is.EqualTo(sandbox.spawn.x));
+            LogAssert.NoUnexpectedReceived();
+        }
+        finally { InputSystem.RemoveDevice(k); }
+    }
+
     static void CheckNativeShapes(PhaseSandbox sandbox)
     {
         void Match(BoxCollider2D shape, Block model, bool active = true)

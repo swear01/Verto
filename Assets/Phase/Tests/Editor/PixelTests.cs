@@ -28,6 +28,11 @@ public class PixelTests
             Assert.That((Color32)pixels.Texture.GetPixel(220,99),Is.EqualTo(cap));
             Assert.That((Color32)pixels.Texture.GetPixel(260,99),Is.EqualTo(cap),"the second platform stays48px wide");
             Assert.That((Color32)pixels.Texture.GetPixel(220,35),Is.Not.EqualTo(cap));
+            var empty=new PhaseController(System.Array.Empty<Block>(),32,149);empty.flash=0;
+            var marked=pixels.Texture.GetPixels32();pixels.Draw(empty);var plain=pixels.Texture.GetPixels32();
+            bool Marked(int x,int y)=>!marked[(179-y)*320+x].Equals(plain[(179-y)*320+x]);
+            Assert.That(Marked(127,114)&&!Marked(127,117),Is.True,"horizontal stop extends one pixel before its track");
+            Assert.That(Marked(238,148)&&!Marked(241,148),Is.True,"vertical stop mirrors the horizontal marker");
         }
         finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
     }
@@ -162,23 +167,37 @@ public class PixelTests
         var pixels = new PhasePixels();
         try
         {
+            var wallRack = new Color32?[56]; var platformRack = new Color32?[48];
             for (int lift = 0; lift <= 24; lift++)
             {
                 gear.wall.y = 104 - lift; gear.platform.x = 88 + lift;
                 pixels.Draw(s); var frame = pixels.Texture.GetPixels32();
-                int bottom = 160 - lift;
-                for (int y = (int)gear.wall.y; y < bottom; y++)
-                    Assert.That(frame[(179-y)*320+81].r, Is.EqualTo(160), $"rigid rack at lift {lift}, y {y}");
-                Assert.That(frame[(179-108)*320+81].r, Is.EqualTo(160), "rack remains beside the fixed input pinion");
-                if (bottom < 160)
-                    for (int x = 81; x <= 84; x++)
-                        Assert.That(frame[(179-bottom)*320+x].r, Is.LessThan(40), $"rack end translates with wall at lift {lift}");
-                int left = 88 + lift, right = left + 48;
-                for (int x = left; x < right; x++)
-                    Assert.That(frame[(179-85)*320+x].r, Is.EqualTo(160), $"rack is inset across platform width at lift {lift}");
-                Assert.That(frame[(179-85)*320+119].r, Is.EqualTo(160), "rack remains over the output pinion");
-                foreach (int x in new[] { left-1, right })
-                    Assert.That(frame[(179-85)*320+x].r, Is.Not.EqualTo(160), "rack never extends beyond the collidable platform");
+                Color32 At(int x, int y) => frame[(179-y)*320+x];
+                int top = 104 - lift, left = 88 + lift;
+                for (int u = 0; u < 56; u++)
+                {
+                    if (Math.Abs(top+u-110) <= 9) continue;
+                    wallRack[u] ??= At(79, top+u);
+                    Assert.That(At(79, top+u), Is.EqualTo(wallRack[u].Value), $"wall rack translates rigidly at lift {lift}, u {u}");
+                    Assert.That(At(80, top+u), Is.EqualTo((Color32)PhasePixels.Hex("0b0f16")), "wall teeth stay inside the collidable wall");
+                }
+                for (int u = 0; u < 48; u++)
+                {
+                    if (Math.Abs(left+u-119) <= 9) continue;
+                    platformRack[u] ??= At(left+u, 87);
+                    Assert.That(At(left+u, 87), Is.EqualTo(platformRack[u].Value), $"platform rack translates rigidly at lift {lift}, u {u}");
+                }
+                foreach (int x in new[] { left-1, left+48 })
+                    Assert.That(At(x, 87), Is.EqualTo((Color32)PhasePixels.Hex("0b0f16")), "rack never extends beyond the collidable platform");
+                Assert.That(At(119, 94), Is.EqualTo((Color32)PhasePixels.Hex("e8e8e8")), "output pinion stays fixed under the platform rack");
+            }
+            for (int t = 0; t < 8; t++)
+            {
+                var wall = new System.Collections.Generic.HashSet<Color32>(); var platform = new System.Collections.Generic.HashSet<Color32>();
+                for (int u = 0; u < 17; u++) { wall.Add(Column(t, 38 + u)); platform.Add(Row(t, 20 + u)); }
+                CollectionAssert.AreEquivalent(wall, platform, $"wall and platform share one 8px profile at depth {t}");
+                Color32 Column(int depth, int u) => pixels.Texture.GetPixel(79 - depth, 179 - (80 + u));
+                Color32 Row(int depth, int u) => pixels.Texture.GetPixel(112 + u, 179 - (87 - depth));
             }
         }
         finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
@@ -255,10 +274,11 @@ public class PixelTests
             {
                 room.gears[0].wall.y = 104-lift; room.gears[0].platform.x = 88+lift;
                 pixels.Draw(room,false);
-                foreach (var center in new[] { (x:91,y:121),(x:105,y:129),(x:105,y:145),(x:119,y:153) })
+                foreach (var center in new[] { (x:86,y:121),(x:99,y:130),(x:105,y:145),(x:119,y:153) })
                     Assert.That((Color32)pixels.Texture.GetPixel(center.x,179-center.y),Is.EqualTo((Color32)PhasePixels.Hex("e8e8e8")),"fixed pinions remain visible and engaged above the floor-level rack");
-                Assert.That((Color32)pixels.Texture.GetPixel(81,179-(159-lift)), Is.EqualTo((Color32)PhasePixels.Hex("a0a0a0")),"vertical rack retains its full 56px length outside the wall outline");
-                Assert.That((Color32)pixels.Texture.GetPixel(81,179-(160-lift)), Is.Not.EqualTo((Color32)PhasePixels.Hex("a0a0a0")),"vertical rack must not grow when the wall rises");
+                Assert.That((Color32)pixels.Texture.GetPixel(77,179-(159-lift)), Is.EqualTo((Color32)PhasePixels.Hex("a0a0a0")),"vertical rack spans the full 56px wall");
+                Assert.That((Color32)pixels.Texture.GetPixel(77,179-(160-lift)), Is.Not.EqualTo((Color32)PhasePixels.Hex("a0a0a0")),"vertical rack must not grow when the wall rises");
+                Assert.That((Color32)pixels.Texture.GetPixel(81,179-(157-lift)), Is.Not.EqualTo((Color32)PhasePixels.Hex("a0a0a0")),"no rack overhangs the wall collision");
                 Assert.That((Color32)pixels.Texture.GetPixel(92+lift,179-162), Is.EqualTo((Color32)PhasePixels.Hex("a0a0a0")),"the rack base stays inside the platform rectangle");
             }
         }
@@ -358,8 +378,14 @@ public class PixelTests
             Assert.That(blocks[0].h,Is.EqualTo(24),"visual extension must not enlarge collision terrain");
             var voidRoom=new PhaseController(new[]{new Block(128,96,64,8)},32,64);voidRoom.flash=0;
             pixels.Draw(voidRoom);
-            Assert.That(pixels.Texture.GetPixel(32,40),Is.EqualTo(gap),"a bottom void must not acquire a floor");
-            Assert.That(pixels.Texture.GetPixel(160,40),Is.EqualTo(gap),"floating terrain must not extend to the bottom");
+            int terraces=0;
+            for(int y=0;y<pixels.Height-1-(194-pixels.OriginY);y++)foreach(int x in new[]{32,160})
+            {
+                Color32 depth=pixels.Texture.GetPixel(x,y);
+                Assert.That(Math.Max(depth.r,Math.Max(depth.g,depth.b)),Is.LessThan(48),"bottom void and floating terrain stay quiet dark depths");
+                if(!depth.Equals((Color32)PhasePixels.Hex("0b0f16")))terraces++;
+            }
+            Assert.That(terraces,Is.GreaterThan(0),"void depths show receding quarry terraces");
             var gridFloor = new PhaseController(new[] { new Block(0,168,320,8) },32,157); gridFloor.flash=0;
             pixels.Draw(gridFloor);
             Assert.That(pixels.Texture.GetPixel(32,40), Is.Not.EqualTo(gap), "the last complete 8px grid row extends as stone");

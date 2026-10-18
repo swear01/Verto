@@ -3,5 +3,8 @@ mergeInto(LibraryManager.library, {
     window.dispatchEvent(new CustomEvent('phase-map-result', {
       detail: { success: success !== 0, message: UTF8ToString(message) }
     }));
+  },
+  PhaseVictory: function () {
+    window.dispatchEvent(new CustomEvent('phase-victory'));
   }
 });

@@ -53,9 +53,9 @@ To recreate the sandbox, call its existing builder through the connected Editor:
 edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 47 controller cases, 9 laser cases, 17 demo-route/authoring cases,
-15 crystal cases, 18 crystal-room cases, 18 pixel cases, 6 Grid authoring cases and 4 custom-map validation cases in Edit
-Mode. The six Play Mode cases cover bindings, pause/release gating, room
+starting the next test run. There are 48 controller cases, 9 laser cases, 17 demo-route/authoring cases,
+15 crystal cases, 26 crystal-room cases, 18 pixel cases, 6 Grid authoring cases and 4 custom-map validation cases in Edit
+Mode. The twelve Play Mode cases cover bindings, pause/release gating, room
 persistence, multiple authored platforms, crystal triggers and imported maps. Platform checks cover
 vertical return travel, independent routes/reset, rider and climb-hop attachment,
 crush/hazard sweeps, native collider synchronization and rendering.
@@ -198,11 +198,11 @@ Open `Assets/Scenes/PhaseDemo1.unity`. Rebuild the eight scenes from
 `unity command eval 'PhaseSandboxBuilder.CreateDemoRooms();'`.
 Each room uses `checkpointOnEntry`, resetting player color/dash/stamina and
 mechanism positions while preserving elapsed time and action/death counts.
-The original sandbox links retain their momentum/color carry behavior.
+Built-in levels link in both directions: Demo1–8, Crystal1–3, then Demo12. Backward travel enters a safe standing position near the previous room’s right side. Level12’s right exit freezes play and shows the victory screen; jump restarts level1 in native Play, and Web also offers replay or level selection. Custom maps have no level links. The original sandbox links retain their momentum/color carry behavior.
 See [room designs and live input verification](Demo.md).
 `BuildWeb.py` verifies these tests and builds `PhaseDemo1` through
-`PhaseDemo8`, followed by `PhaseCrystal1` through `PhaseCrystal3` and the hand-authored `PhaseDemo1.2`. `DemoWebSmoke.cjs` replays keyboard routes through
-the eleven Web scenes and checks settings, sizing, fullscreen and loading failure.
+`PhaseDemo8`, followed by `PhaseCrystal1` through `PhaseCrystal3` and the hand-authored `PhaseDemo12`. `DemoWebSmoke.cjs` replays keyboard routes through
+all twelve Web scenes and checks settings, sizing, fullscreen and loading failure.
 The older `WebSmoke.cjs` remains a verifier for the original two-sandbox build.
 
 ## CI
@@ -228,7 +228,7 @@ At wider aspects, height stays180 and width grows; at taller aspects, width
 stays320 and height grows around the vertically centered180-pixel play area.
 Stone fills the area above the native top boundary; terrain touching the last
 complete 8px row (bottom176) extends below. Gaps and voids remain open, with a
-short fade to black between native Y180 and the existing Y194 death boundary. This extension is visual padding. Each built-in demo also has a visible, solid 8px ceiling at Y0; custom maps use their authored terrain.
+short fade to black between native Y180 and the existing Y194 death boundary, followed by quiet receding quarry terraces. This extension is visual padding. Each built-in demo also has a visible, solid 8px ceiling at Y0; custom maps use their authored terrain.
 Both axes fill the viewport without stretching native pixels.
 Terrain ending at the right room edge and room bounds expand above320pixels. Resizing preserves
 controller state and rebuilds the pixel surface/cache; resizing during a slide
@@ -270,7 +270,7 @@ jump activation/death, respawn and phase-preserving dash.
 ## Runtime map bridge
 
 The active `PHASE` object accepts `SelectDemoRoom("1".."12")` and
-`LoadCustomMap(json)`. Scene selection uses the eleven built demo and crystal scene names.
+`LoadCustomMap(json)`. Scene selection uses `PhaseSandbox.Levels` (Demo1–8, Crystal1–3, Demo12), which also defines both horizontal links.
 Custom maps use the `PhaseDemoRoom` fields `name`, `blocks`, `spikes`, `spawnX`,
 `spawnY`; blocks require explicit `phaseMask`1–7 and the Web editor sends
 `phase:-1`. Spike direction is Up0/Down1/Left2/Right3; length is native pixels.
@@ -392,4 +392,4 @@ The manually edited `PhaseDemo1.1` is separate from these builders.
 `DemoLiveInput.Run` checks either demo or crystal scenes and saves keyboard-route
 captures under `TestResults/DemoRooms/` or `TestResults/CrystalRooms/`.
 
-`PhaseDemo1.2` is included in the Web build and selectable as **1.2** (bridge index12). Its fourteen platform instances retain their authored routes, sizes and start nodes as scene overrides. Shared dash-platform Prefabs keep their original grid-aligned horizontal defaults; edit instance overrides for a single level. Preserve this handmade scene when rebuilding generated demos.
+`PhaseDemo12` is the classmate-authored level formerly named `PhaseDemo1.2`; it is included in the Web build and selectable as **12**. Its fourteen platform instances retain their authored routes, sizes and start nodes as scene overrides. Shared dash-platform Prefabs keep their original grid-aligned horizontal defaults; edit instance overrides for a single level. Preserve this handmade scene when rebuilding generated demos.
