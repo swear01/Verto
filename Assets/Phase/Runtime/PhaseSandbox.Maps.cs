@@ -23,9 +23,9 @@ namespace Phase
             if (transitioning || InTransition) { MapResult(false,"請等轉場結束後再選擇地圖。"); return; }
             try
             {
-                if (!int.TryParse(value, out int index) || index < 1 || index > 11 || value != index.ToString())
-                    throw new ArgumentException("請選擇第1至11關。");
-                string scene = index <= 8 ? "PhaseDemo" + index : "PhaseCrystal" + (index - 8);
+                if (!int.TryParse(value, out int index) || index < 1 || index > 12 || value != index.ToString())
+                    throw new ArgumentException("請選擇有效的關卡。");
+                string scene = index == 12 ? "PhaseDemo1.2" : index <= 8 ? "PhaseDemo" + index : "PhaseCrystal" + (index - 8);
                 if (!Application.CanStreamedLevelBeLoaded(scene)) throw new ArgumentException("此關卡尚未包含在遊戲中。");
                 ClearTravel(); jumpQueued = dashQueued = false; accumulator = 0;
                 transitioning = true;

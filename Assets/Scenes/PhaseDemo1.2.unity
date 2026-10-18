@@ -254,6 +254,10 @@ PrefabInstance:
       propertyPath: returns
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1305660634261342123, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
+      propertyPath: nodes.Array.data[1].x
+      value: 89
+      objectReference: {fileID: 0}
     - target: {fileID: 1474738164088199498, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
       propertyPath: m_LocalPosition.x
       value: 181.59999
@@ -1027,6 +1031,10 @@ PrefabInstance:
       value: DashPlatformVertical (5)
       objectReference: {fileID: 0}
     - target: {fileID: 4228604378319539318, guid: b93f0c8aa30c14ea681bf47d28c6fbcd, type: 3}
+      propertyPath: size.x
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 4228604378319539318, guid: b93f0c8aa30c14ea681bf47d28c6fbcd, type: 3}
       propertyPath: size.y
       value: 32
       objectReference: {fileID: 0}
@@ -1164,6 +1172,10 @@ PrefabInstance:
       propertyPath: returns
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1305660634261342123, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
+      propertyPath: nodes.Array.data[1].x
+      value: 89
+      objectReference: {fileID: 0}
     - target: {fileID: 1474738164088199498, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
       propertyPath: m_LocalPosition.x
       value: 8.4
@@ -1289,6 +1301,10 @@ PrefabInstance:
     - target: {fileID: 4228604378319539318, guid: b93f0c8aa30c14ea681bf47d28c6fbcd, type: 3}
       propertyPath: start
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4228604378319539318, guid: b93f0c8aa30c14ea681bf47d28c6fbcd, type: 3}
+      propertyPath: size.x
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 4228604378319539318, guid: b93f0c8aa30c14ea681bf47d28c6fbcd, type: 3}
       propertyPath: size.y
@@ -1474,6 +1490,10 @@ PrefabInstance:
     - target: {fileID: 1305660634261342123, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
       propertyPath: returns
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1305660634261342123, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
+      propertyPath: nodes.Array.data[1].x
+      value: 89
       objectReference: {fileID: 0}
     - target: {fileID: 1474738164088199498, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
       propertyPath: m_LocalPosition.x
@@ -1711,6 +1731,10 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4228604378319539318, guid: b93f0c8aa30c14ea681bf47d28c6fbcd, type: 3}
+      propertyPath: size.x
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 4228604378319539318, guid: b93f0c8aa30c14ea681bf47d28c6fbcd, type: 3}
       propertyPath: size.y
       value: 40
       objectReference: {fileID: 0}
@@ -1786,6 +1810,10 @@ PrefabInstance:
     - target: {fileID: 1305660634261342123, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
       propertyPath: returns
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1305660634261342123, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
+      propertyPath: nodes.Array.data[1].x
+      value: 89
       objectReference: {fileID: 0}
     - target: {fileID: 1474738164088199498, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
       propertyPath: m_LocalPosition.x
@@ -1936,6 +1964,10 @@ PrefabInstance:
       propertyPath: returns
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1305660634261342123, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
+      propertyPath: nodes.Array.data[1].x
+      value: 89
+      objectReference: {fileID: 0}
     - target: {fileID: 1474738164088199498, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
       propertyPath: m_LocalPosition.x
       value: 182.2
@@ -2003,6 +2035,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1000087187}
     m_Modifications:
+    - target: {fileID: 1305660634261342123, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
+      propertyPath: returns
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1305660634261342123, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
+      propertyPath: nodes.Array.data[1].x
+      value: 89
+      objectReference: {fileID: 0}
     - target: {fileID: 1474738164088199498, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
       propertyPath: m_LocalPosition.x
       value: 7.999998
@@ -2067,6 +2107,10 @@ PrefabInstance:
     - target: {fileID: 1305660634261342123, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
       propertyPath: returns
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1305660634261342123, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
+      propertyPath: nodes.Array.data[1].x
+      value: 89
       objectReference: {fileID: 0}
     - target: {fileID: 1474738164088199498, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
       propertyPath: m_LocalPosition.x
@@ -2198,6 +2242,10 @@ PrefabInstance:
     - target: {fileID: 4228604378319539318, guid: b93f0c8aa30c14ea681bf47d28c6fbcd, type: 3}
       propertyPath: start
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4228604378319539318, guid: b93f0c8aa30c14ea681bf47d28c6fbcd, type: 3}
+      propertyPath: size.x
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 4228604378319539318, guid: b93f0c8aa30c14ea681bf47d28c6fbcd, type: 3}
       propertyPath: size.y
@@ -2603,6 +2651,10 @@ PrefabInstance:
       value: DashPlatformVertical
       objectReference: {fileID: 0}
     - target: {fileID: 4228604378319539318, guid: b93f0c8aa30c14ea681bf47d28c6fbcd, type: 3}
+      propertyPath: size.x
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 4228604378319539318, guid: b93f0c8aa30c14ea681bf47d28c6fbcd, type: 3}
       propertyPath: size.y
       value: 40
       objectReference: {fileID: 0}
@@ -2679,6 +2731,10 @@ PrefabInstance:
       propertyPath: returns
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1305660634261342123, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
+      propertyPath: nodes.Array.data[1].x
+      value: 89
+      objectReference: {fileID: 0}
     - target: {fileID: 1474738164088199498, guid: 6a5c2dac2fb27478a98e098f5464ea67, type: 3}
       propertyPath: m_LocalPosition.x
       value: 181.9
@@ -2739,6 +2795,10 @@ PrefabInstance:
     - target: {fileID: 3706912596018296327, guid: b93f0c8aa30c14ea681bf47d28c6fbcd, type: 3}
       propertyPath: m_Name
       value: DashPlatformVertical (2)
+      objectReference: {fileID: 0}
+    - target: {fileID: 4228604378319539318, guid: b93f0c8aa30c14ea681bf47d28c6fbcd, type: 3}
+      propertyPath: size.x
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 4228604378319539318, guid: b93f0c8aa30c14ea681bf47d28c6fbcd, type: 3}
       propertyPath: size.y
