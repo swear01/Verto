@@ -116,12 +116,23 @@ function setupMaps(instance, gameCanvas) {
     try {const room=model.room(map);if(!room.blocks.length)throw Error('地圖至少需要一格地形。');const json=JSON.stringify(room);model.parse(json);request('LoadCustomMap',json,editor);}
     catch(error){status.textContent=error.message;}
   });
+  function download(json) {
+    const url=URL.createObjectURL(new Blob([json],{type:'application/json'})),a=document.createElement('a');
+    a.href=url;a.download='phase-custom-map.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
   document.getElementById('map-export').addEventListener('click',()=>{
-    try {
-      const json=JSON.stringify(model.room(map),null,2);model.parse(json);
-      const url=URL.createObjectURL(new Blob([json],{type:'application/json'})),a=document.createElement('a');
-      a.href=url;a.download='phase-custom-map.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
-    } catch(error){status.textContent=error.message;}
+    try {const json=JSON.stringify(model.room(map),null,2);model.parse(json);download(json);}
+    catch(error){status.textContent=error.message;}
+  });
+  // The in-game editor's export and import icons; Unity validates the file and flashes on failure.
+  addEventListener('phase-map-export',event=>download(event.detail.json));
+  addEventListener('phase-map-import',()=>{
+    const input=document.createElement('input');input.type='file';input.accept='application/json,.json';
+    input.addEventListener('change',async()=>{
+      const file=input.files[0];if(!file)return;
+      instance.SendMessage('PHASE','ImportDraft',file.size>800000?'':await file.text());
+    });
+    input.click();
   });
   document.getElementById('map-import').addEventListener('click',()=>document.getElementById('map-file').click());
   document.getElementById('map-file').addEventListener('change',async event=>{

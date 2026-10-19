@@ -54,7 +54,7 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 48 controller cases, 9 laser cases, 17 demo-route/authoring cases,
-15 crystal cases, 26 crystal-room cases, 18 pixel cases, 6 Grid authoring cases and 4 custom-map validation cases in Edit
+15 crystal cases, 26 crystal-room cases, 18 pixel cases, 6 Grid authoring cases and 5 custom-map validation cases in Edit
 Mode. The fourteen Play Mode cases cover bindings, pause/release gating, room
 persistence, multiple authored platforms, crystal triggers, imported maps and the title/editor flow. Platform checks cover
 vertical return travel, independent routes/reset, rider and climb-hop attachment,
@@ -368,18 +368,24 @@ Each has a `PHASE` root (`PhaseScreen`) answering the same Web bridge messages a
 The title draws the PHASE banner and two icons: left/right chooses, jump or Enter
 confirms (or click an icon). Play loads level1; the pencil opens the editor.
 The editor paints the custom-map grid (40×22 cells, terrain, four spike directions,
-spawn, erase; seven masks) and renders it with the game's own pixels in the starting
+four laser directions, jump and dash crystals, spawn, erase; seven masks) and renders it with the game's own pixels in the starting
 red phase. Mouse: left paints, right erases, the toolbar flips away from the cursor.
 Keyboard: movement keys move the cursor, jump paints, grab erases, dash cycles the
 tool, 1–7 pick the mask, Enter playtests, Escape returns to the title. An invalid
 map flashes a red border instead of starting. The playtest runs a `PhaseSandbox`
 child named `Playtest`; Escape destroys it and returns to the unchanged draft. A Web
 `LoadCustomMap` sent in the editor scene plays that map the same way. The draft
-autosaves to PlayerPrefs `phase.editor.v1` as one tool/mask pair per cell.
+autosaves to PlayerPrefs `phase.editor.v1` as one tool/mask pair per cell
+(tool codes 1 terrain, 2–5 spikes, 7–10 lasers, 11–12 crystals).
+The two arrow icons after the colors import (up) and export (down) custom-map JSON.
+On Web, export calls `PhaseExportMap` and the page downloads `phase-custom-map.json`;
+import calls `PhaseImportMap`, the page opens a file picker and sends the text to
+`PHASE.ImportDraft`. In the Unity Editor and other players both use the clipboard.
+Export validates first; an invalid map or file flashes the red border and keeps the draft.
 
 With `PhaseTitle` in Play mode, run `Verification/MenuLiveInput.cs`, entry
-`MenuLiveInput.Run`. It drives title→editor→paint→playtest→back→level1 by keyboard,
-restores the developer's draft and saves captures to `TestResults/Menu/`.
+`MenuLiveInput.Run`. It drives title→editor→paint terrain, a laser and a crystal→clipboard export/import→playtest→back→level1 by keyboard,
+restores the developer's draft and clipboard and saves captures to `TestResults/Menu/`.
 
 ## Hand-authored scenes
 

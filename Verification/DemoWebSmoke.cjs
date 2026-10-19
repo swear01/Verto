@@ -411,7 +411,31 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     await page.waitForTimeout(150);const afterFullscreen=await observe();
     await page.keyboard.press('ArrowRight',{delay:120});const resumed=await observe();
     assert(resumed.x>afterFullscreen.x+12,'Exiting fullscreen restores native movement without another canvas click');
-    console.log('Passed fullscreen and resumed input; checking load failure');
+    console.log('Passed fullscreen and resumed input; checking in-game editor files');
+    // The editor toolbar's second row: 7 colors, import, export, play, back; 7px icons at y=18 in a 320px-wide frame.
+    async function editorIcon(slot) {
+      const box=await canvas.boundingBox(),scale=box.width/320,x=6+slot*11+(slot>=7?4:0)+(slot>=9?4:0)+3.5;
+      await page.mouse.move(box.x+x*scale,box.y+21.5*scale);await page.waitForTimeout(100);
+      await page.mouse.down();await page.waitForTimeout(80);await page.mouse.up();
+    }
+    await page.reload();await loaded();await canvas.click();
+    await page.keyboard.press('ArrowRight',{delay:80});await page.keyboard.press('z',{delay:80});await page.waitForTimeout(1500);
+    const editorMap={name:'Unity editor import',blocks:[{x:0,y:168,w:320,h:8,phase:-1,phaseMask:7}],spikes:[],
+      lasers:[{x:160,y:96,direction:1,phaseMask:2}],crystals:[{x:80,y:120,kind:1,phaseMask:7}],spawnX:24,spawnY:152};
+    const editorChooser=page.waitForEvent('filechooser');await editorIcon(7);
+    await (await editorChooser).setFiles({name:'phase-editor-map.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(editorMap))});
+    await page.waitForTimeout(500);fs.writeFileSync(path.join(reports,'demo-editor-import.png'),await capture());
+    const editorDownload=page.waitForEvent('download');await editorIcon(8);
+    const editorExport=JSON.parse(fs.readFileSync(await (await editorDownload).path(),'utf8'));
+    assert.equal((await editorDownload).suggestedFilename(),'phase-custom-map.json');
+    assert.deepEqual([editorExport.blocks.length,editorExport.spikes,editorExport.lasers,editorExport.crystals,editorExport.spawnX,editorExport.spawnY],
+      [40,[],editorMap.lasers,editorMap.crystals,24,152],'In-game editor imports and exports lasers and crystals');
+    await page.waitForTimeout(500);await page.reload();await loaded();await canvas.click();
+    await page.keyboard.press('ArrowRight',{delay:80});await page.keyboard.press('z',{delay:80});await page.waitForTimeout(1500);
+    const reloadedDownload=page.waitForEvent('download');await editorIcon(8);
+    assert.deepEqual(JSON.parse(fs.readFileSync(await (await reloadedDownload).path(),'utf8')),editorExport,'In-game editor draft persists across reload');
+    result.editorFiles={imported:editorMap.name,exported:editorExport,persisted:true};
+    console.log('Passed in-game editor files; checking load failure');
     const failedPage=await browser.newPage();
     await failedPage.route('**/Build/*.data.unityweb',route=>route.abort());await failedPage.goto(url);
     await failedPage.locator('#error').waitFor({state:'visible',timeout:30000});

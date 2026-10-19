@@ -27,7 +27,7 @@ public class MapBridgeTests : InputTestFixture
             "{\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phase\":-1,\"phaseMask\":7}],\"spawnX\":1,\"spawnY\":152}",
             "{\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phase\":-1,\"phaseMask\":7}],\"spawnX\":24,\"spawnY\":152,\"movers\":[{}]}",
             "{\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phase\":-1,\"phaseMask\":7}],\"spawnX\":24,\"spawnY\":152,\"gears\":[{}]}",
-            "{\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phase\":-1,\"phaseMask\":7}],\"spawnX\":24,\"spawnY\":152,\"crystals\":[{\"x\":80,\"y\":80,\"kind\":0,\"phaseMask\":7}]}"})
+            "{\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phase\":-1,\"phaseMask\":7}],\"spawnX\":24,\"spawnY\":152,\"lasers\":[{\"x\":24,\"y\":0,\"direction\":1,\"phaseMask\":1}]}"})
         {
             original.LoadCustomMap(json);Assert.That(PhaseSandbox.LastMapError,Is.Not.Empty);
             Assert.That(original.gameObject.activeSelf,Is.True);
@@ -49,13 +49,16 @@ public class MapBridgeTests : InputTestFixture
         var previousGrid = sandbox.GetComponent<PhaseGrid>();
         var previousCollider = sandbox.GetComponentInChildren<PhaseTerrain>().GetComponent<BoxCollider2D>();
         Assert.That(previousGrid, Is.Not.Null); Assert.That(previousCollider, Is.Not.Null);
-        sandbox.LoadCustomMap(JsonUtility.ToJson(new MapData { name=map.name,blocks=map.blocks,spikes=map.spikes,spawnX=map.spawnX,spawnY=map.spawnY }));
-        Assert.That(PhaseSandbox.LastMapError, Is.Empty); yield return null;
+        map.lasers=new[]{new DemoLaser{x=160,y=160,direction=LaserDirection.Up,phaseMask=7}};
+        map.crystals=new[]{new DemoCrystal{x=80,y=80,kind=CrystalKind.Dash,phaseMask=2}};
+        sandbox.LoadCustomMap(PhaseCustomMap.ToJson(map));
+        Assert.That(PhaseSandbox.LastMapError, Is.Empty, PhaseSandbox.LastMapError); yield return null;
         sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
         Assert.That(previousGrid == null && previousCollider == null, Is.True, "reimport disposes the previous grid and collider cache");
         Assert.That(sandbox.GetComponent<PhaseGrid>(), Is.Not.Null);
         Assert.That(sandbox.Controller.blocks.Count, Is.EqualTo(1));
-        Assert.That(sandbox.Controller.crystals, Is.Empty);
+        Assert.That((sandbox.Controller.lasers.Count, sandbox.Controller.crystals.Count), Is.EqualTo((1, 1)));
+        Assert.That(sandbox.GetComponentInChildren<PhaseCrystal>().GetComponent<BoxCollider2D>(), Is.Not.Null);
         var keyboard=InputSystem.AddDevice<Keyboard>();
         try
         {

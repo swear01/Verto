@@ -42,7 +42,7 @@ public class MenuTests : InputTestFixture
     public IEnumerator EditorPaintsPlaytestsAndKeepsDraft()
     {
         // Restore any real draft the developer has in this Editor's PlayerPrefs.
-        string saved = PlayerPrefs.HasKey(PhaseEditor.DraftKey) ? PlayerPrefs.GetString(PhaseEditor.DraftKey) : null;
+        string saved = PlayerPrefs.HasKey(PhaseEditor.DraftKey) ? PlayerPrefs.GetString(PhaseEditor.DraftKey) : null, clipboard = GUIUtility.systemCopyBuffer;
         PlayerPrefs.DeleteKey(PhaseEditor.DraftKey);
         try
         {
@@ -61,17 +61,39 @@ public class MenuTests : InputTestFixture
             yield return Tap(Key.X);
             Assert.That(editor.Tool, Is.EqualTo(2));
             yield return Tap(Key.Z);
+            for (int i = 0; i < 4; i++) yield return Tap(Key.X);
+            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.LaserTool));
+            yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
+            for (int i = 0; i < 5; i++) yield return Tap(Key.X);
+            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.CrystalTool + 1));
+            yield return Tap(Key.Digit5); yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
             var room = editor.Room();
             Assert.That(room.blocks.Any(b => b.x == 72 && b.y == 144 && b.phaseMask == 1), Is.True, "jump paints red terrain");
             var spike = room.spikes.Single();
             Assert.That((spike.x, spike.y, spike.direction, spike.phaseMask), Is.EqualTo((80.0, 144.0, SpikeDirection.Up, 1)));
+            var laser = room.lasers.Single();
+            Assert.That((laser.x, laser.y, laser.direction, laser.phaseMask), Is.EqualTo((88.0, 144.0, LaserDirection.Up, 1)));
+            var crystal = room.crystals.Single();
+            Assert.That((crystal.x, crystal.y, crystal.kind, crystal.phaseMask), Is.EqualTo((96.0, 144.0, CrystalKind.Dash, 5)));
+
+            // Outside Web the import/export icons use the clipboard.
+            Assert.That(editor.ExportDraft(), Is.True);
+            string exported = GUIUtility.systemCopyBuffer, draft = PhaseCustomMap.ToJson(room);
+            Assert.That(exported, Is.EqualTo(draft));
+            editor.ImportDraft("{");
+            Assert.That(PhaseCustomMap.ToJson(editor.Room()), Is.EqualTo(draft), "an invalid file leaves the draft unchanged");
+            editor.ImportDraft("{\"name\":\"x\",\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phaseMask\":2}],\"spawnX\":40,\"spawnY\":152}");
+            Assert.That((editor.Room().blocks.Length, editor.Room().blocks[0].phaseMask, editor.SpawnCell), Is.EqualTo((PhaseEditor.Columns, 2, new Vector2Int(5, 19))), "wide blocks import as cells");
+            editor.ImportDraft(exported);
+            Assert.That(PhaseCustomMap.ToJson(editor.Room()), Is.EqualTo(draft), "export then import restores the draft");
 
             yield return Tap(Key.Enter);
             var sandbox = editor.Playtest;
             Assert.That(sandbox, Is.Not.Null);
             Assert.That(sandbox.gameObject.name, Is.EqualTo("Playtest"));
             Assert.That(GameObject.Find("PHASE"), Is.SameAs(editor.gameObject), "the Web bridge still reaches the editor");
-            Assert.That((sandbox.Controller.blocks.Count, sandbox.Controller.spikes.Count), Is.EqualTo((PhaseEditor.Columns + 1, 1)));
+            Assert.That((sandbox.Controller.blocks.Count, sandbox.Controller.spikes.Count, sandbox.Controller.lasers.Count, sandbox.Controller.crystals.Count),
+                Is.EqualTo((PhaseEditor.Columns + 1, 1, 1, 1)));
             double start = sandbox.Controller.player.x, time = sandbox.Controller.time;
             InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.RightArrow)); yield return new WaitForSeconds(.2f);
             InputSystem.QueueStateEvent(keyboard, new KeyboardState()); yield return null;
@@ -88,13 +110,13 @@ public class MenuTests : InputTestFixture
             yield return WaitFor(PhaseEditor.Scene);
             room = Object.FindAnyObjectByType<PhaseEditor>().Room();
             Assert.That(room.blocks.Any(b => b.x == 72 && b.y == 144 && b.phaseMask == 1), Is.True, "draft survives leaving the editor");
-            Assert.That(room.spikes.Length, Is.EqualTo(1));
+            Assert.That((room.spikes.Length, room.lasers.Length, room.crystals.Length), Is.EqualTo((1, 1, 1)));
             LogAssert.NoUnexpectedReceived();
         }
         finally
         {
             if (saved == null) PlayerPrefs.DeleteKey(PhaseEditor.DraftKey); else PlayerPrefs.SetString(PhaseEditor.DraftKey, saved);
-            PlayerPrefs.Save();
+            PlayerPrefs.Save(); GUIUtility.systemCopyBuffer = clipboard;
         }
     }
 }

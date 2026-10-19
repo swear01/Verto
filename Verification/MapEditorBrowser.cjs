@@ -101,6 +101,14 @@ const server=http.createServer((req,res)=>{
   await page.waitForFunction(()=>!document.getElementById('rooms').open);
   assert.equal(await page.evaluate(()=>__calls.filter(c=>c.m==='SelectDemoRoom').at(-1).v),'3','selection works after recovery');
   await page.locator('#rooms-toggle').click();await page.locator('#map-open').click();assert(await page.locator('#map-play').isEnabled());
-  assert.deepEqual(errors,[]);console.log('PASS: mock bridge selection, victory dialog, timeout recovery, painter keyboard/drag, history, JSON, failure retention, persistence, mobile and repeated resized fullscreen enter/exit');
+  const gameJson='{"name":"in-game"}',gameDownload=page.waitForEvent('download');
+  await page.evaluate(json=>dispatchEvent(new CustomEvent('phase-map-export',{detail:{json}})),gameJson);
+  const gameFile=await gameDownload;assert.equal(gameFile.suggestedFilename(),'phase-custom-map.json');
+  assert.equal(fs.readFileSync(await gameFile.path(),'utf8'),gameJson,'in-game export saves Unity JSON unchanged');
+  const gameChooser=page.waitForEvent('filechooser');await page.evaluate(()=>dispatchEvent(new CustomEvent('phase-map-import')));
+  await (await gameChooser).setFiles({name:'in-game.json',mimeType:'application/json',buffer:Buffer.from(gameJson)});
+  await page.waitForFunction(()=>__calls.some(c=>c.m==='ImportDraft'));
+  assert.deepEqual(await page.evaluate(()=>__calls.filter(c=>c.m==='ImportDraft')),[{o:'PHASE',m:'ImportDraft',v:gameJson}],'in-game import sends the file to Unity');
+  assert.deepEqual(errors,[]);console.log('PASS: in-game editor file bridge, mock bridge selection, victory dialog, timeout recovery, painter keyboard/drag, history, JSON, failure retention, persistence, mobile and repeated resized fullscreen enter/exit');
  }finally{if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}
 })().catch(error=>{console.error(error);process.exitCode=1;});

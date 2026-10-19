@@ -16,14 +16,14 @@ namespace Phase
             try
             {
                 var data = JObject.Parse(json, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error });
-                CheckFields(data, new[] { "name", "blocks", "spikes", "spawnX", "spawnY" });
+                CheckFields(data, new[] { "name", "blocks", "spikes", "lasers", "crystals", "spawnX", "spawnY" });
                 CheckNumbers(data, "spawnX", "spawnY");
                 if (data["name"] != null && (data["name"].Type != JTokenType.String || data["name"].Value<string>().Length > 64))
                     throw new ArgumentException("地圖名稱最多64字元。");
-                if (!(data["blocks"] is JArray blocks) || (data["spikes"] != null && !(data["spikes"] is JArray)))
-                    throw new ArgumentException("地形與尖刺必須是陣列。");
-                var spikes = data["spikes"] as JArray;
-                if (blocks.Count + (spikes?.Count ?? 0) > 880) throw new ArgumentException("地圖超過880格。");
+                if (!(data["blocks"] is JArray blocks) || new[] { "spikes", "lasers", "crystals" }.Any(f => data[f] != null && !(data[f] is JArray)))
+                    throw new ArgumentException("地形、尖刺、雷射與水晶必須是陣列。");
+                JArray spikes = data["spikes"] as JArray, lasers = data["lasers"] as JArray, crystals = data["crystals"] as JArray;
+                if (blocks.Count + (spikes?.Count ?? 0) + (lasers?.Count ?? 0) + (crystals?.Count ?? 0) > 880) throw new ArgumentException("地圖超過880格。");
                 foreach (var item in blocks)
                 {
                     var block = item as JObject;
@@ -37,6 +37,18 @@ namespace Phase
                     CheckFields(spike, new[] { "x", "y", "length", "direction", "phaseMask" });
                     CheckNumbers(spike, "x", "y", "length", "direction", "phaseMask");
                 }
+                foreach (var item in lasers ?? new JArray())
+                {
+                    var laser = item as JObject;
+                    CheckFields(laser, new[] { "x", "y", "direction", "phaseMask" });
+                    CheckNumbers(laser, "x", "y", "direction", "phaseMask");
+                }
+                foreach (var item in crystals ?? new JArray())
+                {
+                    var crystal = item as JObject;
+                    CheckFields(crystal, new[] { "x", "y", "kind", "phaseMask" });
+                    CheckNumbers(crystal, "x", "y", "kind", "phaseMask");
+                }
                 var room = new PhaseDemoRoom {
                     name=data["name"]?.Value<string>(),spawnX=data["spawnX"].Value<double>(),spawnY=data["spawnY"].Value<double>(),
                     blocks=blocks.Select(b=>new Block(b["x"].Value<double>(),b["y"].Value<double>(),b["w"].Value<double>(),b["h"].Value<double>(),
@@ -44,6 +56,12 @@ namespace Phase
                     spikes=(spikes ?? new JArray()).Select(s=>new DemoSpike {
                         x=s["x"].Value<double>(),y=s["y"].Value<double>(),length=s["length"].Value<double>(),
                         direction=(SpikeDirection)s["direction"].Value<int>(),phaseMask=s["phaseMask"].Value<int>()
+                    }).ToArray(),
+                    lasers=lasers?.Select(l=>new DemoLaser {
+                        x=l["x"].Value<double>(),y=l["y"].Value<double>(),direction=(LaserDirection)l["direction"].Value<int>(),phaseMask=l["phaseMask"].Value<int>()
+                    }).ToArray(),
+                    crystals=crystals?.Select(c=>new DemoCrystal {
+                        x=c["x"].Value<double>(),y=c["y"].Value<double>(),kind=(CrystalKind)c["kind"].Value<int>(),phaseMask=c["phaseMask"].Value<int>()
                     }).ToArray()
                 };
                 Validate(room); return room;
@@ -73,12 +91,12 @@ namespace Phase
         {
             if (room == null || room.blocks == null || room.blocks.Length == 0)
                 throw new ArgumentException("地圖至少需要一格地形。");
-            if (room.blocks.Length + (room.spikes?.Length ?? 0) > 880)
+            if (room.blocks.Length + (room.spikes?.Length ?? 0) + (room.lasers?.Length ?? 0) + (room.crystals?.Length ?? 0) > 880)
                 throw new ArgumentException("地圖超過880格。");
-            if ((room.crystals?.Length ?? 0) != 0 || (room.lasers?.Length ?? 0) != 0 || (room.nodeX?.Length ?? 0) != 0 || (room.nodeY?.Length ?? 0) != 0 || room.hasGear ||
+            if ((room.nodeX?.Length ?? 0) != 0 || (room.nodeY?.Length ?? 0) != 0 || room.hasGear ||
                 room.gearWall != null || room.gearPlatform != null || room.gearTop != 0 || room.gearEndX != 0 || room.returns ||
                 double.IsNaN(room.moverW) || double.IsInfinity(room.moverW) || double.IsNaN(room.moverH) || double.IsInfinity(room.moverH))
-                throw new ArgumentException("自訂地圖目前支援靜態地形與尖刺。");
+                throw new ArgumentException("自訂地圖目前支援靜態地形、尖刺、雷射與水晶。");
             if (!Aligned(room.spawnX) || !Aligned(room.spawnY) || room.spawnX < 0 || room.spawnX > 312 || room.spawnY < 0 || room.spawnY > 160)
                 throw new ArgumentException("出生點必須位於格線內。");
             var occupied = new HashSet<(int,int)>();
@@ -100,12 +118,41 @@ namespace Phase
                 if (hazard.ActiveInPhase(0) && PhaseController.Overlap(player, hazard.Hitbox))
                     throw new ArgumentException("出生點與紅色模式的尖刺重疊。");
             }
+            var solids = room.blocks.Where(b => b.ActiveInPhase(0)).ToArray();
+            foreach (var laser in room.lasers ?? Array.Empty<DemoLaser>())
+            {
+                if (laser == null || (int)laser.direction < 0 || (int)laser.direction > 3 || laser.phaseMask < 1 || laser.phaseMask > 7)
+                    throw new ArgumentException("雷射方向或顏色無效。");
+                AddCells(laser.x, laser.y, 8, 8, occupied);
+                var emitter = new Laser(laser.x, laser.y, laser.direction, laser.phaseMask);
+                if (emitter.ActiveInPhase(0) && PhaseController.Overlap(player, emitter.Beam(solids, Width)))
+                    throw new ArgumentException("出生點位於紅色模式的雷射光束上。");
+            }
+            foreach (var crystal in room.crystals ?? Array.Empty<DemoCrystal>())
+            {
+                if (crystal == null || (int)crystal.kind < 0 || (int)crystal.kind > 1 || crystal.phaseMask < 1 || crystal.phaseMask > 7)
+                    throw new ArgumentException("水晶種類或顏色無效。");
+                AddCells(crystal.x, crystal.y, 8, 8, occupied);
+            }
+        }
+        // The wire schema shared with the Web map editor; lasers and crystals appear only when used.
+        public static string ToJson(PhaseDemoRoom room)
+        {
+            var data = new JObject {
+                ["name"] = room.name,
+                ["blocks"] = new JArray(room.blocks.Select(b => new JObject { ["x"] = (int)b.x, ["y"] = (int)b.y, ["w"] = (int)b.w, ["h"] = (int)b.h, ["phase"] = b.phase, ["phaseMask"] = b.phaseMask })),
+                ["spikes"] = new JArray((room.spikes ?? Array.Empty<DemoSpike>()).Select(s => new JObject { ["x"] = (int)s.x, ["y"] = (int)s.y, ["length"] = (int)s.length, ["direction"] = (int)s.direction, ["phaseMask"] = s.phaseMask }))
+            };
+            if (room.lasers?.Length > 0) data["lasers"] = new JArray(room.lasers.Select(l => new JObject { ["x"] = (int)l.x, ["y"] = (int)l.y, ["direction"] = (int)l.direction, ["phaseMask"] = l.phaseMask }));
+            if (room.crystals?.Length > 0) data["crystals"] = new JArray(room.crystals.Select(c => new JObject { ["x"] = (int)c.x, ["y"] = (int)c.y, ["kind"] = (int)c.kind, ["phaseMask"] = c.phaseMask }));
+            data["spawnX"] = (int)room.spawnX; data["spawnY"] = (int)room.spawnY;
+            return data.ToString(Formatting.Indented);
         }
         static bool Aligned(double value) => !double.IsNaN(value) && !double.IsInfinity(value) && value % 8 == 0;
         static void AddCells(double x, double y, double width, double height, HashSet<(int,int)> occupied)
         {
             if (!Aligned(x) || !Aligned(y) || !Aligned(width) || !Aligned(height) || x < 0 || y < 0 || width < 8 || height < 8 || x + width > Width || y + height > Height)
-                throw new ArgumentException("地形與尖刺必須對齊8像素格線，且位於320×176範圍內。");
+                throw new ArgumentException("物件必須對齊8像素格線，且位於320×176範圍內。");
             for (int cy = (int)y / 8; cy < (y + height) / 8; cy++)
                 for (int cx = (int)x / 8; cx < (x + width) / 8; cx++)
                     if (!occupied.Add((cx,cy))) throw new ArgumentException("同一格不能放置重疊物件。");

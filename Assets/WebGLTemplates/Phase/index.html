@@ -175,6 +175,7 @@
       productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
       devicePixelRatio: 1,
       matchWebGLToCanvasSize: false,
+      autoSyncPersistentDataPath: true,
       showBanner: (message, type) => type === 'error' ? failed(message) : console.warn(message)
     }, value => loading.value = value).then(instance => {
       loading.hidden = true;
