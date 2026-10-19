@@ -132,6 +132,7 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     }
     const blueLanding=(label,min,max,height)=>stableLanding(label,1,min,max,height);
     await page.goto(url); await ready(); await canvas.click();
+    await page.keyboard.press('z',{delay:80}); await page.waitForTimeout(100);
     assert.equal(await page.title(),'PHASE');
     assert.equal(await page.locator('body').innerText(),'');
     const rooms=['DemoRooms','CrystalRooms'].flatMap(course=>JSON.parse(fs.readFileSync(path.join(__dirname,`../Assets/Phase/${course}.json`))).rooms);
@@ -356,6 +357,7 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     await selectRoom(2);assert.equal(await page.evaluate(()=>localStorage.getItem('phase.map.v1')),draft,'Built-in selection preserves custom draft');
     await selectRoom(1);
     await page.reload(); await ready(); await canvas.click();
+    await page.keyboard.press('z',{delay:80}); await page.waitForTimeout(100);
     for(const [width,height] of [[320,407],[800,600],[2560,1080],[844,390],[390,844]]) {
       await page.setViewportSize({width,height}); await page.waitForTimeout(250);
       const box=await canvas.boundingBox();assert.deepEqual([box.x,box.y,box.width,box.height],[0,0,width,height]);

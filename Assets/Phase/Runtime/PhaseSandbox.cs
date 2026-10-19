@@ -24,6 +24,7 @@ namespace Phase
         public const float TransitionDuration = .18f;
         public bool InTransition => transitioning || departingFrame != null;
         public bool Won { get; private set; }
+        public bool Title { get; private set; }
         public static readonly string[] Levels = {
             "PhaseDemo1", "PhaseDemo2", "PhaseDemo3", "PhaseDemo4", "PhaseDemo5", "PhaseDemo6", "PhaseDemo7", "PhaseDemo8",
             "PhaseCrystal1", "PhaseCrystal2", "PhaseCrystal3", "PhaseDemo12"
@@ -44,11 +45,11 @@ namespace Phase
             new[] { Key.Z, Key.Space }, new[] { Key.X }, new[] { Key.C, Key.LeftShift, Key.RightShift }
         };
         static Key[][] keys = defaultKeys;
-        static bool controlsOpen, releaseControls;
+        static bool controlsOpen, releaseControls, titlePending;
         [Serializable] public sealed class KeyOverrides { public string[] keys; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetSession() { ClearTravel(); keys = defaultKeys; controlsOpen = releaseControls = false; }
+        static void ResetSession() { ClearTravel(); keys = defaultKeys; controlsOpen = releaseControls = false; titlePending = true; }
         static void ClearTravel() { traveler = null; travelFrame = null; travelSize = default; arrivalScene = null; arrivalDirection = 0; }
 
         PhaseController Build(Vector2Int at, int width)
@@ -95,6 +96,8 @@ namespace Phase
                 rightScene = level < Levels.Length - 1 ? Levels[level + 1] : "";
             }
             bool arriving = traveler != null && gameObject.scene.name == arrivalScene;
+            // Only a session that opens on level1 shows the title; replays and level selection skip it.
+            Title = titlePending && level == 0 && !arriving; titlePending = false;
             var size = arriving && travelFrame != null ? travelSize : ViewSize(Screen.width, Screen.height);
             Controller = Build(spawn, size.x);
             if (arriving)
@@ -118,7 +121,7 @@ namespace Phase
             ClearTravel();
             pixels = new PhasePixels();
             pixels.SetView(size.x, size.y, 0);
-            pixels.Draw(Controller);
+            Render();
             if (departingFrame != null)
             {
                 arrivingFrame = Frame.GetPixels32();
@@ -149,7 +152,12 @@ namespace Phase
                 Render(); UpdateSurface();
             }
         }
-        void Render() { pixels.Draw(Controller, !Won); if (Won) StampVictory(); }
+        void Render()
+        {
+            pixels.Draw(Controller, !Won);
+            if (Won) StampBanner(victoryText, retryIcon, 1);
+            else if (Title) StampBanner(titleText, playIcon, 2);
+        }
         static readonly string[] victoryText = {
             "...#....#................#..........................",
             "...#...#...........##############.....###########...",
@@ -167,19 +175,31 @@ namespace Phase
             "..#.......#.......####.#####.#..#...........#.......",
             "..#.......#.......#..#..#.#..#..#...........#.......",
             "..#.....###.......#.##.#...#.#..##.......####......."
-        }, retryIcon = { "..####.#.", ".#....##.", "#....###.", "#........", "#.......#", "#.......#", ".#.....#.", "..#####.." };
+        }, retryIcon = { "..####.#.", ".#....##.", "#....###.", "#........", "#.......#", "#.......#", ".#.....#.", "..#####.." },
+        titleText = {
+            "####..#...#..###...####.#####",
+            "#...#.#...#.#...#.#.....#....",
+            "#...#.#...#.#...#.#.....#....",
+            "####..#####.#####..###..####.",
+            "#.....#...#.#...#.....#.#....",
+            "#.....#...#.#...#.....#.#....",
+            "#.....#...#.#...#.####..#####"
+        }, playIcon = { "#......", "###....", "#####..", "#######", "#####..", "###....", "#......" };
         static readonly Color32 VictoryInk = new Color32(11, 15, 22, 255), VictoryLight = new Color32(234, 223, 197, 255);
-        void StampVictory()
+        void StampBanner(string[] text, string[] icon, int scale)
         {
             var frame = Frame.GetPixels32(); int w = pixels.Width, h = pixels.Height, top = h / 2 - 22;
             void Set(int x, int y, Color32 color, float amount = 1)
             { if (x >= 0 && x < w && y >= 0 && y < h) { int i = (h - 1 - y) * w + x; frame[i] = Color32.Lerp(frame[i], color, amount); } }
-            void Blit(string[] art, int left, int y0)
-            { for (int y = 0; y < art.Length; y++) for (int x = 0; x < art[y].Length; x++) if (art[y][x] == '#') Set(left + x, y0 + y, VictoryLight); }
+            void Blit(string[] art, int left, int y0, int size = 1)
+            {
+                for (int y = 0; y < art.Length * size; y++) for (int x = 0; x < art[0].Length * size; x++)
+                    if (art[y / size][x / size] == '#') Set(left + x, y0 + y, VictoryLight);
+            }
             for (int y = top; y < top + 44; y++) for (int x = 0; x < w; x++)
                 Set(x, y, y == top || y == top + 43 ? VictoryLight : VictoryInk, y == top || y == top + 43 ? .35f : .82f);
-            Blit(victoryText, (w - victoryText[0].Length) / 2, top + 8);
-            Blit(retryIcon, (w - retryIcon[0].Length) / 2, top + 29);
+            Blit(text, (w - text[0].Length * scale) / 2, top + 8, scale);
+            Blit(icon, (w - icon[0].Length) / 2, top + 29);
             Frame.SetPixels32(frame); Frame.Apply(false);
         }
         void Win()
@@ -209,6 +229,7 @@ namespace Phase
                 return;
             }
             if (Won) { if (Pressed(k, 4, true)) SelectDemoRoom("1"); return; }
+            if (Title) { if (Pressed(k, 4, true)) { Title = false; Render(); } return; }
             var input = ReadControls(k);
             jumpQueued |= Pressed(k, 4, true);
             dashQueued |= Pressed(k, 5, true);

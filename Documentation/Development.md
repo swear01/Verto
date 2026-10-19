@@ -198,7 +198,7 @@ Open `Assets/Scenes/PhaseDemo1.unity`. Rebuild the eight scenes from
 `unity command eval 'PhaseSandboxBuilder.CreateDemoRooms();'`.
 Each room uses `checkpointOnEntry`, resetting player color/dash/stamina and
 mechanism positions while preserving elapsed time and action/death counts.
-Built-in levels link in both directions: Demo1–8, Crystal1–3, then Demo12. Backward travel enters a safe standing position near the previous room’s right side. Level12’s right exit freezes play and shows the victory screen; jump restarts level1 in native Play, and Web also offers replay or level selection. Custom maps have no level links. The original sandbox links retain their momentum/color carry behavior.
+A session that opens on level1 first shows the PHASE title over the frozen room; jump starts play. Replays and level selection skip it. Built-in levels link in both directions: Demo1–8, Crystal1–3, then Demo12. Backward travel enters a safe standing position near the previous room’s right side. Level12’s right exit freezes play and shows the victory screen; jump restarts level1 in native Play, and Web also offers replay or level selection. Custom maps have no level links. The original sandbox links retain their momentum/color carry behavior.
 See [room designs and live input verification](Demo.md).
 `BuildWeb.py` verifies these tests and builds `PhaseDemo1` through
 `PhaseDemo8`, followed by `PhaseCrystal1` through `PhaseCrystal3` and the hand-authored `PhaseDemo12`. `DemoWebSmoke.cjs` replays keyboard routes through
