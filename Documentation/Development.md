@@ -217,7 +217,9 @@ The hosted runner requires no Unity license or repository secrets.
 dotnet test Verification/ControllerTests.csproj --configuration Release
 ```
 
-CI uploads TRX test results on pull requests and pushes to `main`.
+CI runs on every pull request (including stacked PRs into feature branches) and pushes
+to `main`. It uploads TRX test results and runs `MapEditorBrowser.cjs` in headless
+Chromium against a mock Unity bridge; that covers page events, not native loading.
 Unity scene, keyboard and rendering checks remain live CLI/Pipeline checks;
 they are not covered by this hosted controller job. The separate
 [Web build and preview](Web.md) workflow runs them through a licensed GUI runner

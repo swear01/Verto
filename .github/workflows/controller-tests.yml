@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -17,7 +16,7 @@ concurrency:
 jobs:
   controller-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Verify WebGL compatibility guard
@@ -44,6 +43,23 @@ jobs:
           assert counters is not None and int(counters.attrib['executed']) > 0
           assert int(counters.attrib['failed']) == 0
           PY
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+      - name: Install browser verification tools
+        working-directory: Verification
+        run: |
+          npm ci
+          npx --no-install playwright install --with-deps chromium --no-shell
+      - name: Verify map editor UI and in-game editor file bridge with a mock Unity bridge
+        run: node Verification/MapEditorBrowser.cjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: map-editor-browser
+          path: TestResults/MapEditor/
+          if-no-files-found: warn
+          retention-days: 7
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
