@@ -8,10 +8,11 @@
 | `room-1-start.png` 至 `room-8-start.png` | 八個正式 Demo 場景的開始畫面，320×180 原生像素 |
 | `room-1-end.png` 至 `room-8-end.png` | `Verification/DemoLiveInput.cs` 以虛擬鍵盤完成各關路線後的畫面 |
 | `sandbox.png`、`room-2-sandbox.png`、`gear-demo.png`、`demo-1-1.png` | 對應獨立場景在 Play 中的 `PhaseSandbox.Frame`，已確認 frame count 與 controller time 前進 |
-| `room-selector.png`、`map-editor.png` | 公開遊戲的實際 Chromium 介面，1280×900 viewport 中擷取對話框；已操作畫地形、尖刺、匯出與載入自訂地圖 |
+| `room-selector.png` | 2026-10-19 本機 Web build 的實際 Chromium 選關對話框（移除 HTML 編輯器後），1280×900 viewport 中擷取 |
+| `game-editor.png` | 2026-10-19 `Verification/MenuLiveInput.cs` 在 Play 中以虛擬鍵盤畫出藍地形、紅雷射與白水晶後的遊戲內編輯器畫面，320×180 原生像素 |
 | `character-ready.png`、`character-spent.png`、`character-tired.png` | 正式 `PhasePixels` renderer 產生的 24×28 角色狀態示意：衝刺存量 1、衝刺存量 0、空中耐力 10。這三張是狀態示意，不是鍵盤遊玩截圖 |
 
-八關路線皆完成，死亡數為 0；依序使用 `DemoLiveInput.Advance` 驗證前七次房間切換及檢查點。新版重取圖後的 Pipeline Console 檢查沒有 error。公開介面於 2026-10-17 擷取，`maps.js` 的 SHA-256 與本版本相同（`19712096937dd0f4168076f580840a8f5b07be15dc34fd24df513515810ac3e0`）；已實測格線繪圖、JSON 匯出與自訂地圖試玩。這不代表公開 WebGL 的所有檔案皆與該 commit 一致。
+八關路線皆完成，死亡數為 0；依序使用 `DemoLiveInput.Advance` 驗證前七次房間切換及檢查點。新版重取圖後的 Pipeline Console 檢查沒有 error。舊版網頁地圖編輯器已移除，其截圖一併刪除。
 
 ## 重新取圖
 

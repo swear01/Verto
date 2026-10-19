@@ -217,7 +217,7 @@ dotnet test Verification/ControllerTests.csproj --configuration Release
 ```
 
 CI runs on every pull request (including stacked PRs into feature branches) and pushes
-to `main`. It uploads TRX test results and runs `MapEditorBrowser.cjs` in headless
+to `main`. It uploads TRX test results and runs `WebPageBrowser.cjs` in headless
 Chromium against a mock Unity bridge; that covers page events, not native loading.
 Unity scene, keyboard and rendering checks remain live CLI/Pipeline checks;
 they are not covered by this hosted controller job. The separate
@@ -363,8 +363,8 @@ Crystal Prefabs expose `kind` and `phaseMask`; both use an8×8 native trigger.
 Apply overrides only when the change should affect the shared Prefab.
 The demo builders instantiate these assets and preserve the existing room geometry;
 hand-authored scenes are never rebuilt. Existing direct children of the origin
-`PHASE` root retain their coordinates. The Web map editor still edits static
-terrain/spikes; these Prefabs are Unity authoring tools.
+`PHASE` root retain their coordinates. The in-game editor places single-cell lasers
+and crystals and two-step dash platforms and climb gears; these Prefabs are the Unity authoring tools.
 
 ## Title and level editor
 

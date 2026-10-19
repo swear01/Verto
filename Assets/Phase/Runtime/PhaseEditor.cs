@@ -357,7 +357,7 @@ namespace Phase
             Playtest.gameObject.SetActive(false); Destroy(Playtest.gameObject); Playtest = null;
             surface.enabled = true; Refresh(true);
         }
-        // The Web map editor's playtest runs here too and returns to this draft unchanged.
+        // A bridge LoadCustomMap sent while editing plays here too and returns to this draft unchanged.
         public override void LoadCustomMap(string json)
         {
             if (leaving) { PhaseSandbox.MapResult(false, PhaseSandbox.Busy); return; }

@@ -209,7 +209,7 @@ namespace Phase
                 if (PhaseController.Overlap(player, drive.wall) || PhaseController.Overlap(player, drive.platform)) throw new ArgumentException("出生點與齒輪重疊。");
             }
         }
-        // The custom-map wire schema; lasers, crystals, platforms and gears appear only when used.
+        // The exported custom-map JSON; lasers, crystals, platforms and gears appear only when used.
         public static string ToJson(PhaseDemoRoom room)
         {
             var data = new JObject {
