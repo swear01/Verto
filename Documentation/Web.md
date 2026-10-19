@@ -49,31 +49,18 @@ square pixels without cropping the room to enlarge the player. Wide rooms extend
 quarry scenery, full-width floor collision and their right exit. Resizing preserves
 movement/color state and clamps positions within a shortened room; resizing during
 a slide completes the handoff safely. Fixed obstacles and movers retain their
-world coordinates. The toolbar includes fullscreen and keyboard settings. Fullscreen
+world coordinates. The page toolbar has only the fullscreen button. Fullscreen
 needs a user click and browser/iframe permission; denied requests show a recovery
 message. Loading failures remain visible.
 
-The top-right settings button opens keyboard bindings and pauses the game. Select
-either of an action’s two slots, then press a key; the other slot is preserved.
-Shift is one logical binding that accepts either left or right Shift. During capture,
-Esc clears the selected slot; each action must keep at least one key. Tab cancels
-capture and moves focus. Outside capture, Esc closes settings. Duplicate keys and browser modifier shortcuts
-are rejected. Changes apply immediately and are stored on this browser/origin;
-blocked storage displays a warning while keeping the current session usable.
-Release held keys after closing settings to resume. Each action has its own Restore
-button; it resets only that action and is disabled when already at its defaults.
-If another action uses a default key, the message names that action and asks you to
-change it first. Other bindings are preserved. Bindings survive room travel.
-`phase.controls.v2` stores 14 strings (two per action, empty means unused).
-Existing `phase.controls.v1` single overrides migrate into the first slot; untouched
-actions keep both defaults. The old data remains unchanged. Invalid or conflicting
-saved data falls back to defaults with a visible notice.
-The settings interface lives in the Web page; the game view stays free of prose.
-
-The build opens on the PHASE title; jump starts level1 and the pencil opens the in-game
-level editor (see [Development](Development.md)).
-The top-right room button selects any of the twelve rooms. Custom maps are made only
-in the in-game editor; the page has no map editor of its own.
+Level select, pause and keyboard bindings are in-game screens, the same as in native
+builds (see [Development](Development.md)). The build opens on the PHASE title; its icons
+start level1, open the level select, the in-game level editor or key settings. Escape in
+a level pauses. Bindings are stored with Unity PlayerPrefs (`phase.keys.v1`) in this
+browser's IndexedDB; bindings saved by the old page dialog (`phase.controls.v2`) are not
+migrated. Only the focused game canvas sends keys to Unity, and leaving the page
+(blur or hidden tab) pauses play through `PHASE.SetControlsOpen`.
+Custom maps are made only in the in-game editor; the page has no map editor of its own.
 
 Custom maps contain `name`, `blocks`, `spikes`, `spawnX` and `spawnY`, plus optional
 `lasers` (`x`, `y`, `direction` 0–3 up/down/left/right, `phaseMask`) and `crystals`
@@ -83,17 +70,19 @@ Geometry occupies at most 880 non-overlapping cells inside 320×176; spawn uses 
 8-pixel grid, stays inside 312×160, and avoids solids/hazards active in red,
 including any red laser beam not stopped by red-active terrain.
 Masks are 1 red, 2 blue, 4 green, 3 magenta, 5 yellow, 6 cyan and 7 permanent white.
-Moving platforms/gears and JSON over 200,000 characters are rejected. The room
-selector sends `PHASE.SelectDemoRoom("1".."12")` and closes only after
-`phase-map-result` reports success. All dialogs share the gameplay pause.
-`PHASE.LoadCustomMap(json)` remains a Unity bridge method, but the page no longer sends it.
+Moving platforms/gears and JSON over 200,000 characters are rejected.
+`PHASE.SelectDemoRoom("1".."12")` and `PHASE.LoadCustomMap(json)` remain Unity bridge
+methods, but the page no longer sends them; `phase-map-result` still reports each
+completed load and the browser smoke test waits for it.
 The in-game editor's import/export icons raise `phase-map-import` / `phase-map-export`
 from `PhaseMaps.jslib`; `maps.js` opens the file picker or saves the download, and
 sends the chosen file to `PHASE.ImportDraft`.
 `WebPageBrowser.cjs` verifies page events using a mock Unity bridge; it does not
 prove native map loading. Verify the native bridge through Pipeline and the final
 built Web Player before publishing.
-`DemoWebSmoke.cjs` checks native selection of all twelve rooms, in-game editor
+`DemoWebSmoke.cjs` selects all twelve rooms through the pause menu's level select,
+reaches the victory banner and replays through its level select, rebinds keys in the
+in-game settings and checks they persist across reload, then checks in-game editor
 laser/crystal import and export, draft persistence across reload, playing that draft
 as a custom map, and movement after fullscreen exit. Room 1 synchronizes its staircase landings, Room 5 its low-ceiling jump/dash, and
 Room 8 its gear lift and ferry stops with visible phase/position checkpoints.
@@ -151,13 +140,12 @@ explicitly on resize; CSS covers the full viewport.
 ## Crystal course
 
 The source build appends `PhaseCrystal1` through `PhaseCrystal3` after the eight demo scenes.
-The existing room selector exposes them as9–11, with the same native loading
-confirmation and draft preservation. The crystal rooms are authored through Unity
+The in-game level select exposes them as9–11. The crystal rooms are authored through Unity
 scenes and `CrystalRooms.json`; custom maps place single crystals from the in-game editor.
 The three crystal routes and level12 use controlled browser time to prevent capture latency
 from extending held keys. Existing visible-checkpoint routes and UI checks use
 real time. This is functional verification, not a human timing/playtest.
 
-The selector also includes **12**, the classmate-authored `PhaseDemo12` scene (formerly `PhaseDemo1.2`). It is appended to the Web build after the original eleven level numbers. Crystal levels9–11 now require distinct jump/dash/refill combinations and keep safe permanent edge landings.
+The level select also includes **12**, the classmate-authored `PhaseDemo12` scene (formerly `PhaseDemo1.2`). It is appended to the Web build after the original eleven level numbers. Crystal levels9–11 now require distinct jump/dash/refill combinations and keep safe permanent edge landings.
 
-Built-in levels run in order1–12. Walking through the left edge returns to the previous level; level1’s left edge stays closed. Leaving level12 to the right shows “你贏了”, with replay and level selection. The chooser can replace a paused arrival slide; a late load acknowledgement restores the chooser after a timeout.
+Built-in levels run in order1–12. Walking through the left edge returns to the previous level; level1’s left edge stays closed. Leaving level12 to the right shows “你贏了”, with replay-level1 and level-select icons.
