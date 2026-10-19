@@ -24,7 +24,6 @@ namespace Phase
         public const float TransitionDuration = .18f;
         public bool InTransition => transitioning || departingFrame != null;
         public bool Won { get; private set; }
-        public bool Title { get; private set; }
         public static readonly string[] Levels = {
             "PhaseDemo1", "PhaseDemo2", "PhaseDemo3", "PhaseDemo4", "PhaseDemo5", "PhaseDemo6", "PhaseDemo7", "PhaseDemo8",
             "PhaseCrystal1", "PhaseCrystal2", "PhaseCrystal3", "PhaseDemo12"
@@ -45,11 +44,11 @@ namespace Phase
             new[] { Key.Z, Key.Space }, new[] { Key.X }, new[] { Key.C, Key.LeftShift, Key.RightShift }
         };
         static Key[][] keys = defaultKeys;
-        static bool controlsOpen, releaseControls, titlePending;
+        static bool controlsOpen, releaseControls;
         [Serializable] public sealed class KeyOverrides { public string[] keys; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetSession() { ClearTravel(); keys = defaultKeys; controlsOpen = releaseControls = false; titlePending = true; }
+        static void ResetSession() { ClearTravel(); keys = defaultKeys; controlsOpen = releaseControls = false; }
         static void ClearTravel() { traveler = null; travelFrame = null; travelSize = default; arrivalScene = null; arrivalDirection = 0; }
 
         PhaseController Build(Vector2Int at, int width)
@@ -96,8 +95,6 @@ namespace Phase
                 rightScene = level < Levels.Length - 1 ? Levels[level + 1] : "";
             }
             bool arriving = traveler != null && gameObject.scene.name == arrivalScene;
-            // Only a session that opens on level1 shows the title; replays and level selection skip it.
-            Title = titlePending && level == 0 && !arriving; titlePending = false;
             var size = arriving && travelFrame != null ? travelSize : ViewSize(Screen.width, Screen.height);
             Controller = Build(spawn, size.x);
             if (arriving)
@@ -121,7 +118,7 @@ namespace Phase
             ClearTravel();
             pixels = new PhasePixels();
             pixels.SetView(size.x, size.y, 0);
-            Render();
+            pixels.Draw(Controller);
             if (departingFrame != null)
             {
                 arrivingFrame = Frame.GetPixels32();
@@ -131,15 +128,17 @@ namespace Phase
             surface = go.AddComponent<SpriteRenderer>(); surface.sharedMaterial = pixelMaterial;
             UpdateSurface();
         }
-        void UpdateSurface()
+        void UpdateSurface() => sprite = Present(pixels, surface, sprite, pixelCamera);
+        internal static Sprite Present(PhasePixels pixels, SpriteRenderer surface, Sprite previous, Camera camera)
         {
-            if (sprite != null) Destroy(sprite);
-            sprite = Sprite.Create(Frame, new Rect(0, 0, pixels.Width, pixels.Height), new Vector2(.5f, .5f), 1, 0, SpriteMeshType.FullRect);
+            if (previous != null) Destroy(previous);
+            var sprite = Sprite.Create(pixels.Texture, new Rect(0, 0, pixels.Width, pixels.Height), new Vector2(.5f, .5f), 1, 0, SpriteMeshType.FullRect);
             surface.sprite = sprite; surface.transform.position = new Vector3(pixels.Width / 2f, -pixels.OriginY - pixels.Height / 2f, 0);
-            pixelCamera.rect = new Rect(0, 0, 1, 1);
-            pixelCamera.aspect = pixels.Width / (float)pixels.Height;
-            pixelCamera.orthographicSize = pixels.Height / 2f;
-            pixelCamera.transform.position = new Vector3(pixels.Width / 2f, -pixels.OriginY - pixels.Height / 2f, -10);
+            camera.rect = new Rect(0, 0, 1, 1);
+            camera.aspect = pixels.Width / (float)pixels.Height;
+            camera.orthographicSize = pixels.Height / 2f;
+            camera.transform.position = new Vector3(pixels.Width / 2f, -pixels.OriginY - pixels.Height / 2f, -10);
+            return sprite;
         }
         void ResizeCamera()
         {
@@ -152,12 +151,7 @@ namespace Phase
                 Render(); UpdateSurface();
             }
         }
-        void Render()
-        {
-            pixels.Draw(Controller, !Won);
-            if (Won) StampBanner(victoryText, retryIcon, 1);
-            else if (Title) StampBanner(titleText, playIcon, 2);
-        }
+        void Render() { pixels.Draw(Controller, !Won); if (Won) StampVictory(); }
         static readonly string[] victoryText = {
             "...#....#................#..........................",
             "...#...#...........##############.....###########...",
@@ -175,32 +169,13 @@ namespace Phase
             "..#.......#.......####.#####.#..#...........#.......",
             "..#.......#.......#..#..#.#..#..#...........#.......",
             "..#.....###.......#.##.#...#.#..##.......####......."
-        }, retryIcon = { "..####.#.", ".#....##.", "#....###.", "#........", "#.......#", "#.......#", ".#.....#.", "..#####.." },
-        titleText = {
-            "####..#...#..###...####.#####",
-            "#...#.#...#.#...#.#.....#....",
-            "#...#.#...#.#...#.#.....#....",
-            "####..#####.#####..###..####.",
-            "#.....#...#.#...#.....#.#....",
-            "#.....#...#.#...#.....#.#....",
-            "#.....#...#.#...#.####..#####"
-        }, playIcon = { "#......", "###....", "#####..", "#######", "#####..", "###....", "#......" };
-        static readonly Color32 VictoryInk = new Color32(11, 15, 22, 255), VictoryLight = new Color32(234, 223, 197, 255);
-        void StampBanner(string[] text, string[] icon, int scale)
+        }, retryIcon = { "..####.#.", ".#....##.", "#....###.", "#........", "#.......#", "#.......#", ".#.....#.", "..#####.." };
+        void StampVictory()
         {
-            var frame = Frame.GetPixels32(); int w = pixels.Width, h = pixels.Height, top = h / 2 - 22;
-            void Set(int x, int y, Color32 color, float amount = 1)
-            { if (x >= 0 && x < w && y >= 0 && y < h) { int i = (h - 1 - y) * w + x; frame[i] = Color32.Lerp(frame[i], color, amount); } }
-            void Blit(string[] art, int left, int y0, int size = 1)
-            {
-                for (int y = 0; y < art.Length * size; y++) for (int x = 0; x < art[0].Length * size; x++)
-                    if (art[y / size][x / size] == '#') Set(left + x, y0 + y, VictoryLight);
-            }
-            for (int y = top; y < top + 44; y++) for (int x = 0; x < w; x++)
-                Set(x, y, y == top || y == top + 43 ? VictoryLight : VictoryInk, y == top || y == top + 43 ? .35f : .82f);
-            Blit(text, (w - text[0].Length * scale) / 2, top + 8, scale);
-            Blit(icon, (w - icon[0].Length) / 2, top + 29);
-            Frame.SetPixels32(frame); Frame.Apply(false);
+            var frame = new PixelFrame(Frame); int top = frame.Banner();
+            frame.Blit(victoryText, (frame.Width - victoryText[0].Length) / 2, top + 8, PixelFrame.Light);
+            frame.Blit(retryIcon, (frame.Width - retryIcon[0].Length) / 2, top + 29, PixelFrame.Light);
+            frame.Apply();
         }
         void Win()
         {
@@ -213,12 +188,7 @@ namespace Phase
             if (transitioning) return;
             ResizeCamera();
             var k = Keyboard.current;
-            if (controlsOpen || releaseControls)
-            {
-                jumpQueued = dashQueued = false; accumulator = 0;
-                if (!controlsOpen && (k == null || !k.anyKey.isPressed)) releaseControls = false;
-                return;
-            }
+            if (InputPaused(k)) { jumpQueued = dashQueued = false; accumulator = 0; return; }
             if (departingFrame != null)
             {
                 jumpQueued = dashQueued = false; accumulator = 0;
@@ -229,7 +199,6 @@ namespace Phase
                 return;
             }
             if (Won) { if (Pressed(k, 4, true)) SelectDemoRoom("1"); return; }
-            if (Title) { if (Pressed(k, 4, true)) { Title = false; Render(); } return; }
             var input = ReadControls(k);
             jumpQueued |= Pressed(k, 4, true);
             dashQueued |= Pressed(k, 5, true);
@@ -270,16 +239,27 @@ namespace Phase
                 jumpHeld = Pressed(k, 4), dashHeld = Pressed(k, 5), grab = Pressed(k, 6)
             };
         }
-        static bool Pressed(Keyboard k, int action, bool edge = false) => k != null && keys[action].Any(key => edge ? k[key].wasPressedThisFrame : k[key].isPressed);
-        public void SetControlsOpen(string value) { controlsOpen = value == "true"; releaseControls = true; }
+        internal static bool Pressed(Keyboard k, int action, bool edge = false) => k != null && keys[action].Any(key => edge ? k[key].wasPressedThisFrame : k[key].isPressed);
+        // A dialog pauses input; after it closes, keys held from the dialog stay ignored until released.
+        internal static bool InputPaused(Keyboard k)
+        {
+            if (!controlsOpen && !releaseControls) return false;
+            if (!controlsOpen && (k == null || !k.anyKey.isPressed)) releaseControls = false;
+            return true;
+        }
+        internal static void ReleaseInput() => releaseControls = true;
+        public void SetControlsOpen(string value) => Pause(value);
+        internal static void Pause(string value) { controlsOpen = value == "true"; releaseControls = true; }
         public void ConfigureControls(string json)
+        { if (ApplyControls(json)) { jumpQueued = dashQueued = false; accumulator = 0; } }
+        internal static bool ApplyControls(string json)
         {
             // JsonUtility turns null string-array entries into empty strings.
-            if (json == null || json.Contains("null")) return;
+            if (json == null || json.Contains("null")) return false;
             KeyOverrides map;
             try { map = JsonUtility.FromJson<KeyOverrides>(json); }
-            catch (ArgumentException) { return; }
-            if (map?.keys == null || map.keys.Length != defaultKeys.Length * 2) return;
+            catch (ArgumentException) { return false; }
+            if (map?.keys == null || map.keys.Length != defaultKeys.Length * 2) return false;
             var next = new Key[defaultKeys.Length][];
             for (int i = 0; i < next.Length; i++)
             {
@@ -292,16 +272,16 @@ namespace Phase
                     if (!Enum.TryParse(name, out Key key) || !Enum.IsDefined(typeof(Key), key) || key.ToString() != name ||
                         key == Key.None || key == Key.Escape || key == Key.Tab || key == Key.Delete || (int)key >= Keyboard.KeyCount ||
                         key == Key.LeftCtrl || key == Key.RightCtrl || key == Key.LeftAlt || key == Key.RightAlt ||
-                        key == Key.LeftMeta || key == Key.RightMeta) return;
+                        key == Key.LeftMeta || key == Key.RightMeta) return false;
                     action.Add(key);
                 }
-                if (action.Count == 0) return;
+                if (action.Count == 0) return false;
                 next[i] = action.ToArray();
             }
             var all = next.SelectMany(action => action).ToArray();
-            if (all.Distinct().Count() != all.Length) return;
+            if (all.Distinct().Count() != all.Length) return false;
             keys = next;
-            jumpQueued = dashQueued = false; accumulator = 0;
+            return true;
         }
         public static Vector2Int ViewSize(int width, int height)
         {

@@ -61,12 +61,6 @@ public static class DemoLiveInput
             InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
             yield return null;
             keyboard = InputSystem.AddDevice<Keyboard>("PhaseDemoVerification");
-            if (sandbox.Title)
-            {
-                InputSystem.QueueStateEvent(keyboard,new KeyboardState(Key.Z)); yield return null;
-                InputSystem.QueueStateEvent(keyboard,new KeyboardState()); yield return null;
-                if (sandbox.Title) { result.TrySetException(new InvalidOperationException("Jump did not dismiss the title.")); yield break; }
-            }
             var s = sandbox.Controller; s.Reset();
             string label = number + room.suffix;
             int deaths = s.deaths, jumps = s.jumps, dashes = s.dashes, frame = Time.frameCount;

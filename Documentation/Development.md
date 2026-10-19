@@ -55,8 +55,8 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 48 controller cases, 9 laser cases, 17 demo-route/authoring cases,
 15 crystal cases, 26 crystal-room cases, 18 pixel cases, 6 Grid authoring cases and 4 custom-map validation cases in Edit
-Mode. The twelve Play Mode cases cover bindings, pause/release gating, room
-persistence, multiple authored platforms, crystal triggers and imported maps. Platform checks cover
+Mode. The fourteen Play Mode cases cover bindings, pause/release gating, room
+persistence, multiple authored platforms, crystal triggers, imported maps and the title/editor flow. Platform checks cover
 vertical return travel, independent routes/reset, rider and climb-hop attachment,
 crush/hazard sweeps, native collider synchronization and rendering.
 The three immutable reference files preserve 40 movement/action/climb traces.
@@ -198,7 +198,7 @@ Open `Assets/Scenes/PhaseDemo1.unity`. Rebuild the eight scenes from
 `unity command eval 'PhaseSandboxBuilder.CreateDemoRooms();'`.
 Each room uses `checkpointOnEntry`, resetting player color/dash/stamina and
 mechanism positions while preserving elapsed time and action/death counts.
-A session that opens on level1 first shows the PHASE title over the frozen room; jump starts play. Replays and level selection skip it. Built-in levels link in both directions: Demo1–8, Crystal1–3, then Demo12. Backward travel enters a safe standing position near the previous room’s right side. Level12’s right exit freezes play and shows the victory screen; jump restarts level1 in native Play, and Web also offers replay or level selection. Custom maps have no level links. The original sandbox links retain their momentum/color carry behavior.
+Built-in levels link in both directions: Demo1–8, Crystal1–3, then Demo12. Backward travel enters a safe standing position near the previous room’s right side. Level12’s right exit freezes play and shows the victory screen; jump restarts level1 in native Play, and Web also offers replay or level selection. Custom maps have no level links. The original sandbox links retain their momentum/color carry behavior.
 See [room designs and live input verification](Demo.md).
 `BuildWeb.py` verifies these tests and builds `PhaseDemo1` through
 `PhaseDemo8`, followed by `PhaseCrystal1` through `PhaseCrystal3` and the hand-authored `PhaseDemo12`. `DemoWebSmoke.cjs` replays keyboard routes through
@@ -357,6 +357,29 @@ The demo builders instantiate these assets and preserve the existing room geomet
 hand-authored scenes are never rebuilt. Existing direct children of the origin
 `PHASE` root retain their coordinates. The Web map editor still edits static
 terrain/spikes; these Prefabs are Unity authoring tools.
+
+## Title and level editor
+
+`PhaseTitle` is build scene0 and `PhaseEditor` follows the levels. Recreate both and
+their Build Settings entries with `unity command eval 'PhaseSandboxBuilder.CreateScreens();'`.
+Each has a `PHASE` root (`PhaseScreen`) answering the same Web bridge messages as
+`PhaseSandbox`; any key held when a screen opens is ignored until released.
+
+The title draws the PHASE banner and two icons: left/right chooses, jump or Enter
+confirms (or click an icon). Play loads level1; the pencil opens the editor.
+The editor paints the custom-map grid (40×22 cells, terrain, four spike directions,
+spawn, erase; seven masks) and renders it with the game's own pixels in the starting
+red phase. Mouse: left paints, right erases, the toolbar flips away from the cursor.
+Keyboard: movement keys move the cursor, jump paints, grab erases, dash cycles the
+tool, 1–7 pick the mask, Enter playtests, Escape returns to the title. An invalid
+map flashes a red border instead of starting. The playtest runs a `PhaseSandbox`
+child named `Playtest`; Escape destroys it and returns to the unchanged draft. A Web
+`LoadCustomMap` sent in the editor scene plays that map the same way. The draft
+autosaves to PlayerPrefs `phase.editor.v1` as one tool/mask pair per cell.
+
+With `PhaseTitle` in Play mode, run `Verification/MenuLiveInput.cs`, entry
+`MenuLiveInput.Run`. It drives title→editor→paint→playtest→back→level1 by keyboard,
+restores the developer's draft and saves captures to `TestResults/Menu/`.
 
 ## Hand-authored scenes
 

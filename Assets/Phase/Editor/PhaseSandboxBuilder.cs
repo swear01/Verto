@@ -144,6 +144,31 @@ public static class PhaseSandboxBuilder
         EditorBuildSettings.scenes = scenes.ToArray();
         AssetDatabase.SaveAssets();
     }
+    // The title is the first build scene; the editor follows the levels.
+    [MenuItem("PHASE/Create title and editor")]
+    public static void CreateScreens()
+    {
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+        var scenes = new System.Collections.Generic.List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
+        foreach (var type in new[] { typeof(PhaseTitle), typeof(PhaseEditor) })
+        {
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            var screen = (PhaseScreen)new GameObject("PHASE").AddComponent(type);
+            var camera = new GameObject("Camera").AddComponent<Camera>();
+            camera.orthographic = true; camera.orthographicSize = 90;
+            camera.clearFlags = CameraClearFlags.SolidColor; camera.backgroundColor = Color.black;
+            screen.pixelCamera = camera;
+            screen.pixelMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Phase/PixelSurface.mat");
+            string path = "Assets/Scenes/" + type.Name + ".unity";
+            EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), path);
+            scenes.RemoveAll(s => s.path == path);
+            if (type == typeof(PhaseTitle)) scenes.Insert(0, new EditorBuildSettingsScene(path, true));
+            else scenes.Add(new EditorBuildSettingsScene(path, true));
+        }
+        EditorBuildSettings.scenes = scenes.ToArray();
+        AssetDatabase.SaveAssets();
+        EditorSceneManager.OpenScene("Assets/Scenes/PhaseTitle.unity");
+    }
     [MenuItem("PHASE/Create minimal sandbox")]
     public static void Create()
     {

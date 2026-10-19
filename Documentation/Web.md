@@ -71,6 +71,8 @@ actions keep both defaults. The old data remains unchanged. Invalid or conflicti
 saved data falls back to defaults with a visible notice.
 The settings interface lives in the Web page; the game view stays free of prose.
 
+The build opens on the PHASE title; jump starts level1 and the pencil opens the in-game
+level editor (see [Development](Development.md)).
 The top-right room button selects any of the twelve rooms or opens the map editor.
 The editor uses 40×22 cells of 8 pixels: permanent white, the three phase colors,
 three mixed masks, four spike directions, spawn and erase. Drag to paint, or use
@@ -109,7 +111,7 @@ the warning.
 ## Enable automatic builds and online play
 
 `Web build and preview` runs only on `main`, after push or manual dispatch.
-It uses Unity CLI + live Pipeline for 143 Editor tests, twelve Play Mode tests and
+It uses Unity CLI + live Pipeline for 143 Editor tests, fourteen Play Mode tests and
 the Web build, then verifies browser rendering, keyboard routes through all twelve rooms and eleven scene-edge transitions,
 adaptive viewport sizing, keyboard settings, fullscreen, visible load failures,
 and absence of browser errors/warnings. Only a passing build is
