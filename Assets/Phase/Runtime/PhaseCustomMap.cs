@@ -135,7 +135,7 @@ namespace Phase
                 AddCells(crystal.x, crystal.y, 8, 8, occupied);
             }
         }
-        // The wire schema shared with the Web map editor; lasers and crystals appear only when used.
+        // The exported custom-map JSON; lasers and crystals appear only when used.
         public static string ToJson(PhaseDemoRoom room)
         {
             var data = new JObject {

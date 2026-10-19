@@ -21,8 +21,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Verify WebGL compatibility guard
         run: node Verification/WebTemplateTests.cjs
-      - name: Verify map editor validation
-        run: node Verification/MapEditorTests.cjs
       - name: Verify Pipeline failure handling
         run: python3 Verification/BuildWebTests.py
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
@@ -51,13 +49,13 @@ jobs:
         run: |
           npm ci
           npx --no-install playwright install --with-deps chromium --only-shell
-      - name: Verify map editor UI and in-game editor file bridge with a mock Unity bridge
-        run: node Verification/MapEditorBrowser.cjs
+      - name: Verify Web page dialogs and in-game editor file bridge with a mock Unity bridge
+        run: node Verification/WebPageBrowser.cjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: map-editor-browser
-          path: TestResults/MapEditor/
+          name: web-page-browser
+          path: TestResults/WebPage/
           if-no-files-found: warn
           retention-days: 7
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

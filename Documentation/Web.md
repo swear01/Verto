@@ -11,10 +11,9 @@ Editor as described in [Development](Development.md), then run:
 python3 Verification/BuildWeb.py
 cd Verification
 npm ci
-npx --no-install playwright install chromium --no-shell
+npx --no-install playwright install chromium
 cd ..
-node Verification/MapEditorTests.cjs
-node Verification/MapEditorBrowser.cjs
+node Verification/WebPageBrowser.cjs
 node Verification/DemoWebSmoke.cjs Builds/Web
 python3 -m http.server 8765 --bind 127.0.0.1 --directory Builds/Web
 ```
@@ -73,34 +72,30 @@ The settings interface lives in the Web page; the game view stays free of prose.
 
 The build opens on the PHASE title; jump starts level1 and the pencil opens the in-game
 level editor (see [Development](Development.md)).
-The top-right room button selects any of the twelve rooms or opens the older HTML map editor.
-The in-game editor is the maintained one; the HTML painter is unchanged and only
-paints terrain, spikes and spawn. It uses 40×22 cells of 8 pixels: permanent white, the three phase colors,
-three mixed masks, four spike directions, spawn and erase. Drag to paint, or use
-arrows and Space on the grid. Undo/redo applies to whole strokes. The browser keeps
-one draft at `phase.map.v1`; choosing a built-in room leaves that draft intact.
-Export downloads `phase-custom-map.json`; import validates before replacing the draft.
-Storage failure keeps the current session and asks for a JSON backup.
+The top-right room button selects any of the twelve rooms. Custom maps are made only
+in the in-game editor; the page has no map editor of its own.
 
 Custom maps contain `name`, `blocks`, `spikes`, `spawnX` and `spawnY`, plus optional
 `lasers` (`x`, `y`, `direction` 0–3 up/down/left/right, `phaseMask`) and `crystals`
 (`x`, `y`, `kind` 0 jump/1 dash, `phaseMask`), each one cell. Exports omit the two
 optional lists when empty, so older five-field maps and readers keep working.
-Unity accepts both lists; the HTML painter still rejects them.
 Geometry occupies at most 880 non-overlapping cells inside 320×176; spawn uses the
 8-pixel grid, stays inside 312×160, and avoids solids/hazards active in red,
 including any red laser beam not stopped by red-active terrain.
 Masks are 1 red, 2 blue, 4 green, 3 magenta, 5 yellow, 6 cyan and 7 permanent white.
-Moving platforms/gears and JSON over 200,000 characters are rejected. The Web UI
-sends `PHASE.SelectDemoRoom("1".."12")` or `PHASE.LoadCustomMap(json)` and closes
-only after `phase-map-result` reports success. All dialogs share the gameplay pause.
+Moving platforms/gears and JSON over 200,000 characters are rejected. The room
+selector sends `PHASE.SelectDemoRoom("1".."12")` and closes only after
+`phase-map-result` reports success. All dialogs share the gameplay pause.
+`PHASE.LoadCustomMap(json)` remains a Unity bridge method, but the page no longer sends it.
 The in-game editor's import/export icons raise `phase-map-import` / `phase-map-export`
-from `PhaseMaps.jslib`; `maps.js` opens the file picker or saves the download.
-`MapEditorBrowser.cjs` verifies UI events using a mock Unity bridge; it does not
+from `PhaseMaps.jslib`; `maps.js` opens the file picker or saves the download, and
+sends the chosen file to `PHASE.ImportDraft`.
+`WebPageBrowser.cjs` verifies page events using a mock Unity bridge; it does not
 prove native map loading. Verify the native bridge through Pipeline and the final
 built Web Player before publishing.
-`DemoWebSmoke.cjs` checks native selection of all twelve rooms, custom-map import
-and play, draft retention, in-game editor laser/crystal import and export, and movement after fullscreen exit. Room 1 synchronizes its staircase landings, Room 5 its low-ceiling jump/dash, and
+`DemoWebSmoke.cjs` checks native selection of all twelve rooms, in-game editor
+laser/crystal import and export, draft persistence across reload, playing that draft
+as a custom map, and movement after fullscreen exit. Room 1 synchronizes its staircase landings, Room 5 its low-ceiling jump/dash, and
 Room 8 its gear lift and ferry stops with visible phase/position checkpoints.
 Short walking pulses preserve narrow checkpoints; the final Room8 approach releases
 right before the linked crystal-room exit.

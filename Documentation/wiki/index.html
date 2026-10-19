@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PHASE 中文 Wiki</title>
-<meta name="description" content="PHASE 的世界、操作、物件機制、十一個房間、網頁地圖編輯器與 Unity 關卡編輯說明。">
+<meta name="description" content="PHASE 的世界、操作、物件機制、十一個房間、遊戲內地圖編輯器與 Unity 關卡編輯說明。">
 <meta name="color-scheme" content="dark">
 <link rel="stylesheet" href="style.css">
 <script src="app.js" defer></script>
@@ -82,7 +82,7 @@
   </table>
 
   <h3 id="web-keys">網頁版改鍵</h3>
-  <p>先點一下遊戲畫面取得鍵盤焦點。右上角依序有選擇關卡、全螢幕與鍵位設定。遊戲角色仍需鍵盤操作；地圖編輯器可用指標繪圖。</p>
+  <p>先點一下遊戲畫面取得鍵盤焦點。右上角依序有選擇關卡、全螢幕與鍵位設定。遊戲角色仍需鍵盤操作；遊戲內編輯器可用滑鼠繪圖。</p>
   <ul>
     <li>開啟設定會暫停遊戲。每個動作有<strong>兩個獨立鍵位格</strong>，選一格再按鍵即可，另一格不受影響。</li>
     <li><kbd>Shift</kbd> 是一個邏輯鍵，同時接受左右 Shift。</li>
@@ -477,24 +477,23 @@
 
 <section id="editing" aria-labelledby="editing-h">
   <h2 id="editing-h">關卡編輯</h2>
-  <p>先試編一張圖可用<a href="#web-map">網頁地圖編輯器</a>。需要移動平台、齒輪、雷射或水晶時，用 <a href="#grid-paint">Unity 格線繪圖與 Inspector</a>；正式八關則改 <a href="#json">DemoRooms.json</a> 再重建。</p>
+  <p>先試編一張圖可用<a href="#game-editor">遊戲內編輯器</a>。需要移動平台或齒輪時，用 <a href="#grid-paint">Unity 格線繪圖與 Inspector</a>；正式八關則改 <a href="#json">DemoRooms.json</a> 再重建。</p>
 
-  <h3 id="web-map">網頁：畫圖、試玩與保存</h3>
+  <h3 id="game-editor">遊戲內編輯器：畫圖、試玩與保存</h3>
   <ol>
-    <li>開啟<a href="https://phase-gamejam1-20261016.swear01.chatgpt.site">遊戲預覽</a>，等載入完成，點右上角四格圖示「選擇關卡」。此版本可直接選第 1–11 關，或按「地圖編輯」；公開預覽若尚未更新，仍會顯示舊清單。</li>
-    <li>選地板或四個方向的尖刺，再選永久白、紅、藍、綠、黃、洋紅或青。於格線點一下或拖曳；一格是 8×8 原生像素。</li>
-    <li>選「出生點」後點空白處放置 Wick；出生時是紅色，身體不能與紅色有效的地形或尖刺重疊。用橡皮擦刪除。</li>
-    <li>按「試玩」將這張圖載入遊戲。若驗證失敗，編輯器會保留並顯示原因；調整後重試。</li>
-    <li>用「匯出 JSON」下載備份或分享；之後以「匯入 JSON」接續修改。</li>
+    <li>開啟遊戲，在標題畫面按右選鉛筆，再按跳躍或 <kbd>Enter</kbd>（也可直接點鉛筆）。</li>
+    <li>上排是工具：地板、四向尖刺、四向雷射、跳躍水晶（圓）、衝刺水晶（方）、出生點與橡皮擦。下排是七種顏色：永久白、紅、藍、綠、黃、洋紅、青。一格是 8×8 原生像素。</li>
+    <li>滑鼠左鍵繪製、右鍵擦除；也可用方向鍵移動游標，跳躍鍵繪製、抓牆鍵擦除、衝刺鍵切換工具、<kbd>1</kbd>–<kbd>7</kbd> 選顏色。游標靠近上緣時，工具列會移到下方。</li>
+    <li>出生時是紅色，Wick 不能與紅色有效的地形、尖刺或紅色雷射光束重疊。按下排的播放圖示或 <kbd>Enter</kbd> 試玩；地圖無效時畫面閃紅框，不會開始。試玩中按 <kbd>Esc</kbd> 回到原本草稿，再按 <kbd>Esc</kbd> 回標題。</li>
+    <li>下排的上箭頭匯入、下箭頭匯出 JSON。網頁版會下載 <code>phase-custom-map.json</code> 或開啟檔案選擇器，也就是網頁版的匯出 JSON／匯入 JSON；在 Unity Editor 中則使用剪貼簿。</li>
   </ol>
-  <figure class="shot interface selector"><img src="images/room-selector.png" width="400" height="306" loading="lazy" alt="網頁選關視窗：第 1 到 8 關的按鈕，下方是地圖編輯入口。"><figcaption>選關與編輯入口。直接選關會從該房間檢查點重新開始。</figcaption></figure>
-  <figure class="shot interface"><img src="images/map-editor.png" width="720" height="696" loading="lazy" alt="實際網頁地圖編輯器：上方是地板、四向尖刺、出生點、橡皮擦及七色工具，中間為格線，下方可復原、重做、匯入、匯出與試玩。範例有底部白地、藍平台與綠尖刺。"><figcaption>公開遊戲的實際編輯介面，圖中為示範草稿。</figcaption></figure>
-  <p>格線取得焦點後，可用方向鍵移動選格、<kbd>Space</kbd> 繪製；<kbd>Ctrl</kbd>／<kbd>⌘</kbd>＋<kbd>Z</kbd> 復原，加 <kbd>Shift</kbd> 重做。也可按復原／重做按鈕。</p>
-  <p><strong>草稿只存在目前瀏覽器、目前網址</strong>（<code>phase.map.v1</code>），沒有雲端同步。換裝置、網址或清除網站資料前先匯出。試玩不會改寫 Unity 場景或正式十一關；開啟選關與編輯視窗會暫停遊戲。</p>
-  <p>目前可編<strong>靜態地形、四向尖刺與出生點</strong>，範圍 40×22 格（320×176 像素）。移動平台、齒輪、雷射與房間串接需使用 Unity。</p>
+  <figure class="shot interface selector"><img src="images/room-selector.png" width="400" height="322" loading="lazy" alt="網頁選關視窗：第 1 到 12 關的按鈕。"><figcaption>網頁選關。直接選關會從該房間檢查點重新開始。</figcaption></figure>
+  <figure class="shot"><img src="images/game-editor.png" width="320" height="180" loading="lazy" alt="遊戲內編輯器：左上兩排像素圖示，上排是地板、尖刺、雷射、水晶、出生點與橡皮擦，下排是七色、匯入、匯出、試玩與返回；場景中有藍色地形、紅色向下雷射與白色跳躍水晶。"><figcaption>遊戲內編輯器的實際畫面。</figcaption></figure>
+  <p><strong>草稿只存在目前裝置</strong>（Unity PlayerPrefs <code>phase.editor.v1</code>；網頁版存在瀏覽器的網站資料），沒有雲端同步。換裝置或清除網站資料前先匯出。試玩不會改寫 Unity 場景或正式關卡；開啟網頁選關視窗會暫停遊戲。</p>
+  <p>目前可編<strong>靜態地形、四向尖刺、四向雷射、跳躍／衝刺水晶與出生點</strong>，範圍 40×22 格（320×176 像素）。移動平台、齒輪與房間串接需使用 Unity。</p>
 
-  <h4 id="custom-json">網頁自訂地圖 JSON</h4>
-  <p>匯入的是<strong>單張地圖</strong>，只有下列五個頂層欄位；不是 <code>{"rooms": […]}</code>，也不能直接貼入 Demo 房間的 <code>goal</code>、<code>route</code> 或機構欄位。下例可直接匯入：</p>
+  <h4 id="custom-json">自訂地圖 JSON</h4>
+  <p>匯入的是<strong>單張地圖</strong>，有下列五個頂層欄位，另可加選用的 <code>lasers</code> 與 <code>crystals</code>；不是 <code>{"rooms": […]}</code>，也不能直接貼入 Demo 房間的 <code>goal</code>、<code>route</code> 或機構欄位。下例可直接匯入：</p>
 <pre><code>{
   "name": "第一張地圖",
   "blocks": [
@@ -505,7 +504,7 @@
   "spawnX": 24,
   "spawnY": 152
 }</code></pre>
-  <p>座標與寬高／尖刺長度皆為 8 的倍數、在 320×176 內，物件不可占同一格。地形用 <code>phase: -1</code> 並以 <code>phaseMask</code> 指定七色；尖刺方向 0 上、1 下、2 左、3 右。至少一格地形，出生點 x＝0–312、y＝0–160 且對齊 8；名稱至多 64 字元，JSON 至多 200,000 字元。</p>
+  <p>座標與寬高／尖刺長度皆為 8 的倍數、在 320×176 內，物件不可占同一格。地形用 <code>phase: -1</code> 並以 <code>phaseMask</code> 指定七色；尖刺方向 0 上、1 下、2 左、3 右。雷射每格一個：<code>{"x", "y", "direction", "phaseMask"}</code>，方向同尖刺；水晶每格一個：<code>{"x", "y", "kind", "phaseMask"}</code>，<code>kind</code> 0 跳躍、1 衝刺。沒有雷射或水晶時，匯出檔省略這兩個欄位。至少一格地形，出生點 x＝0–312、y＝0–160 且對齊 8；名稱至多 64 字元，JSON 至多 200,000 字元。</p>
 
   <h3 id="grid-paint">Unity：用格線畫地形</h3>
   <ol>
@@ -718,7 +717,7 @@ node Verification/DemoWebSmoke.cjs Builds/Web</code></pre>
     <li><a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Scenes/PhaseDemo1.1.unity"><code>PhaseDemo1.1.unity</code></a>、<a href="https://github.com/Tr1p0re/Gamejam1/blob/main/ProjectSettings/EditorBuildSettings.asset"><code>EditorBuildSettings.asset</code></a></li>
     <li><a href="https://github.com/Tr1p0re/Gamejam1/blob/main/DESIGN.md"><code>DESIGN.md</code></a>：美術方向；<a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Documentation/ThirdPartyNotices.md"><code>ThirdPartyNotices.md</code></a>：移動手感參考與授權</li>
     <li><a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Editor/PhaseGridPainter.cs"><code>PhaseGridPainter.cs</code></a>、<a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Runtime/PhaseGrid.cs"><code>PhaseGrid.cs</code></a>：Unity 格線繪圖與碰撞幾何</li>
-    <li><a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/WebGLTemplates/Phase/maps.js"><code>maps.js</code></a>、<a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/WebGLTemplates/Phase/map-model.js"><code>map-model.js</code></a>、<a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Runtime/PhaseCustomMap.cs"><code>PhaseCustomMap.cs</code></a>：網頁地圖編輯與格式驗證</li>
+    <li><a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Runtime/PhaseEditor.cs"><code>PhaseEditor.cs</code></a>、<a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/Phase/Runtime/PhaseCustomMap.cs"><code>PhaseCustomMap.cs</code></a>、<a href="https://github.com/Tr1p0re/Gamejam1/blob/main/Assets/WebGLTemplates/Phase/maps.js"><code>maps.js</code></a>：遊戲內地圖編輯、格式驗證與網頁檔案存取</li>
   </ul>
 </section>
 </main>
