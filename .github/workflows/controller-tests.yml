@@ -50,7 +50,7 @@ jobs:
         working-directory: Verification
         run: |
           npm ci
-          npx --no-install playwright install --with-deps chromium --no-shell
+          npx --no-install playwright install --with-deps chromium --only-shell
       - name: Verify map editor UI and in-game editor file bridge with a mock Unity bridge
         run: node Verification/MapEditorBrowser.cjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
