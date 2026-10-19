@@ -11,10 +11,6 @@ namespace Phase
         public static int MapResultCount { get; private set; }
 #if UNITY_WEBGL && !UNITY_EDITOR
         [DllImport("__Internal")] static extern void PhaseMapResult(int success, string message);
-        [DllImport("__Internal")] static extern void PhaseVictory();
-        static void Victory() => PhaseVictory();
-#else
-        static void Victory() { }
 #endif
         internal const string Busy = "請等轉場結束後再選擇地圖。";
         internal static void MapResult(bool success, string message = "")
