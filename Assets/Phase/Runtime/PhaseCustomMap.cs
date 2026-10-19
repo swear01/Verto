@@ -16,14 +16,15 @@ namespace Phase
             try
             {
                 var data = JObject.Parse(json, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error });
-                CheckFields(data, new[] { "name", "blocks", "spikes", "lasers", "crystals", "spawnX", "spawnY" });
+                CheckFields(data, new[] { "name", "blocks", "spikes", "lasers", "crystals", "platforms", "gears", "spawnX", "spawnY" });
                 CheckNumbers(data, "spawnX", "spawnY");
                 if (data["name"] != null && (data["name"].Type != JTokenType.String || data["name"].Value<string>().Length > 64))
                     throw new ArgumentException("地圖名稱最多64字元。");
-                if (!(data["blocks"] is JArray blocks) || new[] { "spikes", "lasers", "crystals" }.Any(f => data[f] != null && !(data[f] is JArray)))
-                    throw new ArgumentException("地形、尖刺、雷射與水晶必須是陣列。");
+                if (!(data["blocks"] is JArray blocks) || new[] { "spikes", "lasers", "crystals", "platforms", "gears" }.Any(f => data[f] != null && !(data[f] is JArray)))
+                    throw new ArgumentException("地形、尖刺、雷射、水晶、平台與齒輪必須是陣列。");
                 JArray spikes = data["spikes"] as JArray, lasers = data["lasers"] as JArray, crystals = data["crystals"] as JArray;
-                if (blocks.Count + (spikes?.Count ?? 0) + (lasers?.Count ?? 0) + (crystals?.Count ?? 0) > 880) throw new ArgumentException("地圖超過880格。");
+                if (blocks.Count + (spikes?.Count ?? 0) + (lasers?.Count ?? 0) + (crystals?.Count ?? 0) + ((data["platforms"] as JArray)?.Count ?? 0) + ((data["gears"] as JArray)?.Count ?? 0) > 880)
+                    throw new ArgumentException("地圖超過880格。");
                 foreach (var item in blocks)
                 {
                     var block = item as JObject;
@@ -64,10 +65,61 @@ namespace Phase
                         x=c["x"].Value<double>(),y=c["y"].Value<double>(),kind=(CrystalKind)c["kind"].Value<int>(),phaseMask=c["phaseMask"].Value<int>()
                     }).ToArray()
                 };
+                ReadMechanisms(data, room);
                 Validate(room); return room;
             }
             catch (JsonException error) { throw new ArgumentException("地圖JSON格式無效。", error); }
             catch (OverflowException error) { throw new ArgumentException("地圖數值超出範圍。", error); }
+        }
+        // Platforms and gears also persist in the editor draft, which may not be a valid map yet.
+        internal static void ReadMechanisms(JObject data, PhaseDemoRoom room)
+        {
+            if (new[] { "platforms", "gears" }.Any(f => data[f] != null && !(data[f] is JArray)))
+                throw new ArgumentException("平台與齒輪必須是陣列。");
+            room.platforms = (data["platforms"] as JArray)?.Select(item =>
+            {
+                var platform = item as JObject;
+                CheckFields(platform, new[] { "w", "h", "nodeX", "nodeY", "returns" });
+                CheckNumbers(platform, "w", "h");
+                if (platform["returns"] != null && platform["returns"].Type != JTokenType.Boolean) throw new ArgumentException("平台returns必須是布林值。");
+                return new DemoPlatform { w = platform["w"].Value<double>(), h = platform["h"].Value<double>(),
+                    nodeX = Numbers(platform["nodeX"], "nodeX"), nodeY = Numbers(platform["nodeY"], "nodeY"), returns = platform["returns"]?.Value<bool>() ?? false };
+            }).ToArray();
+            room.gears = (data["gears"] as JArray)?.Select(item =>
+            {
+                var gear = item as JObject;
+                CheckFields(gear, new[] { "wall", "platform", "top", "endX" });
+                CheckNumbers(gear, "top", "endX");
+                Block Box(JToken token)
+                {
+                    var box = token as JObject;
+                    CheckFields(box, new[] { "x", "y", "w", "h" });
+                    CheckNumbers(box, "x", "y", "w", "h");
+                    return new Block(box["x"].Value<double>(), box["y"].Value<double>(), box["w"].Value<double>(), box["h"].Value<double>());
+                }
+                return new DemoGear { wall = Box(gear["wall"]), platform = Box(gear["platform"]), top = gear["top"].Value<double>(), endX = gear["endX"].Value<double>() };
+            }).ToArray();
+        }
+        internal static PhaseDemoRoom ReadMechanisms(string json)
+        {
+            try { var room = new PhaseDemoRoom(); ReadMechanisms(JObject.Parse(json), room); return room; }
+            catch (JsonException error) { throw new ArgumentException("地圖JSON格式無效。", error); }
+            catch (OverflowException error) { throw new ArgumentException("地圖數值超出範圍。", error); }
+        }
+        internal static string MechanismJson(PhaseDemoRoom room) => WriteMechanisms(room, new JObject()).ToString(Formatting.None);
+        static JObject WriteMechanisms(PhaseDemoRoom room, JObject data)
+        {
+            JObject Box(Block b) => new JObject { ["x"] = (int)b.x, ["y"] = (int)b.y, ["w"] = (int)b.w, ["h"] = (int)b.h };
+            if (room.platforms?.Length > 0) data["platforms"] = new JArray(room.platforms.Select(p => new JObject {
+                ["w"] = (int)p.w, ["h"] = (int)p.h, ["nodeX"] = new JArray(p.nodeX.Select(x => (int)x)), ["nodeY"] = new JArray(p.nodeY.Select(y => (int)y)), ["returns"] = p.returns }));
+            if (room.gears?.Length > 0) data["gears"] = new JArray(room.gears.Select(g => new JObject {
+                ["wall"] = Box(g.wall), ["platform"] = Box(g.platform), ["top"] = (int)g.top, ["endX"] = (int)g.endX }));
+            return data;
+        }
+        static double[] Numbers(JToken token, string field)
+        {
+            if (!(token is JArray values)) throw new ArgumentException("地圖欄位必須是數值陣列：" + field);
+            return values.Select(value => Number(value, field)).ToArray();
         }
         static void CheckFields(JObject data, string[] allowed)
         {
@@ -77,26 +129,27 @@ namespace Phase
         }
         static void CheckNumbers(JObject data, params string[] fields)
         {
-            foreach (var field in fields)
-            {
-                var value = data[field];
-                if (value == null || (value.Type != JTokenType.Integer && value.Type != JTokenType.Float))
-                    throw new ArgumentException("地圖欄位必須是數值：" + field);
-                double number = value.Value<double>();
-                if (double.IsNaN(number) || double.IsInfinity(number) || number % 1 != 0)
-                    throw new ArgumentException("地圖欄位必須是有限整數：" + field);
-            }
+            foreach (var field in fields) Number(data[field], field);
+        }
+        static double Number(JToken value, string field)
+        {
+            if (value == null || (value.Type != JTokenType.Integer && value.Type != JTokenType.Float))
+                throw new ArgumentException("地圖欄位必須是數值：" + field);
+            double number = value.Value<double>();
+            if (double.IsNaN(number) || double.IsInfinity(number) || number % 1 != 0)
+                throw new ArgumentException("地圖欄位必須是有限整數：" + field);
+            return number;
         }
         public static void Validate(PhaseDemoRoom room)
         {
             if (room == null || room.blocks == null || room.blocks.Length == 0)
                 throw new ArgumentException("地圖至少需要一格地形。");
-            if (room.blocks.Length + (room.spikes?.Length ?? 0) + (room.lasers?.Length ?? 0) + (room.crystals?.Length ?? 0) > 880)
+            if (room.blocks.Length + (room.spikes?.Length ?? 0) + (room.lasers?.Length ?? 0) + (room.crystals?.Length ?? 0) + (room.platforms?.Length ?? 0) + (room.gears?.Length ?? 0) > 880)
                 throw new ArgumentException("地圖超過880格。");
             if ((room.nodeX?.Length ?? 0) != 0 || (room.nodeY?.Length ?? 0) != 0 || room.hasGear ||
                 room.gearWall != null || room.gearPlatform != null || room.gearTop != 0 || room.gearEndX != 0 || room.returns ||
                 double.IsNaN(room.moverW) || double.IsInfinity(room.moverW) || double.IsNaN(room.moverH) || double.IsInfinity(room.moverH))
-                throw new ArgumentException("自訂地圖目前支援靜態地形、尖刺、雷射與水晶。");
+                throw new ArgumentException("自訂地圖的平台與齒輪必須使用platforms與gears陣列。");
             if (!Aligned(room.spawnX) || !Aligned(room.spawnY) || room.spawnX < 0 || room.spawnX > 312 || room.spawnY < 0 || room.spawnY > 160)
                 throw new ArgumentException("出生點必須位於格線內。");
             var occupied = new HashSet<(int,int)>();
@@ -134,8 +187,29 @@ namespace Phase
                     throw new ArgumentException("水晶種類或顏色無效。");
                 AddCells(crystal.x, crystal.y, 8, 8, occupied);
             }
+            // Mechanisms occupy cells at their start; every stop and the gear's travel limits stay inside the map.
+            foreach (var platform in room.platforms ?? Array.Empty<DemoPlatform>())
+            {
+                MovingPlatform mover;
+                try { mover = platform?.Create() ?? throw new ArgumentException(); }
+                catch (ArgumentException) { throw new ArgumentException("平台路線無效。"); }
+                for (int i = 1; i < platform.nodeX.Length; i++) Inside(platform.nodeX[i], platform.nodeY[i], platform.w, platform.h);
+                AddCells(mover.x, mover.y, mover.w, mover.h, occupied);
+                if (PhaseController.Overlap(player, mover)) throw new ArgumentException("出生點與平台重疊。");
+            }
+            foreach (var gear in room.gears ?? Array.Empty<DemoGear>())
+            {
+                ClimbGear drive;
+                try { drive = gear?.Create() ?? throw new ArgumentException(); }
+                catch (ArgumentException) { throw new ArgumentException("齒輪行程無效。"); }
+                AddCells(drive.wall.x, drive.wall.y, drive.wall.w, drive.wall.h, occupied);
+                AddCells(drive.platform.x, drive.platform.y, drive.platform.w, drive.platform.h, occupied);
+                Inside(drive.wall.x, drive.top, drive.wall.w, drive.wall.h);
+                Inside(drive.endX, drive.platform.y, drive.platform.w, drive.platform.h);
+                if (PhaseController.Overlap(player, drive.wall) || PhaseController.Overlap(player, drive.platform)) throw new ArgumentException("出生點與齒輪重疊。");
+            }
         }
-        // The wire schema shared with the Web map editor; lasers and crystals appear only when used.
+        // The custom-map wire schema; lasers, crystals, platforms and gears appear only when used.
         public static string ToJson(PhaseDemoRoom room)
         {
             var data = new JObject {
@@ -145,14 +219,19 @@ namespace Phase
             };
             if (room.lasers?.Length > 0) data["lasers"] = new JArray(room.lasers.Select(l => new JObject { ["x"] = (int)l.x, ["y"] = (int)l.y, ["direction"] = (int)l.direction, ["phaseMask"] = l.phaseMask }));
             if (room.crystals?.Length > 0) data["crystals"] = new JArray(room.crystals.Select(c => new JObject { ["x"] = (int)c.x, ["y"] = (int)c.y, ["kind"] = (int)c.kind, ["phaseMask"] = c.phaseMask }));
+            WriteMechanisms(room, data);
             data["spawnX"] = (int)room.spawnX; data["spawnY"] = (int)room.spawnY;
             return data.ToString(Formatting.Indented);
         }
         static bool Aligned(double value) => !double.IsNaN(value) && !double.IsInfinity(value) && value % 8 == 0;
-        static void AddCells(double x, double y, double width, double height, HashSet<(int,int)> occupied)
+        static void Inside(double x, double y, double width, double height)
         {
             if (!Aligned(x) || !Aligned(y) || !Aligned(width) || !Aligned(height) || x < 0 || y < 0 || width < 8 || height < 8 || x + width > Width || y + height > Height)
                 throw new ArgumentException("物件必須對齊8像素格線，且位於320×176範圍內。");
+        }
+        static void AddCells(double x, double y, double width, double height, HashSet<(int,int)> occupied)
+        {
+            Inside(x, y, width, height);
             for (int cy = (int)y / 8; cy < (y + height) / 8; cy++)
                 for (int cx = (int)x / 8; cx < (x + width) / 8; cx++)
                     if (!occupied.Add((cx,cy))) throw new ArgumentException("同一格不能放置重疊物件。");

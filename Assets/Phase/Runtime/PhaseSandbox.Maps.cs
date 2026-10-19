@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -97,6 +98,22 @@ namespace Phase
                     var tile = new GameObject("Phase crystal"); tile.transform.SetParent(root.transform,false);
                     tile.transform.localPosition = new Vector3((float)crystal.x,-(float)crystal.y,0);
                     var pickup = tile.AddComponent<PhaseCrystal>(); pickup.kind = crystal.kind; pickup.phaseMask = crystal.phaseMask;
+                }
+                // Platform nodes and gear limits are relative to the map root, so they match the map's own coordinates.
+                foreach (var platform in room.platforms ?? Array.Empty<DemoPlatform>())
+                {
+                    var tile = new GameObject("Dash platform"); tile.transform.SetParent(root.transform,false);
+                    var mover = tile.AddComponent<PhaseMovingPlatform>(); mover.size = new Vector2Int((int)platform.w,(int)platform.h);
+                    mover.nodes = platform.nodeX.Select((x,i) => new Vector2Int((int)x,(int)platform.nodeY[i])).ToArray(); mover.returns = platform.returns;
+                    tile.transform.localPosition = new Vector3(mover.nodes[0].x,-mover.nodes[0].y,0);
+                }
+                foreach (var gear in room.gears ?? Array.Empty<DemoGear>())
+                {
+                    var tile = new GameObject("Climb gear"); tile.transform.SetParent(root.transform,false);
+                    tile.transform.localPosition = new Vector3((float)gear.wall.x,-(float)gear.wall.y,0);
+                    var drive = tile.AddComponent<PhaseClimbGear>(); drive.wallSize = new Vector2Int((int)gear.wall.w,(int)gear.wall.h); drive.wallTop = (int)gear.top;
+                    drive.platformStart = new Vector2Int((int)gear.platform.x,(int)gear.platform.y); drive.platformSize = new Vector2Int((int)gear.platform.w,(int)gear.platform.h);
+                    drive.platformEndX = (int)gear.endX;
                 }
                 var sandbox = root.AddComponent<PhaseSandbox>(); sandbox.custom = true;
                 sandbox.pixelCamera = camera; sandbox.pixelMaterial = material;
