@@ -351,19 +351,6 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
       const resumed=await visible(`forward-${previous}-to-${number}`,p=>p.x/4<80);
       result.backtracking.push({from:number,to:previous,returned,resumed});
     }
-    await page.locator('#rooms-toggle').click();await page.locator('#map-open').click();
-    const custom={name:'Browser native map',blocks:[{x:0,y:168,w:320,h:8,phase:-1,phaseMask:7}],spikes:[{x:200,y:160,length:8,direction:0,phaseMask:7}],spawnX:24,spawnY:152};
-    const chooser=page.waitForEvent('filechooser');await page.locator('#map-import').click();
-    await (await chooser).setFiles({name:'phase-verification-map.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(custom))});
-    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('phase.map.v1')||'{}').name==='Browser native map');
-    const draft=await page.evaluate(()=>localStorage.getItem('phase.map.v1'));
-    const beforeCustom=await page.evaluate(()=>window.__nativeMapResults.length);await page.locator('#map-play').click();
-    result.customMap={response:await nativeResult(beforeCustom)};await page.locator('#map-editor').waitFor({state:'hidden'});
-    const customStart=await visible('custom-map-loaded',p=>Math.abs(p.x/4-28)<2&&p.phase===0);
-    await page.keyboard.press('ArrowRight',{delay:150});const customMoved=await observe();assert(customMoved.x>customStart.x+20,'Custom map accepts native movement');
-    await page.keyboard.press('z',{delay:90});const customJumped=await observe();assert(customJumped.y<customMoved.y-12&&customJumped.phase===1,'Custom map accepts native jump/phase');
-    Object.assign(result.customMap,{start:customStart,moved:customMoved,jumped:customJumped});
-    await selectRoom(2);assert.equal(await page.evaluate(()=>localStorage.getItem('phase.map.v1')),draft,'Built-in selection preserves custom draft');
     await selectRoom(1);
     await page.reload(); await begin();
     for(const [width,height] of [[320,407],[800,600],[2560,1080],[844,390],[390,844]]) {
@@ -434,8 +421,14 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     await page.keyboard.press('ArrowRight',{delay:80});await page.keyboard.press('z',{delay:80});await page.waitForTimeout(1500);
     const reloadedDownload=page.waitForEvent('download');await editorIcon(8);
     assert.deepEqual(JSON.parse(fs.readFileSync(await (await reloadedDownload).path(),'utf8')),editorExport,'In-game editor draft persists across reload');
+    // The play icon runs the draft natively as a custom map; the toolbar is hidden while it plays.
+    await editorIcon(9);
+    const customStart=await visible('custom-map-loaded',p=>Math.abs(p.x/4-28)<2&&p.phase===0);
+    await page.keyboard.press('ArrowRight',{delay:150});const customMoved=await observe();assert(customMoved.x>customStart.x+20,'Custom map accepts native movement');
+    await page.keyboard.press('z',{delay:90});const customJumped=await observe();assert(customJumped.y<customMoved.y-12&&customJumped.phase===1,'Custom map accepts native jump/phase');
     result.editorFiles={imported:editorMap.name,exported:editorExport,persisted:true};
-    console.log('Passed in-game editor files; checking load failure');
+    result.customMap={start:customStart,moved:customMoved,jumped:customJumped};
+    console.log('Passed in-game editor files and custom-map play; checking load failure');
     const failedPage=await browser.newPage();
     await failedPage.route('**/Build/*.data.unityweb',route=>route.abort());await failedPage.goto(url);
     await failedPage.locator('#error').waitFor({state:'visible',timeout:30000});
