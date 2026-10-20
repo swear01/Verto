@@ -53,12 +53,11 @@ To recreate the sandbox, call its existing builder through the connected Editor:
 edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 48 controller cases, 9 laser cases, 17 demo-route/authoring cases,
-15 crystal cases, 26 crystal-room cases, 19 pixel cases, 7 Grid authoring cases, 7 custom-map validation cases,
-6 scrolling-room cases, 3 key-binding cases (validation, PlayerPrefs persistence, key caps) and 12 level-route cases in Edit Mode.
-The 30 Play Mode cases cover each level's keyboard route, a big-room camera following a keyboard run,
-bindings, pause/release gating, room persistence, multiple authored platforms, crystal triggers, imported maps, the
-title/editor flow including editor platforms and gears, the pause menu with key settings, and level select from the
+starting the next test run. There are 52 controller cases, 9 laser cases, 17 demo-route/authoring cases,
+15 crystal cases, 26 crystal-room cases, 21 pixel cases, 7 Grid authoring cases, 8 custom-map validation cases,
+6 scrolling-room cases, 3 key-binding cases (validation, PlayerPrefs persistence, key caps) and 15 level-route cases in Edit Mode. The 37 Play Mode cases cover
+each level's keyboard route, a big-room camera following a keyboard run, bindings, pause/release gating, room persistence, multiple authored platforms, crystal triggers, imported maps, the
+title/editor flow including editor platforms and gears, the editor's fixed tool panel under mouse input, the pause menu with key settings, the fullscreen switch, and level select from the
 title, pause and victory screens. Platform checks cover
 vertical return travel, independent routes/reset, rider and climb-hop attachment,
 crush/hazard sweeps, native collider synchronization and rendering.
@@ -166,7 +165,18 @@ timing. With `Returns` enabled, use two distinct horizontal or vertical stops:
 the platform travels to node1 in0.2s, waits0.2s, then returns in1.2s. Without
 `Returns`, each dash queues one move to the next node. Respawn restores every
 platform to its authored start. Riders and climb hops stay attached to the
-specific platform they contact. Custom maps and the in-game editor also place dash platforms.
+specific platform they contact. Custom maps and the in-game editor also place dash platforms. The editor stores a drawn line as a one-way route with the 24×8 default body, so consecutive stops may differ on both axes.
+
+`PhaseMovingPlatform.phaseMask` and `PhaseClimbGear.phaseMask` (wall and bridge share
+one mask) use the terrain masks R=1, B=2, G=4, Y=5, M=3, C=6, W=7; 0 or 7 is always solid,
+so existing scenes, prefabs and maps are unchanged. A colored platform or gear part is solid,
+climbable, carries riders and blocks lasers only in its active phases, and keeps moving or
+driving while inactive; riders fall through when it turns off. A part that turns on inside
+the player stays a ghost (`PhaseController.blockedParts`) until the player leaves it, like
+deferred terrain. An inactive gear wall cannot be grabbed, so climbing never drives it;
+an inactive bridge moves with the wall without colliding. Active parts use the terrain
+palette and mixed-mask inlays; inactive parts use the dashed terrain ghost. Racks, gears and
+platform tracks stay neutral decoration.
 
 ## Scrolling room demo
 
@@ -211,11 +221,11 @@ Open `Assets/Scenes/PhaseDemo1.unity`. Rebuild the eight scenes from
 `unity command eval 'PhaseSandboxBuilder.CreateDemoRooms();'`.
 Each room uses `checkpointOnEntry`, resetting player color/dash/stamina and
 mechanism positions while preserving elapsed time and action/death counts.
-Built-in levels link in both directions: Demo1–8, Crystal1–3, then Demo12. Backward travel enters a safe standing position near the previous room’s right side. Level12’s right exit freezes play and shows the victory screen; jump restarts level1 in native Play, and Web also offers replay or level selection. Custom maps have no level links. The original sandbox links retain their momentum/color carry behavior.
+Built-in levels link in both directions: Demo1, the classmate color room Demo1.1, Demo2–8, Crystal1–3, the classmate dash-platform room Demo12, then the extra laser rooms Demo13 and Demo14. Keyboard routes are recorded for Demo1.1 and Demo13. Demo14 does not yet have a 0-death right-edge route. Backward travel enters a safe standing position near the previous room’s right side. The last level’s right exit freezes play and shows the victory screen; jump restarts level1 in native Play, and Web also offers replay or level selection. Custom maps have no level links. The original sandbox links retain their momentum/color carry behavior.
 See [room designs and live input verification](Demo.md).
-`BuildWeb.py` verifies these tests and builds `PhaseDemo1` through
-`PhaseDemo8`, followed by `PhaseCrystal1` through `PhaseCrystal3` and the hand-authored `PhaseDemo12`. `DemoWebSmoke.cjs` replays keyboard routes through
-all twelve Web scenes and checks in-game level select, victory, key settings, sizing, fullscreen and loading failure.
+`BuildWeb.py` verifies these tests and builds `PhaseDemo1`, `PhaseDemo1.1`, `PhaseDemo2` through
+`PhaseDemo8`, followed by `PhaseCrystal1` through `PhaseCrystal3`, the hand-authored `PhaseDemo12`, and `PhaseDemo13` through `PhaseDemo14`. `DemoWebSmoke.cjs` replays keyboard routes through
+all fifteen Web scenes and checks in-game level select, victory, key settings, sizing, the in-game fullscreen switch and loading failure.
 The older `WebSmoke.cjs` remains a verifier for the original two-sandbox build.
 
 ## CI
@@ -256,7 +266,8 @@ stays320 and height grows around the vertically centered180-pixel play area.
 Stone fills the area above the native top boundary; terrain touching the last
 complete 8px row (bottom176) extends below. Gaps and voids remain open, with a
 short fade to black between native Y180 and the existing Y194 death boundary, followed by quiet receding quarry terraces. This extension is visual padding. Each built-in demo also has a visible, solid 8px ceiling at Y0; custom maps use their authored terrain.
-Both axes fill the viewport without stretching native pixels.
+Both axes fill the viewport without stretching native pixels. The in-game editor alone widens its view further to fit
+its tool panel beside or below the 320×176 grid, keeping the screen's aspect.
 Terrain ending at the right room edge and room bounds expand above320pixels. Resizing preserves
 controller state and rebuilds the pixel surface/cache; resizing during a slide
 completes its handoff, including a height-only resize.
@@ -296,14 +307,15 @@ jump activation/death, respawn and phase-preserving dash.
 
 ## Runtime map bridge
 
-The active `PHASE` object accepts `SelectDemoRoom("1".."12")` and
-`LoadCustomMap(json)`. Scene selection uses `PhaseSandbox.Levels` (Demo1–8, Crystal1–3, Demo12), which also defines both horizontal links.
+The active `PHASE` object accepts `SelectDemoRoom("1".."15")` and
+`LoadCustomMap(json)`. Scene selection uses `PhaseSandbox.Levels` (Demo1, Demo1.1, Demo2–8, Crystal1–3, Demo12–14), which also defines both horizontal links.
 Custom maps use the `PhaseDemoRoom` fields `name`, `blocks`, `spikes`, `spawnX`,
 `spawnY` and the optional arrays `lasers`, `crystals`, `platforms`, `gears`; blocks require
 explicit `phaseMask`1–7. Spike direction is Up0/Down1/Left2/Right3; length is native pixels.
-A platform is `{w,h,nodeX[],nodeY[],returns}` with at least two map-coordinate stops, starting
-at the first. A gear is `{wall:{x,y,w,h},platform:{x,y,w,h},top,endX}`, the
+A platform is `{w,h,nodeX[],nodeY[],returns,phaseMask?}` with at least two map-coordinate stops, starting
+at the first. A gear is `{wall:{x,y,w,h},platform:{x,y,w,h},top,endX,phaseMask?}`, the
 `PhaseClimbGear` wall start, wall top limit, platform start and platform end X.
+An absent `phaseMask` keeps the mechanism always solid; a present one must be1–7.
 
 Custom geometry occupies non-overlapping8px cells within320×176, at most880cells.
 Spawn X is0–312 and Y0–160 on the same grid, with an8×11 player clear of initially
@@ -390,7 +402,7 @@ Apply overrides only when the change should affect the shared Prefab.
 The demo builders instantiate these assets and preserve the existing room geometry;
 hand-authored scenes are never rebuilt. Existing direct children of the origin
 `PHASE` root retain their coordinates. The in-game editor places single-cell lasers
-and crystals and two-step dash platforms and climb gears; these Prefabs are the Unity authoring tools.
+and crystals, a one-way dash-platform line, and two-step climb gears; these Prefabs are the Unity authoring tools.
 
 ## Title and level editor
 
@@ -401,59 +413,85 @@ Each has a `PHASE` root (`PhaseScreen`) answering the same Web bridge messages a
 
 The title draws the PHASE banner and four icons: left/right (arrows or movement keys)
 chooses, jump or Enter confirms (or click an icon). Play loads level1, the grid opens
-level select, the pencil opens the editor and the keyboard opens key settings.
+level select, the pencil opens the editor and the gear opens settings.
 Escape in a level (not an editor playtest) pauses play like the Web dialog gate, with
-resume, level select, key settings and back-to-title icons; Escape resumes, and keys
-held to close it stay ignored until released. The level12 victory banner has replay-level1
-and level-select icons.
-Level select is a 4×3 grid of pixel-digit tiles; every level is always selectable, it
-opens at the current level from pause, and Escape goes back. Key settings show seven
-action icons with two key caps each, labelled in a tiny pixel font. Arrows and Enter
-always navigate. Enter makes a slot blink and binds the next key; Escape cancels and
-Backspace clears. The bottom icon restores the defaults. A rejected change flashes a red
-border and keeps the old map; Escape closes the screen.
-The editor paints the custom-map grid (40×22 cells, terrain, four spike directions,
-four laser directions, jump and dash crystals, returning and one-way dash platforms, climb gear,
+resume, level select, settings and back-to-title icons; Escape resumes, and keys
+held to close it stay ignored until released. The last level's victory banner has replay-level1
+and level-select icons. Menu icons share one 11×11 grid with 2px strokes (`PhaseMenu`).
+Menus lay out in layout pixels and draw through `UiZoom`: the largest whole-pixel scale
+that keeps the layout within 80% of the native view on both axes, centered. The title
+banner, pause row, level select and settings each use it, so they grow with the view
+instead of staying at 1×. Navigation reads key presses per frame, so a tap shorter than
+a frame still moves the selection, and the click that refocuses the page (which re-arms
+the held-key gate) still acts.
+Player Settings keep Run In Background on: with it off, the Input System resets the mouse when the
+page gains focus and drops the click that focused it. `maps.js` still pauses play while the page is unfocused.
+Level select and settings replace the screen behind them. Level select picks 4, 5, 6, 3 or
+2 columns, whichever shows the grid largest. Each tile frames a 40×22 thumbnail of the
+room (one pixel per 8px cell) above its 2× number; the selected tile has a blue frame.
+Every level is always selectable, it opens at the current level from pause, and Escape
+goes back. Thumbnails live in `Assets/Phase/Resources/Levels/<Scene>.png`; rebake them
+whenever a level scene changes or a level is added, with
+`unity command run_script -- --file Verification/LevelThumbnails.cs --entry LevelThumbnails.Run`.
+A missing thumbnail leaves its frame empty.
+Settings show seven action icons with two key caps each, labelled in a tiny pixel font,
+then restore, fullscreen and close controls. Arrows and Enter always navigate. Enter,
+jump or a click makes a slot blink and binds the next key; Escape cancels and Backspace
+clears. The circular arrow restores the defaults. A rejected change flashes a red border
+and keeps the old map; Escape or the close icon closes the screen. The fullscreen row is
+screen corners and a switch for Unity's `Screen.fullScreen` (knob right on a lit track
+when on); Enter, jump or a click toggles it. It is player state, not saved by the game:
+standalone players keep Unity's own setting and Web starts windowed. Web applies the
+request within that key press or click. The Editor's Game view ignores `Screen.fullScreen`,
+so tests and `KeysLiveInput` swap `PhaseKeys.IsFullScreen`/`SetFullScreen`.
+The editor paints the custom-map grid (40×22 cells, terrain, spikes and lasers in four
+directions, jump and dash crystals, dash platforms, climb gear,
 spawn, erase; seven masks) and renders it with the game's own pixels in the starting
-red phase. Mouse: left paints, right erases, the toolbar flips away from the cursor.
+red phase. The editor widens its own view (same aspect as the screen) so a fixed panel with one 2× icon per object type sits right
+of the grid, or below it when that leaves the grid larger (tall screens); the panel never moves and never covers a
+cell. Hovering a slot highlights it, a click picks it, and the selected tool and color are framed. Mouse: left paints,
+right erases; a stroke paints only if it starts on the grid, so a drag from the panel never paints.
 Keyboard: movement keys move the cursor, jump paints, grab erases, dash cycles the
-tool, 1–7 pick the mask, Enter playtests, Escape returns to the title.
-Platforms and gears take two placements: click or jump once for the body, move, then click
-or jump again for the end. A 24×8 platform's second point is its other stop; the returning
-platform snaps it to the body's row or column. A gear's first point is the 8×56 wall's top-left;
-the second picks the 56×8 bridge's row and end column. The bridge starts two cells right of the
-wall and travels 8–24px, matching the wall's upward travel. Escape, grab or right-click cancels
-a pending body. Bodies refuse occupied cells (red flash); erasing any cell of a body removes it.
-Dotted routes and faint outlines mark platform stops, the wall top and the bridge end. An invalid
-map flashes a red border instead of starting. The playtest runs a `PhaseSandbox`
+tool type, R/E (or the mouse wheel) turn spikes and lasers clockwise/counter-clockwise, 1–7 pick the mask, Enter playtests, Escape returns to the title.
+A dash platform starts with one click or jump on the 8px grid. That cell is the 24×8 origin.
+Each later click adds the next stop, and a stop may differ on both axes. Those stops are one
+platform, `{w:24,h:8,nodeX,nodeY,returns:false}`; each dash advances it to the next stop.
+Escape, grab or right-click ends the line, or drops a start that has no stop yet. A gear's first
+point is the 8×56 wall's top-left; the second picks the 56×8 bridge's row and end column. The bridge
+starts two cells right of the wall and travels 8–24px, matching the wall's upward travel. Escape, grab
+or right-click also cancels a pending gear wall. Bodies refuse occupied cells (red flash); erasing any
+cell of a body removes it. Dotted segments and faint outlines mark the platform line, the wall top and
+the bridge end. An invalid
+map flashes a red border instead of starting; when Wick's start overlaps terrain, a hazard or a mechanism,
+Wick's start box and the flag slot also blink red. The playtest runs a `PhaseSandbox`
 child named `Playtest`; Escape destroys it and returns to the unchanged draft. A Web
 `LoadCustomMap` sent in the editor scene plays that map the same way. The draft
 autosaves to PlayerPrefs `phase.editor.v1` as one tool/mask pair per cell
 (tool codes 1 terrain, 2–5 spikes, 7–10 lasers, 11–12 crystals), followed by the platforms and
 gears as compact `{platforms,gears}` JSON; drafts saved before that suffix still load.
-The two arrow icons after the colors import (up) and export (down) custom-map JSON.
+The two tray icons after the colors import (arrow out of the tray) and export (arrow into the tray) custom-map JSON.
 On Web, export calls `PhaseExportMap` and the page downloads `phase-custom-map.json`;
 import calls `PhaseImportMap`, the page opens a file picker and sends the text to
 `PHASE.ImportDraft`. In the Unity Editor and other players both use the clipboard.
 Export validates first; an invalid map or file flashes the red border and keeps the draft.
 
 With `PhaseTitle` in Play mode, run `Verification/MenuLiveInput.cs`, entry
-`MenuLiveInput.Run`. It drives title→editor→paint terrain, a laser and a crystal→place a returning
-platform and a gear→clipboard export/import→playtest with a platform-moving dash→back→level1 by keyboard,
+`MenuLiveInput.Run`. It drives title→editor→paint terrain, a laser and a crystal→draw a diagonal platform
+line and a gear→clipboard export/import→playtest with a dash along that diagonal→back→level1 by keyboard,
 restores the developer's draft and clipboard and saves captures to `TestResults/Menu/`.
 `Verification/KeysLiveInput.cs`, entry `KeysLiveInput.Run`, also starts from `PhaseTitle`
-in Play: title key settings→bind J to jump (a duplicate is rejected)→title level
-select→level1 jumps with J→Escape pause freezes play→pause level select→level2→
-restore defaults→back to title. It restores the saved bindings and writes captures to
+in Play: title settings→bind J to jump (a duplicate is rejected)→title level
+select→level1 jumps with J→Escape pause freezes play→pause level select→the next level→
+restore defaults→fullscreen switch on with Enter, off with jump→back to title. It restores the saved bindings and writes captures to
 `TestResults/Keys/`.
 
 ## Hand-authored scenes
 
-`Assets/Scenes/PhaseDemo1.1.unity` is a separate authoring scene. It uses the same
+`Assets/Scenes/PhaseDemo1.1.unity` is the classmate color room, selectable as **2** between `PhaseDemo1` and `PhaseDemo2`. It uses the same
 8px Grid and native collider shapes; imported sizes, phase masks and scene links
 are retained, with positions snapped by at most half a cell. Edit it with the Grid
-painter and normal Inspector tools. It is not included in the explicit
-Web build or the in-game level select. Use `PhaseSandboxBuilder` only to rebuild
+painter and normal Inspector tools. It is included in the explicit
+Web build and the in-game level select. Use `PhaseSandboxBuilder` only to rebuild
 generated demo scenes; preserve hand-authored layouts.
 
 ## Level routes
@@ -463,10 +501,15 @@ Each level in `PhaseSandbox.Levels` has a recorded keyboard route in
 (`{"frames","x","y","jump","dash","grab"}`, y -1 is up), pressed from a reset room;
 jump and dash fire when their key goes down. After the last step the checks hold
 right. `LevelRouteTests` (Edit Mode, controller) and `LevelRoutePlayTests` (Play Mode,
-keyboard) require the right-edge exit, or the level-12 victory, with no deaths.
+keyboard) require the right-edge exit, or the last level's victory, with no deaths.
 The optional `<Scene>.bypass.json` lists shortcut inputs as
 `[{"name","steps":[...]}]`; each must not reach the right exit (replay stops at
 the first death). Rerecord a route whenever its scene changes.
+Levels listed in `Verification/Routes/unrouted.json` (the classmate-verified PhaseDemo1.1,
+PhaseDemo12, PhaseDemo13 and PhaseDemo14) need no route: both route suites skip them with the
+file's reason, existing route files for them do not gate tests, the last-level victory test walks
+off the edge landing instead, `BuildWeb.py` expects those skips, and `DemoWebSmoke.cjs` uses level
+select instead of the PhaseDemo1.1 route and skips the last-level route and Web victory segment.
 
 `Verification/RouteTool.cs` builds the `PhaseController` from a scene, as Play does,
 at 320px with the right exit open. Pass a level name or a scene path:
@@ -511,4 +554,14 @@ The manually edited `PhaseDemo1.1` is separate from these builders.
 `DemoLiveInput.Run` checks either demo or crystal scenes and saves keyboard-route
 captures under `TestResults/DemoRooms/` or `TestResults/CrystalRooms/`.
 
-`PhaseDemo12` is the classmate-authored level formerly named `PhaseDemo1.2`; it is included in the Web build and selectable as **12**. Its fourteen platform instances retain their authored routes, sizes and start nodes as scene overrides. Shared dash-platform Prefabs keep their original grid-aligned horizontal defaults; edit instance overrides for a single level. Preserve this handmade scene when rebuilding generated demos.
+`PhaseDemo12` is the classmate-authored level formerly named `PhaseDemo1.2`; it is included in the Web build and selectable as **13**, after the crystal rooms. Its fourteen platform instances retain their authored routes, sizes and start nodes as scene overrides. Shared dash-platform Prefabs keep their original grid-aligned horizontal defaults; edit instance overrides for a single level. Preserve this handmade scene when rebuilding generated demos.
+`PhaseDemo13` and `PhaseDemo14` are the later classmate laser rooms (`Assets/Phase/Imported/level-a.json` and `level-b.json`). They stay after the authored course, selectable as **14** and **15**. Leaving level 15 to the right wins. `PhaseDemo1.1` and `PhaseDemo13` have keyboard routes. `PhaseDemo14` does not yet, so its level-route case fails until a clear is recorded. Recreate those two scenes through Pipeline with `unity command eval 'PhaseSandboxBuilder.CreateImportedLevels();'`.
+
+## Press images
+
+`python3 Verification/press_art.py` draws all press art as pixel art and enlarges it without
+smoothing. The motif is the phase shift: a light letterform trailed by red, blue and green
+echoes on the game's night-sky palette; the PHASE lettering is read from `PhaseTitle.cs`.
+It writes the itch.io cover `Documentation/press/cover.png` (960×480: 2:1 for itch link cards, logo inside the centre 1.25:1 grid crop), the link preview
+`social.png` (1280×640), the icon `icon.png` (256×256, a "P" mark on a dark tile), the default
+Player icon `Assets/Phase/Art/AppIcon.png` and the Web favicon.

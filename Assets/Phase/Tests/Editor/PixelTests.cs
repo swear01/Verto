@@ -228,6 +228,29 @@ public class PixelTests
     }
 
     [Test]
+    public void ColoredMechanismsUseTerrainColorsWhenActiveAndGhostsOtherwise()
+    {
+        var pixels=new PhasePixels();
+        Color32 At(int x,int y)=>pixels.Texture.GetPixel(x,179-y);
+        try
+        {
+            var s=new PhaseController(Array.Empty<Block>(),32,40,new[]{new MovingPlatform(new[]{new[]{80.0,112},new[]{112.0,112}},32,8,phaseMask:1)},
+                gears:new[]{new ClimbGear(new Block(200,104,8,56,phaseMask:2),80,new Block(216,80,48,8,phaseMask:2),240)});s.flash=0;
+            pixels.Draw(s,false);var red=pixels.Texture.GetPixels32();
+            Assert.That(At(84,112),Is.EqualTo((Color32)PhasePixels.Hex(PhasePixels.Highlights[0])),"an active red platform takes the red terrain cap");
+            var gearOff=At(203,130);
+            s.phase=1;pixels.Draw(s,false);
+            var ghost=At(80,112);
+            Assert.That(ghost,Is.Not.EqualTo(red[(179-112)*320+80]));Assert.That(At(82,112),Is.Not.EqualTo(At(81,112)),"inactive outline is dashed");
+            Assert.That(At(203,130),Is.Not.EqualTo(gearOff),"the blue gear wall switches from ghost to tinted rack");
+            s.phase=0;s.blockedParts.Add(s.movers[0]);pixels.Draw(s,false);
+            Assert.That(At(82,112),Is.EqualTo(At(81,112)),"a deferred platform draws a solid outline");Assert.That(At(80,112),Is.Not.EqualTo(ghost));
+            s.blockedParts.Clear();pixels.Draw(s,false);CollectionAssert.AreEqual(red,pixels.Texture.GetPixels32());
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
+    [Test]
     public void MixedInlaysAndDirectionalSpikesMatchTheirMasks()
     {
         var pixels=new PhasePixels();
@@ -568,5 +591,44 @@ public class PixelTests
             Assert.That((added.r,added.g,added.b),Is.EqualTo(((byte)232,(byte)232,(byte)232)),"adding terrain invalidates the cached room");
         }
         finally { UnityEngine.Object.DestroyImmediate(golden); UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
+    [Test]
+    public void MenusFitTheReferenceViews()
+    {
+        foreach (var icon in new[] { PhaseMenu.PlayIcon, PhaseMenu.LevelsIcon, PhaseMenu.EditIcon, PhaseMenu.SettingsIcon, PhaseMenu.HomeIcon, PhaseMenu.RetryIcon, PhaseMenu.CloseIcon })
+        {
+            Assert.That(icon.Length, Is.EqualTo(PhaseMenu.Size));
+            foreach (var row in icon) Assert.That(row.Length, Is.EqualTo(PhaseMenu.Size));
+        }
+        foreach (var size in new[] { new Vector2Int(320, 180), new Vector2Int(427, 180), new Vector2Int(320, 693) })
+        {
+            int minX = int.MaxValue, minY = int.MaxValue, maxX = 0, maxY = 0;
+            for (int i = 0; i < PhaseSandbox.Levels.Length; i++)
+            {
+                var tile = PhaseLevels.Tile(size, i);
+                Assert.That(tile.xMin, Is.GreaterThanOrEqualTo(0));
+                Assert.That(tile.yMin, Is.GreaterThanOrEqualTo(0));
+                Assert.That(tile.xMax, Is.LessThanOrEqualTo(size.x));
+                Assert.That(tile.yMax, Is.LessThanOrEqualTo(size.y));
+                minX = Math.Min(minX, tile.xMin); minY = Math.Min(minY, tile.yMin);
+                maxX = Math.Max(maxX, tile.xMax); maxY = Math.Max(maxY, tile.yMax);
+            }
+            float fill = Math.Max((maxX - minX) / (float)size.x, (maxY - minY) / (float)size.y);
+            Assert.That(fill, Is.InRange(0.6f, 0.8f), $"level select fill at {size}");
+            int scale = UiZoom.Fit(size, 80, 44).Scale;
+            Assert.That((3 * PhaseMenu.Pitch + PhaseMenu.Size) * scale, Is.LessThanOrEqualTo(size.x));
+            Assert.That(44 * scale, Is.LessThanOrEqualTo(size.y));
+            var page = UiZoom.Fit(size, 67, 128);
+            Assert.That(page.Origin.x, Is.GreaterThanOrEqualTo(0));
+            Assert.That(page.Origin.y, Is.GreaterThanOrEqualTo(0));
+            Assert.That(page.Origin.x + 67 * page.Scale, Is.LessThanOrEqualTo(size.x));
+            Assert.That(page.Origin.y + 128 * page.Scale, Is.LessThanOrEqualTo(size.y));
+        }
+        var standard = new Vector2Int(320, 180);
+        int columns = PhaseLevels.Columns(standard);
+        Assert.That(PhaseLevels.Tile(standard, 1).yMin, Is.EqualTo(PhaseLevels.Tile(standard, 0).yMin));
+        Assert.That(PhaseLevels.Tile(standard, columns).xMin, Is.EqualTo(PhaseLevels.Tile(standard, 0).xMin));
+        Assert.That(PhaseLevels.Tile(standard, columns).yMin, Is.GreaterThan(PhaseLevels.Tile(standard, 0).yMin));
     }
 }

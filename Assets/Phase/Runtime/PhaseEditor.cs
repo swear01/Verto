@@ -13,41 +13,53 @@ namespace Phase
         public const string Scene = "PhaseEditor", DraftKey = "phase.editor.v1";
         public const int Columns = 40, Rows = 22;
         // Cell tools: 0 empty, 1 terrain, 2–5 Up/Down/Left/Right spikes, 7–10 Up/Down/Left/Right lasers,
-        // 11 jump crystal, 12 dash crystal. Spawn only moves the player start. Platforms (returning or one-way) and gears
-        // are placed in two steps, body then end, and are kept outside the cell grid.
-        public const int Erase = 0, Terrain = 1, Spawn = 6, LaserTool = 7, CrystalTool = 11, LastTool = 12, ReturnPlatform = 13, PlatformTool = 14, GearTool = 15;
-        static readonly int[] toolOrder = { Terrain, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, ReturnPlatform, PlatformTool, GearTool, Spawn, Erase }, masks = { 7, 1, 2, 4, 5, 3, 6 };
-        const int MaskSlot = 16, ImportSlot = 23, ExportSlot = 24, PlaySlot = 25, BackSlot = 26, SlotCount = 27, PlatformWidth = 24;
+        // 11 jump crystal, 12 dash crystal. Spawn only moves the player start. A platform is one 24×8 start plus the
+        // one-way line behind it; a gear is still body then end. Both stay outside the cell grid.
+        // The panel holds one slot per type; R/E or the wheel turns spikes and lasers.
+        public const int Erase = 0, Terrain = 1, SpikeTool = 2, Spawn = 6, LaserTool = 7, CrystalTool = 11, LastTool = 12, PlatformTool = 13, GearTool = 14;
+        static readonly int[] kinds = { Terrain, SpikeTool, LaserTool, CrystalTool, LastTool, PlatformTool, GearTool, Spawn, Erase }, masks = { 7, 1, 2, 4, 5, 3, 6 },
+            clockwise = { 0, 3, 1, 2 };
+        // Panel slots: 9 types, 7 colors, then import, export, play and back.
+        public const int MaskSlot = 9, ImportSlot = 16, ExportSlot = 17, PlaySlot = 18, BackSlot = 19, SlotCount = 20;
+        const int PlatformWidth = 24;
         static readonly string[] spikeUp = { ".......", "...#...", "..###..", "..###..", ".#####.", ".#####.", "#######" },
             laserUp = { "...#...", "...#...", "...#...", ".#####.", ".#...#.", ".#.#.#.", ".#####." },
-            arrowDown = { "...#...", "...#...", "...#...", "#..#..#", ".#.#.#.", "..###..", "...#..." };
+            spawnIcon = { "#......", "####...", "#####..", "####...", "#......", "#......", "#......" };
+        // Indexed by cell tool code: erase, terrain, four spikes (Up, Down, Left, Right), spawn, four lasers, crystals, platform, gear.
         static readonly string[][] toolIcons = {
-            Enumerable.Repeat("#######", 7).ToArray(), spikeUp, spikeUp.Reverse().ToArray(), Turn(spikeUp), Mirror(Turn(spikeUp)),
+            new[] { "#.....#", ".#...#.", "..#.#..", "...#...", "..#.#..", ".#...#.", "#.....#" },
+            Enumerable.Repeat("#######", 7).ToArray(), spikeUp, spikeUp.Reverse().ToArray(), Turn(spikeUp), Mirror(Turn(spikeUp)), spawnIcon,
             laserUp, laserUp.Reverse().ToArray(), Turn(laserUp), Mirror(Turn(laserUp)),
             new[] { "..###..", ".#####.", "##.####", "#######", "#######", ".#####.", "..###.." },
             new[] { ".......", ".#####.", ".#.###.", ".#####.", ".#####.", ".#####.", "......." },
-            new[] { ".#...#.", "#######", ".#...#.", ".......", "#######", "#.#.#.#", "#######" },
             new[] { ".....#.", "#######", ".....#.", ".......", "#######", "#.#.#.#", "#######" },
-            new[] { "...#...", ".#####.", ".##.##.", "##...##", ".##.##.", ".#####.", "...#..." },
-            new[] { "#......", "####...", "#####..", "####...", "#......", "#......", "#......" },
-            new[] { "#.....#", ".#...#.", "..#.#..", "...#...", "..#.#..", ".#...#.", "#.....#" }
+            new[] { "...#...", ".#####.", ".##.##.", "##...##", ".##.##.", ".#####.", "...#..." }
         };
         static readonly string[] backIcon = { "...#...", "..#....", ".#.....", "#######", ".#.....", "..#....", "...#..." },
-            importIcon = arrowDown.Reverse().ToArray();
+            exportIcon = { "....###....", "....###....", "....###....", ".#########.", "..#######..", "...#####...", "....###....", ".....#.....", "##.......##", "##.......##", "###########" },
+            importIcon = { ".....#.....", "....###....", "...#####...", "..#######..", ".#########.", "....###....", "....###....", "....###....", "##.......##", "##.......##", "###########" };
         readonly byte[] tools = new byte[Columns * Rows], colors = new byte[Columns * Rows];
         readonly List<DemoPlatform> platforms = new List<DemoPlatform>();
         readonly List<DemoGear> gears = new List<DemoGear>();
-        // The placed body while a platform or gear waits for its end point.
+        // The placed origin while a platform line or a gear wall is still open.
         public Vector2Int? Anchor { get; private set; }
+        DemoPlatform line;
         public int Tool { get; private set; } = Terrain;
+        // The spike/laser direction index (Up, Down, Left, Right), kept across type changes.
+        public int Facing { get; private set; }
         public int Mask { get; private set; } = 7;
         public Vector2Int Cursor { get; private set; } = new Vector2Int(8, 18);
         public Vector2Int SpawnCell { get; private set; } = new Vector2Int(3, 19);
         public PhaseSandbox Playtest { get; private set; }
+        // The panel slot under the mouse.
+        public int? Hover { get; private set; }
         protected override bool Hidden => Playtest != null;
         Vector2Int held, lastMouse = new Vector2Int(-1, -1);
         float repeatAt, flash;
-        bool dirty, barPress;
+        // A mouse stroke paints or erases only when its press began on the grid.
+        bool dirty, stroke;
+        // A refused map whose spawn overlaps something: Wick's start and the flag slot blink with the border.
+        public bool SpawnBlocked { get; private set; }
 
         static string[] Turn(string[] art) => Enumerable.Range(0, 7).Select(r => new string(Enumerable.Range(0, 7).Select(c => art[c][r]).ToArray())).ToArray();
         static string[] Mirror(string[] art) => art.Select(r => new string(r.Reverse().ToArray())).ToArray();
@@ -106,7 +118,7 @@ namespace Phase
             return new PhaseDemoRoom { name = "自訂地圖", blocks = blocks.ToArray(), spikes = spikes.ToArray(), lasers = lasers.ToArray(), crystals = crystals.ToArray(),
                 platforms = platforms.ToArray(), gears = gears.ToArray(), spawnX = SpawnCell.x * 8, spawnY = SpawnCell.y * 8 };
         }
-        static bool IsMechanism(int tool) => tool >= ReturnPlatform;
+        static bool IsMechanism(int tool) => tool >= PlatformTool;
         static RectInt Box(Block b) => new RectInt((int)b.x, (int)b.y, (int)b.w, (int)b.h);
         static RectInt Box(DemoPlatform p) => new RectInt((int)p.nodeX[0], (int)p.nodeY[0], (int)p.w, (int)p.h);
         static RectInt Box(Vector2Int cell, int w = 8, int h = 8) => new RectInt(cell.x * 8, cell.y * 8, w, h);
@@ -117,12 +129,14 @@ namespace Phase
             for (int y = area.yMin / 8; y < area.yMax / 8; y++) for (int x = area.xMin / 8; x < area.xMax / 8; x++) if (tools[y * Columns + x] != Erase) return false;
             return true;
         }
-        // A 24×8 platform's second stop; returning platforms keep to one axis.
-        Vector2Int RouteEnd(Vector2Int start, Vector2Int cell)
+        // The 24×8 body stays inside the map. Stops keep both axes, so a segment may be diagonal.
+        static Vector2Int Fit(Vector2Int cell) { cell.x = Math.Min(cell.x, Columns - PlatformWidth / 8); return cell; }
+        static RectInt Stop(DemoPlatform platform, int i) => new RectInt((int)platform.nodeX[i], (int)platform.nodeY[i], (int)platform.w, (int)platform.h);
+        static void AddStop(DemoPlatform platform, Vector2Int cell)
         {
-            cell.x = Math.Min(cell.x, Columns - PlatformWidth / 8);
-            if (Tool == ReturnPlatform) cell = Math.Abs(cell.x - start.x) >= Math.Abs(cell.y - start.y) ? new Vector2Int(cell.x, start.y) : new Vector2Int(start.x, cell.y);
-            return cell;
+            int n = platform.nodeX.Length;
+            Array.Resize(ref platform.nodeX, n + 1); Array.Resize(ref platform.nodeY, n + 1);
+            platform.nodeX[n] = cell.x * 8; platform.nodeY[n] = cell.y * 8;
         }
         // An 8×56 wall at the anchor drives a 56×8 bridge two cells to its right on the chosen row. The end column sets
         // equal wall and bridge travel of 8–24 px, which keeps the bridge rack over the output pinion.
@@ -132,35 +146,56 @@ namespace Phase
             int travel = Mathf.Clamp(cell.x * 8 - startX, 8, Math.Min(24, Math.Min(y, Columns * 8 - 56 - startX)));
             return new DemoGear { wall = new Block(x, y, 8, 56), top = y - travel, platform = new Block(startX, cell.y * 8, 56, 8), endX = startX + travel };
         }
-        // The first press places the body, the second sets the platform's route end or the gear bridge's end.
+        // The first press places the platform origin or the gear wall. Later presses extend the one-way line, or set the gear's end.
         bool Place(Vector2Int cell)
         {
+            if (Tool == GearTool)
+            {
+                if (Anchor is Vector2Int wall)
+                {
+                    var gear = GearAt(wall, cell);
+                    if (!Free(Box(gear.platform))) { flash = .4f; return true; }
+                    gears.Add(gear); Anchor = null; return dirty = true;
+                }
+                if (cell.y >= 1 && cell.x * 8 + 80 <= Columns * 8 && Free(Box(cell, 8, 56))) Anchor = cell; else flash = .4f;
+                return true;
+            }
+            cell = Fit(cell);
             if (Anchor is Vector2Int start)
             {
-                if (Tool == GearTool)
+                if (line == null)
                 {
-                    var gear = GearAt(start, cell);
-                    if (!Free(Box(gear.platform))) { flash = .4f; return true; }
-                    gears.Add(gear);
+                    if (cell == start) return false;
+                    line = new DemoPlatform { nodeX = new double[] { start.x * 8, cell.x * 8 }, nodeY = new double[] { start.y * 8, cell.y * 8 } };
+                    platforms.Add(line);
                 }
                 else
                 {
-                    var end = RouteEnd(start, cell);
-                    if (end == start) return false;
-                    platforms.Add(new DemoPlatform { nodeX = new double[] { start.x * 8, end.x * 8 }, nodeY = new double[] { start.y * 8, end.y * 8 }, returns = Tool == ReturnPlatform });
+                    int last = line.nodeX.Length - 1;
+                    if (line.nodeX[last] == cell.x * 8 && line.nodeY[last] == cell.y * 8) return false;
+                    AddStop(line, cell);
                 }
-                Anchor = null; return dirty = true;
+                return dirty = true;
             }
-            bool fits = Tool == GearTool ? cell.y >= 1 && cell.x * 8 + 80 <= Columns * 8 && Free(Box(cell, 8, 56)) : Free(Box(cell, PlatformWidth));
-            if (fits) Anchor = cell; else flash = .4f;
-            return true;
+            if (!Free(Box(cell, PlatformWidth))) { flash = .4f; return true; }
+            Anchor = cell; line = null; return true;
         }
         bool Cancel()
         {
             if (Anchor == null) return false;
-            Anchor = null; return true;
+            Anchor = null; line = null; return true;
         }
-        void Select(int tool) { Tool = tool; Anchor = null; }
+        static int KindOf(int tool) => tool >= SpikeTool && tool < Spawn ? SpikeTool : tool >= LaserTool && tool < CrystalTool ? LaserTool : tool;
+        static bool Turns(int kind) => kind == SpikeTool || kind == LaserTool;
+        int ToolFor(int kind) => Turns(kind) ? kind + Facing : kind;
+        void Select(int kind) { Tool = ToolFor(kind); Anchor = null; line = null; }
+        // One clockwise (1) or counter-clockwise (-1) turn; other types ignore it.
+        bool Rotate(int turn)
+        {
+            if (!Turns(KindOf(Tool))) return false;
+            Facing = clockwise[(Array.IndexOf(clockwise, Facing) + turn + 4) % 4];
+            Tool = ToolFor(KindOf(Tool)); return true;
+        }
         bool Apply(Vector2Int cell, int tool)
         {
             if (tool == Spawn)
@@ -171,29 +206,56 @@ namespace Phase
             }
             var area = Box(cell);
             if (tool == Erase && platforms.RemoveAll(p => Box(p).Overlaps(area)) + gears.RemoveAll(g => Box(g.wall).Overlaps(area) || Box(g.platform).Overlaps(area)) > 0)
+            {
+                if (line != null && !platforms.Contains(line)) { line = null; Anchor = null; }
                 return dirty = true;
+            }
             if (tool != Erase && Bodies().Any(b => b.Overlaps(area))) return false;
             int i = cell.y * Columns + cell.x; byte color = (byte)(tool == Erase ? 0 : Mask);
             if (tools[i] == tool && colors[i] == color) return false;
             tools[i] = (byte)tool; colors[i] = color; return dirty = true;
         }
 
-        // Two rows (tools; colors, files, play, back) stay left of the Web page's top-right buttons.
-        int BarTop => Cursor.y * 8 - pixels.OriginY < 32 ? pixels.Height - 29 : 3;
-        static int SlotX(int slot) => slot < MaskSlot ? 6 + slot * 11 : 6 + (slot - MaskSlot) * 11 + (slot >= ImportSlot ? 4 : 0) + (slot >= PlaySlot ? 4 : 0);
-        int SlotY(int slot) => BarTop + 3 + (slot < MaskSlot ? 0 : 12);
+        // A fixed panel of 2× icons sits right of the grid, or below it on tall screens, and never covers a cell.
+        const int Pitch = 18, Gap = 6, Pad = 4, SideW = Pad * 2 + 4 * Pitch, SideH = Pad * 2 + 6 * Pitch + 2 * Gap,
+            BelowTop = Rows * 8 + 4, BelowW = Pad * 2 + 11 * Pitch + Gap, BelowH = Pad * 2 + 2 * Pitch + Gap;
+        // The view keeps the screen's aspect and grows until the grid and panel fit; the layout with the larger grid wins.
+        public static Vector2Int ViewFor(int width, int height)
+        {
+            double w = Math.Max(1, width), h = Math.Max(1, height);
+            Vector2Int Fit(int minW, int minH) => new Vector2Int(Math.Max(minW, (int)Math.Floor(minH * w / h + .5)), Math.Max(minH, (int)Math.Ceiling(minW * h / w)));
+            // PhasePixels centers the 180-pixel play band, so the panel below the grid needs that much room under the band too.
+            Vector2Int side = Fit(Columns * 8 + SideW, 180), below = Fit(Columns * 8, 2 * (BelowTop + BelowH) - 180);
+            return side.x <= below.x ? side : below;
+        }
+        static bool Side(Vector2Int view) => view.x >= Columns * 8 + SideW;
+        // The grid's top row in the frame, as PhasePixels.OriginY places it.
+        static int GridTop(Vector2Int view) => -((180 - view.y) / 2);
+        public static RectInt PanelIn(Vector2Int view) => Side(view)
+            ? new RectInt(Columns * 8, GridTop(view) + (Rows * 8 - SideH) / 2, SideW, SideH)
+            : new RectInt((Columns * 8 - BelowW) / 2, GridTop(view) + BelowTop, BelowW, BelowH);
+        // The side panel stacks tools, colors and files/play/back in four columns; below the grid the tools fill
+        // one row and the colors share the next with files/play/back.
+        public static RectInt SlotIn(Vector2Int view, int slot)
+        {
+            var panel = PanelIn(view);
+            int group = slot < MaskSlot ? 0 : slot < ImportSlot ? 1 : 2, i = slot - (group == 0 ? 0 : group == 1 ? MaskSlot : ImportSlot);
+            var cell = Side(view) ? new Vector2Int(i % 4 * Pitch, (new[] { 0, 3, 5 }[group] + i / 4) * Pitch + group * Gap)
+                : new Vector2Int(group == 2 ? (7 + i) * Pitch + Gap : i * Pitch, group == 0 ? 0 : Pitch + Gap);
+            return new RectInt(panel.x + Pad + cell.x, panel.y + Pad + cell.y, Pitch, Pitch);
+        }
+        protected override Vector2Int ViewSize(int width, int height) => ViewFor(width, height);
+        Vector2Int View => new Vector2Int(pixels.Width, pixels.Height);
         int? Slot(Vector2Int p)
         {
-            for (int slot = 0; slot < SlotCount; slot++)
-                if (p.x >= SlotX(slot) - 2 && p.x < SlotX(slot) + 9 && p.y >= SlotY(slot) - 2 && p.y < SlotY(slot) + 9) return slot;
+            for (int slot = 0; slot < SlotCount; slot++) if (SlotIn(View, slot).Contains(p)) return slot;
             return null;
         }
         protected override void Render()
         {
             var room = Room();
-            var view = new PhaseController(room.blocks, room.spawnX, room.spawnY, room.CreatePlatforms(), room.CreateGears(), room.CreateSpikes(), room.CreateLasers(), room.CreateCrystals());
-            view.ResizeRoom(pixels.Width);
-            pixels.Draw(view);
+            // The room keeps its 320-pixel width, so the floor stops at the grid's edge.
+            pixels.Draw(new PhaseController(room.blocks, room.spawnX, room.spawnY, room.CreatePlatforms(), room.CreateGears(), room.CreateSpikes(), room.CreateLasers(), room.CreateCrystals()));
             var frame = new PixelFrame(pixels.Texture);
             Color32 color = PhasePixels.SurfaceColor(Mask);
             int cx = Cursor.x * 8 - pixels.OriginX, cy = Cursor.y * 8 - pixels.OriginY;
@@ -209,41 +271,62 @@ namespace Phase
                 var start = Box(g.platform); var end = new RectInt((int)g.endX, start.y, start.width, start.height);
                 Body(new RectInt((int)g.wall.x, (int)g.top, (int)g.wall.w, (int)g.wall.h), amount); Body(end, amount); Route(start, end, amount);
             }
-            // Dotted routes and faint end outlines show where each mechanism travels.
+            // Dotted segments follow the clicked stops, including a diagonal.
             foreach (var p in platforms)
-                for (int i = 1; i < p.nodeX.Length; i++) { var stop = new RectInt((int)p.nodeX[i], (int)p.nodeY[i], (int)p.w, (int)p.h); Route(Box(p), stop, .5f); Body(stop, .35f); }
+                for (int i = 1; i < p.nodeX.Length; i++) { Route(Stop(p, i - 1), Stop(p, i), .5f); Body(Stop(p, i), .35f); }
             foreach (var g in gears) Gear(g, .35f);
             if (Anchor is Vector2Int anchor)
             {
                 if (Tool == GearTool) { var g = GearAt(anchor, Cursor); Body(Box(g.wall), 1); Body(Box(g.platform), 1); Gear(g, .8f); }
-                else { var body = Box(anchor, PlatformWidth); var stop = Box(RouteEnd(anchor, Cursor), PlatformWidth); Body(body, 1); Route(body, stop, .8f); Body(stop, .8f); }
+                else
+                {
+                    var body = Box(anchor, PlatformWidth); Body(body, 1);
+                    var from = line == null ? body : Stop(line, line.nodeX.Length - 1);
+                    var next = Box(Fit(Cursor), PlatformWidth);
+                    if (next.x != from.x || next.y != from.y) { Route(from, next, .8f); Body(next, .8f); }
+                }
             }
-            else if (IsMechanism(Tool)) Body(Tool == GearTool ? Box(Cursor, 8, 56) : Box(Cursor, PlatformWidth), .6f);
+            else if (IsMechanism(Tool)) Body(Tool == GearTool ? Box(Cursor, 8, 56) : Box(Fit(Cursor), PlatformWidth), .6f);
             if (Tool != Erase && Tool != Spawn && !IsMechanism(Tool)) frame.Fill(cx, cy, 8, 8, color, .35f);
+            if (Turns(KindOf(Tool))) frame.Blit(toolIcons[Tool], cx, cy, color, 1, .9f);
             frame.Outline(cx - 1, cy - 1, 10, 10, PixelFrame.Light, .9f);
-            if (flash > 0) frame.Warn();
-            frame.Fill(2, BarTop, SlotX(MaskSlot - 1) + 9, 26, PixelFrame.Ink, .85f);
+            // The opaque panel hides the cursor outline and previews that reach past the grid's edge.
+            var panel = PanelIn(View);
+            frame.Fill(panel.x, panel.y, panel.width, panel.height, PixelFrame.Ink);
             for (int slot = 0; slot < SlotCount; slot++)
             {
-                int x = SlotX(slot), y = SlotY(slot);
-                bool selected = slot < MaskSlot ? toolOrder[slot] == Tool : slot < ImportSlot && masks[slot - MaskSlot] == Mask;
-                if (slot < MaskSlot) frame.Blit(toolIcons[slot], x, y, toolOrder[slot] == Spawn || toolOrder[slot] == Erase || IsMechanism(toolOrder[slot]) ? PixelFrame.Light : color, amount: selected ? 1 : .45f);
-                else if (slot < ImportSlot) frame.Fill(x, y, 7, 7, PhasePixels.SurfaceColor(masks[slot - MaskSlot]), selected ? 1 : .6f);
-                else frame.Blit(slot == ImportSlot ? importIcon : slot == ExportSlot ? arrowDown : slot == PlaySlot ? PhaseMenu.PlayIcon : backIcon, x, y, PixelFrame.Light);
-                if (selected) frame.Outline(x - 2, y - 2, 11, 11, PixelFrame.Light);
+                var cell = SlotIn(View, slot); int x = cell.x + 2, y = cell.y + 2;
+                bool selected = slot < MaskSlot ? kinds[slot] == KindOf(Tool) : slot < ImportSlot && masks[slot - MaskSlot] == Mask;
+                if (slot == Hover) frame.Fill(cell.x, cell.y, Pitch, Pitch, PixelFrame.Light, .2f);
+                if (slot < MaskSlot) frame.Blit(toolIcons[ToolFor(kinds[slot])], x, y, kinds[slot] == Spawn || kinds[slot] == Erase || IsMechanism(kinds[slot]) ? PixelFrame.Light : color, 2, selected ? 1 : .45f);
+                else if (slot < ImportSlot) frame.Fill(x, y, 14, 14, PhasePixels.SurfaceColor(masks[slot - MaskSlot]), selected ? 1 : .6f);
+                else if (slot < PlaySlot) frame.Blit(slot == ImportSlot ? importIcon : exportIcon, cell.x + 4, cell.y + 4, PixelFrame.Light);
+                else frame.Blit(slot == PlaySlot ? PhaseMenu.PlayIcon : backIcon, x, y, PixelFrame.Light, 2);
+                if (selected) frame.Outline(cell.x, cell.y, Pitch, Pitch, PixelFrame.Light);
+            }
+            if (flash > 0) frame.Warn();
+            if (SpawnBlocked && (int)(flash * 6) % 2 == 0)
+            {
+                var wick = new Player(SpawnCell.x * 8, SpawnCell.y * 8);
+                frame.Fill((int)wick.x - ox, (int)wick.y - oy, (int)wick.w, (int)wick.h, PixelFrame.Warning, .5f);
+                frame.Outline((int)wick.x - ox - 1, (int)wick.y - oy - 1, (int)wick.w + 2, (int)wick.h + 2, PixelFrame.Warning);
+                var flag = SlotIn(View, Array.IndexOf(kinds, Spawn));
+                frame.Outline(flag.x, flag.y, Pitch, Pitch, PixelFrame.Warning); frame.Outline(flag.x + 1, flag.y + 1, Pitch - 2, Pitch - 2, PixelFrame.Warning);
             }
             frame.Apply();
         }
         void Choose(int slot)
         {
-            if (slot < MaskSlot) Select(toolOrder[slot]);
+            if (slot < MaskSlot) Select(kinds[slot]);
             else if (slot < ImportSlot) Mask = masks[slot - MaskSlot];
-            else if (slot == ImportSlot) { RequestImport(); return; }
-            else if (slot == ExportSlot) { ExportDraft(); return; }
+            else if (slot == ImportSlot) RequestImport();
+            else if (slot == ExportSlot) ExportDraft();
             else if (slot == PlaySlot) { StartPlaytest(); return; }
             else { Leave(); return; }
             Refresh();
         }
+        // Every spawn refusal in PhaseCustomMap.Validate names 出生點 (the spawn).
+        void Refuse(ArgumentException error) { flash = 1.2f; SpawnBlocked = error.Message.Contains("出生點"); Refresh(); }
         void Leave() { if (dirty) Save(); Open(PhaseTitle.Scene); }
         protected override void Tick(Keyboard k, Mouse m)
         {
@@ -253,14 +336,18 @@ namespace Phase
                 return;
             }
             bool changed = false, painting = false;
-            if (flash > 0) { flash -= Time.unscaledDeltaTime; changed = true; }
+            if (flash > 0) { flash -= Time.unscaledDeltaTime; SpawnBlocked &= flash > 0; changed = true; }
             if (k != null)
             {
                 if (k.escapeKey.wasPressedThisFrame) { if (!Cancel()) { Leave(); return; } changed = true; }
                 if (k.enterKey.wasPressedThisFrame || k.numpadEnterKey.wasPressedThisFrame) { StartPlaytest(); return; }
                 for (int i = 0; i < masks.Length; i++) if (k[Key.Digit1 + i].wasPressedThisFrame) { Mask = masks[i]; changed = true; }
-                if (PhaseSandbox.Pressed(k, 5, true)) { Select(toolOrder[(Array.IndexOf(toolOrder, Tool) + 1) % toolOrder.Length]); changed = true; }
-                var input = PhaseSandbox.ReadControls(k);
+                // R/E turn the tool even when bound to an action; that action waits until they are released.
+                if (k.rKey.wasPressedThisFrame) changed |= Rotate(1);
+                if (k.eKey.wasPressedThisFrame) changed |= Rotate(-1);
+                bool turning = k.rKey.isPressed || k.eKey.isPressed;
+                if (!turning && PhaseSandbox.Pressed(k, 5, true)) { Select(kinds[(Array.IndexOf(kinds, KindOf(Tool)) + 1) % kinds.Length]); changed = true; }
+                var input = turning ? default : PhaseSandbox.ReadControls(k);
                 var step = new Vector2Int(input.x, input.y);
                 if (step != Vector2Int.zero && (step != held || Time.unscaledTime >= repeatAt))
                 {
@@ -277,17 +364,21 @@ namespace Phase
             if (m != null)
             {
                 var p = FramePoint(m); var slot = Slot(p);
-                if (m.leftButton.wasPressedThisFrame) { barPress = slot != null; if (slot is int chosen) { Choose(chosen); return; } }
                 int x = (p.x + pixels.OriginX) >> 3, y = (p.y + pixels.OriginY) >> 3;
-                bool onGrid = slot == null && x >= 0 && x < Columns && y >= 0 && y < Rows;
+                bool onGrid = x >= 0 && x < Columns && y >= 0 && y < Rows;
+                if (slot != Hover) { Hover = slot; changed = true; }
+                float wheel = m.scroll.ReadValue().y;
+                if (wheel != 0) changed |= Rotate(wheel < 0 ? 1 : -1);
+                if (m.leftButton.wasPressedThisFrame || m.rightButton.wasPressedThisFrame) stroke = onGrid;
+                if (m.leftButton.wasPressedThisFrame && slot is int chosen) { Choose(chosen); return; }
                 if (onGrid && p != lastMouse) { Cursor = new Vector2Int(x, y); changed = true; }
                 lastMouse = p;
-                if (onGrid && m.leftButton.isPressed && !barPress)
+                if (onGrid && stroke && m.leftButton.isPressed)
                 {
                     if (!IsMechanism(Tool)) { painting = true; changed |= Apply(Cursor, Tool); }
                     else if (m.leftButton.wasPressedThisFrame) changed |= Place(Cursor);
                 }
-                else if (onGrid && m.rightButton.isPressed) { painting = true; changed |= Cancel() || Apply(Cursor, Erase); }
+                else if (onGrid && stroke && m.rightButton.isPressed) { painting = true; changed |= Cancel() || Apply(Cursor, Erase); }
             }
             if (dirty && !painting) Save();
             if (changed) Refresh();
@@ -297,7 +388,7 @@ namespace Phase
         {
             var room = Room();
             try { PhaseCustomMap.Validate(room); }
-            catch (ArgumentException) { flash = .4f; Refresh(); return false; }
+            catch (ArgumentException error) { Refuse(error); return false; }
             string json = PhaseCustomMap.ToJson(room);
 #if UNITY_WEBGL && !UNITY_EDITOR
             PhaseExportMap(json);
@@ -320,7 +411,7 @@ namespace Phase
             PhaseDemoRoom room;
             try { room = PhaseCustomMap.Parse(json); }
             catch (ArgumentException) { flash = .4f; Refresh(); return; }
-            Array.Clear(tools, 0, tools.Length); Array.Clear(colors, 0, colors.Length); Anchor = null;
+            Array.Clear(tools, 0, tools.Length); Array.Clear(colors, 0, colors.Length); Anchor = null; line = null;
             platforms.Clear(); platforms.AddRange(room.platforms ?? Array.Empty<DemoPlatform>());
             gears.Clear(); gears.AddRange(room.gears ?? Array.Empty<DemoGear>());
             void Put(double x, double y, double w, double h, int tool, int mask)
@@ -337,10 +428,10 @@ namespace Phase
         }
         public bool StartPlaytest()
         {
-            Anchor = null;
+            Anchor = null; line = null;
             var room = Room();
             try { PhaseCustomMap.Validate(room); }
-            catch (ArgumentException) { flash = .4f; Refresh(); return false; }
+            catch (ArgumentException error) { Refuse(error); return false; }
             Play(room); return true;
         }
         void Play(PhaseDemoRoom room)

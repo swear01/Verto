@@ -28,8 +28,8 @@ namespace Phase
         public bool InTransition => transitioning || departingFrame != null;
         public bool Won { get; private set; }
         public static readonly string[] Levels = {
-            "PhaseDemo1", "PhaseDemo2", "PhaseDemo3", "PhaseDemo4", "PhaseDemo5", "PhaseDemo6", "PhaseDemo7", "PhaseDemo8",
-            "PhaseCrystal1", "PhaseCrystal2", "PhaseCrystal3", "PhaseDemo12"
+            "PhaseDemo1", "PhaseDemo1.1", "PhaseDemo2", "PhaseDemo3", "PhaseDemo4", "PhaseDemo5", "PhaseDemo6", "PhaseDemo7", "PhaseDemo8",
+            "PhaseCrystal1", "PhaseCrystal2", "PhaseCrystal3", "PhaseDemo12", "PhaseDemo13", "PhaseDemo14"
         };
         int level = -1;
         bool custom;
@@ -183,11 +183,12 @@ namespace Phase
             var frame = new PixelFrame(Frame);
             if (Keys != null) Keys.Draw(frame);
             else if (LevelSelect != null) LevelSelect.Draw(frame);
-            else { frame.Fill(0, 0, frame.Width, frame.Height, PixelFrame.Ink, .6f); Menu.Draw(frame, MenuTop); }
+            else { frame.Fill(0, 0, frame.Width, frame.Height, PixelFrame.Ink, .6f); Menu.Draw(frame, MenuMiddle, Menu.Fit(View)); }
             frame.Apply();
         }
-        int MenuTop => pixels.Height / 2 - 3;
-        int VictoryTop => pixels.Height / 2 - 22 + 29;
+        Vector2Int View => new Vector2Int(pixels.Width, pixels.Height);
+        int MenuMiddle => pixels.Height / 2;
+        int VictoryTop => pixels.Height / 2 - 22 + 33;
         static readonly string[] victoryText = {
             "...#....#................#..........................",
             "...#...#...........##############.....###########...",
@@ -210,7 +211,7 @@ namespace Phase
         {
             var frame = new PixelFrame(Frame); int top = frame.Banner();
             frame.Blit(victoryText, (frame.Width - victoryText[0].Length) / 2, top + 8, PixelFrame.Light);
-            VictoryMenu.Draw(frame, top + 29);
+            VictoryMenu.Draw(frame, top + 33);
             frame.Apply();
         }
         void Win()
@@ -228,7 +229,7 @@ namespace Phase
             if (Keys != null || LevelSelect != null) { TickScreen(k); return; }
             if (Menu == null && k != null && k.escapeKey.wasPressedThisFrame && transform.parent == null)
             {
-                Menu = new PhaseMenu(PhaseMenu.PlayIcon, PhaseMenu.LevelsIcon, PhaseMenu.KeysIcon, PhaseMenu.HomeIcon);
+                Menu = new PhaseMenu(PhaseMenu.PlayIcon, PhaseMenu.LevelsIcon, PhaseMenu.SettingsIcon, PhaseMenu.HomeIcon);
                 jumpQueued = dashQueued = false; accumulator = 0; Render(); return;
             }
             if (Menu != null) { TickPause(k); return; }
@@ -267,7 +268,7 @@ namespace Phase
         {
             jumpQueued = dashQueued = false; accumulator = 0;
             if (k != null && k.escapeKey.wasPressedThisFrame) { Resume(); return; }
-            switch (Menu.Tick(k, Mouse.current, new Vector2Int(pixels.Width, pixels.Height), MenuTop, out _))
+            switch (Menu.Tick(k, Mouse.current, View, MenuMiddle, out _, Menu.Fit(View)))
             {
                 case 0: Resume(); return;
                 case 1: LevelSelect = new PhaseLevels(level); break;
@@ -320,11 +321,15 @@ namespace Phase
         }
         internal static bool Pressed(Keyboard k, int action, bool edge = false) => k != null && keys[action].Any(key => edge ? k[key].wasPressedThisFrame : k[key].isPressed);
         // A dialog pauses input; after it closes, keys held from the dialog stay ignored until released.
+        // The release frame stays paused so a following route does not start early, unless that frame is a click.
         internal static bool InputPaused(Keyboard k)
         {
-            if (!controlsOpen && !releaseControls) return false;
-            if (!controlsOpen && (k == null || !k.anyKey.isPressed)) releaseControls = false;
-            return true;
+            if (controlsOpen) return true;
+            if (!releaseControls) return false;
+            if (k != null && k.anyKey.isPressed) return true;
+            releaseControls = false;
+            var mouse = Mouse.current;
+            return mouse == null || !mouse.leftButton.wasPressedThisFrame;
         }
         internal static void ReleaseInput() => releaseControls = true;
         public void SetControlsOpen(string value) => Pause(value);

@@ -5,6 +5,8 @@ function setupMaps(instance, gameCanvas) {
   addEventListener('blur',()=>pause(true));addEventListener('focus',()=>pause(document.hidden));
   document.addEventListener('visibilitychange',()=>pause(document.hidden || !document.hasFocus()));
   addEventListener('keydown',event=>{if(event.target!==gameCanvas||event.code==='Tab')event.stopImmediatePropagation();},true);
+  // Right-click erases in the in-game editor, so the canvas never opens the browser menu.
+  gameCanvas.addEventListener('contextmenu',event=>event.preventDefault());
   // The in-game editor's export and import icons; Unity validates the file and flashes on failure.
   addEventListener('phase-map-export',event=>{
     const url=URL.createObjectURL(new Blob([event.detail.json],{type:'application/json'})),a=document.createElement('a');

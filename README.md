@@ -1,12 +1,16 @@
 # PHASE
 
+![PHASE](Documentation/press/social.png)
+
+[Play on itch.io](https://swear01.itch.io/phase).
+
 [中文 Wiki：背景、操作、物件與關卡製作](Documentation/Wiki.md)。
 
 [Play the Web preview](https://phase-gamejam1-20261016.swear01.chatgpt.site).
 
 Unity **6000.4.7f1**. Open `Assets/Scenes/PhaseTitle.unity` and press Play: the title's
 icons start the [eight-room demo](Documentation/Demo.md), pick any level, open the level
-editor or change keyboard bindings. Escape in a level pauses with the same choices. The first three rooms introduce color
+editor or open settings (key bindings and fullscreen). Escape in a level pauses with the same choices. The first three rooms introduce color
 jumps, dash-driven platforms and climb-driven gears; later rooms combine them
 with phase spikes and mixed-color landings. Crossing the right edge advances
 to a fresh room checkpoint; the game view has no explanatory text.
@@ -14,8 +18,8 @@ The original `PhaseSandbox` / `PhaseRoom2` test scenes remain available.
 
 The pixel view fills the window at any aspect ratio, keeping 180 native pixels
 high with point sampling. Wide rooms extend the quarry and walkable floor; narrow
-views follow the player. Web has a fullscreen button, and room travel uses a quick
-horizontal slide.
+views follow the player. Fullscreen is a switch in the in-game settings, and room
+travel uses a quick horizontal slide.
 `PhaseTerrain` and `PhaseMovingPlatform` are reusable Inspector components.
 
 For the climb-driven mechanism demo, open `Assets/Scenes/PhaseGearDemo.unity`

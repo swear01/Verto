@@ -397,16 +397,17 @@ public class SandboxTests : InputTestFixture
     public IEnumerator SelectionDuringPausedArrivalIsAcknowledgedOncePerRequest()
     {
         yield return SceneManager.LoadSceneAsync("PhaseDemo2");
+        string previous = PhaseSandbox.Levels[System.Array.IndexOf(PhaseSandbox.Levels, "PhaseDemo2") - 1];
         var k = InputSystem.AddDevice<Keyboard>();
         UnityEngine.Events.UnityAction<Scene, LoadSceneMode> pauseArrival = (scene, mode) =>
-        { if (scene.name == "PhaseDemo1") Object.FindAnyObjectByType<PhaseSandbox>().SetControlsOpen("true"); };
+        { if (scene.name == previous) Object.FindAnyObjectByType<PhaseSandbox>().SetControlsOpen("true"); };
         SceneManager.sceneLoaded += pauseArrival;
         try
         {
             var sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
             var p = sandbox.Controller.player; p.x = .5; p.vx = -90;
             InputSystem.QueueStateEvent(k, new KeyboardState(Key.LeftArrow));
-            yield return WaitForScene("PhaseDemo1");
+            yield return WaitForScene(previous);
             InputSystem.QueueStateEvent(k, new KeyboardState());
             sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
             Assert.That(sandbox.InTransition, Is.True);
@@ -414,7 +415,7 @@ public class SandboxTests : InputTestFixture
             yield return new WaitForSeconds(PhaseSandbox.TransitionDuration * 2);
             Assert.That(sandbox.InTransition, Is.True, "a dialog pauses the arrival slide");
             int count = PhaseSandbox.MapResultCount;
-            foreach (var room in new[] { ("5", "PhaseDemo5"), ("5", "PhaseDemo5"), ("12", "PhaseDemo12") })
+            foreach (var room in new[] { "5", "5", "13" }.Select(n => (n, PhaseSandbox.Levels[int.Parse(n) - 1])))
             {
                 sandbox.SetControlsOpen("true"); sandbox.SelectDemoRoom(room.Item1);
                 Assert.That(PhaseSandbox.MapResultCount, Is.EqualTo(count), "success waits for the async load");
@@ -427,7 +428,7 @@ public class SandboxTests : InputTestFixture
             }
             sandbox.SelectDemoRoom("3"); sandbox.SelectDemoRoom("4");
             Assert.That(PhaseSandbox.MapResultCount, Is.EqualTo(++count)); Assert.That(PhaseSandbox.LastMapError, Is.Not.Empty, "overlapping request is refused");
-            yield return WaitForScene("PhaseDemo3");
+            yield return WaitForScene(PhaseSandbox.Levels[2]);
             Assert.That(PhaseSandbox.MapResultCount, Is.EqualTo(++count)); Assert.That(PhaseSandbox.LastMapError, Is.Empty);
             sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
             double time = sandbox.Controller.time;
@@ -503,7 +504,8 @@ public class SandboxTests : InputTestFixture
     [UnityTest]
     public IEnumerator LastLevelRightExitWinsAndJumpRestartsLevelOne()
     {
-        yield return SceneManager.LoadSceneAsync("PhaseCrystal3");
+        string previous = PhaseSandbox.Levels[PhaseSandbox.Levels.Length - 2], last = PhaseSandbox.Levels[PhaseSandbox.Levels.Length - 1];
+        yield return SceneManager.LoadSceneAsync(previous);
         var k = InputSystem.AddDevice<Keyboard>();
         try
         {
@@ -517,9 +519,9 @@ public class SandboxTests : InputTestFixture
                 InputSystem.QueueStateEvent(k, new KeyboardState(Key.RightArrow)); yield return null; yield return null;
             }
             var sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
-            Assert.That(sandbox.rightScene, Is.EqualTo("PhaseDemo12"));
+            Assert.That(sandbox.rightScene, Is.EqualTo(last));
             yield return ExitRight(sandbox);
-            yield return WaitForScene("PhaseDemo12");
+            yield return WaitForScene(last);
             InputSystem.QueueStateEvent(k, new KeyboardState());
             sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
             Assert.That(sandbox.Controller.player.x, Is.EqualTo(sandbox.spawn.x), "forward entry keeps the authored left spawn");
@@ -532,7 +534,10 @@ public class SandboxTests : InputTestFixture
                 Time.captureDeltaTime = (float)PhaseController.Dt;
                 InputSystem.QueueStateEvent(k,new KeyboardState()); yield return null;
                 sandbox.Controller.Reset();
-                var route = JsonUtility.FromJson<RouteSteps>("{\"steps\":" + File.ReadAllText("Verification/Routes/PhaseDemo12.json") + "}").steps;
+                // A level without a required route still checks the victory by walking off the authored edge landing.
+                bool unrouted = PhaseRoute.UnroutedReason(last) != null;
+                if (unrouted) yield return ExitRight(sandbox);
+                var route = unrouted ? new RouteStep[0] : JsonUtility.FromJson<RouteSteps>("{\"steps\":" + File.ReadAllText("Verification/Routes/" + last + ".json") + "}").steps;
                 foreach (var step in route)
                 {
                     var keys = new System.Collections.Generic.List<Key>();
@@ -546,14 +551,14 @@ public class SandboxTests : InputTestFixture
                 InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow));
                 double until = Time.realtimeSinceStartupAsDouble + 5;
                 while (!sandbox.Won && sandbox.Controller.deaths == deaths && Time.realtimeSinceStartupAsDouble < until) yield return null;
-                Assert.That(sandbox.Controller.deaths,Is.EqualTo(deaths),"full level12 keyboard route has no deaths");
+                Assert.That(sandbox.Controller.deaths,Is.EqualTo(deaths),"full last-level keyboard route has no deaths");
             }
             finally { Time.captureDeltaTime = captureDelta; }
             double deadline = Time.realtimeSinceStartupAsDouble + 2;
             while (!sandbox.Won && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
             InputSystem.QueueStateEvent(k, new KeyboardState());
-            Assert.That(sandbox.Won, Is.True, "level12 right edge wins");
-            Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo("PhaseDemo12"));
+            Assert.That(sandbox.Won, Is.True, last + " right edge wins");
+            Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo(last));
             double time = sandbox.Controller.time; yield return new WaitForSeconds(.2f);
             Assert.That(sandbox.Controller.time, Is.EqualTo(time), "victory freezes play");
             var light = new Color32(234, 223, 197, 255);

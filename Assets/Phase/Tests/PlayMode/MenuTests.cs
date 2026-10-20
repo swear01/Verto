@@ -11,6 +11,8 @@ using UnityEngine.TestTools;
 public class MenuTests : InputTestFixture
 {
     Keyboard keyboard;
+    // Editor PlayerPrefs are shared by every open Editor of this project, so start from the default keys rather than whatever they hold.
+    [SetUp] public void DefaultKeys() => PhaseSandbox.ApplyControls(PhaseSandbox.DefaultSlots);
     IEnumerator Tap(params Key[] keys)
     {
         InputSystem.QueueStateEvent(keyboard, new KeyboardState(keys)); yield return null; yield return null;
@@ -61,10 +63,10 @@ public class MenuTests : InputTestFixture
             yield return Tap(Key.X);
             Assert.That(editor.Tool, Is.EqualTo(2));
             yield return Tap(Key.Z);
-            for (int i = 0; i < 4; i++) yield return Tap(Key.X);
+            yield return Tap(Key.X);
             Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.LaserTool));
             yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
-            for (int i = 0; i < 5; i++) yield return Tap(Key.X);
+            yield return Tap(Key.X); yield return Tap(Key.X);
             Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.CrystalTool + 1));
             yield return Tap(Key.Digit5); yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
             var room = editor.Room();
@@ -120,6 +122,152 @@ public class MenuTests : InputTestFixture
         }
     }
 
+    [UnityTest]
+    public IEnumerator EditorTurnsSpikesAndLasersWithRAndE()
+    {
+        string saved = PlayerPrefs.HasKey(PhaseEditor.DraftKey) ? PlayerPrefs.GetString(PhaseEditor.DraftKey) : null;
+        PlayerPrefs.DeleteKey(PhaseEditor.DraftKey);
+        try
+        {
+            yield return OpenTitle();
+            yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
+            yield return WaitFor(PhaseEditor.Scene);
+            var editor = Object.FindAnyObjectByType<PhaseEditor>();
+            yield return Tap(Key.R);
+            Assert.That((editor.Tool, editor.Facing), Is.EqualTo((PhaseEditor.Terrain, 0)), "R leaves terrain alone");
+            yield return Tap(Key.X); yield return Tap(Key.R);
+            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.SpikeTool + (int)SpikeDirection.Right), "R turns clockwise");
+            yield return Tap(Key.Z);
+            yield return Tap(Key.RightArrow); yield return Tap(Key.E); yield return Tap(Key.E); yield return Tap(Key.Z);
+            yield return Tap(Key.X);
+            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.LaserTool + (int)LaserDirection.Left), "the laser keeps the spike's direction");
+            yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
+            yield return Tap(Key.RightArrow); yield return Tap(Key.R); yield return Tap(Key.Z);
+            yield return Tap(Key.Escape);
+            yield return WaitFor(PhaseTitle.Scene);
+            yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
+            yield return WaitFor(PhaseEditor.Scene);
+            var room = Object.FindAnyObjectByType<PhaseEditor>().Room();
+            Assert.That(room.spikes.Select(s => (s.x, s.direction)), Is.EqualTo(new[] { (64.0, SpikeDirection.Right), (72.0, SpikeDirection.Left) }), "the draft keeps each spike's direction");
+            Assert.That(room.lasers.Select(l => (l.x, l.direction)), Is.EqualTo(new[] { (80.0, LaserDirection.Left), (88.0, LaserDirection.Up) }), "the draft keeps each laser's direction");
+            LogAssert.NoUnexpectedReceived();
+        }
+        finally
+        {
+            if (saved == null) PlayerPrefs.DeleteKey(PhaseEditor.DraftKey); else PlayerPrefs.SetString(PhaseEditor.DraftKey, saved);
+            PlayerPrefs.Save();
+        }
+    }
+
+    Mouse mouse;
+    // Points at a frame pixel's center, inverting PhaseScreen.FramePoint, and holds the given buttons for two frames.
+    IEnumerator Point(Vector2Int view, Vector2Int frame, params MouseButton[] buttons)
+    {
+        var state = new MouseState { position = new Vector2((frame.x + .5f) * Screen.width / view.x, Screen.height - (frame.y + .5f) * Screen.height / view.y) };
+        foreach (var button in buttons) state = state.WithButton(button);
+        InputSystem.QueueStateEvent(mouse, state); yield return null; yield return null;
+    }
+    static Vector2Int Center(RectInt rect) => new Vector2Int(rect.x + rect.width / 2, rect.y + rect.height / 2);
+    [UnityTest]
+    public IEnumerator EditorPanelStaysFixedAndTakesMouseClicks()
+    {
+        // Every layout keeps the screen's aspect and puts 18-pixel slots inside the view, beside or below the grid and never on it.
+        foreach (var (width, height, side) in new[] { (960, 540, true), (2560, 1080, true), (390, 844, false) })
+        {
+            var view = PhaseEditor.ViewFor(width, height);
+            var grid = new RectInt(0, -((180 - view.y) / 2), 320, 176);
+            Assert.That(Mathf.Abs(view.x * height - view.y * width), Is.LessThan(Mathf.Max(width, height)), $"{width}x{height} keeps its aspect");
+            var panel = PhaseEditor.PanelIn(view);
+            Assert.That(side ? panel.xMin >= grid.xMax : panel.yMin >= grid.yMax, Is.True, $"{width}x{height} panel position");
+            var cells = Enumerable.Range(0, PhaseEditor.SlotCount).Select(slot => PhaseEditor.SlotIn(view, slot)).ToList();
+            foreach (var cell in cells)
+                Assert.That((cell.width, cell.height, cell.xMin >= panel.xMin && cell.yMin >= panel.yMin && cell.xMax <= panel.xMax && cell.yMax <= panel.yMax,
+                    panel.xMin >= 0 && panel.yMin >= 0 && panel.xMax <= view.x && panel.yMax <= view.y, cell.Overlaps(grid), cells.Count(c => c.Overlaps(cell))),
+                    Is.EqualTo((18, 18, true, true, false, 1)), $"{width}x{height} slot {cells.IndexOf(cell)}");
+        }
+
+        string saved = PlayerPrefs.HasKey(PhaseEditor.DraftKey) ? PlayerPrefs.GetString(PhaseEditor.DraftKey) : null;
+        PlayerPrefs.DeleteKey(PhaseEditor.DraftKey);
+        try
+        {
+            yield return OpenTitle();
+            yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
+            yield return WaitFor(PhaseEditor.Scene);
+            var editor = Object.FindAnyObjectByType<PhaseEditor>();
+            mouse = InputSystem.AddDevice<Mouse>();
+            var view = PhaseEditor.ViewFor(Screen.width, Screen.height);
+            var texture = editor.GetComponentInChildren<SpriteRenderer>().sprite.texture;
+            Assert.That((texture.width, texture.height), Is.EqualTo((view.x, view.y)), "the editor draws its own wider view");
+            var panel = PhaseEditor.PanelIn(view);
+            Color[] Panel() => texture.GetPixels(panel.x, view.y - panel.yMax, panel.width, panel.height);
+            Vector2Int Cell(int x, int y) => new Vector2Int(x * 8 + 4, y * 8 + 4 - (180 - view.y) / 2);
+
+            // With the gear's tall preview, the pointer sweeps the top and bottom rows: the cursor follows and the panel's pixels never change.
+            var gear = Center(PhaseEditor.SlotIn(view, 6));
+            yield return Point(view, gear, MouseButton.Left); yield return Point(view, gear);
+            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.GearTool));
+            yield return Point(view, Cell(5, 0));
+            var still = Panel();
+            foreach (var cell in new[] { new Vector2Int(30, 0), new Vector2Int(39, 0), new Vector2Int(30, 21), new Vector2Int(0, 21), new Vector2Int(5, 0) })
+            {
+                yield return Point(view, Cell(cell.x, cell.y));
+                Assert.That((editor.Cursor, editor.Hover), Is.EqualTo((cell, (int?)null)));
+                Assert.That(Panel(), Is.EqualTo(still), $"the panel stays put with the cursor at {cell}");
+            }
+
+            // Hovering a slot highlights it; a click selects its tool or color and never paints.
+            string draft = PhaseCustomMap.ToJson(editor.Room());
+            var tools = new System.Collections.Generic.List<int>(); var masks = new System.Collections.Generic.List<int>();
+            for (int slot = 0; slot < PhaseEditor.ImportSlot; slot++)
+            {
+                var at = Center(PhaseEditor.SlotIn(view, slot));
+                yield return Point(view, at);
+                Assert.That(editor.Hover, Is.EqualTo(slot));
+                var hovered = Panel();
+                Assert.That(hovered, Is.Not.EqualTo(still), $"slot {slot} shows a hover highlight");
+                yield return Point(view, at, MouseButton.Left); yield return Point(view, at);
+                if (slot < PhaseEditor.MaskSlot) tools.Add(editor.Tool); else masks.Add(editor.Mask);
+                still = Panel();
+            }
+            Assert.That(tools, Is.EqualTo(tools.Distinct()).And.EquivalentTo(new[] { 0, 1, 2, 6, 7, 11, 12, PhaseEditor.PlatformTool, PhaseEditor.GearTool }), "each type slot picks its own tool");
+            Assert.That(masks, Is.EqualTo(masks.Distinct()).And.EquivalentTo(Enumerable.Range(1, 7)), "each color slot picks its own color");
+            Assert.That(PhaseCustomMap.ToJson(editor.Room()), Is.EqualTo(draft), "panel clicks never paint");
+
+            // A drag that starts on the panel never paints; strokes that start on the grid paint and erase.
+            var terrain = Center(PhaseEditor.SlotIn(view, 0)); var blue = Center(PhaseEditor.SlotIn(view, PhaseEditor.MaskSlot + 2));
+            yield return Point(view, blue, MouseButton.Left); yield return Point(view, blue);
+            yield return Point(view, terrain, MouseButton.Left);
+            yield return Point(view, Cell(10, 10), MouseButton.Left); yield return Point(view, Cell(11, 10), MouseButton.Left); yield return Point(view, Cell(11, 10));
+            Assert.That((editor.Tool, editor.Mask, PhaseCustomMap.ToJson(editor.Room())), Is.EqualTo((PhaseEditor.Terrain, 2, draft)), "a drag from the panel never paints");
+            yield return Point(view, Cell(10, 10), MouseButton.Left); yield return Point(view, Cell(11, 10), MouseButton.Left); yield return Point(view, Cell(11, 10));
+            Assert.That(editor.Room().blocks.Count(b => b.y == 80 && (b.x == 80 || b.x == 88) && b.phaseMask == 2), Is.EqualTo(2), "a stroke on the grid paints");
+            yield return Point(view, Cell(10, 10), MouseButton.Right); yield return Point(view, Cell(10, 10));
+            Assert.That(editor.Room().blocks.Count(b => b.y == 80), Is.EqualTo(1), "right-click erases");
+
+            // Terrain over Wick's start refuses the playtest and blinks the spawn; clearing it lets the play slot start.
+            var play = Center(PhaseEditor.SlotIn(view, PhaseEditor.PlaySlot)); var white = Center(PhaseEditor.SlotIn(view, PhaseEditor.MaskSlot));
+            yield return Point(view, white, MouseButton.Left); yield return Point(view, white);
+            yield return Point(view, Cell(editor.SpawnCell.x, editor.SpawnCell.y), MouseButton.Left); yield return Point(view, Cell(editor.SpawnCell.x, editor.SpawnCell.y));
+            yield return Point(view, play, MouseButton.Left); yield return Point(view, play);
+            Assert.That((editor.Playtest, editor.SpawnBlocked), Is.EqualTo(((PhaseSandbox)null, true)), "a blocked spawn refuses the playtest and blinks");
+            yield return Point(view, Cell(editor.SpawnCell.x, editor.SpawnCell.y), MouseButton.Right); yield return Point(view, Cell(editor.SpawnCell.x, editor.SpawnCell.y));
+            // The play and back slots work by mouse too; the playtest returns to the same view.
+            yield return Point(view, play, MouseButton.Left); yield return Point(view, play);
+            Assert.That(editor.Playtest, Is.Not.Null, "the play slot starts a playtest");
+            yield return Tap(Key.Escape);
+            Assert.That((editor.Playtest, texture.width, texture.height), Is.EqualTo(((PhaseSandbox)null, view.x, view.y)), "the playtest returns to the editor view");
+            var back = Center(PhaseEditor.SlotIn(view, PhaseEditor.BackSlot));
+            yield return Point(view, back, MouseButton.Left); yield return Point(view, back);
+            yield return WaitFor(PhaseTitle.Scene);
+            LogAssert.NoUnexpectedReceived();
+        }
+        finally
+        {
+            if (saved == null) PlayerPrefs.DeleteKey(PhaseEditor.DraftKey); else PlayerPrefs.SetString(PhaseEditor.DraftKey, saved);
+            PlayerPrefs.Save();
+        }
+    }
+
     static PhaseSandbox Sandbox() => Object.FindAnyObjectByType<PhaseSandbox>();
     [UnityTest]
     public IEnumerator PauseFreezesPlayAndKeySettingsRebindAndPersist()
@@ -141,7 +289,7 @@ public class MenuTests : InputTestFixture
             Assert.That(sandbox.Menu.Choice, Is.EqualTo(2));
             yield return Tap(Key.Enter);
             var keys = sandbox.Keys;
-            Assert.That(keys, Is.Not.Null, "the keyboard icon opens key settings");
+            Assert.That(keys, Is.Not.Null, "the gear opens settings");
             for (int i = 0; i < 4; i++) yield return Tap(Key.DownArrow);
             yield return Tap(Key.Enter);
             Assert.That(keys.Capturing, Is.True);
@@ -194,7 +342,7 @@ public class MenuTests : InputTestFixture
         var title = Object.FindAnyObjectByType<PhaseTitle>();
         for (int i = 0; i < 3; i++) yield return Tap(Key.RightArrow);
         yield return Tap(Key.Enter);
-        Assert.That((title.Choice, title.Keys != null), Is.EqualTo((3, true)), "title keyboard icon opens key settings");
+        Assert.That((title.Choice, title.Keys != null), Is.EqualTo((3, true)), "title gear opens settings");
         yield return Tap(Key.Escape);
         Assert.That(title.Keys, Is.Null);
         yield return Tap(Key.LeftArrow); yield return Tap(Key.LeftArrow);
@@ -203,18 +351,20 @@ public class MenuTests : InputTestFixture
         yield return Tap(Key.Escape);
         Assert.That(title.LevelSelect, Is.Null);
         yield return Tap(Key.Enter);
+        int columns = PhaseLevels.Columns(PhaseSandbox.ViewSize(Screen.width, Screen.height)), second = columns + 1;
         yield return Tap(Key.RightArrow); yield return Tap(Key.DownArrow);
-        Assert.That(title.LevelSelect.Choice, Is.EqualTo(5));
+        Assert.That(title.LevelSelect.Choice, Is.EqualTo(second));
         yield return Tap(Key.Enter);
-        yield return WaitFor("PhaseDemo6");
+        yield return WaitFor(PhaseSandbox.Levels[second]);
 
         yield return Tap(Key.Escape); yield return Tap(Key.RightArrow); yield return Tap(Key.Enter);
         var levels = Sandbox().LevelSelect;
-        Assert.That(levels.Choice, Is.EqualTo(5), "pause level select starts at the current level");
-        yield return Tap(Key.DownArrow); yield return Tap(Key.DownArrow); yield return Tap(Key.DownArrow); yield return Tap(Key.RightArrow);
-        Assert.That(levels.Choice, Is.EqualTo(10));
+        Assert.That(levels.Choice, Is.EqualTo(second), "pause level select starts at the current level");
+        yield return Tap(Key.DownArrow); yield return Tap(Key.DownArrow); yield return Tap(Key.DownArrow);
+        for (int i = 0; i < columns; i++) yield return Tap(Key.RightArrow);
+        Assert.That(levels.Choice, Is.EqualTo(14), "the bottom row stops at the last level");
         yield return Tap(Key.Z);
-        yield return WaitFor(PhaseSandbox.Levels[10]);
+        yield return WaitFor(PhaseSandbox.Levels[14]);
 
         yield return SceneManager.LoadSceneAsync("PhaseDemo12"); yield return null;
         var sandbox = Sandbox();
@@ -230,9 +380,75 @@ public class MenuTests : InputTestFixture
         LogAssert.NoUnexpectedReceived();
     }
 
+    // Lit pixels at the switch's off and on knob centers. The knob is cell-relative page pixels (19, 7) and (24, 7).
+    static (bool off, bool on) Knob(PhaseKeys keys)
+    {
+        var size = PhaseSandbox.ViewSize(Screen.width, Screen.height);
+        int scale = UiZoom.Fit(size, 67, 128).Scale;
+        int ox = (size.x - 67 * scale) / 2, oy = (size.y - 128 * scale) / 2;
+        var texture = new Texture2D(size.x, size.y);
+        try
+        {
+            var frame = new PixelFrame(texture); keys.Draw(frame); frame.Apply();
+            var pixels = texture.GetPixels32();
+            bool Lit(int pageX, int pageY)
+            {
+                int x = ox + pageX * scale + scale / 2, y = oy + pageY * scale + scale / 2;
+                return pixels[(size.y - 1 - y) * size.x + x].Equals(PixelFrame.Light);
+            }
+            return (Lit(17 + 19, 96 + 7), Lit(17 + 24, 96 + 7));
+        }
+        finally { Object.Destroy(texture); }
+    }
+    [UnityTest]
+    public IEnumerator SettingsFullScreenSwitchFollowsKeysClicksAndScenes()
+    {
+        // Screen.fullScreen does nothing in the Editor, so the switch drives a stand-in here.
+        var (isFull, setFull) = (PhaseKeys.IsFullScreen, PhaseKeys.SetFullScreen);
+        bool full = false; int requests = 0;
+        PhaseKeys.IsFullScreen = () => full; PhaseKeys.SetFullScreen = on => { full = on; requests++; };
+        try
+        {
+            yield return OpenTitle();
+            var title = Object.FindAnyObjectByType<PhaseTitle>();
+            for (int i = 0; i < 3; i++) yield return Tap(Key.RightArrow);
+            yield return Tap(Key.Z);
+            var keys = title.Keys;
+            Assert.That(keys, Is.Not.Null, "jump on the gear opens settings");
+            for (int i = 0; i < PhaseKeys.FullScreenRow; i++) yield return Tap(Key.DownArrow);
+            Assert.That((keys.Row, Knob(keys)), Is.EqualTo((PhaseKeys.FullScreenRow, (true, false))), "down reaches the fullscreen switch, off");
+            yield return Tap(Key.Enter);
+            Assert.That((full, Knob(keys)), Is.EqualTo((true, (false, true))), "Enter turns fullscreen on");
+            yield return Tap(Key.Z);
+            Assert.That((full, keys.Capturing), Is.EqualTo((false, false)), "jump turns it off");
+
+            var mouse = InputSystem.AddDevice<Mouse>();
+            var size = PhaseSandbox.ViewSize(Screen.width, Screen.height); var center = PhaseKeys.Area(size, PhaseKeys.FullScreenRow, 0).center;
+            var point = new Vector2(center.x / size.x * Screen.width, (1 - center.y / size.y) * Screen.height);
+            InputSystem.QueueStateEvent(mouse, new MouseState { position = point }.WithButton(MouseButton.Left)); yield return null; yield return null;
+            InputSystem.QueueStateEvent(mouse, new MouseState { position = point }); yield return null;
+            Assert.That(full, Is.True, "a click toggles the switch");
+
+            // Fullscreen is player state, so a level's pause settings show the same switch.
+            yield return Tap(Key.Escape);
+            for (int i = 0; i < 3; i++) yield return Tap(Key.LeftArrow);
+            yield return Tap(Key.Enter);
+            yield return WaitFor("PhaseDemo1");
+            var sandbox = Sandbox();
+            yield return Tap(Key.Escape); yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Enter);
+            keys = sandbox.Keys;
+            for (int i = 0; i < PhaseKeys.FullScreenRow; i++) yield return Tap(Key.DownArrow);
+            Assert.That(Knob(keys), Is.EqualTo((false, true)), "the switch stays on in another scene");
+            yield return Tap(Key.Enter);
+            Assert.That((full, requests), Is.EqualTo((false, 4)));
+            LogAssert.NoUnexpectedReceived();
+        }
+        finally { PhaseKeys.IsFullScreen = isFull; PhaseKeys.SetFullScreen = setFull; }
+    }
+
     IEnumerator Move(Key key, int count) { for (int i = 0; i < count; i++) yield return Tap(key); }
     [UnityTest]
-    public IEnumerator EditorPlacesPlatformsAndGearsInTwoSteps()
+    public IEnumerator EditorDrawsAPlatformLineThenPlaytestsTheDiagonal()
     {
         string saved = PlayerPrefs.HasKey(PhaseEditor.DraftKey) ? PlayerPrefs.GetString(PhaseEditor.DraftKey) : null, clipboard = GUIUtility.systemCopyBuffer;
         PlayerPrefs.DeleteKey(PhaseEditor.DraftKey);
@@ -242,37 +458,39 @@ public class MenuTests : InputTestFixture
             yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
             yield return WaitFor(PhaseEditor.Scene);
             var editor = Object.FindAnyObjectByType<PhaseEditor>();
-            yield return Move(Key.X, 11);
-            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.ReturnPlatform));
+            yield return Move(Key.X, 5);
+            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.PlatformTool));
             yield return Move(Key.UpArrow, 4);
             yield return Tap(Key.Z);
-            Assert.That((editor.Anchor, editor.Room().platforms.Length), Is.EqualTo(((Vector2Int?)new Vector2Int(8, 14), 0)), "jump places the body first");
+            Assert.That((editor.Anchor, editor.Room().platforms.Length), Is.EqualTo(((Vector2Int?)new Vector2Int(8, 14), 0)), "the first press places only the start");
             yield return Tap(Key.Escape);
-            Assert.That((editor.Anchor, Object.FindAnyObjectByType<PhaseEditor>()), Is.EqualTo(((Vector2Int?)null, editor)), "escape cancels without leaving");
-            yield return Tap(Key.Z); yield return Move(Key.RightArrow, 4); yield return Tap(Key.UpArrow); yield return Tap(Key.Z);
+            Assert.That((editor.Anchor, Object.FindAnyObjectByType<PhaseEditor>()), Is.EqualTo(((Vector2Int?)null, editor)), "escape drops a start that has no line");
+            yield return Tap(Key.Z); yield return Move(Key.RightArrow, 4); yield return Move(Key.UpArrow, 1); yield return Tap(Key.Z);
             var platform = editor.Room().platforms.Single();
             Assert.That((string.Join(",", platform.nodeX.Concat(platform.nodeY)), platform.w, platform.h, platform.returns, editor.Anchor),
-                Is.EqualTo(("64,96,112,112", 24.0, 8.0, true, (Vector2Int?)null)), "a returning route keeps to one axis");
+                Is.EqualTo(("64,96,112,104", 24.0, 8.0, false, (Vector2Int?)new Vector2Int(8, 14))), "the next press keeps both axes");
+            yield return Move(Key.RightArrow, 3); yield return Move(Key.DownArrow, 2); yield return Tap(Key.Z);
+            platform = editor.Room().platforms.Single();
+            Assert.That(string.Join(",", platform.nodeX.Concat(platform.nodeY)), Is.EqualTo("64,96,120,112,104,120"), "another press extends the same line");
+            yield return Tap(Key.C);
+            Assert.That((editor.Anchor, editor.Room().platforms.Single().nodeX.Length), Is.EqualTo(((Vector2Int?)null, 3)), "grab ends the line");
 
-            yield return Tap(Key.X);
-            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.PlatformTool));
-            yield return Move(Key.RightArrow, 8); yield return Move(Key.UpArrow, 3);
+            yield return Move(Key.RightArrow, 5); yield return Move(Key.UpArrow, 3);
             yield return Tap(Key.Z); yield return Tap(Key.C);
-            Assert.That((editor.Anchor, editor.Room().platforms.Length), Is.EqualTo(((Vector2Int?)null, 1)), "erase cancels a pending body");
+            Assert.That((editor.Anchor, editor.Room().platforms.Length), Is.EqualTo(((Vector2Int?)null, 1)), "grab drops a new start");
             yield return Tap(Key.Z); yield return Move(Key.RightArrow, 4); yield return Move(Key.DownArrow, 2); yield return Tap(Key.Z);
             platform = editor.Room().platforms.Last();
-            Assert.That((string.Join(",", platform.nodeX.Concat(platform.nodeY)), platform.returns), Is.EqualTo(("160,192,80,96", false)));
+            Assert.That((string.Join(",", platform.nodeX.Concat(platform.nodeY)), platform.returns), Is.EqualTo(("160,192,96,112", false)));
 
             yield return Tap(Key.X);
-            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.GearTool));
-            yield return Move(Key.RightArrow, 4); yield return Move(Key.UpArrow, 2);
-            yield return Tap(Key.Z); yield return Move(Key.RightArrow, 5); yield return Move(Key.DownArrow, 6); yield return Tap(Key.Z);
+            Assert.That((editor.Tool, editor.Anchor), Is.EqualTo((PhaseEditor.GearTool, (Vector2Int?)null)));
+            yield return Tap(Key.Z); yield return Move(Key.RightArrow, 4); yield return Move(Key.DownArrow, 2); yield return Tap(Key.Z);
             var gear = editor.Room().gears.Single();
             Assert.That((gear.wall.x, gear.wall.y, gear.wall.w, gear.wall.h, gear.top, gear.platform.x, gear.platform.y, gear.platform.w, gear.platform.h, gear.endX),
-                Is.EqualTo((224.0, 80.0, 8.0, 56.0, 56.0, 240.0, 128.0, 56.0, 8.0, 264.0)));
+                Is.EqualTo((192.0, 112.0, 8.0, 56.0, 96.0, 208.0, 128.0, 56.0, 8.0, 224.0)));
 
-            yield return Move(Key.LeftArrow, 13); yield return Move(Key.UpArrow, 6);
-            Assert.That(editor.Cursor, Is.EqualTo(new Vector2Int(20, 10)));
+            yield return Move(Key.LeftArrow, 19); yield return Move(Key.UpArrow, 2);
+            Assert.That(editor.Cursor, Is.EqualTo(new Vector2Int(9, 14)));
             yield return Move(Key.X, 3); yield return Tap(Key.Z);
             Assert.That((editor.Tool, editor.Room().blocks.Length), Is.EqualTo((PhaseEditor.Terrain, PhaseEditor.Columns)), "terrain never paints over a platform");
             yield return Tap(Key.C);
@@ -290,7 +508,14 @@ public class MenuTests : InputTestFixture
             var sandbox = editor.Playtest;
             Assert.That((sandbox.Controller.movers.Length, sandbox.Controller.gears.Length), Is.EqualTo((1, 1)));
             Assert.That((sandbox.Controller.movers[0].x, sandbox.Controller.movers[0].y, sandbox.Controller.gears[0].wall.x, sandbox.Controller.gears[0].platform.y),
-                Is.EqualTo((64.0, 112.0, 224.0, 128.0)), "playtest mechanisms start at their authored cells");
+                Is.EqualTo((160.0, 96.0, 192.0, 128.0)), "playtest mechanisms start at their authored cells");
+            int frame = Time.frameCount; double time = sandbox.Controller.time, x = sandbox.Controller.movers[0].x, y = sandbox.Controller.movers[0].y;
+            yield return Tap(Key.X);
+            yield return new WaitForSeconds(.45f);
+            Assert.That(Time.frameCount, Is.GreaterThan(frame));
+            Assert.That(sandbox.Controller.time, Is.GreaterThan(time));
+            Assert.That(sandbox.Controller.movers[0].x, Is.GreaterThan(x), "the dash moves the platform along x");
+            Assert.That(sandbox.Controller.movers[0].y, Is.GreaterThan(y), "the same dash moves the platform along y");
             yield return Tap(Key.Escape);
             yield return Tap(Key.Escape);
             yield return WaitFor(PhaseTitle.Scene);
@@ -304,5 +529,63 @@ public class MenuTests : InputTestFixture
             if (saved == null) PlayerPrefs.DeleteKey(PhaseEditor.DraftKey); else PlayerPrefs.SetString(PhaseEditor.DraftKey, saved);
             PlayerPrefs.Save(); GUIUtility.systemCopyBuffer = clipboard;
         }
+    }
+
+    static Vector2 ScreenPoint(Vector2Int size, int index)
+    {
+        int scale = UiZoom.Fit(size, 80, 44).Scale;
+        int width = 3 * PhaseMenu.Pitch + PhaseMenu.Size;
+        int middle = size.y / 2 + 11 * scale;
+        int ox = (size.x - width * scale) / 2, oy = middle - PhaseMenu.Size * scale / 2;
+        int x = ox + (index * PhaseMenu.Pitch + PhaseMenu.Size / 2) * scale + scale / 2;
+        int y = oy + (PhaseMenu.Size / 2) * scale + scale / 2;
+        return new Vector2(x / (float)size.x * Screen.width, (1f - y / (float)size.y) * Screen.height);
+    }
+    IEnumerator Click(Mouse mouse, Vector2 point)
+    {
+        InputSystem.QueueStateEvent(mouse, new MouseState { position = point }.WithButton(MouseButton.Left)); yield return null; yield return null;
+        InputSystem.QueueStateEvent(mouse, new MouseState { position = point }); yield return null;
+    }
+    [UnityTest]
+    public IEnumerator FirstClickQuickTapAndMouseReachTheMenus()
+    {
+        yield return SceneManager.LoadSceneAsync(PhaseTitle.Scene);
+        keyboard = InputSystem.AddDevice<Keyboard>();
+        var mouse = InputSystem.AddDevice<Mouse>();
+        InputSystem.QueueStateEvent(keyboard, new KeyboardState()); yield return null;
+        var title = Object.FindAnyObjectByType<PhaseTitle>();
+        var size = PhaseSandbox.ViewSize(Screen.width, Screen.height);
+        var before = title.GetComponentInChildren<SpriteRenderer>().sprite.texture.GetPixels32();
+        // Hovering lights the icon under the pointer without moving the choice.
+        InputSystem.QueueStateEvent(mouse, new MouseState { position = ScreenPoint(size, 1) }); yield return null; yield return null;
+        Assert.That((title.Choice, title.Pointer), Is.EqualTo((0, 1)), "the pointer lights the level-select icon");
+        var hovered = title.GetComponentInChildren<SpriteRenderer>().sprite.texture.GetPixels32();
+        Assert.That(hovered.Count(p => p.Equals(PixelFrame.Light)), Is.GreaterThan(before.Count(p => p.Equals(PixelFrame.Light))), "the hovered icon is drawn at full light");
+        before = hovered;
+        title.SetControlsOpen("false");
+        yield return Click(mouse, ScreenPoint(size, 1));
+        Assert.That(title.LevelSelect, Is.Not.Null, "the click that clears the input gate opens level select");
+        var after = title.GetComponentInChildren<SpriteRenderer>().sprite.texture.GetPixels32();
+        int light = 0, replaced = 0;
+        for (int i = 0; i < before.Length; i++) if (before[i].Equals(PixelFrame.Light)) { light++; if (!after[i].Equals(before[i])) replaced++; }
+        Assert.That(replaced, Is.GreaterThan(light / 2), "level select replaces the title");
+        for (int i = 0; i < PhaseSandbox.Levels.Length; i++)
+        {
+            var tile = PhaseLevels.Tile(size, i);
+            Assert.That(tile.xMin >= 0 && tile.yMin >= 0 && tile.xMax <= size.x && tile.yMax <= size.y, Is.True, $"tile {i} stays inside the view");
+        }
+        yield return Tap(Key.Escape);
+        Assert.That(title.LevelSelect, Is.Null);
+        InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.LeftArrow));
+        InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+        yield return null;
+        Assert.That(title.Choice, Is.EqualTo(0), "a tap shorter than a frame moves the selection");
+        yield return Click(mouse, ScreenPoint(size, 3));
+        var keys = title.Keys;
+        Assert.That(keys, Is.Not.Null, "clicking the gear opens settings");
+        var cap = PhaseKeys.Area(size, 4, 1).center;
+        yield return Click(mouse, new Vector2(cap.x / size.x * Screen.width, (1f - cap.y / size.y) * Screen.height));
+        Assert.That((keys.Capturing, keys.Row, keys.Column), Is.EqualTo((true, 4, 1)), "clicking a key cap captures that slot");
+        LogAssert.NoUnexpectedReceived();
     }
 }
