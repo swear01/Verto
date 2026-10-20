@@ -7,17 +7,52 @@ using UnityEngine.SceneManagement;
 
 namespace Phase
 {
-    // Draws over a rendered frame; coordinates are frame pixels from the top-left.
+    // An integer UI scale and the frame pixel where a layout's (0, 0) lands.
+    public readonly struct UiZoom
+    {
+        public readonly int Scale;
+        public readonly Vector2Int Origin;
+        public UiZoom(int scale, Vector2Int origin) { Scale = scale; Origin = origin; }
+        public static bool Fits(Vector2Int view, int width, int height) => width <= view.x * .8f && height <= view.y * .8f;
+        // Centers a width×height layout at the largest integer scale that stays within 80% of the view on both axes.
+        public static UiZoom Fit(Vector2Int view, int width, int height)
+        {
+            int scale = 1;
+            while (Fits(view, width * (scale + 1), height * (scale + 1))) scale++;
+            return new UiZoom(scale, new Vector2Int((view.x - width * scale) / 2, (view.y - height * scale) / 2));
+        }
+        public Vector2Int Local(Vector2Int framePoint) =>
+            new Vector2Int(Mathf.FloorToInt((framePoint.x - Origin.x) / (float)Scale), Mathf.FloorToInt((framePoint.y - Origin.y) / (float)Scale));
+        public RectInt Frame(RectInt local) => new RectInt(Origin + local.position * Scale, local.size * Scale);
+    }
+
+    // Draws over a rendered frame; coordinates are frame pixels from the top-left, or layout pixels in a Zoom view.
     public sealed class PixelFrame
     {
-        public static readonly Color32 Ink = new Color32(11, 15, 22, 255), Light = new Color32(234, 223, 197, 255), Warning = new Color32(255, 143, 145, 255);
+        public static readonly Color32 Ink = new Color32(11, 15, 22, 255), Light = new Color32(234, 223, 197, 255), Warning = new Color32(255, 143, 145, 255),
+            Selection = new Color32(121, 201, 255, 255);
         readonly Texture2D texture;
         readonly Color32[] pixels;
+        readonly int scale = 1, left, top, textureWidth, textureHeight;
         public int Width { get; }
         public int Height { get; }
-        public PixelFrame(Texture2D texture) { this.texture = texture; pixels = texture.GetPixels32(); Width = texture.width; Height = texture.height; }
+        public PixelFrame(Texture2D texture)
+        { this.texture = texture; pixels = texture.GetPixels32(); Width = textureWidth = texture.width; Height = textureHeight = texture.height; }
+        PixelFrame(PixelFrame frame, UiZoom zoom)
+        {
+            texture = frame.texture; pixels = frame.pixels; textureWidth = frame.textureWidth; textureHeight = frame.textureHeight;
+            scale = frame.scale * zoom.Scale; left = frame.left + zoom.Origin.x * frame.scale; top = frame.top + zoom.Origin.y * frame.scale;
+            Width = (frame.Width - zoom.Origin.x) / zoom.Scale; Height = (frame.Height - zoom.Origin.y) / zoom.Scale;
+        }
+        // A view sharing these pixels that draws each pixel as a zoom.Scale square, with (0, 0) at zoom.Origin.
+        public PixelFrame Zoom(UiZoom zoom) => new PixelFrame(this, zoom);
         public void Set(int x, int y, Color32 color, float amount = 1)
-        { if (x >= 0 && x < Width && y >= 0 && y < Height) { int i = (Height - 1 - y) * Width + x; pixels[i] = Color32.Lerp(pixels[i], color, amount); } }
+        {
+            for (int py = top + y * scale; py < top + (y + 1) * scale; py++)
+                for (int px = left + x * scale; px < left + (x + 1) * scale; px++)
+                    if (px >= 0 && px < textureWidth && py >= 0 && py < textureHeight)
+                    { int i = (textureHeight - 1 - py) * textureWidth + px; pixels[i] = Color32.Lerp(pixels[i], color, amount); }
+        }
         public void Fill(int x, int y, int w, int h, Color32 color, float amount = 1)
         { for (int py = y; py < y + h; py++) for (int px = x; px < x + w; px++) Set(px, py, color, amount); }
         public void Outline(int x, int y, int w, int h, Color32 color, float amount = 1)
@@ -30,15 +65,21 @@ namespace Phase
             for (int y = 0; y < art.Length * scale; y++) for (int x = 0; x < art[0].Length * scale; x++)
                 if (art[y / scale][x / scale] == '#') Set(left + x, top + y, color, amount);
         }
+        // Opaque texture rows as GetPixels32 returns them, bottom row first.
+        public void Image(Color32[] image, int width, int left, int top)
+        {
+            int height = image.Length / width;
+            for (int y = 0; y < height; y++) for (int x = 0; x < width; x++) Set(left + x, top + y, image[(height - 1 - y) * width + x]);
+        }
         // A red border marks a rejected change.
         public void Warn() { Outline(0, 0, Width, Height, Warning); Outline(1, 1, Width - 2, Height - 2, Warning); }
-        // A 44-row band across the middle of the frame; returns its top row.
-        public int Banner()
+        // A band across the middle of the frame; returns its top row.
+        public int Banner(int rows = 44)
         {
-            int top = Height / 2 - 22;
-            for (int y = top; y < top + 44; y++)
+            int top = Height / 2 - rows / 2;
+            for (int y = top; y < top + rows; y++)
             {
-                bool edge = y == top || y == top + 43;
+                bool edge = y == top || y == top + rows - 1;
                 Fill(0, y, Width, 1, edge ? Light : Ink, edge ? .35f : .82f);
             }
             return top;

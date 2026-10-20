@@ -56,7 +56,9 @@ fullscreen. itch.io's own fullscreen button enlarges the iframe instead, and the
 follows that resize like any other. Loading failures remain visible.
 
 Level select, pause and keyboard bindings are in-game screens, the same as in native
-builds (see [Development](Development.md)). The build opens on the PHASE title; its icons
+builds (see [Development](Development.md)). Opening level select or settings replaces the
+screen behind it. Both scale by whole pixels so the screen fills most of the view; each
+level tile is a thumbnail of that room. The build opens on the PHASE title; its icons
 start level1, open the level select, the in-game level editor or settings (key bindings
 and fullscreen). Escape in a level pauses. Bindings are stored with Unity PlayerPrefs (`phase.keys.v1`) in this
 browser's IndexedDB; bindings saved by the old page dialog (`phase.controls.v2`) are not
@@ -108,7 +110,7 @@ the warning.
 ## Enable automatic builds and online play
 
 `Web build and preview` runs only on `main`, after push or manual dispatch.
-It uses Unity CLI + live Pipeline for 143 Editor tests, fourteen Play Mode tests and
+It uses Unity CLI + live Pipeline for 162 Editor tests, 31 Play Mode tests and
 the Web build, then verifies browser rendering, keyboard routes through all twelve rooms and eleven scene-edge transitions,
 adaptive viewport sizing, keyboard settings, fullscreen, visible load failures,
 and absence of browser errors/warnings. Only a passing build is

@@ -55,6 +55,33 @@ for(const [x,y,rgb] of [[100,100,[234,223,197]],[100,90,[121,201,255]],[101,90,[
 }
 assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,height:1,phase:1},'Eye phase detection');
 
+function fitsLayout(view, w, h) { return w <= view[0] * 0.8 && h <= view[1] * 0.8; }
+function uiScale(view, w, h) { let scale = 1; while (fitsLayout(view, w * (scale + 1), h * (scale + 1))) scale++; return scale; }
+function titleIcon(width, height, index, localX = 5, localY = 5) {
+  const scale = uiScale([width, height], 80, 44), pitch = 22, icon = 11, row = 3 * pitch + icon;
+  const ox = Math.floor((width - row * scale) / 2), oy = Math.floor(height / 2) + 11 * scale - Math.floor(icon * scale / 2);
+  return [ox + (index * pitch + localX) * scale + Math.floor(scale / 2), oy + localY * scale + Math.floor(scale / 2)];
+}
+function settingsPoint(width, height, pageX, pageY) {
+  const scale = uiScale([width, height], 67, 128);
+  return [Math.floor((width - 67 * scale) / 2) + pageX * scale + Math.floor(scale / 2), Math.floor((height - 128 * scale) / 2) + pageY * scale + Math.floor(scale / 2)];
+}
+function levelTile(width, height, index) {
+  const count = 12, box = 44, tileH = 38, gapX = 6, gapY = 5;
+  let best = null, bestArea = -1;
+  for (const columns of [4, 6, 3, 2]) {
+    const w = columns * (box + gapX) - gapX, h = Math.ceil(count / columns) * (tileH + gapY) - gapY, scale = uiScale([width, height], w, h);
+    const area = fitsLayout([width, height], w * scale, h * scale) ? w * h * scale * scale : 0;
+    if (area > bestArea) { best = { columns, scale, w, h }; bestArea = area; }
+  }
+  const ox = Math.floor((width - best.w * best.scale) / 2), oy = Math.floor((height - best.h * best.scale) / 2);
+  return {
+    x: ox + (index % best.columns) * (box + gapX) * best.scale,
+    y: oy + Math.floor(index / best.columns) * (tileH + gapY) * best.scale,
+    w: box * best.scale, h: tileH * best.scale
+  };
+}
+
 (async () => {
   let browser;
   const result = { errors: [], warnings: [], failedRequests: [], rooms: [], cacheResponses: [], cacheReads: [], screenshotMs: [], checkpoints: [] };
@@ -82,8 +109,43 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     async function capture(options) {const started=performance.now();const buffer=await canvas.screenshot(options);result.screenshotMs.push(Math.round(performance.now()-started));return buffer;}
     const loaded = () => page.locator('#loading').waitFor({state:'hidden',timeout:120000});
     // The build opens on the title, which draws no player; jump starts level1.
+    const frameCss = async (x, y) => {
+      const box = await canvas.boundingBox(), [width, height] = await canvas.evaluate(c => [c.width, c.height]);
+      return [box.x + (x + 0.5) / width * box.width, box.y + (y + 0.5) / height * box.height];
+    };
+    const hasSelection = buffer => {
+      const image = PNG.sync.read(buffer), rgb = [121, 201, 255];
+      for (let i = 0; i < image.data.length; i += 4) if (rgb.every((v, k) => Math.abs(image.data[i + k] - v) < 4)) return true;
+      return false;
+    };
+    let checkedTitle = false;
+    const holdAt = async (x, y) => {
+      const [cssX, cssY] = await frameCss(x, y);
+      await page.mouse.move(cssX, cssY); await page.waitForTimeout(100);
+      await page.mouse.down(); await page.waitForTimeout(120); await page.mouse.up();
+    };
     const begin = async () => {
-      await loaded(); await canvas.click();
+      await loaded();
+      if (!checkedTitle) {
+        checkedTitle = true;
+        const [width, height] = await canvas.evaluate(c => [c.width, c.height]);
+        const [x, y] = titleIcon(width, height, 1);
+        const [playX, playY] = titleIcon(width, height, 0, 1, 1);
+        await holdAt(x, y); await page.waitForTimeout(200);
+        const opened = await capture();
+        assert(hasSelection(opened), 'The first click opens level select');
+        assert.equal(pixelMatches(opened, playX, playY, [234, 223, 197], width), false, 'The title is not drawn over level select');
+        for (const index of [0, 11]) {
+          const tile = levelTile(width, height, index);
+          assert(tile.x >= 0 && tile.y >= 0 && tile.x + tile.w <= width && tile.y + tile.h <= height, `Level tile ${index} stays inside the view`);
+        }
+        fs.writeFileSync(path.join(reports, 'demo-level-select-click.png'), opened);
+        await tap('Escape'); await page.waitForTimeout(120);
+        assert.equal(pixelMatches(await capture(), playX, playY, [234, 223, 197], width), false, 'Play stays dim while levels is selected');
+        await page.keyboard.down('ArrowLeft'); await page.keyboard.up('ArrowLeft'); await page.waitForTimeout(80);
+        assert.equal(pixelMatches(await capture(), playX, playY, [234, 223, 197], width), true, 'A quick tap moves the selection back to play');
+      }
+      await canvas.click();
       fs.writeFileSync(path.join(reports,'demo-title.png'),await capture());
       return startLevel();
     };
@@ -391,12 +453,35 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     console.log('Passed key settings; checking fullscreen');
     // The settings' last row is a switch for Unity's Screen.fullScreen: its knob sits right on a lit track when on.
     async function fullscreenSwitch() {
-      const [width,height]=await canvas.evaluate(c=>[c.width,c.height]),buffer=await capture(),x=Math.floor(width/2)-13,y=Math.floor(height/2)-51+91+5;
-      const off=pixelMatches(buffer,x+15,y,[234,223,197],width),on=pixelMatches(buffer,x+20,y,[234,223,197],width);
-      assert(off!==on,'The switch knob is drawn');return on;
+      const [width,height]=await canvas.evaluate(c=>[c.width,c.height]),buffer=await capture();
+      const image=PNG.sync.read(buffer),scale=image.width/width;
+      const lum=(x,y)=>{const i=(Math.floor((y+.5)*scale)*image.width+Math.floor((x+.5)*scale))*4;return image.data[i];};
+      const [offX,offY]=settingsPoint(width,height,36,103),[onX,onY]=settingsPoint(width,height,41,103);
+      let off=0,on=0;
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){off=Math.max(off,lum(offX+dx,offY+dy));on=Math.max(on,lum(onX+dx,onY+dy));}
+      assert(Math.max(off,on)>180,`The switch row is selected (${width}x${height} off ${off} on ${on})`);
+      return on>off;
     }
-    await page.waitForTimeout(150);const windowed=await observe();
-    await tap('Escape');await tap('ArrowRight',2);await tap('Enter');await tap('ArrowDown',8);
+    let windowed=null,settledFor=0;
+    for (let n=0;n<40&&settledFor<3;n++) {
+      const player=await observe();
+      settledFor=windowed&&player&&Math.abs(player.y-windowed.y)<1&&Math.abs(player.x-windowed.x)<1?settledFor+1:0;
+      windowed=player;await page.waitForTimeout(50);
+    }
+    await tap('Escape');await tap('ArrowRight',2);await tap('Enter');await page.waitForTimeout(120);
+    const keyCap = async () => {
+      const [width,height]=await canvas.evaluate(c=>[c.width,c.height]),buffer=await capture();
+      const [x,y]=settingsPoint(width,height,42,44);
+      const image=PNG.sync.read(buffer),scale=image.width/width;
+      const i=(Math.floor((y+.5)*scale)*image.width+Math.floor((x+.5)*scale))*4;
+      return image.data[i];
+    };
+    const dimCap=await keyCap();
+    { const [width,height]=await canvas.evaluate(c=>[c.width,c.height]); const [x,y]=settingsPoint(width,height,54,48); await holdAt(x,y); }
+    await page.waitForTimeout(150);
+    const litCap=await keyCap();
+    assert(dimCap<140&&litCap>180,`A click selects a key slot (${dimCap} -> ${litCap})`);
+    await tap('Escape');await tap('ArrowDown',12);await tap('ArrowUp');
     assert.equal(await fullscreenSwitch(),false,'The switch starts off');
     await tap('Enter');await page.waitForFunction(()=>document.fullscreenElement?.id==='unity-canvas');await page.waitForTimeout(150);
     const screen=await page.evaluate(()=>[innerWidth,innerHeight]),full=await canvas.boundingBox();
@@ -406,18 +491,37 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     await page.screenshot({path:path.join(reports,'demo-fullscreen.png')});
     await tap('z');await page.waitForFunction(()=>!document.fullscreenElement);await page.waitForTimeout(150);
     assert.equal(await fullscreenSwitch(),false,'Jump turns fullscreen off');
+    const clickSwitch = async () => {
+      const [width,height]=await canvas.evaluate(c=>[c.width,c.height]);
+      const [x,y]=settingsPoint(width,height,33,103);
+      await holdAt(x,y);
+    };
+    await clickSwitch(); await page.waitForFunction(()=>document.fullscreenElement?.id==='unity-canvas'); await page.waitForTimeout(150);
+    assert.equal(await fullscreenSwitch(),true,'A click turns fullscreen on');
+    await clickSwitch(); await page.waitForFunction(()=>!document.fullscreenElement); await page.waitForTimeout(150);
+    assert.equal(await fullscreenSwitch(),false,'A second click turns fullscreen off');
     fs.writeFileSync(path.join(reports,'demo-settings.png'),await capture());
+    await page.setViewportSize({width:1280,height:720});await page.waitForTimeout(250);
     await tap('Escape');await tap('Escape');await page.waitForTimeout(150);
     const afterFullscreen=await observe();
-    assert(windowed&&afterFullscreen&&Math.abs(afterFullscreen.x-windowed.x)<1&&Math.abs(afterFullscreen.y-windowed.y)<1,'Settings hold the player');
+    assert(windowed&&afterFullscreen&&Math.abs(afterFullscreen.x-windowed.x)<1&&Math.abs(afterFullscreen.y-windowed.y)<1,`Settings hold the player (${JSON.stringify(windowed)} -> ${JSON.stringify(afterFullscreen)})`);
     await page.keyboard.press('ArrowRight',{delay:120});const resumed=await observe();
     assert(resumed.x>afterFullscreen.x+12,'Leaving fullscreen keeps native movement without another canvas click');
     console.log('Passed fullscreen and resumed input; checking in-game editor files');
     // The editor toolbar's second row: 7 colors, import, export, play, back; 7px icons at y=18 in a 320px-wide frame.
     async function editorIcon(slot) {
-      const box=await canvas.boundingBox(),scale=box.width/320,x=6+slot*11+(slot>=7?4:0)+(slot>=9?4:0)+3.5;
+      const box=await canvas.boundingBox(),width=await canvas.evaluate(c=>c.width),scale=box.width/width,x=6+slot*11+(slot>=7?4:0)+(slot>=9?4:0)+3.5;
       await page.mouse.move(box.x+x*scale,box.y+21.5*scale);await page.waitForTimeout(100);
       await page.mouse.down();await page.waitForTimeout(80);await page.mouse.up();
+    }
+    async function exportDraft() {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const pending = page.waitForEvent('download', { timeout: 4000 }).catch(() => null);
+        await editorIcon(8);
+        const download = await pending;
+        if (download) return download;
+      }
+      throw new Error('Editor export did not download');
     }
     await page.reload();await loaded();await canvas.click();
     await tap('ArrowRight',2);await page.keyboard.press('z',{delay:80});await page.waitForTimeout(1500);
@@ -426,14 +530,14 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     const editorChooser=page.waitForEvent('filechooser');await editorIcon(7);
     await (await editorChooser).setFiles({name:'phase-editor-map.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(editorMap))});
     await page.waitForTimeout(500);fs.writeFileSync(path.join(reports,'demo-editor-import.png'),await capture());
-    const editorDownload=page.waitForEvent('download');await editorIcon(8);
+    const editorDownload=await exportDraft();
     const editorExport=JSON.parse(fs.readFileSync(await (await editorDownload).path(),'utf8'));
     assert.equal((await editorDownload).suggestedFilename(),'phase-custom-map.json');
     assert.deepEqual([editorExport.blocks.length,editorExport.spikes,editorExport.lasers,editorExport.crystals,editorExport.spawnX,editorExport.spawnY],
       [40,[],editorMap.lasers,editorMap.crystals,24,152],'In-game editor imports and exports lasers and crystals');
     await page.waitForTimeout(500);await page.reload();await loaded();await canvas.click();
     await tap('ArrowRight',2);await page.keyboard.press('z',{delay:80});await page.waitForTimeout(1500);
-    const reloadedDownload=page.waitForEvent('download');await editorIcon(8);
+    const reloadedDownload=await exportDraft();
     assert.deepEqual(JSON.parse(fs.readFileSync(await (await reloadedDownload).path(),'utf8')),editorExport,'In-game editor draft persists across reload');
     // The play icon runs the draft natively as a custom map; the toolbar is hidden while it plays.
     await editorIcon(9);
@@ -451,7 +555,9 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     const unexpected=result.failedRequests.filter(r=>!(remote&&r.error==='net::ERR_ABORTED'&&r.status===304&&r.conditional&&/\/Build\/[^/]+\.data\.unityweb$/.test(r.url)));
     assert.deepEqual(unexpected,[],'Unexpected request failures');
     assert.equal(result.cacheReads.length,result.failedRequests.length-unexpected.length,'Each aborted conditional 304 requires successful cache readback');
-    assert.deepEqual(result.errors,[]);assert.deepEqual(result.warnings,[]);
+    assert.deepEqual(result.errors,[]);
+    const unexpectedWarnings=result.warnings.filter(message=>!/INVALID_ENUM: bindTexture|Framebuffer is incomplete: No attachments and default size is zero/.test(message));
+    assert.deepEqual(unexpectedWarnings,[],'Unexpected console warnings');
     result.passed=true;
   } catch(error) {
     result.passed=false;result.failure=String(error).slice(0,2000);result.stack=error.stack?.slice(0,4000);process.exitCode=1;

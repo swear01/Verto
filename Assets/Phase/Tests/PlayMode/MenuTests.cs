@@ -230,17 +230,23 @@ public class MenuTests : InputTestFixture
         LogAssert.NoUnexpectedReceived();
     }
 
-    // Lit pixels at the switch's off and on knob positions, drawn at the live frame size.
+    // Lit pixels at the switch's off and on knob centers. The knob is cell-relative page pixels (19, 7) and (24, 7).
     static (bool off, bool on) Knob(PhaseKeys keys)
     {
         var size = PhaseSandbox.ViewSize(Screen.width, Screen.height);
+        int scale = UiZoom.Fit(size, 67, 128).Scale;
+        int ox = (size.x - 67 * scale) / 2, oy = (size.y - 128 * scale) / 2;
         var texture = new Texture2D(size.x, size.y);
         try
         {
             var frame = new PixelFrame(texture); keys.Draw(frame); frame.Apply();
-            var full = PhaseKeys.Area(size, PhaseKeys.FullScreenRow, 0); var pixels = texture.GetPixels32();
-            bool Lit(int x) => pixels[(size.y - 1 - full.y - 5) * size.x + full.x + x].Equals(PixelFrame.Light);
-            return (Lit(15), Lit(20));
+            var pixels = texture.GetPixels32();
+            bool Lit(int pageX, int pageY)
+            {
+                int x = ox + pageX * scale + scale / 2, y = oy + pageY * scale + scale / 2;
+                return pixels[(size.y - 1 - y) * size.x + x].Equals(PixelFrame.Light);
+            }
+            return (Lit(17 + 19, 96 + 7), Lit(17 + 24, 96 + 7));
         }
         finally { Object.Destroy(texture); }
     }
@@ -259,8 +265,8 @@ public class MenuTests : InputTestFixture
             yield return Tap(Key.Z);
             var keys = title.Keys;
             Assert.That(keys, Is.Not.Null, "jump on the gear opens settings");
-            for (int i = 0; i < 10; i++) yield return Tap(Key.DownArrow);
-            Assert.That((keys.Row, Knob(keys)), Is.EqualTo((PhaseKeys.FullScreenRow, (true, false))), "the last row is the switch, off");
+            for (int i = 0; i < PhaseKeys.FullScreenRow; i++) yield return Tap(Key.DownArrow);
+            Assert.That((keys.Row, Knob(keys)), Is.EqualTo((PhaseKeys.FullScreenRow, (true, false))), "down reaches the fullscreen switch, off");
             yield return Tap(Key.Enter);
             Assert.That((full, Knob(keys)), Is.EqualTo((true, (false, true))), "Enter turns fullscreen on");
             yield return Tap(Key.Z);
@@ -364,5 +370,57 @@ public class MenuTests : InputTestFixture
             if (saved == null) PlayerPrefs.DeleteKey(PhaseEditor.DraftKey); else PlayerPrefs.SetString(PhaseEditor.DraftKey, saved);
             PlayerPrefs.Save(); GUIUtility.systemCopyBuffer = clipboard;
         }
+    }
+
+    static Vector2 ScreenPoint(Vector2Int size, int index)
+    {
+        int scale = UiZoom.Fit(size, 80, 44).Scale;
+        int width = 3 * PhaseMenu.Pitch + PhaseMenu.Size;
+        int middle = size.y / 2 + 11 * scale;
+        int ox = (size.x - width * scale) / 2, oy = middle - PhaseMenu.Size * scale / 2;
+        int x = ox + (index * PhaseMenu.Pitch + PhaseMenu.Size / 2) * scale + scale / 2;
+        int y = oy + (PhaseMenu.Size / 2) * scale + scale / 2;
+        return new Vector2(x / (float)size.x * Screen.width, (1f - y / (float)size.y) * Screen.height);
+    }
+    IEnumerator Click(Mouse mouse, Vector2 point)
+    {
+        InputSystem.QueueStateEvent(mouse, new MouseState { position = point }.WithButton(MouseButton.Left)); yield return null; yield return null;
+        InputSystem.QueueStateEvent(mouse, new MouseState { position = point }); yield return null;
+    }
+    [UnityTest]
+    public IEnumerator FirstClickQuickTapAndMouseReachTheMenus()
+    {
+        yield return SceneManager.LoadSceneAsync(PhaseTitle.Scene);
+        keyboard = InputSystem.AddDevice<Keyboard>();
+        var mouse = InputSystem.AddDevice<Mouse>();
+        InputSystem.QueueStateEvent(keyboard, new KeyboardState()); yield return null;
+        var title = Object.FindAnyObjectByType<PhaseTitle>();
+        var size = PhaseSandbox.ViewSize(Screen.width, Screen.height);
+        var before = title.GetComponentInChildren<SpriteRenderer>().sprite.texture.GetPixels32();
+        title.SetControlsOpen("false");
+        yield return Click(mouse, ScreenPoint(size, 1));
+        Assert.That(title.LevelSelect, Is.Not.Null, "the click that clears the input gate opens level select");
+        var after = title.GetComponentInChildren<SpriteRenderer>().sprite.texture.GetPixels32();
+        int light = 0, replaced = 0;
+        for (int i = 0; i < before.Length; i++) if (before[i].Equals(PixelFrame.Light)) { light++; if (!after[i].Equals(before[i])) replaced++; }
+        Assert.That(replaced, Is.GreaterThan(light / 2), "level select replaces the title");
+        for (int i = 0; i < PhaseSandbox.Levels.Length; i++)
+        {
+            var tile = PhaseLevels.Tile(size, i);
+            Assert.That(tile.xMin >= 0 && tile.yMin >= 0 && tile.xMax <= size.x && tile.yMax <= size.y, Is.True, $"tile {i} stays inside the view");
+        }
+        yield return Tap(Key.Escape);
+        Assert.That(title.LevelSelect, Is.Null);
+        InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.LeftArrow));
+        InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+        yield return null;
+        Assert.That(title.Choice, Is.EqualTo(0), "a tap shorter than a frame moves the selection");
+        yield return Click(mouse, ScreenPoint(size, 3));
+        var keys = title.Keys;
+        Assert.That(keys, Is.Not.Null, "clicking the gear opens settings");
+        var cap = PhaseKeys.Area(size, 4, 1).center;
+        yield return Click(mouse, new Vector2(cap.x / size.x * Screen.width, (1f - cap.y / size.y) * Screen.height));
+        Assert.That((keys.Capturing, keys.Row, keys.Column), Is.EqualTo((true, 4, 1)), "clicking a key cap captures that slot");
+        LogAssert.NoUnexpectedReceived();
     }
 }

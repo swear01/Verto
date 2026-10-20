@@ -15,23 +15,30 @@ namespace Phase
             "#.....#...#.#...#.....#.#....",
             "#.....#...#.#...#.####..#####"
         };
-        static readonly string[] editIcon = { "....##.", "...#..#", "..#..#.", ".#..#..", "#..#...", "##.#...", "###...." };
-        readonly PhaseMenu menu = new PhaseMenu(PhaseMenu.PlayIcon, PhaseMenu.LevelsIcon, editIcon, PhaseMenu.KeysIcon);
+        readonly PhaseMenu menu = new PhaseMenu(PhaseMenu.PlayIcon, PhaseMenu.LevelsIcon, PhaseMenu.EditIcon, PhaseMenu.SettingsIcon);
         public int Choice => menu.Choice;
         public PhaseKeys Keys { get; private set; }
         public PhaseLevels LevelSelect { get; private set; }
         PhaseController backdrop;
 
-        int MenuTop => pixels.Height / 2 - 22 + 29;
+        // The 44-row banner (title at rows 8–21, icons centered on row 33) at the UI scale that fits the view.
+        int Scale => UiZoom.Fit(new Vector2Int(pixels.Width, pixels.Height), 80, 44).Scale;
+        int MenuMiddle => pixels.Height / 2 + 11 * Scale;
         protected override void Render()
         {
             backdrop ??= new PhaseController(new[] { new Block(0, 168, 320, 8, phaseMask: 7) }, 24, 157);
             backdrop.ResizeRoom(pixels.Width);
             pixels.Draw(backdrop, false);
-            var frame = new PixelFrame(pixels.Texture); int top = frame.Banner();
-            frame.Blit(titleText, frame.Width / 2 - titleText[0].Length, top + 8, PixelFrame.Light, 2);
-            menu.Draw(frame, top + 29);
-            Keys?.Draw(frame); LevelSelect?.Draw(frame);
+            var frame = new PixelFrame(pixels.Texture);
+            // Level select and settings replace the title rather than covering it.
+            if (Keys != null) Keys.Draw(frame);
+            else if (LevelSelect != null) LevelSelect.Draw(frame);
+            else
+            {
+                int scale = Scale, top = frame.Banner(44 * scale);
+                frame.Blit(titleText, frame.Width / 2 - titleText[0].Length * scale, top + 8 * scale, PixelFrame.Light, 2 * scale);
+                menu.Draw(frame, MenuMiddle, scale);
+            }
             frame.Apply();
         }
         protected override void Tick(Keyboard k, Mouse m)
@@ -48,7 +55,7 @@ namespace Phase
                 else if (level > 0) { SelectDemoRoom(level.ToString()); return; }
                 Refresh(); return;
             }
-            int chosen = menu.Tick(k, m, new Vector2Int(pixels.Width, pixels.Height), MenuTop, out bool changed);
+            int chosen = menu.Tick(k, m, new Vector2Int(pixels.Width, pixels.Height), MenuMiddle, out bool changed, Scale);
             if (changed) Refresh();
             if (chosen == 0) SelectDemoRoom("1");
             else if (chosen == 1) { LevelSelect = new PhaseLevels(); Refresh(); }
