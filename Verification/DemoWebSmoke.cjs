@@ -318,7 +318,7 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     await page.keyboard.down('Escape');await page.clock.runFor(50);await page.keyboard.up('Escape');await page.clock.runFor(routeRaf);
     let routeKeys=new Set(),routeFrames=0,lastRaf=0;
     result.level12Steps=[];
-    const route12=JSON.parse(fs.readFileSync(path.join(__dirname,'Room12Route.json')));
+    const route12=JSON.parse(fs.readFileSync(path.join(__dirname,'Routes','PhaseDemo12.json')));
     for(const step of route12) {
       const next=new Set();
       if(step.x)next.add(step.x<0?'ArrowLeft':'ArrowRight');
