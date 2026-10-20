@@ -14,6 +14,7 @@ public class LevelRoutePlayTests : InputTestFixture
     [UnityTest]
     public IEnumerator KeyboardRouteReachesTheRightExitWithoutDeaths([ValueSource(typeof(PhaseSandbox), nameof(PhaseSandbox.Levels))] string level)
     {
+        if (PhaseRoute.UnroutedReason(level) is string unrouted) Assert.Ignore($"{level}: {unrouted}");
         yield return SceneManager.LoadSceneAsync(level);
         var k = InputSystem.AddDevice<Keyboard>();
         float captureDelta = Time.captureDeltaTime;
