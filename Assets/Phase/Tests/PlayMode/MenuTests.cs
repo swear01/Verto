@@ -268,6 +268,130 @@ public class MenuTests : InputTestFixture
         }
     }
 
+    // Points at a frame pixel, as Point does, with the wheel turned by the given amount.
+    IEnumerator Wheel(Vector2Int view, Vector2Int frame, Vector2 turn)
+    {
+        InputSystem.QueueStateEvent(mouse, new MouseState { position = new Vector2((frame.x + .5f) * Screen.width / view.x, Screen.height - (frame.y + .5f) * Screen.height / view.y), scroll = turn });
+        yield return null; yield return null;
+    }
+    [UnityTest]
+    public IEnumerator EditorResizesAndScrollsALargeRoomThenExportsImportsAndPlaytestsIt()
+    {
+        string saved = PlayerPrefs.HasKey(PhaseEditor.DraftKey) ? PlayerPrefs.GetString(PhaseEditor.DraftKey) : null, clipboard = GUIUtility.systemCopyBuffer;
+        PlayerPrefs.DeleteKey(PhaseEditor.DraftKey);
+        try
+        {
+            yield return OpenTitle();
+            yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
+            yield return WaitFor(PhaseEditor.Scene);
+            var editor = Object.FindAnyObjectByType<PhaseEditor>();
+            mouse = InputSystem.AddDevice<Mouse>();
+            var view = PhaseEditor.ViewFor(Screen.width, Screen.height);
+            var texture = editor.GetComponentInChildren<SpriteRenderer>().sprite.texture;
+            Vector2Int At(int x, int y) => new Vector2Int((x - editor.Scroll.x) * 8 + 4, (y - editor.Scroll.y) * 8 + 4 - (180 - view.y) / 2);
+            IEnumerator Click(int slot) { var at = Center(PhaseEditor.SlotIn(view, slot)); yield return Point(view, at, MouseButton.Left); yield return Point(view, at); }
+            Assert.That((editor.RoomColumns, editor.RoomRows, editor.Scroll), Is.EqualTo((40, 22, Vector2Int.zero)), "a new draft is one screen");
+            yield return Wheel(view, At(5, 5), new Vector2(0, -1));
+            Assert.That(editor.Scroll, Is.EqualTo(Vector2Int.zero), "a room that fits does not scroll");
+
+            // The size slots grow the room by eight cells; the slot that cannot grow or shrink further changes nothing.
+            yield return Click(PhaseEditor.NarrowerSlot);
+            Assert.That((editor.RoomColumns, editor.RoomRows), Is.EqualTo((40, 22)), "a room is never smaller than one screen");
+            for (int i = 0; i < 5; i++) yield return Click(PhaseEditor.WiderSlot);
+            yield return Click(PhaseEditor.TallerSlot);
+            Assert.That((editor.RoomColumns, editor.RoomRows), Is.EqualTo((80, 30)));
+            Assert.That(editor.Room().blocks.Length, Is.EqualTo(PhaseEditor.Columns), "growing keeps the floor where it was");
+
+            // The wheel scrolls rows, a sideways wheel or Ctrl+wheel columns, and a middle-button drag pans.
+            yield return Wheel(view, At(5, 5), new Vector2(0, -1));
+            Assert.That(editor.Scroll, Is.EqualTo(new Vector2Int(0, 2)));
+            yield return Wheel(view, At(5, 5), new Vector2(1, 0));
+            Assert.That(editor.Scroll, Is.EqualTo(new Vector2Int(2, 2)));
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.LeftCtrl)); yield return null;
+            yield return Wheel(view, At(5, 5), new Vector2(0, -1));
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState()); yield return null;
+            Assert.That(editor.Scroll, Is.EqualTo(new Vector2Int(4, 2)));
+            var from = At(20, 10) + new Vector2Int(0, 0); var to = from - new Vector2Int(16, 8);
+            yield return Point(view, from, MouseButton.Middle); yield return Point(view, to, MouseButton.Middle); yield return Point(view, to);
+            Assert.That(editor.Scroll, Is.EqualTo(new Vector2Int(6, 3)), "dragging the room left and up reveals cells to the right and below");
+            Assert.That(editor.Room().blocks.Length, Is.EqualTo(PhaseEditor.Columns), "scrolling paints nothing");
+            for (int i = 0; i < 40 && editor.Scroll != new Vector2Int(40, 8); i++)
+            {
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.LeftCtrl)); yield return null;
+                yield return Wheel(view, At(editor.Scroll.x + 5, editor.Scroll.y + 5), new Vector2(0, -1));
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState()); yield return null;
+                if (editor.Scroll.x == 40) yield return Wheel(view, At(editor.Scroll.x + 5, editor.Scroll.y + 5), new Vector2(0, -1));
+            }
+            Assert.That(editor.Scroll, Is.EqualTo(new Vector2Int(40, 8)), "the view stops at the room's far corner");
+
+            // The grid under the pointer is the scrolled cell: paint the last cell, check it drew there, then refuse to cut it off.
+            Color Pixel(Vector2Int p) => texture.GetPixel(p.x, view.y - 1 - p.y);
+            var corner = At(79, 29);
+            yield return Point(view, corner, MouseButton.Left); yield return Point(view, corner);
+            Assert.That(editor.Room().blocks.Any(b => b.x == 632 && b.y == 232 && b.phaseMask == 7), Is.True, "the far corner cell is paintable");
+            Assert.That(Pixel(corner), Is.Not.EqualTo(Pixel(At(70, 25))), "the cell draws under the pointer");
+            // A tall view also shows the cells just above the 40x22 window, and they take paint the same way.
+            var above = At(79, editor.Scroll.y - 1);
+            if (above.y >= 0)
+            {
+                yield return Point(view, above, MouseButton.Left); yield return Point(view, above);
+                Assert.That(editor.Room().blocks.Any(b => b.x == 632 && b.y == 56), Is.True, "a cell shown above the window is paintable");
+                yield return Point(view, above, MouseButton.Right); yield return Point(view, above);
+            }
+            yield return Click(PhaseEditor.NarrowerSlot);
+            Assert.That(editor.RoomColumns, Is.EqualTo(80), "shrinking never deletes a cell");
+            yield return Point(view, corner, MouseButton.Right); yield return Point(view, corner);
+            yield return Click(PhaseEditor.NarrowerSlot);
+            Assert.That((editor.RoomColumns, editor.Scroll.x), Is.EqualTo((72, 32)), "an empty strip can go, and the view stays in the room");
+
+            // A floor strip to stand on, then export, import and playtest the 72x30 room.
+            yield return Point(view, At(60, 29), MouseButton.Left);
+            for (int x = 61; x < 72; x++) yield return Point(view, At(x, 29), MouseButton.Left);
+            yield return Point(view, At(71, 29));
+            Assert.That(editor.Room().blocks.Count(b => b.y == 232), Is.EqualTo(12));
+            Assert.That(editor.ExportDraft(), Is.True);
+            string exported = GUIUtility.systemCopyBuffer, draft = PhaseCustomMap.ToJson(editor.Room());
+            Assert.That(exported, Is.EqualTo(draft));
+            Assert.That(exported, Does.Contain("\"width\": 576").And.Contain("\"height\": 240"));
+            editor.ImportDraft("{\"name\":\"x\",\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phaseMask\":2}],\"spawnX\":40,\"spawnY\":152}");
+            Assert.That((editor.RoomColumns, editor.RoomRows, editor.Scroll), Is.EqualTo((40, 22, Vector2Int.zero)), "an old file is one screen");
+            editor.ImportDraft(exported);
+            Assert.That((editor.RoomColumns, editor.RoomRows, PhaseCustomMap.ToJson(editor.Room())), Is.EqualTo((72, 30, draft)), "export then import restores the room");
+
+            yield return Wheel(view, At(5, 5), new Vector2(0, -1));
+            Assert.That(editor.Scroll, Is.EqualTo(new Vector2Int(0, 2)), "an imported room opens at its top-left corner");
+            yield return Tap(Key.Enter);
+            var sandbox = editor.Playtest;
+            Assert.That(sandbox, Is.Not.Null);
+            Assert.That((sandbox.roomSize, sandbox.Controller.Width, sandbox.Controller.Height), Is.EqualTo((new Vector2Int(576, 240), 576, 240)), "the playtest runs the whole room");
+            var size = new Vector2Int(sandbox.Frame.width, sandbox.Frame.height);
+            Vector2Int Camera() { var at = sandbox.pixelCamera.transform.position; return new Vector2Int(Mathf.RoundToInt(at.x - sandbox.Frame.width / 2f), Mathf.RoundToInt(-at.y - sandbox.Frame.height / 2f)); }
+            Assert.That(Camera(), Is.EqualTo(new Vector2Int(0, Mathf.Max(0, 240 - size.y))), "the camera starts at the room's bottom-left");
+            sandbox.Controller.player.x = 560; sandbox.Controller.player.y = 216;
+            yield return new WaitForSeconds(2);
+            Assert.That((Camera().x, sandbox.Controller.deaths), Is.EqualTo((576 - size.x, 0)), "the camera follows Wick to the room's right edge");
+            yield return Tap(Key.Escape);
+            Assert.That((editor.Playtest, editor.Scroll), Is.EqualTo(((PhaseSandbox)null, new Vector2Int(0, 2))), "the editor returns to the same view");
+
+            // The draft keeps its size; one saved by an older build holds only a 40x22 grid and still opens.
+            yield return Tap(Key.Escape); yield return WaitFor(PhaseTitle.Scene);
+            yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Z); yield return WaitFor(PhaseEditor.Scene);
+            editor = Object.FindAnyObjectByType<PhaseEditor>();
+            Assert.That((editor.RoomColumns, editor.RoomRows, PhaseCustomMap.ToJson(editor.Room())), Is.EqualTo((72, 30, draft)), "the draft survives leaving the editor");
+            yield return Tap(Key.Escape); yield return WaitFor(PhaseTitle.Scene);
+            PlayerPrefs.SetString(PhaseEditor.DraftKey, "3,19;" + string.Concat(Enumerable.Repeat("00", 840)) + string.Concat(Enumerable.Repeat("17", 40)));
+            yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Z); yield return WaitFor(PhaseEditor.Scene);
+            editor = Object.FindAnyObjectByType<PhaseEditor>();
+            Assert.That((editor.RoomColumns, editor.RoomRows, editor.Room().blocks.Length, editor.SpawnCell), Is.EqualTo((40, 22, 40, new Vector2Int(3, 19))), "an older draft is one screen");
+            LogAssert.NoUnexpectedReceived();
+        }
+        finally
+        {
+            if (saved == null) PlayerPrefs.DeleteKey(PhaseEditor.DraftKey); else PlayerPrefs.SetString(PhaseEditor.DraftKey, saved);
+            PlayerPrefs.Save(); GUIUtility.systemCopyBuffer = clipboard;
+        }
+    }
+
     static PhaseSandbox Sandbox() => Object.FindAnyObjectByType<PhaseSandbox>();
     [UnityTest]
     public IEnumerator PauseFreezesPlayAndKeySettingsRebindAndPersist()

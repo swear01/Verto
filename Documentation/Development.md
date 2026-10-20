@@ -54,8 +54,8 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 52 controller cases, 9 laser cases, 17 demo-route/authoring cases,
-15 crystal cases, 26 crystal-room cases, 21 pixel cases, 7 Grid authoring cases, 8 custom-map validation cases,
-6 scrolling-room cases, 3 key-binding cases (validation, PlayerPrefs persistence, key caps) and 15 level-route cases in Edit Mode. The 37 Play Mode cases cover
+15 crystal cases, 26 crystal-room cases, 21 pixel cases, 7 Grid authoring cases, 9 custom-map validation cases,
+6 scrolling-room cases, 3 key-binding cases (validation, PlayerPrefs persistence, key caps) and 15 level-route cases in Edit Mode. The 38 Play Mode cases cover
 each level's keyboard route, a big-room camera following a keyboard run, bindings, pause/release gating, room persistence, multiple authored platforms, crystal triggers, imported maps, the
 title/editor flow including editor platforms and gears, the editor's fixed tool panel under mouse input, the pause menu with key settings, the fullscreen switch, and level select from the
 title, pause and victory screens. Platform checks cover
@@ -257,7 +257,7 @@ and clamps it inside the room. `PhasePixels` caches the backdrop and terrain onc
 the whole room and copies the visible window each frame; a taller room keeps the skyline at its
 bottom with open sky above. Room slides arrive at the opposite edge at the same height,
 clamped into a room of different height; vertical exits are not supported. Custom maps and the
-in-game editor keep 320×176.
+in-game editor choose their own room size, 320×176 by default (see below).
 
 On an axis the room does not exceed, the view behaves as below.
 The view always contains at least the original 320x180 native-pixel play area.
@@ -317,14 +317,16 @@ at the first. A gear is `{wall:{x,y,w,h},platform:{x,y,w,h},top,endX,phaseMask?}
 `PhaseClimbGear` wall start, wall top limit, platform start and platform end X.
 An absent `phaseMask` keeps the mechanism always solid; a present one must be1–7.
 
-Custom geometry occupies non-overlapping8px cells within320×176, at most880cells.
-Spawn X is0–312 and Y0–160 on the same grid, with an8×11 player clear of initially
+Custom geometry occupies non-overlapping8px cells within the room, at most one object per cell. A room is
+320×176 unless the optional `width` and `height` (native pixels, multiples of 8, 320–1280 and 176–720) say
+otherwise; a room that exceeds the view scrolls like any other (`PhaseSandbox.roomSize` is set to the grid, with
+the one-screen height 176 played as 180). Spawn X is0 to width−8 and Y0 to height−16 on the same grid, with an8×11 player clear of initially
 red-active terrain, spike hitboxes, platforms and gears. Platform and gear start positions
 occupy cells like other objects; every platform stop, the wall top and the bridge end must
 also lie on the grid inside the map, and gears must satisfy `ClimbGear`'s equal-travel and
 pinion rules. Empty terrain, invalid numbers/masks, non-grid geometry and the built-in single
 mover/gear fields (`nodeX`, `gearWall`, …) are rejected. JSON is limited to
-200000characters. Validation completes before replacing the current runtime root;
+2000000characters (the page's import picker accepts files up to 2 MB). Validation completes before replacing the current runtime root;
 no saved scene changes. The runtime map has no room-edge links.
 
 Web completion dispatches `window` event `phase-map-result` with
@@ -333,12 +335,13 @@ loading; custom-map success waits for the new root's controller and pixel surfac
 Invalid input preserves the current map and produces a failure callback without
 logging a gameplay error. `PhaseSandbox.LastMapError` exposes the last failure
 message for native verification and clears on success. `PhaseCustomMap.ToJson` writes the
-five base fields plus each optional array only when it is used, so older maps load unchanged.
+five base fields plus each optional array only when it is used, and `width`/`height` only for a room that is not
+320×176, so older maps load unchanged and a one-screen export is byte-identical to before.
 The runtime uses the installed Newtonsoft.Json parser with a strict schema, rejecting
 unknown/duplicate fields and non-numeric coordinates before constructing the room; it
 preserves absent arrays as null. `CreateCustom` turns platforms and gears into
 `PhaseMovingPlatform`/`PhaseClimbGear` children of the map root, so their nodes and limits
-are root-relative. Parsing and controller validation run in the seven `CustomMapTests`;
+are root-relative. Parsing and controller validation run in the nine `CustomMapTests`;
 `MapBridgeTests` adds one Play Mode import/keyboard/respawn/scene-selection case.
 
 For live verification, enter a demo in Play mode and run
@@ -444,7 +447,7 @@ when on); Enter, jump or a click toggles it. It is player state, not saved by th
 standalone players keep Unity's own setting and Web starts windowed. Web applies the
 request within that key press or click. The Editor's Game view ignores `Screen.fullScreen`,
 so tests and `KeysLiveInput` swap `PhaseKeys.IsFullScreen`/`SetFullScreen`.
-The editor paints the custom-map grid (40×22 cells, terrain, spikes and lasers in four
+The editor paints the custom-map grid (40×22 cells by default, up to 160×90; terrain, spikes and lasers in four
 directions, jump and dash crystals, dash platforms, climb gear,
 spawn, erase; seven masks) and renders it with the game's own pixels in the starting
 red phase. The editor widens its own view (same aspect as the screen) so a fixed panel with one 2× icon per object type sits right
@@ -453,6 +456,15 @@ cell. Hovering a slot highlights it, a click picks it, and the selected tool and
 right erases; a stroke paints only if it starts on the grid, so a drag from the panel never paints.
 Keyboard: movement keys move the cursor, jump paints, grab erases, dash cycles the
 tool type, R/E (or the mouse wheel) turn spikes and lasers clockwise/counter-clockwise, 1–7 pick the mask, Enter playtests, Escape returns to the title.
+The last four panel slots size the room: arrows with an edge bar pull the right or bottom edge in or push it out by
+eight cells (never below 40×22 or past 160×90). Shrinking refuses with the red flash when a cell, the spawn or a
+mechanism stop would be cut off, so it never deletes anything. The 40×22 cells you see are a window onto the room, so the
+panel stays put: the cursor scrolls the window when it nears an edge, the wheel scrolls rows and Ctrl+wheel or a sideways wheel
+scrolls columns (a room that already fits vertically keeps the wheel for turning spikes and lasers), and a middle-button drag,
+or a Ctrl+left drag, pans. Two thin bars along the window's right and bottom edges show where it sits in a larger room,
+and the padding past the room's edges is dimmed. A refused playtest scrolls to a blocked spawn. `PhasePixels` draws the room
+with its own scrolling camera: the preview controller pads the room by the panel's width and the vertical band so every
+scroll position stays inside the camera's clamp, and caches the terrain until the draft changes.
 A dash platform starts with one click or jump on the 8px grid. That cell is the 24×8 origin.
 Each later click adds the next stop, and a stop may differ on both axes. Those stops are one
 platform, `{w:24,h:8,nodeX,nodeY,returns:false}`; each dash advances it to the next stop.
@@ -468,7 +480,9 @@ child named `Playtest`; Escape destroys it and returns to the unchanged draft. A
 `LoadCustomMap` sent in the editor scene plays that map the same way. The draft
 autosaves to PlayerPrefs `phase.editor.v1` as one tool/mask pair per cell
 (tool codes 1 terrain, 2–5 spikes, 7–10 lasers, 11–12 crystals), followed by the platforms and
-gears as compact `{platforms,gears}` JSON; drafts saved before that suffix still load.
+gears as compact `{platforms,gears}` JSON; drafts saved before that suffix still load. A larger room adds its columns
+and rows after the spawn cell (`3,19,80,30;…`); a 40×22 draft keeps the old `3,19;…` header, so drafts from before room sizes still load.
+Import and export carry `width`/`height`, and a playtest runs the whole room with the scrolling camera.
 The two tray icons after the colors import (arrow out of the tray) and export (arrow into the tray) custom-map JSON.
 On Web, export calls `PhaseExportMap` and the page downloads `phase-custom-map.json`;
 import calls `PhaseImportMap`, the page opens a file picker and sends the text to
@@ -479,6 +493,10 @@ With `PhaseTitle` in Play mode, run `Verification/MenuLiveInput.cs`, entry
 `MenuLiveInput.Run`. It drives title→editor→paint terrain, a laser and a crystal→draw a diagonal platform
 line and a gear→clipboard export/import→playtest with a dash along that diagonal→back→level1 by keyboard,
 restores the developer's draft and clipboard and saves captures to `TestResults/Menu/`.
+`Verification/BigRoomLiveInput.cs`, entry `BigRoomLiveInput.Run`, starts from `PhaseTitle` in Play and drives the editor with a virtual
+keyboard and mouse: size the room to 80×30 with the panel arrows→scroll with the wheel and a drag→paint a floor in the far corner→
+export and re-import the JSON→playtest and run into the scrolled part of the room, checking the camera follows. It restores the
+developer's draft and clipboard and saves captures to `TestResults/BigRoom/`.
 `Verification/KeysLiveInput.cs`, entry `KeysLiveInput.Run`, also starts from `PhaseTitle`
 in Play: title settings→bind J to jump (a duplicate is rejected)→title level
 select→level1 jumps with J→Escape pause freezes play→pause level select→the next level→
