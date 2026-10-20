@@ -1,0 +1,32 @@
+[
+  {"name":"relay crystal skip 1","steps":[
+    {"frames":6,"x":-1,"y":0,"jump":false,"dash":false,"grab":false},
+    {"frames":6,"x":1,"y":1,"jump":false,"dash":true,"grab":false},
+    {"frames":6,"x":-1,"y":0,"jump":false,"dash":false,"grab":false},
+    {"frames":12,"x":1,"y":0,"jump":true,"dash":false,"grab":false},
+    {"frames":6,"x":1,"y":0,"jump":false,"dash":false,"grab":false},
+    {"frames":6,"x":1,"y":-1,"jump":false,"dash":true,"grab":false},
+    {"frames":6,"x":-1,"y":0,"jump":false,"dash":false,"grab":false},
+    {"frames":18,"x":1,"y":0,"jump":false,"dash":false,"grab":false},
+    {"frames":18,"x":1,"y":0,"jump":true,"dash":false,"grab":false},
+    {"frames":6,"x":1,"y":0,"jump":false,"dash":false,"grab":false},
+    {"frames":6,"x":-1,"y":0,"jump":false,"dash":false,"grab":false}
+  ]},
+  {"name":"relay crystal skip 2","steps":[
+    {"frames":6,"x":-1,"y":0,"jump":false,"dash":false,"grab":false},
+    {"frames":6,"x":1,"y":0,"jump":false,"dash":true,"grab":false},
+    {"frames":6,"x":-1,"y":0,"jump":false,"dash":false,"grab":false},
+    {"frames":6,"x":1,"y":0,"jump":true,"dash":false,"grab":false},
+    {"frames":6,"x":1,"y":0,"jump":false,"dash":false,"grab":false},
+    {"frames":6,"x":1,"y":-1,"jump":false,"dash":true,"grab":false},
+    {"frames":6,"x":-1,"y":0,"jump":false,"dash":false,"grab":false},
+    {"frames":6,"x":-1,"y":-1,"jump":true,"dash":true,"grab":false},
+    {"frames":6,"x":1,"y":0,"jump":true,"dash":false,"grab":false},
+    {"frames":6,"x":-1,"y":0,"jump":true,"dash":false,"grab":false},
+    {"frames":6,"x":-1,"y":1,"jump":true,"dash":true,"grab":false},
+    {"frames":6,"x":1,"y":0,"jump":false,"dash":false,"grab":false},
+    {"frames":12,"x":1,"y":0,"jump":true,"dash":false,"grab":false},
+    {"frames":6,"x":1,"y":0,"jump":false,"dash":false,"grab":false},
+    {"frames":6,"x":-1,"y":0,"jump":false,"dash":false,"grab":false}
+  ]}
+]

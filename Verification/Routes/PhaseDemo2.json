@@ -1,0 +1,7 @@
+[
+  {"frames":26,"x":1,"y":0,"jump":false,"dash":false,"grab":false},
+  {"frames":20,"x":1,"y":0,"jump":true,"dash":false,"grab":false},
+  {"frames":16,"x":0,"y":0,"jump":false,"dash":false,"grab":false},
+  {"frames":22,"x":1,"y":0,"jump":false,"dash":true,"grab":false},
+  {"frames":60,"x":1,"y":0,"jump":false,"dash":false,"grab":false}
+]
