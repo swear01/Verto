@@ -406,7 +406,8 @@ the second picks the 56×8 bridge's row and end column. The bridge starts two ce
 wall and travels 8–24px, matching the wall's upward travel. Escape, grab or right-click cancels
 a pending body. Bodies refuse occupied cells (red flash); erasing any cell of a body removes it.
 Dotted routes and faint outlines mark platform stops, the wall top and the bridge end. An invalid
-map flashes a red border instead of starting. The playtest runs a `PhaseSandbox`
+map flashes a red border instead of starting; when Wick's start overlaps terrain, a hazard or a mechanism,
+Wick's start box and the flag slot also blink red. The playtest runs a `PhaseSandbox`
 child named `Playtest`; Escape destroys it and returns to the unchanged draft. A Web
 `LoadCustomMap` sent in the editor scene plays that map the same way. The draft
 autosaves to PlayerPrefs `phase.editor.v1` as one tool/mask pair per cell

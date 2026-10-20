@@ -205,8 +205,14 @@ public class MenuTests : InputTestFixture
             yield return Point(view, Cell(10, 10), MouseButton.Right); yield return Point(view, Cell(10, 10));
             Assert.That(editor.Room().blocks.Count(b => b.y == 80), Is.EqualTo(1), "right-click erases");
 
+            // Terrain over Wick's start refuses the playtest and blinks the spawn; clearing it lets the play slot start.
+            var play = Center(PhaseEditor.SlotIn(view, PhaseEditor.PlaySlot)); var white = Center(PhaseEditor.SlotIn(view, PhaseEditor.MaskSlot));
+            yield return Point(view, white, MouseButton.Left); yield return Point(view, white);
+            yield return Point(view, Cell(editor.SpawnCell.x, editor.SpawnCell.y), MouseButton.Left); yield return Point(view, Cell(editor.SpawnCell.x, editor.SpawnCell.y));
+            yield return Point(view, play, MouseButton.Left); yield return Point(view, play);
+            Assert.That((editor.Playtest, editor.SpawnBlocked), Is.EqualTo(((PhaseSandbox)null, true)), "a blocked spawn refuses the playtest and blinks");
+            yield return Point(view, Cell(editor.SpawnCell.x, editor.SpawnCell.y), MouseButton.Right); yield return Point(view, Cell(editor.SpawnCell.x, editor.SpawnCell.y));
             // The play and back slots work by mouse too; the playtest returns to the same view.
-            var play = Center(PhaseEditor.SlotIn(view, PhaseEditor.PlaySlot));
             yield return Point(view, play, MouseButton.Left); yield return Point(view, play);
             Assert.That(editor.Playtest, Is.Not.Null, "the play slot starts a playtest");
             yield return Tap(Key.Escape);

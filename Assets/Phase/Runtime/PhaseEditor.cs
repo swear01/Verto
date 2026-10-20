@@ -53,6 +53,8 @@ namespace Phase
         float repeatAt, flash;
         // A mouse stroke paints or erases only when its press began on the grid.
         bool dirty, stroke;
+        // A refused map whose spawn overlaps something: Wick's start and the flag slot blink with the border.
+        public bool SpawnBlocked { get; private set; }
 
         static string[] Turn(string[] art) => Enumerable.Range(0, 7).Select(r => new string(Enumerable.Range(0, 7).Select(c => art[c][r]).ToArray())).ToArray();
         static string[] Mirror(string[] art) => art.Select(r => new string(r.Reverse().ToArray())).ToArray();
@@ -264,6 +266,14 @@ namespace Phase
                 if (selected) frame.Outline(cell.x, cell.y, Pitch, Pitch, PixelFrame.Light);
             }
             if (flash > 0) frame.Warn();
+            if (SpawnBlocked && (int)(flash * 6) % 2 == 0)
+            {
+                var wick = new Player(SpawnCell.x * 8, SpawnCell.y * 8);
+                frame.Fill((int)wick.x - ox, (int)wick.y - oy, (int)wick.w, (int)wick.h, PixelFrame.Warning, .5f);
+                frame.Outline((int)wick.x - ox - 1, (int)wick.y - oy - 1, (int)wick.w + 2, (int)wick.h + 2, PixelFrame.Warning);
+                var flag = SlotIn(View, Array.IndexOf(toolOrder, Spawn));
+                frame.Outline(flag.x, flag.y, Pitch, Pitch, PixelFrame.Warning); frame.Outline(flag.x + 1, flag.y + 1, Pitch - 2, Pitch - 2, PixelFrame.Warning);
+            }
             frame.Apply();
         }
         void Choose(int slot)
@@ -276,6 +286,8 @@ namespace Phase
             else { Leave(); return; }
             Refresh();
         }
+        // Every spawn refusal in PhaseCustomMap.Validate names 出生點 (the spawn).
+        void Refuse(ArgumentException error) { flash = 1.2f; SpawnBlocked = error.Message.Contains("出生點"); Refresh(); }
         void Leave() { if (dirty) Save(); Open(PhaseTitle.Scene); }
         protected override void Tick(Keyboard k, Mouse m)
         {
@@ -285,7 +297,7 @@ namespace Phase
                 return;
             }
             bool changed = false, painting = false;
-            if (flash > 0) { flash -= Time.unscaledDeltaTime; changed = true; }
+            if (flash > 0) { flash -= Time.unscaledDeltaTime; SpawnBlocked &= flash > 0; changed = true; }
             if (k != null)
             {
                 if (k.escapeKey.wasPressedThisFrame) { if (!Cancel()) { Leave(); return; } changed = true; }
@@ -331,7 +343,7 @@ namespace Phase
         {
             var room = Room();
             try { PhaseCustomMap.Validate(room); }
-            catch (ArgumentException) { flash = .4f; Refresh(); return false; }
+            catch (ArgumentException error) { Refuse(error); return false; }
             string json = PhaseCustomMap.ToJson(room);
 #if UNITY_WEBGL && !UNITY_EDITOR
             PhaseExportMap(json);
@@ -374,7 +386,7 @@ namespace Phase
             Anchor = null;
             var room = Room();
             try { PhaseCustomMap.Validate(room); }
-            catch (ArgumentException) { flash = .4f; Refresh(); return false; }
+            catch (ArgumentException error) { Refuse(error); return false; }
             Play(room); return true;
         }
         void Play(PhaseDemoRoom room)
