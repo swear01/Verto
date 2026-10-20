@@ -317,15 +317,15 @@ public class MenuTests : InputTestFixture
         yield return Tap(Key.RightArrow); yield return Tap(Key.DownArrow);
         Assert.That(title.LevelSelect.Choice, Is.EqualTo(5));
         yield return Tap(Key.Enter);
-        yield return WaitFor("PhaseDemo6");
+        yield return WaitFor(PhaseSandbox.Levels[5]);
 
         yield return Tap(Key.Escape); yield return Tap(Key.RightArrow); yield return Tap(Key.Enter);
         var levels = Sandbox().LevelSelect;
         Assert.That(levels.Choice, Is.EqualTo(5), "pause level select starts at the current level");
         yield return Tap(Key.DownArrow); yield return Tap(Key.DownArrow); yield return Tap(Key.DownArrow); yield return Tap(Key.RightArrow);
-        Assert.That(levels.Choice, Is.EqualTo(10));
+        Assert.That(levels.Choice, Is.EqualTo(14), "the bottom row stops at the last level");
         yield return Tap(Key.Z);
-        yield return WaitFor(PhaseSandbox.Levels[10]);
+        yield return WaitFor(PhaseSandbox.Levels[14]);
 
         yield return SceneManager.LoadSceneAsync("PhaseDemo12"); yield return null;
         var sandbox = Sandbox();

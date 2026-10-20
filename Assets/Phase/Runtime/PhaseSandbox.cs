@@ -25,8 +25,8 @@ namespace Phase
         public bool InTransition => transitioning || departingFrame != null;
         public bool Won { get; private set; }
         public static readonly string[] Levels = {
-            "PhaseDemo1", "PhaseDemo2", "PhaseDemo3", "PhaseDemo4", "PhaseDemo5", "PhaseDemo6", "PhaseDemo7", "PhaseDemo8",
-            "PhaseCrystal1", "PhaseCrystal2", "PhaseCrystal3", "PhaseDemo12"
+            "PhaseDemo1", "PhaseDemo1.1", "PhaseDemo2", "PhaseDemo3", "PhaseDemo4", "PhaseDemo5", "PhaseDemo6", "PhaseDemo7", "PhaseDemo8",
+            "PhaseCrystal1", "PhaseCrystal2", "PhaseCrystal3", "PhaseDemo12", "PhaseDemo13", "PhaseDemo14"
         };
         int level = -1;
         bool custom;

@@ -23,9 +23,18 @@ namespace Phase
     {
         [Serializable] sealed class Steps { public PhaseRouteStep[] steps; }
         [Serializable] sealed class Bypasses { public PhaseBypass[] routes; }
+        [Serializable] sealed class UnroutedLevels { public string reason; public string[] levels; }
         public const string Folder = "Verification/Routes";
         public static string RoutePath(string scene) => $"{Folder}/{scene}.json";
         public static string BypassPath(string scene) => $"{Folder}/{scene}.bypass.json";
+        public const string UnroutedPath = Folder + "/unrouted.json";
+        // Levels exempt from route checks; returns the reason, or null when the level must have a recorded route.
+        public static string UnroutedReason(string scene)
+        {
+            if (!System.IO.File.Exists(UnroutedPath)) return null;
+            var list = JsonUtility.FromJson<UnroutedLevels>(System.IO.File.ReadAllText(UnroutedPath));
+            return Array.IndexOf(list.levels, scene) >= 0 ? list.reason : null;
+        }
         public static PhaseRouteStep[] Parse(string json) => JsonUtility.FromJson<Steps>("{\"steps\":" + json + "}").steps;
         public static PhaseBypass[] ParseBypasses(string json) => JsonUtility.FromJson<Bypasses>("{\"routes\":" + json + "}").routes;
 
