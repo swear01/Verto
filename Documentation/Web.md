@@ -20,7 +20,7 @@ python3 -m http.server 8765 --bind 127.0.0.1 --directory Builds/Web
 
 Open <http://127.0.0.1:8765/>. Click the canvas for keyboard focus: arrows/WASD
 move, Space/Z jumps, X dashes, and C/Shift grabs. Cross each room’s right
-edge to continue through the twelve rooms. Each arrival resets phase, dash, stamina
+edge to continue through the fifteen rooms. Each arrival resets phase, dash, stamina
 and mechanisms while preserving run statistics. Room changes use a
 0.18-second horizontal pixel slide; input/physics pause until it finishes.
 The Unity splash screen and logo are disabled in PlayerSettings.
@@ -73,7 +73,7 @@ Geometry occupies at most 880 non-overlapping cells inside 320×176; spawn uses 
 including any red laser beam not stopped by red-active terrain.
 Masks are 1 red, 2 blue, 4 green, 3 magenta, 5 yellow, 6 cyan and 7 permanent white.
 The built-in single-mover/gear fields and JSON over 200,000 characters are rejected.
-`PHASE.SelectDemoRoom("1".."12")` and `PHASE.LoadCustomMap(json)` remain Unity bridge
+`PHASE.SelectDemoRoom("1".."15")` and `PHASE.LoadCustomMap(json)` remain Unity bridge
 methods, but the page no longer sends them; `phase-map-result` still reports each
 completed load and the browser smoke test waits for it.
 The in-game editor's import/export icons raise `phase-map-import` / `phase-map-export`
@@ -82,7 +82,7 @@ sends the chosen file to `PHASE.ImportDraft`.
 `WebPageBrowser.cjs` verifies page events using a mock Unity bridge; it does not
 prove native map loading. Verify the native bridge through Pipeline and the final
 built Web Player before publishing.
-`DemoWebSmoke.cjs` selects all twelve rooms through the pause menu's level select,
+`DemoWebSmoke.cjs` selects all fifteen rooms through the pause menu's level select,
 reaches the victory banner and replays through its level select, rebinds keys in the
 in-game settings and checks they persist across reload, then checks in-game editor
 laser/crystal import and export, draft persistence across reload, playing that draft
@@ -106,7 +106,7 @@ the warning.
 
 `Web build and preview` runs only on `main`, after push or manual dispatch.
 It uses Unity CLI + live Pipeline for 143 Editor tests, fourteen Play Mode tests and
-the Web build, then verifies browser rendering, keyboard routes through all twelve rooms and eleven scene-edge transitions,
+the Web build, then verifies browser rendering, keyboard routes through all fifteen rooms and fourteen scene-edge transitions,
 adaptive viewport sizing, keyboard settings, fullscreen, visible load failures,
 and absence of browser errors/warnings. Only a passing build is
 uploaded and deployed. `web-verification` contains the reports/captures.
@@ -142,12 +142,12 @@ explicitly on resize; CSS covers the full viewport.
 ## Crystal course
 
 The source build appends `PhaseCrystal1` through `PhaseCrystal3` after the eight demo scenes.
-The in-game level select exposes them as9–11. The crystal rooms are authored through Unity
+The in-game level select exposes them as10–12. The crystal rooms are authored through Unity
 scenes and `CrystalRooms.json`; custom maps place single crystals from the in-game editor.
-The three crystal routes and level12 use controlled browser time to prevent capture latency
+The three crystal routes and the last level use controlled browser time to prevent capture latency
 from extending held keys. Existing visible-checkpoint routes and UI checks use
 real time. This is functional verification, not a human timing/playtest.
 
-The level select also includes **12**, the classmate-authored `PhaseDemo12` scene (formerly `PhaseDemo1.2`). It is appended to the Web build after the original eleven level numbers. Crystal levels9–11 now require distinct jump/dash/refill combinations and keep safe permanent edge landings.
+The level select also includes **2**, the classmate color room `PhaseDemo1.1`, and **13**, the classmate dash-platform scene `PhaseDemo12` (formerly `PhaseDemo1.2`). `PhaseDemo13` and `PhaseDemo14` (select **14** and **15**) are the later laser rooms and stay after that course. Routes for levels 2 and 14 are recorded. Level 15 does not yet have a 0-death route. Crystal levels10–12 now require distinct jump/dash/refill combinations and keep safe permanent edge landings.
 
-Built-in levels run in order1–12. Walking through the left edge returns to the previous level; level1’s left edge stays closed. Leaving level12 to the right shows “你贏了”, with replay-level1 and level-select icons.
+Built-in levels run in order1–15. Walking through the left edge returns to the previous level; level1’s left edge stays closed. Leaving level15 to the right shows “你贏了”, with replay-level1 and level-select icons.

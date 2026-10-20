@@ -206,7 +206,7 @@ public class MenuTests : InputTestFixture
         yield return Tap(Key.RightArrow); yield return Tap(Key.DownArrow);
         Assert.That(title.LevelSelect.Choice, Is.EqualTo(5));
         yield return Tap(Key.Enter);
-        yield return WaitFor("PhaseDemo6");
+        yield return WaitFor(PhaseSandbox.Levels[5]);
 
         yield return Tap(Key.Escape); yield return Tap(Key.RightArrow); yield return Tap(Key.Enter);
         var levels = Sandbox().LevelSelect;

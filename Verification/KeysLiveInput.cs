@@ -90,7 +90,7 @@ public static class KeysLiveInput
             await Tap(keyboard, Key.RightArrow); await Tap(keyboard, Key.Enter);
             Require(level.LevelSelect != null && level.LevelSelect.Choice == 0, "Pause level select did not open at level 1.");
             await Tap(keyboard, Key.RightArrow); await Tap(keyboard, Key.Enter);
-            await Scene("PhaseDemo2");
+            await Scene("PhaseDemo1.1");
             level = Level();
 
             await Tap(keyboard, Key.Escape); await Repeat(keyboard, Key.RightArrow, 2); await Tap(keyboard, Key.Enter);
@@ -103,7 +103,7 @@ public static class KeysLiveInput
             await Tap(keyboard, Key.Enter);
             await Scene(PhaseTitle.Scene);
             string report = "passed: title keys bind J + duplicate rejected, title level select→level1, J jumps " + played +
-                ", Escape pause freezes play, pause level select→level2, pause keys restore defaults, pause→title";
+                ", Escape pause freezes play, pause level select→next level, pause keys restore defaults, pause→title";
             File.WriteAllText(Reports + "live-input.txt", report); return report;
         }
         finally

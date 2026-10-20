@@ -82,7 +82,7 @@ public static class MapLiveInput
             Require(s.respawn==0&&s.player.x==map.spawnX&&s.phase==0,"Imported map did not respawn at its checkpoint.");Capture(sandbox,"respawn");
             int frames=Time.frameCount-frame;double seconds=s.time-time;
             Require(frames>=100&&seconds>1,"Live evidence requires advancing frames and controller time.");
-            sandbox.SelectDemoRoom("2");double deadline=Time.realtimeSinceStartupAsDouble+15;
+            sandbox.SelectDemoRoom((System.Array.IndexOf(PhaseSandbox.Levels, "PhaseDemo2") + 1).ToString());double deadline=Time.realtimeSinceStartupAsDouble+15;
             while(SceneManager.GetActiveScene().name!="PhaseDemo2"&&Time.realtimeSinceStartupAsDouble<deadline)await Task.Delay(16);
             await Frames(2);var next=UnityEngine.Object.FindAnyObjectByType<PhaseSandbox>();
             Require(SceneManager.GetActiveScene().name=="PhaseDemo2"&&next!=null&&next.Frame!=null,"Built-in scene selection failed.");Capture(next,"selected-room");

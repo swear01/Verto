@@ -365,7 +365,7 @@ public class SandboxTests : InputTestFixture
             yield return new WaitForSeconds(PhaseSandbox.TransitionDuration * 2);
             Assert.That(sandbox.InTransition, Is.True, "a dialog pauses the arrival slide");
             int count = PhaseSandbox.MapResultCount;
-            foreach (var room in new[] { ("5", "PhaseDemo5"), ("5", "PhaseDemo5"), ("12", "PhaseDemo12") })
+            foreach (var room in new[] { ("5", "PhaseDemo5"), ("5", "PhaseDemo5"), ("13", "PhaseDemo12") })
             {
                 sandbox.SetControlsOpen("true"); sandbox.SelectDemoRoom(room.Item1);
                 Assert.That(PhaseSandbox.MapResultCount, Is.EqualTo(count), "success waits for the async load");
@@ -454,7 +454,8 @@ public class SandboxTests : InputTestFixture
     [UnityTest]
     public IEnumerator LastLevelRightExitWinsAndJumpRestartsLevelOne()
     {
-        yield return SceneManager.LoadSceneAsync("PhaseCrystal3");
+        string previous = PhaseSandbox.Levels[PhaseSandbox.Levels.Length - 2], last = PhaseSandbox.Levels[PhaseSandbox.Levels.Length - 1];
+        yield return SceneManager.LoadSceneAsync(previous);
         var k = InputSystem.AddDevice<Keyboard>();
         try
         {
@@ -468,9 +469,9 @@ public class SandboxTests : InputTestFixture
                 InputSystem.QueueStateEvent(k, new KeyboardState(Key.RightArrow)); yield return null; yield return null;
             }
             var sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
-            Assert.That(sandbox.rightScene, Is.EqualTo("PhaseDemo12"));
+            Assert.That(sandbox.rightScene, Is.EqualTo(last));
             yield return ExitRight(sandbox);
-            yield return WaitForScene("PhaseDemo12");
+            yield return WaitForScene(last);
             InputSystem.QueueStateEvent(k, new KeyboardState());
             sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
             Assert.That(sandbox.Controller.player.x, Is.EqualTo(sandbox.spawn.x), "forward entry keeps the authored left spawn");
@@ -483,7 +484,7 @@ public class SandboxTests : InputTestFixture
                 Time.captureDeltaTime = (float)PhaseController.Dt;
                 InputSystem.QueueStateEvent(k,new KeyboardState()); yield return null;
                 sandbox.Controller.Reset();
-                var route = JsonUtility.FromJson<RouteSteps>("{\"steps\":" + File.ReadAllText("Verification/Routes/PhaseDemo12.json") + "}").steps;
+                var route = JsonUtility.FromJson<RouteSteps>("{\"steps\":" + File.ReadAllText("Verification/Routes/" + last + ".json") + "}").steps;
                 foreach (var step in route)
                 {
                     var keys = new System.Collections.Generic.List<Key>();
@@ -497,14 +498,14 @@ public class SandboxTests : InputTestFixture
                 InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow));
                 double until = Time.realtimeSinceStartupAsDouble + 5;
                 while (!sandbox.Won && sandbox.Controller.deaths == deaths && Time.realtimeSinceStartupAsDouble < until) yield return null;
-                Assert.That(sandbox.Controller.deaths,Is.EqualTo(deaths),"full level12 keyboard route has no deaths");
+                Assert.That(sandbox.Controller.deaths,Is.EqualTo(deaths),"full last-level keyboard route has no deaths");
             }
             finally { Time.captureDeltaTime = captureDelta; }
             double deadline = Time.realtimeSinceStartupAsDouble + 2;
             while (!sandbox.Won && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
             InputSystem.QueueStateEvent(k, new KeyboardState());
-            Assert.That(sandbox.Won, Is.True, "level12 right edge wins");
-            Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo("PhaseDemo12"));
+            Assert.That(sandbox.Won, Is.True, last + " right edge wins");
+            Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo(last));
             double time = sandbox.Controller.time; yield return new WaitForSeconds(.2f);
             Assert.That(sandbox.Controller.time, Is.EqualTo(time), "victory freezes play");
             var light = new Color32(234, 223, 197, 255);
