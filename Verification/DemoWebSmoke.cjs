@@ -568,15 +568,15 @@ function levelTile(width, height, index) {
     assert(resumed.x>afterFullscreen.x+12,'Leaving fullscreen keeps native movement without another canvas click');
     console.log('Passed fullscreen and resumed input; checking in-game editor files');
     // Mirrors PhaseEditor.ViewFor/PanelIn/SlotIn: 18px slots in a fixed panel right of the 320x176 grid, or below it on
-    // tall screens. Slots 0-15 are tools, 16-22 colors, then import, export, play and back. Returns page coordinates.
+    // tall screens. Slots 0-8 are object types, 9-15 colors, then import, export, play and back. Returns page coordinates.
     async function editorPoint(frame) {
       const box=await canvas.boundingBox(),fit=(w,h)=>[Math.max(w,Math.floor(h*box.width/box.height+.5)),Math.max(h,Math.ceil(w*box.height/box.width))];
       const side=fit(400,180),below=fit(320,280),[vw,vh]=side[0]<=below[0]?side:below,top=-Math.trunc((180-vh)/2);
       const [x,y]=frame(vw>=400,top);return [box.x+(x+.5)*box.width/vw,box.y+(y+.5)*box.height/vh];
     }
     const editorSlot=slot=>editorPoint((side,top)=>{
-      const group=slot<16?0:slot<23?1:2,i=slot-[0,16,23][group];
-      const [x,y]=side?[324+i%4*18,top+19+([0,4,6][group]+Math.floor(i/4))*18+group*6]:[16+(group===2?(7+i)*18+6:i*18),top+184+(group?24:0)];
+      const group=slot<9?0:slot<16?1:2,i=slot-[0,9,16][group];
+      const [x,y]=side?[324+i%4*18,top+28+([0,3,5][group]+Math.floor(i/4))*18+group*6]:[58+(group===2?(7+i)*18+6:i*18),top+184+(group?24:0)];
       return [x+9,y+9];
     });
     const editorCell=(cx,cy)=>editorPoint((side,top)=>[cx*8+4,top+cy*8+4]);
@@ -588,7 +588,7 @@ function levelTile(width, height, index) {
     async function exportDraft() {
       for (let attempt = 0; attempt < 3; attempt++) {
         const pending = page.waitForEvent('download', { timeout: 4000 }).catch(() => null);
-        await editorIcon(24);
+        await editorIcon(17);
         const download = await pending;
         if (download) return download;
       }
@@ -599,7 +599,7 @@ function levelTile(width, height, index) {
     // At each window shape the panel's color and tool slots take clicks, strokes paint only when they start on the grid,
     // and right-click erases without opening the browser menu.
     await page.evaluate(()=>{window.__menus=[];addEventListener('contextmenu',e=>__menus.push(e.defaultPrevented));});
-    const editorLayouts=[[960,540,18,2],[2560,1080,19,4],[390,844,20,5]];
+    const editorLayouts=[[960,540,11,2],[2560,1080,12,4],[390,844,13,5]];
     for(const [[width,height,slot,mask],n] of editorLayouts.map((layout,n)=>[layout,n])) {
       await page.setViewportSize({width,height});await page.waitForTimeout(400);
       await editorIcon(slot);await editorIcon(0);
@@ -616,7 +616,7 @@ function levelTile(width, height, index) {
     await page.setViewportSize({width:1280,height:720});await page.waitForTimeout(400);
     const editorMap={name:'Unity editor import',blocks:[{x:0,y:168,w:320,h:8,phase:-1,phaseMask:7}],spikes:[],
       lasers:[{x:160,y:96,direction:1,phaseMask:2}],crystals:[{x:80,y:120,kind:1,phaseMask:7}],spawnX:24,spawnY:152};
-    const editorChooser=page.waitForEvent('filechooser');await editorIcon(23);
+    const editorChooser=page.waitForEvent('filechooser');await editorIcon(16);
     await (await editorChooser).setFiles({name:'phase-editor-map.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(editorMap))});
     await page.waitForTimeout(500);fs.writeFileSync(path.join(reports,'demo-editor-import.png'),await capture());
     const editorDownload=await exportDraft();
@@ -629,7 +629,7 @@ function levelTile(width, height, index) {
     const reloadedDownload=await exportDraft();
     assert.deepEqual(JSON.parse(fs.readFileSync(await (await reloadedDownload).path(),'utf8')),editorExport,'In-game editor draft persists across reload');
     // The play icon runs the draft natively as a custom map; the panel is hidden while it plays.
-    await editorIcon(25);
+    await editorIcon(18);
     const customStart=await visible('custom-map-loaded',p=>Math.abs(p.x/4-28)<2&&p.phase===0);
     await page.keyboard.press('ArrowRight',{delay:150});const customMoved=await observe();assert(customMoved.x>customStart.x+20,'Custom map accepts native movement');
     await page.keyboard.press('z',{delay:90});const customJumped=await observe();assert(customJumped.y<customMoved.y-12&&customJumped.phase===1,'Custom map accepts native jump/phase');
