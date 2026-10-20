@@ -4,8 +4,8 @@
 
 [Play the Web preview](https://phase-gamejam1-20261016.swear01.chatgpt.site).
 
-Unity **6000.4.7f1**. Open `Assets/Scenes/PhaseDemo1.unity` and press Play for the
-[eight-room demo](Documentation/Demo.md). The first three rooms introduce color
+Unity **6000.4.7f1**. Open `Assets/Scenes/PhaseTitle.unity` and press Play: jump starts the
+[eight-room demo](Documentation/Demo.md); the pencil opens the level editor. The first three rooms introduce color
 jumps, dash-driven platforms and climb-driven gears; later rooms combine them
 with phase spikes and mixed-color landings. Crossing the right edge advances
 to a fresh room checkpoint; the game view has no explanatory text.

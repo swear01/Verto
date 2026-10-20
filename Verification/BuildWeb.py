@@ -7,7 +7,7 @@ import time
 
 PROJECT = Path(__file__).resolve().parent.parent
 REPORTS = PROJECT / "TestResults/Web"
-SCENES = [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(1, 9)] + [f"Assets/Scenes/PhaseCrystal{i}.unity" for i in range(1, 4)] + ["Assets/Scenes/PhaseDemo12.unity"]
+SCENES = ["Assets/Scenes/PhaseTitle.unity"] + [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(1, 9)] + [f"Assets/Scenes/PhaseCrystal{i}.unity" for i in range(1, 4)] + ["Assets/Scenes/PhaseDemo12.unity", "Assets/Scenes/PhaseEditor.unity"]
 
 
 def command(name, *args):
@@ -73,7 +73,7 @@ def main():
         ("editor", "CrystalTests", 15), ("editor", "CrystalRoomTests", 26),
         ("editor", "PixelTests", 18), ("editor", "GridGeometryTests", 6),
         ("editor", "CustomMapTests", 4), ("playmode", "SandboxTests", 11),
-        ("playmode", "MapBridgeTests", 1),
+        ("playmode", "MapBridgeTests", 1), ("playmode", "MenuTests", 2),
     ]:
         wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)
         command("run_tests", "--", "--mode", mode, "--filter", test_filter, "--async_tests")

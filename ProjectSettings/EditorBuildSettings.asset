@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Scenes/PhaseTitle.unity
+    guid: 4c5bc287be8724e5a8e08c237fb2cfc3
+  - enabled: 1
     path: Assets/Scenes/PhaseDemo1.unity
     guid: 12926c145f3d1409f8444f7cbe6b45e7
   - enabled: 1
@@ -50,5 +53,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/PhaseDemo12.unity
     guid: 57ecb81005490214185fc014a0ba02cd
+  - enabled: 1
+    path: Assets/Scenes/PhaseEditor.unity
+    guid: 832d4064dc535487cb068d10e7ca7238
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 2bcd2660ca9b64942af0de543d8d7100, type: 3}

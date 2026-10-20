@@ -82,13 +82,23 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     page.on('requestfailed', request => result.failedRequests.push({url:request.url(),error:request.failure()?.errorText,status:statuses.get(request),conditional:Boolean(request.headers()['if-none-match'])}));
     const canvas = page.locator('#unity-canvas');
     async function capture(options) {const started=performance.now();const buffer=await canvas.screenshot(options);result.screenshotMs.push(Math.round(performance.now()-started));return buffer;}
-    const ready = async () => {
-      await page.locator('#loading').waitFor({state:'hidden',timeout:120000});
-      for (let n=0;n<40;n++) {
-        const player=character(await capture());
-        if(player) return player;
-        await page.waitForTimeout(100);
+    const loaded = () => page.locator('#loading').waitFor({state:'hidden',timeout:120000});
+    // The build opens on the title, which draws no player; jump starts level1.
+    const begin = async () => {
+      await loaded(); await canvas.click();
+      fs.writeFileSync(path.join(reports,'demo-title.png'),await capture());
+      return startLevel();
+    };
+    // Title letters can look like the player, so wait for the level-load result instead.
+    const startLevel = async () => {
+      await page.evaluate(()=>{window.__levelStarted=false;addEventListener('phase-map-result',()=>window.__levelStarted=true,{once:true});});
+      // A press right after a dialog closes is ignored until keys are released; retry only after a full wait.
+      for (let attempt=0;attempt<3&&!await page.evaluate(()=>window.__levelStarted);attempt++) {
+        await page.keyboard.press('z',{delay:80});
+        for (let n=0;n<30&&!await page.evaluate(()=>window.__levelStarted);n++) await page.waitForTimeout(100);
       }
+      if(!await page.evaluate(()=>window.__levelStarted))throw Error('Title did not start level1');
+      for (let n=0;n<20;n++) { const player=character(await capture()); if(player) return player; await page.waitForTimeout(100); }
       throw Error('Player pixels did not render');
     };
     const observe = async () => character(await capture());
@@ -131,7 +141,7 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
       finally{for(const key of keys)await page.keyboard.up(key);}
     }
     const blueLanding=(label,min,max,height)=>stableLanding(label,1,min,max,height);
-    await page.goto(url); await ready(); await canvas.click();
+    await page.goto(url); await begin();
     assert.equal(await page.title(),'PHASE');
     assert.equal(await page.locator('body').innerText(),'');
     const rooms=['DemoRooms','CrystalRooms'].flatMap(course=>JSON.parse(fs.readFileSync(path.join(__dirname,`../Assets/Phase/${course}.json`))).rooms);
@@ -355,7 +365,7 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     Object.assign(result.customMap,{start:customStart,moved:customMoved,jumped:customJumped});
     await selectRoom(2);assert.equal(await page.evaluate(()=>localStorage.getItem('phase.map.v1')),draft,'Built-in selection preserves custom draft');
     await selectRoom(1);
-    await page.reload(); await ready(); await canvas.click();
+    await page.reload(); await begin();
     for(const [width,height] of [[320,407],[800,600],[2560,1080],[844,390],[390,844]]) {
       await page.setViewportSize({width,height}); await page.waitForTimeout(250);
       const box=await canvas.boundingBox();assert.deepEqual([box.x,box.y,box.width,box.height],[0,0,width,height]);
@@ -385,12 +395,13 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     const moved=character(await capture());assert(moved.x>before.x+12,'Custom move reaches Unity');
     await page.keyboard.press('j',{delay:90});
     const jumped=character(await capture());assert(jumped.y<moved.y-12,'Custom jump reaches Unity');
-    await page.reload();await ready();await page.locator('#controls-toggle').click();
+    await page.reload();await loaded();await page.locator('#controls-toggle').click();
     assert.equal(await binding(1).innerText(),'L');assert.equal(await binding(4).innerText(),'J');
     assert.equal(await binding(4,1).innerText(),'未設定','Cleared slot persists');
     await reset(4).click();assert.equal(await binding(4).innerText(),'Z');
     assert.equal(await binding(1).innerText(),'L','Per-action restore preserves another action');
     await reset(1).click();await page.locator('#controls-close').click();
+    await startLevel();
     console.log('Passed controls; checking fullscreen');
     await page.locator('#fullscreen-toggle').click();
     await page.waitForFunction(()=>document.fullscreenElement===document.documentElement);
