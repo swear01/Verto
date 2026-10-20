@@ -49,14 +49,18 @@ square pixels without cropping the room to enlarge the player. Wide rooms extend
 quarry scenery, full-width floor collision and their right exit. Resizing preserves
 movement/color state and clamps positions within a shortened room; resizing during
 a slide completes the handoff safely. Fixed obstacles and movers retain their
-world coordinates. The page toolbar has only the fullscreen button. Fullscreen
-needs a user click and browser/iframe permission; denied requests show a recovery
-message. Loading failures remain visible.
+world coordinates. The page has no controls of its own. Fullscreen is the last row
+of the in-game settings, Unity's `Screen.fullScreen` on the canvas; the browser applies
+it within the confirming key press or click, and an embedding iframe must allow
+fullscreen. itch.io's own fullscreen button enlarges the iframe instead, and the canvas
+follows that resize like any other. Loading failures remain visible.
 
 Level select, pause and keyboard bindings are in-game screens, the same as in native
-builds (see [Development](Development.md)). The build opens on the PHASE title; its icons
-start level1, open the level select, the in-game level editor or key settings. Escape in
-a level pauses. Bindings are stored with Unity PlayerPrefs (`phase.keys.v1`) in this
+builds (see [Development](Development.md)). Opening level select or settings replaces the
+screen behind it. Both scale by whole pixels so the screen fills most of the view; each
+level tile is a thumbnail of that room. The build opens on the PHASE title; its icons
+start level1, open the level select, the in-game level editor or settings (key bindings
+and fullscreen). Escape in a level pauses. Bindings are stored with Unity PlayerPrefs (`phase.keys.v1`) in this
 browser's IndexedDB; bindings saved by the old page dialog (`phase.controls.v2`) are not
 migrated. Right-click on the canvas never opens the browser menu (it erases in the
 editor). Only the focused game canvas sends keys to Unity, and leaving the page
@@ -88,7 +92,8 @@ reaches the victory banner and replays through its level select, rebinds keys in
 in-game settings and checks they persist across reload, then checks in-game editor
 laser/crystal import and export, panel clicks, panel drags and grid strokes at 960×540, 2560×1080 and
 390×844 (saving `demo-editor-*.png`), draft persistence across reload, playing that draft
-as a custom map, and movement after fullscreen exit. Room 1 synchronizes its staircase landings, Room 5 its low-ceiling jump/dash, and
+as a custom map, and fullscreen on and off through the in-game settings by keyboard,
+followed by movement. Room 1 synchronizes its staircase landings, Room 5 its low-ceiling jump/dash, and
 Room 8 its gear lift and ferry stops with visible phase/position checkpoints.
 Short walking pulses preserve narrow checkpoints; the final Room8 approach releases
 right before the linked crystal-room exit.
@@ -107,7 +112,7 @@ the warning.
 ## Enable automatic builds and online play
 
 `Web build and preview` runs only on `main`, after push or manual dispatch.
-It uses Unity CLI + live Pipeline for 143 Editor tests, fourteen Play Mode tests and
+It uses Unity CLI + live Pipeline for 162 Editor tests, 31 Play Mode tests and
 the Web build, then verifies browser rendering, keyboard routes through all twelve rooms and eleven scene-edge transitions,
 adaptive viewport sizing, keyboard settings, fullscreen, visible load failures,
 and absence of browser errors/warnings. Only a passing build is

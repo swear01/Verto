@@ -8,8 +8,8 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.SceneManagement;
 
-// Keyboard route: title keys → bind J to jump → title level select → level1 jumps with J → pause freezes play →
-// pause level select → level2 → restore default keys → back to title. Restores the developer's saved bindings.
+// Keyboard route: title settings → bind J to jump → title level select → level1 jumps with J → pause freezes play →
+// pause level select → level2 → restore default keys → fullscreen on and off → back to title. Restores the developer's saved bindings.
 public static class KeysLiveInput
 {
     const string Reports = "TestResults/Keys/";
@@ -44,6 +44,7 @@ public static class KeysLiveInput
         string saved = PlayerPrefs.HasKey(PhaseSandbox.ControlsKey) ? PlayerPrefs.GetString(PhaseSandbox.ControlsKey) : null;
         var slots = PhaseSandbox.Slots.ToArray();
         Keyboard keyboard = null;
+        var (isFull, setFull) = (PhaseKeys.IsFullScreen, PhaseKeys.SetFullScreen);
         try
         {
             Directory.CreateDirectory(Reports);
@@ -57,7 +58,7 @@ public static class KeysLiveInput
             Capture(title, "title");
 
             await Repeat(keyboard, Key.RightArrow, 3); await Tap(keyboard, Key.Enter);
-            Require(title.Keys != null, "The keyboard icon did not open key settings.");
+            Require(title.Keys != null, "The gear did not open settings.");
             await Repeat(keyboard, Key.DownArrow, 4); await Tap(keyboard, Key.Enter); await Tap(keyboard, Key.J);
             Require(PhaseSandbox.Slots[8] == "J" && PlayerPrefs.GetString(PhaseSandbox.ControlsKey).Split(',')[8] == "J", "J was not bound and saved to jump.");
             await Tap(keyboard, Key.RightArrow); await Tap(keyboard, Key.Enter); await Tap(keyboard, Key.J);
@@ -66,7 +67,7 @@ public static class KeysLiveInput
             await Task.Delay(500); await Frames(2);
             Capture(title, "keys");
             await Tap(keyboard, Key.Escape);
-            Require(title.Keys == null, "Escape did not close key settings.");
+            Require(title.Keys == null, "Escape did not close settings.");
 
             await Repeat(keyboard, Key.LeftArrow, 2); await Tap(keyboard, Key.Enter);
             Require(title.LevelSelect != null, "The grid icon did not open level select.");
@@ -94,21 +95,29 @@ public static class KeysLiveInput
             level = Level();
 
             await Tap(keyboard, Key.Escape); await Repeat(keyboard, Key.RightArrow, 2); await Tap(keyboard, Key.Enter);
-            Require(level.Keys != null, "Pause keyboard icon did not open key settings.");
+            Require(level.Keys != null, "Pause gear did not open settings.");
             await Repeat(keyboard, Key.DownArrow, PhaseKeys.RestoreRow); await Tap(keyboard, Key.Enter);
             Require(PhaseSandbox.Slots.SequenceEqual(PhaseSandbox.DefaultSlots), "Restore did not reset the bindings.");
             Capture(level, "keys-restored");
+            // The Editor ignores Screen.fullScreen; a stand-in records the switch's requests.
+            bool full = false; PhaseKeys.IsFullScreen = () => full; PhaseKeys.SetFullScreen = on => full = on;
+            await Tap(keyboard, Key.DownArrow); await Tap(keyboard, Key.Enter); await Frames(2);
+            Require(level.Keys.Row == PhaseKeys.FullScreenRow && full, "Enter on the last row did not request fullscreen.");
+            Capture(level, "settings-fullscreen");
+            await Tap(keyboard, Key.Z);
+            Require(!full, "Jump on the switch did not leave fullscreen.");
             await Tap(keyboard, Key.Escape); await Tap(keyboard, Key.RightArrow);
             Require(level.Menu.Choice == 3, "Title icon was not selected.");
             await Tap(keyboard, Key.Enter);
             await Scene(PhaseTitle.Scene);
-            string report = "passed: title keys bind J + duplicate rejected, title level select→level1, J jumps " + played +
-                ", Escape pause freezes play, pause level select→level2, pause keys restore defaults, pause→title";
+            string report = "passed: title settings bind J + duplicate rejected, title level select→level1, J jumps " + played +
+                ", Escape pause freezes play, pause level select→level2, pause settings restore defaults, fullscreen on/off, pause→title";
             File.WriteAllText(Reports + "live-input.txt", report); return report;
         }
         finally
         {
             if (keyboard != null) InputSystem.RemoveDevice(keyboard);
+            PhaseKeys.IsFullScreen = isFull; PhaseKeys.SetFullScreen = setFull;
             if (saved == null) PlayerPrefs.DeleteKey(PhaseSandbox.ControlsKey); else PlayerPrefs.SetString(PhaseSandbox.ControlsKey, saved);
             PlayerPrefs.Save(); PhaseSandbox.ApplyControls(slots);
             InputSystem.settings.backgroundBehavior = focus; InputSystem.settings.editorInputBehaviorInPlayMode = editorInput;
