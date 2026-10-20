@@ -8,7 +8,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.SceneManagement;
 
-// Keyboard route: title → editor → paint terrain, laser, crystal, place a platform and a gear → export/import → playtest → back → title → level 1.
+// Keyboard route: title → editor → paint terrain, laser, crystal, draw a diagonal platform line and a gear → export/import → playtest → back → title → level 1.
 // Restores the developer's draft and clipboard.
 public static class MenuLiveInput
 {
@@ -70,15 +70,19 @@ public static class MenuLiveInput
             Require(room.lasers.Length == 1 && room.lasers[0].phaseMask == 1 && room.lasers[0].direction == LaserDirection.Down, "Keyboard did not paint a red down laser.");
             Require(room.crystals.Length == 1 && room.crystals[0].phaseMask == 7 && room.crystals[0].kind == CrystalKind.Jump, "Keyboard did not paint a white jump crystal.");
             await Tap(keyboard, Key.X); await Tap(keyboard, Key.X);
-            Require(editor.Tool == PhaseEditor.ReturnPlatform, "Dash did not cycle to the returning platform.");
+            Require(editor.Tool == PhaseEditor.PlatformTool, "Dash did not cycle to the platform.");
             for (int i = 0; i < 4; i++) await Tap(keyboard, Key.UpArrow);
             await Tap(keyboard, Key.Z);
             for (int i = 0; i < 4; i++) await Tap(keyboard, Key.RightArrow);
+            for (int i = 0; i < 2; i++) await Tap(keyboard, Key.UpArrow);
             await Tap(keyboard, Key.Z);
             room = editor.Room();
-            Require(room.platforms.Length == 1 && room.platforms[0].returns && room.platforms[0].nodeX.SequenceEqual(new[] { 80.0, 112.0 }) && room.platforms[0].nodeY.SequenceEqual(new[] { 80.0, 80.0 }),
-                "Keyboard did not place a returning platform from (80,80) to (112,80).");
-            await Tap(keyboard, Key.X); await Tap(keyboard, Key.X);
+            Require(room.platforms.Length == 1 && !room.platforms[0].returns && room.platforms[0].w == 24 && room.platforms[0].h == 8 &&
+                room.platforms[0].nodeX.SequenceEqual(new[] { 80.0, 112.0 }) && room.platforms[0].nodeY.SequenceEqual(new[] { 80.0, 64.0 }),
+                "Keyboard did not draw a diagonal platform from (80,80) to (112,64).");
+            Capture(editor, "editor-platform");
+            for (int i = 0; i < 2; i++) await Tap(keyboard, Key.DownArrow);
+            await Tap(keyboard, Key.X);
             Require(editor.Tool == PhaseEditor.GearTool, "Dash did not cycle to the gear.");
             for (int i = 0; i < 6; i++) await Tap(keyboard, Key.RightArrow);
             await Tap(keyboard, Key.Z);
@@ -105,8 +109,8 @@ public static class MenuLiveInput
             InputSystem.QueueStateEvent(keyboard, new KeyboardState()); await Frames(2);
             Require(Time.frameCount > frame && playtest.Controller.time > time && playtest.Controller.player.x > x, "Playtest did not advance with keyboard input.");
             await Tap(keyboard, Key.X);
-            for (int i = 0; i < 60 && playtest.Controller.movers[0].x <= 80; i++) await Frames(1);
-            Require(playtest.Controller.movers[0].x > 80, $"Dash did not move the playtest platform (dashes={playtest.Controller.dashes}).");
+            for (int i = 0; i < 60 && (playtest.Controller.movers[0].x <= 80 || playtest.Controller.movers[0].y >= 80); i++) await Frames(1);
+            Require(playtest.Controller.movers[0].x > 80 && playtest.Controller.movers[0].y < 80, $"Dash did not move the playtest platform along the diagonal (dashes={playtest.Controller.dashes}, x={playtest.Controller.movers[0].x}, y={playtest.Controller.movers[0].y}).");
             File.WriteAllBytes(Reports + "playtest.png", playtest.Frame.EncodeToPNG());
             string moved = $"frames={Time.frameCount - frame}, controllerSeconds={playtest.Controller.time - time:F3}, dx={playtest.Controller.player.x - x:F0}, platformX={playtest.Controller.movers[0].x:F0}";
 
@@ -120,7 +124,7 @@ public static class MenuLiveInput
             time = level.Controller.time; await Frames(10);
             Require(level.Controller.time > time, "Level1 did not start.");
             File.WriteAllBytes(Reports + "level1.png", level.Frame.EncodeToPNG());
-            string report = "passed: title→editor, keyboard terrain/laser/crystal paint, two-step platform/gear placement, export/import, playtest " + moved + ", escape back, title→level1";
+            string report = "passed: title→editor, keyboard terrain/laser/crystal paint, diagonal platform line and gear, export/import, playtest " + moved + ", escape back, title→level1";
             File.WriteAllText(Reports + "live-input.txt", report); return report;
         }
         finally

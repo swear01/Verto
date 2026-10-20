@@ -232,7 +232,7 @@ public class MenuTests : InputTestFixture
 
     IEnumerator Move(Key key, int count) { for (int i = 0; i < count; i++) yield return Tap(key); }
     [UnityTest]
-    public IEnumerator EditorPlacesPlatformsAndGearsInTwoSteps()
+    public IEnumerator EditorDrawsAPlatformLineThenPlaytestsTheDiagonal()
     {
         string saved = PlayerPrefs.HasKey(PhaseEditor.DraftKey) ? PlayerPrefs.GetString(PhaseEditor.DraftKey) : null, clipboard = GUIUtility.systemCopyBuffer;
         PlayerPrefs.DeleteKey(PhaseEditor.DraftKey);
@@ -243,36 +243,38 @@ public class MenuTests : InputTestFixture
             yield return WaitFor(PhaseEditor.Scene);
             var editor = Object.FindAnyObjectByType<PhaseEditor>();
             yield return Move(Key.X, 11);
-            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.ReturnPlatform));
+            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.PlatformTool));
             yield return Move(Key.UpArrow, 4);
             yield return Tap(Key.Z);
-            Assert.That((editor.Anchor, editor.Room().platforms.Length), Is.EqualTo(((Vector2Int?)new Vector2Int(8, 14), 0)), "jump places the body first");
+            Assert.That((editor.Anchor, editor.Room().platforms.Length), Is.EqualTo(((Vector2Int?)new Vector2Int(8, 14), 0)), "the first press places only the start");
             yield return Tap(Key.Escape);
-            Assert.That((editor.Anchor, Object.FindAnyObjectByType<PhaseEditor>()), Is.EqualTo(((Vector2Int?)null, editor)), "escape cancels without leaving");
-            yield return Tap(Key.Z); yield return Move(Key.RightArrow, 4); yield return Tap(Key.UpArrow); yield return Tap(Key.Z);
+            Assert.That((editor.Anchor, Object.FindAnyObjectByType<PhaseEditor>()), Is.EqualTo(((Vector2Int?)null, editor)), "escape drops a start that has no line");
+            yield return Tap(Key.Z); yield return Move(Key.RightArrow, 4); yield return Move(Key.UpArrow, 1); yield return Tap(Key.Z);
             var platform = editor.Room().platforms.Single();
             Assert.That((string.Join(",", platform.nodeX.Concat(platform.nodeY)), platform.w, platform.h, platform.returns, editor.Anchor),
-                Is.EqualTo(("64,96,112,112", 24.0, 8.0, true, (Vector2Int?)null)), "a returning route keeps to one axis");
+                Is.EqualTo(("64,96,112,104", 24.0, 8.0, false, (Vector2Int?)new Vector2Int(8, 14))), "the next press keeps both axes");
+            yield return Move(Key.RightArrow, 3); yield return Move(Key.DownArrow, 2); yield return Tap(Key.Z);
+            platform = editor.Room().platforms.Single();
+            Assert.That(string.Join(",", platform.nodeX.Concat(platform.nodeY)), Is.EqualTo("64,96,120,112,104,120"), "another press extends the same line");
+            yield return Tap(Key.C);
+            Assert.That((editor.Anchor, editor.Room().platforms.Single().nodeX.Length), Is.EqualTo(((Vector2Int?)null, 3)), "grab ends the line");
 
-            yield return Tap(Key.X);
-            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.PlatformTool));
-            yield return Move(Key.RightArrow, 8); yield return Move(Key.UpArrow, 3);
+            yield return Move(Key.RightArrow, 5); yield return Move(Key.UpArrow, 3);
             yield return Tap(Key.Z); yield return Tap(Key.C);
-            Assert.That((editor.Anchor, editor.Room().platforms.Length), Is.EqualTo(((Vector2Int?)null, 1)), "erase cancels a pending body");
+            Assert.That((editor.Anchor, editor.Room().platforms.Length), Is.EqualTo(((Vector2Int?)null, 1)), "grab drops a new start");
             yield return Tap(Key.Z); yield return Move(Key.RightArrow, 4); yield return Move(Key.DownArrow, 2); yield return Tap(Key.Z);
             platform = editor.Room().platforms.Last();
-            Assert.That((string.Join(",", platform.nodeX.Concat(platform.nodeY)), platform.returns), Is.EqualTo(("160,192,80,96", false)));
+            Assert.That((string.Join(",", platform.nodeX.Concat(platform.nodeY)), platform.returns), Is.EqualTo(("160,192,96,112", false)));
 
             yield return Tap(Key.X);
-            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.GearTool));
-            yield return Move(Key.RightArrow, 4); yield return Move(Key.UpArrow, 2);
-            yield return Tap(Key.Z); yield return Move(Key.RightArrow, 5); yield return Move(Key.DownArrow, 6); yield return Tap(Key.Z);
+            Assert.That((editor.Tool, editor.Anchor), Is.EqualTo((PhaseEditor.GearTool, (Vector2Int?)null)));
+            yield return Tap(Key.Z); yield return Move(Key.RightArrow, 4); yield return Move(Key.DownArrow, 2); yield return Tap(Key.Z);
             var gear = editor.Room().gears.Single();
             Assert.That((gear.wall.x, gear.wall.y, gear.wall.w, gear.wall.h, gear.top, gear.platform.x, gear.platform.y, gear.platform.w, gear.platform.h, gear.endX),
-                Is.EqualTo((224.0, 80.0, 8.0, 56.0, 56.0, 240.0, 128.0, 56.0, 8.0, 264.0)));
+                Is.EqualTo((192.0, 112.0, 8.0, 56.0, 96.0, 208.0, 128.0, 56.0, 8.0, 224.0)));
 
-            yield return Move(Key.LeftArrow, 13); yield return Move(Key.UpArrow, 6);
-            Assert.That(editor.Cursor, Is.EqualTo(new Vector2Int(20, 10)));
+            yield return Move(Key.LeftArrow, 19); yield return Move(Key.UpArrow, 2);
+            Assert.That(editor.Cursor, Is.EqualTo(new Vector2Int(9, 14)));
             yield return Move(Key.X, 3); yield return Tap(Key.Z);
             Assert.That((editor.Tool, editor.Room().blocks.Length), Is.EqualTo((PhaseEditor.Terrain, PhaseEditor.Columns)), "terrain never paints over a platform");
             yield return Tap(Key.C);
@@ -290,7 +292,14 @@ public class MenuTests : InputTestFixture
             var sandbox = editor.Playtest;
             Assert.That((sandbox.Controller.movers.Length, sandbox.Controller.gears.Length), Is.EqualTo((1, 1)));
             Assert.That((sandbox.Controller.movers[0].x, sandbox.Controller.movers[0].y, sandbox.Controller.gears[0].wall.x, sandbox.Controller.gears[0].platform.y),
-                Is.EqualTo((64.0, 112.0, 224.0, 128.0)), "playtest mechanisms start at their authored cells");
+                Is.EqualTo((160.0, 96.0, 192.0, 128.0)), "playtest mechanisms start at their authored cells");
+            int frame = Time.frameCount; double time = sandbox.Controller.time, x = sandbox.Controller.movers[0].x, y = sandbox.Controller.movers[0].y;
+            yield return Tap(Key.X);
+            yield return new WaitForSeconds(.45f);
+            Assert.That(Time.frameCount, Is.GreaterThan(frame));
+            Assert.That(sandbox.Controller.time, Is.GreaterThan(time));
+            Assert.That(sandbox.Controller.movers[0].x, Is.GreaterThan(x), "the dash moves the platform along x");
+            Assert.That(sandbox.Controller.movers[0].y, Is.GreaterThan(y), "the same dash moves the platform along y");
             yield return Tap(Key.Escape);
             yield return Tap(Key.Escape);
             yield return WaitFor(PhaseTitle.Scene);
