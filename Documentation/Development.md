@@ -100,11 +100,12 @@ unity command capture_game_view -- --source screen --save_path Temp/phase-live.p
 unity command console -- --level error --tail 20
 unity command editor_stop
 unity status --until-ready --json
-unity command eval 'UnityEngine.Application.runInBackground = false;'
+unity command eval 'UnityEngine.Application.runInBackground = true;'
 ```
 
-Record `Application.runInBackground` before this sequence and restore that value
-afterwards (the default above is false). Both waits must return `met: true`; the
+Project Settings keep Run In Background on, and an Edit Mode `Application.runInBackground`
+assignment writes that setting, so end with `= true`; setting it false dirties
+`ProjectSettings.asset`. Both waits must return `met: true`; the
 script must return `passed`. Inspect the capture's returned `savedPath`: Pipeline
 0.8.0-exp.1 places this file under `Assets/Temp/`. Keep diagnostic captures out of Git.
 
