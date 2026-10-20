@@ -11,6 +11,8 @@ using UnityEngine.TestTools;
 public class MenuTests : InputTestFixture
 {
     Keyboard keyboard;
+    // Editor PlayerPrefs are shared by every open Editor of this project, so start from the default keys rather than whatever they hold.
+    [SetUp] public void DefaultKeys() => PhaseSandbox.ApplyControls(PhaseSandbox.DefaultSlots);
     IEnumerator Tap(params Key[] keys)
     {
         InputSystem.QueueStateEvent(keyboard, new KeyboardState(keys)); yield return null; yield return null;
@@ -397,6 +399,12 @@ public class MenuTests : InputTestFixture
         var title = Object.FindAnyObjectByType<PhaseTitle>();
         var size = PhaseSandbox.ViewSize(Screen.width, Screen.height);
         var before = title.GetComponentInChildren<SpriteRenderer>().sprite.texture.GetPixels32();
+        // Hovering lights the icon under the pointer without moving the choice.
+        InputSystem.QueueStateEvent(mouse, new MouseState { position = ScreenPoint(size, 1) }); yield return null; yield return null;
+        Assert.That((title.Choice, title.Pointer), Is.EqualTo((0, 1)), "the pointer lights the level-select icon");
+        var hovered = title.GetComponentInChildren<SpriteRenderer>().sprite.texture.GetPixels32();
+        Assert.That(hovered.Count(p => p.Equals(PixelFrame.Light)), Is.GreaterThan(before.Count(p => p.Equals(PixelFrame.Light))), "the hovered icon is drawn at full light");
+        before = hovered;
         title.SetControlsOpen("false");
         yield return Click(mouse, ScreenPoint(size, 1));
         Assert.That(title.LevelSelect, Is.Not.Null, "the click that clears the input gate opens level select");

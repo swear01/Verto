@@ -19,6 +19,8 @@ namespace Phase
         public const int Size = 11, Pitch = 22;
         readonly string[][] icons;
         public int Choice { get; private set; }
+        // The icon under the mouse, lit like the keyboard choice, or -1.
+        public int Pointer { get; private set; } = -1;
         public PhaseMenu(params string[][] icons) { this.icons = icons; }
 
         int Width => (icons.Length - 1) * Pitch + Size;
@@ -29,20 +31,23 @@ namespace Phase
         public void Draw(PixelFrame frame, int middle, int scale = 1)
         {
             var row = frame.Zoom(Row(new Vector2Int(frame.Width, frame.Height), middle, scale));
-            for (int i = 0; i < icons.Length; i++) row.Blit(icons[i], i * Pitch, 0, PixelFrame.Light, amount: i == Choice ? 1 : .35f);
+            for (int i = 0; i < icons.Length; i++) row.Blit(icons[i], i * Pitch, 0, PixelFrame.Light, amount: i == Choice || i == Pointer ? 1 : .35f);
         }
-        // Returns the confirmed icon, or -1; `changed` reports a new selection.
+        // Returns the confirmed icon, or -1; `changed` reports a new selection or pointer highlight.
         public int Tick(Keyboard k, Mouse m, Vector2Int frameSize, int middle, out bool changed, int scale = 1)
         {
             changed = false;
             int x = Step(k, 0, 1);
             if (x != 0 && Choice + x >= 0 && Choice + x < icons.Length) { Choice += x; changed = true; }
-            if (m != null && m.leftButton.wasPressedThisFrame)
+            int over = -1;
+            if (m != null && Screen.width > 0 && Screen.height > 0)
             {
                 var p = Row(frameSize, middle, scale).Local(FramePoint(m, frameSize));
                 for (int i = 0; i < icons.Length; i++)
-                    if (p.x >= i * Pitch - 3 && p.x < i * Pitch + Size + 3 && p.y >= -3 && p.y < Size + 3) { Choice = i; return i; }
+                    if (p.x >= i * Pitch - 3 && p.x < i * Pitch + Size + 3 && p.y >= -3 && p.y < Size + 3) over = i;
             }
+            if (over != Pointer) { Pointer = over; changed = true; }
+            if (over >= 0 && m.leftButton.wasPressedThisFrame) { Choice = over; return over; }
             return Confirmed(k) ? Choice : -1;
         }
         // The mouse position in frame pixels from the top-left.

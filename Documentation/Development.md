@@ -382,13 +382,26 @@ level select, the pencil opens the editor and the gear opens settings.
 Escape in a level (not an editor playtest) pauses play like the Web dialog gate, with
 resume, level select, settings and back-to-title icons; Escape resumes, and keys
 held to close it stay ignored until released. The level12 victory banner has replay-level1
-and level-select icons.
-Level select is a 4×3 grid of pixel-digit tiles; every level is always selectable, it
-opens at the current level from pause, and Escape goes back. Settings show seven
-action icons with two key caps each, labelled in a tiny pixel font. Arrows and Enter
-always navigate. Enter, jump or a click makes a slot blink and binds the next key; Escape
-cancels and Backspace clears. The icon below restores the defaults. A rejected change
-flashes a red border and keeps the old map; Escape closes the screen. The last row is
+and level-select icons. Menu icons share one 11×11 grid with 2px strokes (`PhaseMenu`).
+Menus lay out in layout pixels and draw through `UiZoom`: the largest whole-pixel scale
+that keeps the layout within 80% of the native view on both axes, centered. The title
+banner, pause row, level select and settings each use it, so they grow with the view
+instead of staying at 1×. Navigation reads key presses per frame, so a tap shorter than
+a frame still moves the selection, and the click that refocuses the page (which re-arms
+the held-key gate) still acts.
+Level select and settings replace the screen behind them. Level select picks 4, 6, 3 or
+2 columns, whichever shows the grid largest. Each tile frames a 40×22 thumbnail of the
+room (one pixel per 8px cell) above its 2× number; the selected tile has a blue frame.
+Every level is always selectable, it opens at the current level from pause, and Escape
+goes back. Thumbnails live in `Assets/Phase/Resources/Levels/<Scene>.png`; rebake them
+whenever a level scene changes or a level is added, with
+`unity command run_script -- --file Verification/LevelThumbnails.cs --entry LevelThumbnails.Run`.
+A missing thumbnail leaves its frame empty.
+Settings show seven action icons with two key caps each, labelled in a tiny pixel font,
+then restore, fullscreen and close controls. Arrows and Enter always navigate. Enter,
+jump or a click makes a slot blink and binds the next key; Escape cancels and Backspace
+clears. The circular arrow restores the defaults. A rejected change flashes a red border
+and keeps the old map; Escape or the close icon closes the screen. The fullscreen row is
 screen corners and a switch for Unity's `Screen.fullScreen` (knob right on a lit track
 when on); Enter, jump or a click toggles it. It is player state, not saved by the game:
 standalone players keep Unity's own setting and Web starts windowed. Web applies the

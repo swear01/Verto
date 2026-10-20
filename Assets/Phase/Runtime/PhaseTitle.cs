@@ -17,6 +17,7 @@ namespace Phase
         };
         readonly PhaseMenu menu = new PhaseMenu(PhaseMenu.PlayIcon, PhaseMenu.LevelsIcon, PhaseMenu.EditIcon, PhaseMenu.SettingsIcon);
         public int Choice => menu.Choice;
+        public int Pointer => menu.Pointer;
         public PhaseKeys Keys { get; private set; }
         public PhaseLevels LevelSelect { get; private set; }
         PhaseController backdrop;

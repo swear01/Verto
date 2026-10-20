@@ -62,6 +62,11 @@ function titleIcon(width, height, index, localX = 5, localY = 5) {
   const ox = Math.floor((width - row * scale) / 2), oy = Math.floor(height / 2) + 11 * scale - Math.floor(icon * scale / 2);
   return [ox + (index * pitch + localX) * scale + Math.floor(scale / 2), oy + localY * scale + Math.floor(scale / 2)];
 }
+function pauseIcon(width, height, index, localX = 5, localY = 5) {
+  const scale = uiScale([width, height], 3 * 22 + 11, 11);
+  const ox = Math.floor((width - 77 * scale) / 2), oy = Math.floor(height / 2) - Math.floor(11 * scale / 2);
+  return [ox + (index * 22 + localX) * scale + Math.floor(scale / 2), oy + localY * scale + Math.floor(scale / 2)];
+}
 function settingsPoint(width, height, pageX, pageY) {
   const scale = uiScale([width, height], 67, 128);
   return [Math.floor((width - 67 * scale) / 2) + pageX * scale + Math.floor(scale / 2), Math.floor((height - 128 * scale) / 2) + pageY * scale + Math.floor(scale / 2)];
@@ -131,6 +136,10 @@ function levelTile(width, height, index) {
         const [width, height] = await canvas.evaluate(c => [c.width, c.height]);
         const [x, y] = titleIcon(width, height, 1);
         const [playX, playY] = titleIcon(width, height, 0, 1, 1);
+        const [levelsX, levelsY] = titleIcon(width, height, 1, 0, 0);
+        assert.equal(pixelMatches(await capture(), levelsX, levelsY, [234, 223, 197], width), false, 'Level select starts dim');
+        { const [cssX, cssY] = await frameCss(x, y); await page.mouse.move(cssX, cssY); await page.waitForTimeout(150); }
+        assert.equal(pixelMatches(await capture(), levelsX, levelsY, [234, 223, 197], width), true, 'The pointer lights the level-select icon');
         await holdAt(x, y); await page.waitForTimeout(200);
         const opened = await capture();
         assert(hasSelection(opened), 'The first click opens level select');
@@ -144,6 +153,26 @@ function levelTile(width, height, index) {
         assert.equal(pixelMatches(await capture(), playX, playY, [234, 223, 197], width), false, 'Play stays dim while levels is selected');
         await page.keyboard.down('ArrowLeft'); await page.keyboard.up('ArrowLeft'); await page.waitForTimeout(80);
         assert.equal(pixelMatches(await capture(), playX, playY, [234, 223, 197], width), true, 'A quick tap moves the selection back to play');
+        await page.mouse.move(0, 0);
+        // Title, level select and settings fill each view at a whole-pixel scale; level select and settings replace the title.
+        for (const [viewWidth, viewHeight] of [[960, 540], [2560, 1080], [390, 844]]) {
+          await page.setViewportSize({width: viewWidth, height: viewHeight}); await page.waitForTimeout(300);
+          const [w, h] = await canvas.evaluate(c => [c.width, c.height]), size = `${viewWidth}x${viewHeight}`;
+          const title = await capture(); fs.writeFileSync(path.join(reports, `menu-title-${size}.png`), title);
+          const [lit, litY] = titleIcon(w, h, 0, 1, 5), [dim, dimY] = titleIcon(w, h, 3, 5, 0);
+          assert(pixelMatches(title, lit, litY, [234, 223, 197], w) && !pixelMatches(title, dim, dimY, [234, 223, 197], w), `Title icons at ${size}`);
+          await tap('ArrowRight'); await tap('Enter'); await page.waitForTimeout(150);
+          const levels = await capture(); fs.writeFileSync(path.join(reports, `menu-levels-${size}.png`), levels);
+          assert(!pixelMatches(levels, lit, litY, [234, 223, 197], w), `Level select replaces the title at ${size}`);
+          const tile = levelTile(w, h, 0), [frameX, frameY] = [tile.x + Math.floor(tile.w / 88), tile.y + Math.floor(tile.w / 88)];
+          assert(tile.x >= 0 && tile.y >= 0 && tile.x + tile.w <= w && tile.y + tile.h <= h && pixelMatches(levels, frameX, frameY, [121, 201, 255], w), `Selected tile inside the view at ${size}`);
+          await tap('Escape'); await tap('ArrowRight', 2); await tap('Enter'); await page.waitForTimeout(150);
+          const settings = await capture(); fs.writeFileSync(path.join(reports, `menu-settings-${size}.png`), settings);
+          const [capX, capY] = settingsPoint(w, h, 13, 0);
+          assert(!pixelMatches(settings, lit, litY, [234, 223, 197], w) && pixelMatches(settings, capX, capY, [234, 223, 197], w), `Settings replace the title at ${size}`);
+          await tap('Escape'); await tap('ArrowLeft', 3);
+        }
+        await page.setViewportSize({width: 1280, height: 720}); await page.waitForTimeout(300);
       }
       await canvas.click();
       fs.writeFileSync(path.join(reports,'demo-title.png'),await capture());
@@ -417,11 +446,19 @@ function levelTile(width, height, index) {
     }
     await selectRoom(1);
     await page.reload(); await begin();
-    for(const [width,height] of [[320,407],[800,600],[2560,1080],[844,390],[390,844]]) {
+    for(const [width,height] of [[320,407],[800,600],[960,540],[2560,1080],[844,390],[390,844]]) {
       await page.setViewportSize({width,height}); await page.waitForTimeout(250);
       const box=await canvas.boundingBox();assert.deepEqual([box.x,box.y,box.width,box.height],[0,0,width,height]);
       assert.deepEqual(await canvas.evaluate(c=>[c.width,c.height]),[Math.max(320,Math.round(180*width/height)),Math.max(180,Math.ceil(320*height/width))]);
       assert(character(await capture()),'Player remains visible after resize');
+      if([[960,540],[2560,1080],[390,844]].some(([w,h])=>w===width&&h===height)) {
+        // The pause row scales with the view and starts on resume.
+        await tap('Escape');await page.waitForTimeout(150);
+        const [w,h]=await canvas.evaluate(c=>[c.width,c.height]),pause=await capture(),[x,y]=pauseIcon(w,h,0,1,5),[gx,gy]=pauseIcon(w,h,2,5,0);
+        fs.writeFileSync(path.join(reports,`menu-pause-${width}x${height}.png`),pause);
+        assert(pixelMatches(pause,x,y,[234,223,197],w)&&!pixelMatches(pause,gx,gy,[234,223,197],w),`Pause row at ${width}x${height}`);
+        await tap('Escape');await page.waitForTimeout(150);
+      }
       await page.screenshot({path:path.join(reports,`demo-viewport-${width}.png`)});
     }
     await page.setViewportSize({width:1280,height:720}); await page.waitForTimeout(250);
