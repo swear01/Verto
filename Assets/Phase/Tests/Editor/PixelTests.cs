@@ -396,6 +396,30 @@ public class PixelTests
     }
 
     [Test]
+    public void BigRoomViewIsAWindowOntoTheWholeRoom()
+    {
+        var s=new PhaseController(new[]{new Block(0,352,640,8),new Block(600,40,24,8,1),new Block(300,200,8,80)},316,180,
+            lasers:new[]{new Laser(8,300,LaserDirection.Right)},width:640,height:360);s.flash=0;
+        var pixels=new PhasePixels();
+        try
+        {
+            pixels.SetView(640,360,0);pixels.Draw(s);var whole=pixels.Texture.GetPixels32();
+            Assert.That(pixels.OriginY,Is.Zero,"a view that covers the room has no padding");
+            Color32 sky=whole[359*640+5];Assert.That(sky.b,Is.GreaterThan(sky.r),"open sky above the skyline, not stone");
+            pixels.SetView(320,180,0);
+            foreach(var (x,y) in new[]{(0,0),(160,96),(320,180),(1000,-50)})
+            {
+                pixels.Scroll(x,y);pixels.Draw(s);var frame=pixels.Texture.GetPixels32();
+                int ox=Math.Max(0,Math.Min(320,x)),oy=Math.Max(0,Math.Min(180,y));
+                Assert.That((pixels.OriginX,pixels.OriginY),Is.EqualTo((ox,oy)),"origin stays inside the room");
+                for(int row=0;row<180;row++)for(int col=0;col<320;col++)
+                    if(!frame[row*320+col].Equals(whole[(row+180-oy)*640+col+ox])){Assert.Fail($"{x},{y}: pixel {col},{row} differs from the whole room");}
+            }
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
+    [Test]
     public void HoodFollowsDashUseFailedRetryAndLandingRefill()
     {
         var s=new PhaseController(new[]{new Block(0,160,320,24)},120,90);s.player.grounded=false;s.flash=0;

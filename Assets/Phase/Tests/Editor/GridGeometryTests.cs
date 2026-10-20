@@ -181,6 +181,29 @@ public class GridGeometryTests
         finally { EditorSceneManager.ClosePreviewScene(scene); }
     }
     [Test]
+    public void TerrainAndPrefabsSnapAnywhereInsideABigRoom()
+    {
+        var scene = EditorSceneManager.NewPreviewScene();
+        try
+        {
+            var root = new GameObject("Big room probe"); SceneManager.MoveGameObjectToScene(root, scene);
+            root.AddComponent<Grid>().cellSize = new Vector3(8, 8, 1);
+            var sandbox = root.AddComponent<PhaseSandbox>(); sandbox.roomSize = new Vector2Int(640, 360);
+            var tile = new GameObject("Terrain"); tile.transform.SetParent(root.transform); tile.transform.position = new Vector3(633, -351);
+            var floor = tile.AddComponent<PhaseTerrain>().CreateBlock();
+            var asset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Phase/Prefabs/Laser.prefab");
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(asset, root.transform);
+            instance.transform.position = new Vector3(601, -339);
+            var emitter = instance.GetComponent<PhaseLaser>(); emitter.direction = LaserDirection.Down;
+            var laser = emitter.CreateLaser();
+            Assert.That((floor.x, floor.y, laser.x, laser.y), Is.EqualTo((632d, 352d, 600d, 336d)));
+            var room = new PhaseController(new[] { floor }, 32, 149, lasers: new[] { laser }, width: sandbox.roomSize.x, height: sandbox.roomSize.y);
+            var beam = room.LaserBeam(laser);
+            Assert.That((beam.y, beam.y + beam.h), Is.EqualTo((344d, 360d)), "the beam reaches the bottom of the big room");
+        }
+        finally { EditorSceneManager.ClosePreviewScene(scene); }
+    }
+    [Test]
     public void DemoAuthoringRejectsOffGridCollisionGeometry()
     {
         var data = JsonUtility.FromJson<PhaseDemoRooms>(System.IO.File.ReadAllText("Assets/Phase/DemoRooms.json"));

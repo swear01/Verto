@@ -144,6 +144,38 @@ public static class PhaseSandboxBuilder
         EditorBuildSettings.scenes = scenes.ToArray();
         AssetDatabase.SaveAssets();
     }
+    // A standalone 640x360 scrolling room: a long floor run, then a three-step wall climb in the right column.
+    [MenuItem("PHASE/Create scroll test")]
+    public static void CreateScrollTest()
+    {
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+        EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+        var root = new GameObject("PHASE"); root.AddComponent<Grid>().cellSize = new Vector3(8, 8, 1); root.AddComponent<PhaseGrid>(); var sandbox = root.AddComponent<PhaseSandbox>();
+        var camera = new GameObject("Camera").AddComponent<Camera>();
+        camera.orthographic = true; camera.orthographicSize = 90;
+        camera.clearFlags = CameraClearFlags.SolidColor; camera.backgroundColor = Color.black;
+        sandbox.pixelCamera = camera;
+        sandbox.pixelMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Phase/PixelSurface.mat");
+        sandbox.roomSize = new Vector2Int(640, 360); sandbox.spawn = new Vector2Int(16, 333);
+        Add(root, "Floor", 0, 344, 640, 16, -1);
+        Add(root, "Step A", 560, 248, 80, 96, -1);
+        Add(root, "Step B", 592, 152, 48, 96, -1);
+        Add(root, "Step C", 624, 56, 16, 96, -1);
+        Add(root, "Red ledge", 160, 264, 40, 8, 0);
+        Add(root, "Blue ledge", 264, 200, 40, 8, 1);
+        Add(root, "Green ledge", 368, 136, 40, 8, 2);
+        Add(root, "High ledge", 64, 112, 48, 8, -1, 5);
+        var laser = PhaseMechanismPrefabs.Instantiate("Laser", root.transform, new Vector3(0, -16)).GetComponent<PhaseLaser>();
+        laser.direction = LaserDirection.Right; laser.phaseMask = 6;
+        var spikes = PhaseMechanismPrefabs.Instantiate("Spikes", root.transform, new Vector3(400, -112)).GetComponent<PhaseSpike>();
+        spikes.direction = SpikeDirection.Up; spikes.length = 3; spikes.phaseMask = 7;
+        Add(root, "Spike base", 400, 120, 24, 8, -1);
+        const string path = "Assets/Scenes/Drafts/ScrollTest.unity";
+        System.IO.Directory.CreateDirectory("Assets/Scenes/Drafts");
+        RecordOverrides(root);
+        EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), path);
+        AssetDatabase.SaveAssets();
+    }
     // The title is the first build scene; the editor follows the levels.
     [MenuItem("PHASE/Create title and editor")]
     public static void CreateScreens()

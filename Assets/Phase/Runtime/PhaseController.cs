@@ -99,6 +99,26 @@ namespace Phase
         public Player(double x, double y) : base(x, y, 8, 11) { }
     }
 
+    // View origin in room pixels. An axis larger than the view eases toward the player and stays inside the room;
+    // an axis the view covers keeps the fixed layout: X at 0, Y centred with stone above and void below.
+    public sealed class PhaseCamera
+    {
+        public static readonly double Ease = 1 - Math.Pow(.01, PhaseController.Dt);
+        public double x, y;
+        public int X => (int)Math.Floor(x + .5);
+        public int Y => (int)Math.Floor(y + .5);
+        public static double Clamp(double origin, int room, int view, bool vertical) =>
+            room <= view ? (vertical ? (room - view) / 2 : 0) : Math.Max(0, Math.Min(room - view, origin));
+        public void Follow(PhaseController c, int viewWidth, int viewHeight, bool snap = false)
+        {
+            var p = c.player;
+            double tx = Clamp(p.x + p.w / 2 - viewWidth / 2.0, c.Width, viewWidth, false);
+            double ty = Clamp(p.y + p.h / 2 - viewHeight / 2.0, c.Height, viewHeight, true);
+            x = Clamp(snap ? tx : x + (tx - x) * Ease, c.Width, viewWidth, false);
+            y = Clamp(snap ? ty : y + (ty - y) * Ease, c.Height, viewHeight, true);
+        }
+    }
+
     public struct Trail { public double x, y, life; public int phase; }
     public struct Particle { public double x, y, vx, vy, life; public int phase; }
 
@@ -124,13 +144,15 @@ namespace Phase
         public int phase, jumps, dashes, deaths;
         public double time, flash, freeze, respawn;
         public bool exitLeft, exitRight;
+        // Authored room size in native pixels; Width also grows with ResizeRoom for views wider than the room.
+        public readonly int RoomWidth = 320, Height = 180;
         public int Width { get; private set; } = 320;
         public int ExitDirection => respawn > 0 ? 0 : exitLeft && player.x < 0 ? -1 : exitRight && player.x + player.w > Width ? 1 : 0;
         bool WithinSides(double x, double w) => (exitLeft || x >= 0) && (exitRight || x + w <= Width);
 
         public void ResizeRoom(int width)
         {
-            width = Math.Max(320, width);
+            width = Math.Max(RoomWidth, width);
             if (width == Width) return;
             foreach (var block in blocks) if (block.x + block.w == Width) block.w += width - Width;
             Width = width;
@@ -144,14 +166,18 @@ namespace Phase
             jumps = previous.jumps; dashes = previous.dashes; deaths = previous.deaths;
             freeze = previous.freeze; flash = previous.flash;
             player.x = direction > 0 ? 0 : Width - player.w;
+            if (previous.Height != Height) player.y = Math.Max(0, Math.Min(player.y, Height - player.h));
             player.wall = player.hopX = player.forceX = 0;
             player.wallLock = player.retention = player.slide = 0;
             player.climbing = false; player.hopPlatform = player.dashPlatform = null;
             UpdateGrounded(Solid());
         }
 
-        public PhaseController(IEnumerable<Block> blocks, double spawnX, double spawnY, IEnumerable<MovingPlatform> platforms = null, IEnumerable<ClimbGear> gears = null, IEnumerable<Spike> spikes = null, IEnumerable<Laser> lasers = null, IEnumerable<Crystal> crystals = null)
+        public PhaseController(IEnumerable<Block> blocks, double spawnX, double spawnY, IEnumerable<MovingPlatform> platforms = null, IEnumerable<ClimbGear> gears = null, IEnumerable<Spike> spikes = null, IEnumerable<Laser> lasers = null, IEnumerable<Crystal> crystals = null, int width = 320, int height = 180)
         {
+            if (width < 320 || width % 8 != 0 || height < 180 || (height % 8 != 0 && height != 180))
+                throw new ArgumentOutOfRangeException(nameof(width), "Room size must be at least 320x180 in 8px steps.");
+            RoomWidth = Width = width; Height = height;
             this.blocks = blocks.ToList(); this.spawnX = spawnX; this.spawnY = spawnY;
             this.spikes = spikes?.ToList() ?? new List<Spike>();
             this.lasers = lasers?.ToList() ?? new List<Laser>();
@@ -232,14 +258,14 @@ namespace Phase
             }
             return enter < leave;
         }
-        public Block LaserBeam(Laser laser) => laser.Beam(Solid(), Width);
+        public Block LaserBeam(Laser laser) => laser.Beam(Solid(), Width, Height);
         public bool CheckHazards(Block from = null)
         {
             if (CheckSpikes(from)) return true;
             if (lasers.Count == 0) return false;
             var solids = Solid();
             foreach (var laser in lasers)
-                if (laser.ActiveInPhase(phase) && HitsSweep(laser.Beam(solids, Width), from ?? player))
+                if (laser.ActiveInPhase(phase) && HitsSweep(laser.Beam(solids, Width, Height), from ?? player))
                 { Kill(); return true; }
             return false;
         }
@@ -642,7 +668,7 @@ namespace Phase
             if (p.y < 0) { p.y = 0; p.vy = Math.Max(0, p.vy); p.varTime = p.remY = p.dashAttack = 0; }
             solids = Solid(); UpdateGrounded(solids); p.wall = WallAt(p, solids, input.x != 0 ? input.x : p.facing);
             if (p.grounded && p.dashRefill <= 0 && p.dashTime <= 0) p.dash = 1;
-            if (p.y > 180 + 14) Kill();
+            if (p.y > Height + 14) Kill();
             if (respawn <= 0) CollectCrystals();
         }
     }

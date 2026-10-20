@@ -18,13 +18,13 @@ namespace Phase
             this.direction = direction;
         }
 
-        public Block Beam(IEnumerable<Block> solids, int width)
+        public Block Beam(IEnumerable<Block> solids, int width, int height = 180)
         {
             bool horizontal = direction == LaserDirection.Left || direction == LaserDirection.Right;
             bool positive = direction == LaserDirection.Right || direction == LaserDirection.Down;
             double origin = horizontal ? (positive ? x + 8 : x) : (positive ? y + 8 : y);
             double across = horizontal ? y + 2 : x + 2;
-            double limit = horizontal ? width : 180, crossLimit = horizontal ? 180 : width;
+            double limit = horizontal ? width : height, crossLimit = horizontal ? height : width;
             if (origin < 0 || origin > limit || across < 0 || across + 4 > crossLimit)
                 return new Block(x, y, 0, 0);
             double end = positive ? limit : 0;
