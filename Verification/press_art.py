@@ -83,8 +83,11 @@ def night(width, height):
             # Two dithered rows soften each band edge, like the in-game backdrop.
             edge = band > 0 and y < band * height // len(SKY) + 2 and (x + y) % 2
             image.putpixel((x, y), SKY[band - 1] if edge else SKY[band])
+    seed = 7
     for i in range(width * height // 140):
-        x, y = (i * 73 + 17) % width, (i * 151 + 29) % (height * 2 // 3)
+        # Small LCG so the scatter is fixed but has no visible lattice at any canvas size.
+        seed = (seed * 1103515245 + 12345) % 2 ** 31
+        x, y = seed % width, (seed // width) % (height * 2 // 3)
         image.putpixel((x, y), STARS[i % 3 == 0])
     return image
 
@@ -130,7 +133,8 @@ def main():
     save(mark, 8, "Documentation/press/icon.png")
     save(mark, 8, "Assets/Phase/Art/AppIcon.png")
     save(mark, 2, "Assets/WebGLTemplates/Phase/favicon.png")
-    save(poster(126, 100, 3, 35), 5, "Documentation/press/cover.png")
+    # 2:1 so itch's link card shows it unmatted; the logo stays inside the centre 1.25:1 crop used by game grids.
+    save(poster(192, 96, 3, 33), 5, "Documentation/press/cover.png")
     save(poster(160, 80, 3, 25), 8, "Documentation/press/social.png")
 
 

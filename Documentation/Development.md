@@ -495,6 +495,6 @@ captures under `TestResults/DemoRooms/` or `TestResults/CrystalRooms/`.
 `python3 Verification/press_art.py` draws all press art as pixel art and enlarges it without
 smoothing. The motif is the phase shift: a light letterform trailed by red, blue and green
 echoes on the game's night-sky palette; the PHASE lettering is read from `PhaseTitle.cs`.
-It writes the itch.io cover `Documentation/press/cover.png` (630×500), the link preview
+It writes the itch.io cover `Documentation/press/cover.png` (960×480: 2:1 for itch link cards, logo inside the centre 1.25:1 grid crop), the link preview
 `social.png` (1280×640), the icon `icon.png` (256×256, a "P" mark on a dark tile), the default
 Player icon `Assets/Phase/Art/AppIcon.png` and the Web favicon.
