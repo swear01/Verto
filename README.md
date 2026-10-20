@@ -1,5 +1,9 @@
 # PHASE
 
+![PHASE](Documentation/press/social.png)
+
+[Play on itch.io](https://swear01.itch.io/phase).
+
 [中文 Wiki：背景、操作、物件與關卡製作](Documentation/Wiki.md)。
 
 [Play the Web preview](https://phase-gamejam1-20261016.swear01.chatgpt.site).

@@ -489,3 +489,11 @@ The manually edited `PhaseDemo1.1` is separate from these builders.
 captures under `TestResults/DemoRooms/` or `TestResults/CrystalRooms/`.
 
 `PhaseDemo12` is the classmate-authored level formerly named `PhaseDemo1.2`; it is included in the Web build and selectable as **12**. Its fourteen platform instances retain their authored routes, sizes and start nodes as scene overrides. Shared dash-platform Prefabs keep their original grid-aligned horizontal defaults; edit instance overrides for a single level. Preserve this handmade scene when rebuilding generated demos.
+
+## Press images
+
+`Verification/PressArt.cs` (Pipeline `run_script`, entry `PressArt.Run`) renders the
+store cover (`Documentation/press/cover.png`, 630×500), the link-preview banner
+(`social.png`, 1280×640), the icon (`icon.png`, 256×256) and the Web favicon with the
+game's own pixel renderer, upscaled without smoothing. `Assets/Phase/Art/AppIcon.png`
+is a copy of the icon, set as the default Player icon.
