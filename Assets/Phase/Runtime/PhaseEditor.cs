@@ -300,8 +300,8 @@ namespace Phase
                 if (slot == Hover) frame.Fill(cell.x, cell.y, Pitch, Pitch, PixelFrame.Light, .2f);
                 if (slot < MaskSlot) frame.Blit(toolIcons[ToolFor(kinds[slot])], x, y, kinds[slot] == Spawn || kinds[slot] == Erase || IsMechanism(kinds[slot]) ? PixelFrame.Light : color, 2, selected ? 1 : .45f);
                 else if (slot < ImportSlot) frame.Fill(x, y, 14, 14, PhasePixels.SurfaceColor(masks[slot - MaskSlot]), selected ? 1 : .6f);
-                else if (slot < PlaySlot) frame.Blit(slot == ImportSlot ? importIcon : exportIcon, cell.x + 4, cell.y + 4, PixelFrame.Light);
-                else frame.Blit(slot == PlaySlot ? PhaseMenu.PlayIcon : backIcon, x, y, PixelFrame.Light, 2);
+                else if (slot < BackSlot) frame.Blit(slot == ImportSlot ? importIcon : slot == ExportSlot ? exportIcon : PhaseMenu.PlayIcon, cell.x + 4, cell.y + 4, PixelFrame.Light);
+                else frame.Blit(backIcon, x, y, PixelFrame.Light, 2);
                 if (selected) frame.Outline(cell.x, cell.y, Pitch, Pitch, PixelFrame.Light);
             }
             if (flash > 0) frame.Warn();
