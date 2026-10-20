@@ -100,7 +100,7 @@ namespace Phase
                 {
                     var tile = new GameObject("Dash platform"); tile.transform.SetParent(root.transform,false);
                     var mover = tile.AddComponent<PhaseMovingPlatform>(); mover.size = new Vector2Int((int)platform.w,(int)platform.h);
-                    mover.nodes = platform.nodeX.Select((x,i) => new Vector2Int((int)x,(int)platform.nodeY[i])).ToArray(); mover.returns = platform.returns;
+                    mover.nodes = platform.nodeX.Select((x,i) => new Vector2Int((int)x,(int)platform.nodeY[i])).ToArray(); mover.returns = platform.returns; mover.phaseMask = platform.phaseMask;
                     tile.transform.localPosition = new Vector3(mover.nodes[0].x,-mover.nodes[0].y,0);
                 }
                 foreach (var gear in room.gears ?? Array.Empty<DemoGear>())
@@ -109,7 +109,7 @@ namespace Phase
                     tile.transform.localPosition = new Vector3((float)gear.wall.x,-(float)gear.wall.y,0);
                     var drive = tile.AddComponent<PhaseClimbGear>(); drive.wallSize = new Vector2Int((int)gear.wall.w,(int)gear.wall.h); drive.wallTop = (int)gear.top;
                     drive.platformStart = new Vector2Int((int)gear.platform.x,(int)gear.platform.y); drive.platformSize = new Vector2Int((int)gear.platform.w,(int)gear.platform.h);
-                    drive.platformEndX = (int)gear.endX;
+                    drive.platformEndX = (int)gear.endX; drive.phaseMask = gear.phaseMask;
                 }
                 var sandbox = root.AddComponent<PhaseSandbox>(); sandbox.custom = true;
                 sandbox.pixelCamera = camera; sandbox.pixelMaterial = material;

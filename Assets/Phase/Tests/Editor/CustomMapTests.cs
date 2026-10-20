@@ -154,6 +154,32 @@ public class CustomMapTests
         Assert.That(legacy.CreateController().movers.Length,Is.EqualTo(3),"built-in rooms keep their single mover alongside the arrays");
     }
     [Test]
+    public void ColoredPlatformsAndGearsRoundTripAndAbsentMasksStaySolid()
+    {
+        var map=Simple();
+        map.platforms=new[]{
+            new DemoPlatform{nodeX=new double[]{160,160},nodeY=new double[]{120,64},returns=true,phaseMask=2},
+            new DemoPlatform{nodeX=new double[]{208,248},nodeY=new double[]{96,96}}};
+        map.gears=new[]{Gear()};map.gears[0].phaseMask=6;
+        string json=PhaseCustomMap.ToJson(map);var data=JObject.Parse(json);
+        Assert.That(data["platforms"].Select(p=>(int?)p["phaseMask"]),Is.EqualTo(new int?[]{2,null}),"an always-solid platform writes no mask");
+        Assert.That((int)data["gears"][0]["phaseMask"],Is.EqualTo(6));
+        var parsed=PhaseCustomMap.Parse(json);Assert.That(PhaseCustomMap.ToJson(parsed),Is.EqualTo(json));
+        var controller=parsed.CreateController();
+        Assert.That(controller.movers.Select(m=>m.Mask),Is.EqualTo(new[]{2,7}));
+        Assert.That((controller.gears[0].wall.Mask,controller.gears[0].platform.Mask),Is.EqualTo((6,6)));
+        Assert.That(controller.Solid().Contains(controller.movers[0]),Is.False);Assert.That(controller.Solid().Contains(controller.movers[1]),Is.True);
+        foreach(var mask in new JToken[]{0,8,-1,1.5,"2"})
+        {
+            var bad=JObject.Parse(json);bad["platforms"][1]["phaseMask"]=mask;
+            Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(bad.ToString()),mask.ToString());
+            bad=JObject.Parse(json);bad["gears"][0]["phaseMask"]=mask;
+            Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(bad.ToString()),mask.ToString());
+        }
+        map.platforms[0].phaseMask=9;Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Validate(map));
+        map.platforms[0].phaseMask=0;map.gears[0].phaseMask=-2;Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Validate(map));
+    }
+    [Test]
     public void InvalidPlatformsAndGearsAreRejectedBeforePlaying()
     {
         DemoPlatform Platform(double x0,double y0,double x1,double y1,bool returns=false)=>new DemoPlatform{nodeX=new[]{x0,x1},nodeY=new[]{y0,y1},returns=returns};
