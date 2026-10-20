@@ -1,0 +1,24 @@
+[
+  {"name":"zero-lift gate run 1","steps":[
+    {"frames":24,"x":1,"y":0,"jump":true,"dash":false,"grab":true},
+    {"frames":8,"x":0,"y":-1,"jump":false,"dash":true,"grab":false},
+    {"frames":40,"x":1,"y":-1,"jump":false,"dash":false,"grab":true},
+    {"frames":24,"x":1,"y":0,"jump":false,"dash":true,"grab":false},
+    {"frames":8,"x":1,"y":0,"jump":true,"dash":false,"grab":false},
+    {"frames":40,"x":1,"y":0,"jump":false,"dash":true,"grab":false},
+    {"frames":40,"x":1,"y":0,"jump":false,"dash":false,"grab":false}
+  ]},
+  {"name":"zero-lift gate run 2","steps":[
+    {"frames":38,"x":0,"y":0,"jump":true,"dash":false,"grab":false},
+    {"frames":1,"x":0,"y":0,"jump":false,"dash":false,"grab":false},
+    {"frames":38,"x":0,"y":0,"jump":true,"dash":false,"grab":false},
+    {"frames":1,"x":0,"y":0,"jump":false,"dash":false,"grab":false},
+    {"frames":24,"x":1,"y":0,"jump":true,"dash":false,"grab":true},
+    {"frames":24,"x":1,"y":-1,"jump":false,"dash":true,"grab":false},
+    {"frames":40,"x":1,"y":0,"jump":true,"dash":false,"grab":true},
+    {"frames":10,"x":1,"y":0,"jump":false,"dash":false,"grab":false},
+    {"frames":4,"x":1,"y":0,"jump":true,"dash":false,"grab":false},
+    {"frames":12,"x":1,"y":0,"jump":false,"dash":true,"grab":false},
+    {"frames":80,"x":1,"y":0,"jump":false,"dash":false,"grab":false}
+  ]}
+]

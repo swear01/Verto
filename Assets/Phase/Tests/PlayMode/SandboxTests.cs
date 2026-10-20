@@ -483,7 +483,7 @@ public class SandboxTests : InputTestFixture
                 Time.captureDeltaTime = (float)PhaseController.Dt;
                 InputSystem.QueueStateEvent(k,new KeyboardState()); yield return null;
                 sandbox.Controller.Reset();
-                var route = JsonUtility.FromJson<RouteSteps>("{\"steps\":" + File.ReadAllText("Verification/Room12Route.json") + "}").steps;
+                var route = JsonUtility.FromJson<RouteSteps>("{\"steps\":" + File.ReadAllText("Verification/Routes/PhaseDemo12.json") + "}").steps;
                 foreach (var step in route)
                 {
                     var keys = new System.Collections.Generic.List<Key>();

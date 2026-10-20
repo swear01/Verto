@@ -1,0 +1,10 @@
+[
+  {"frames":20,"x":1,"y":0,"jump":false,"dash":false,"grab":false},
+  {"frames":27,"x":1,"y":0,"jump":true,"dash":false,"grab":false},
+  {"frames":12,"x":0,"y":0,"jump":false,"dash":false,"grab":false},
+  {"frames":27,"x":1,"y":0,"jump":true,"dash":false,"grab":false},
+  {"frames":12,"x":0,"y":0,"jump":false,"dash":false,"grab":false},
+  {"frames":27,"x":1,"y":0,"jump":true,"dash":false,"grab":false},
+  {"frames":12,"x":0,"y":0,"jump":false,"dash":false,"grab":false},
+  {"frames":80,"x":1,"y":0,"jump":false,"dash":false,"grab":false}
+]
