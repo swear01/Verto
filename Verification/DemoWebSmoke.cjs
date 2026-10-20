@@ -74,7 +74,7 @@ function settingsPoint(width, height, pageX, pageY) {
 function levelTile(width, height, index) {
   const count = 15, box = 44, tileH = 38, gapX = 6, gapY = 5;
   let best = null, bestArea = -1;
-  for (const columns of [4, 6, 3, 2]) {
+  for (const columns of [4, 5, 6, 3, 2]) {
     const w = columns * (box + gapX) - gapX, h = Math.ceil(count / columns) * (tileH + gapY) - gapY, scale = uiScale([width, height], w, h);
     const area = fitsLayout([width, height], w * scale, h * scale) ? w * h * scale * scale : 0;
     if (area > bestArea) { best = { columns, scale, w, h }; bestArea = area; }
@@ -83,7 +83,7 @@ function levelTile(width, height, index) {
   return {
     x: ox + (index % best.columns) * (box + gapX) * best.scale,
     y: oy + Math.floor(index / best.columns) * (tileH + gapY) * best.scale,
-    w: box * best.scale, h: tileH * best.scale
+    w: box * best.scale, h: tileH * best.scale, columns: best.columns
   };
 }
 
@@ -388,12 +388,13 @@ function levelTile(width, height, index) {
       const response=await page.evaluate(()=>window.__nativeMapResults.at(-1));assert.equal(response.success,true,response.message);
       return response;
     }
-    // Escape pauses; the grid icon opens the 4×4 level select at the current level.
+    // Escape pauses; the grid icon opens level select at the current level.
     async function selectRoom(number, expected) {
       const before=await page.evaluate(()=>window.__nativeMapResults.length);
       await tap('Escape');await tap('ArrowRight');await tap('Enter');
-      await tap('ArrowUp',4);await tap('ArrowLeft',3);
-      await tap('ArrowRight',(number-1)%4);await tap('ArrowDown',Math.floor((number-1)/4));
+      const {columns}=levelTile(...await viewSize(),0);
+      await tap('ArrowUp',4);await tap('ArrowLeft',columns-1);
+      await tap('ArrowRight',(number-1)%columns);await tap('ArrowDown',Math.floor((number-1)/columns));
       if(number===15)fs.writeFileSync(path.join(reports,'demo-level-select.png'),await capture());
       await tap('Enter');
       const response=await nativeResult(before);

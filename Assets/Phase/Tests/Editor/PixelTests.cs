@@ -579,8 +579,9 @@ public class PixelTests
             Assert.That(page.Origin.y + 128 * page.Scale, Is.LessThanOrEqualTo(size.y));
         }
         var standard = new Vector2Int(320, 180);
+        int columns = PhaseLevels.Columns(standard);
         Assert.That(PhaseLevels.Tile(standard, 1).yMin, Is.EqualTo(PhaseLevels.Tile(standard, 0).yMin));
-        Assert.That(PhaseLevels.Tile(standard, 4).xMin, Is.EqualTo(PhaseLevels.Tile(standard, 0).xMin));
-        Assert.That(PhaseLevels.Tile(standard, 4).yMin, Is.GreaterThan(PhaseLevels.Tile(standard, 0).yMin));
+        Assert.That(PhaseLevels.Tile(standard, columns).xMin, Is.EqualTo(PhaseLevels.Tile(standard, 0).xMin));
+        Assert.That(PhaseLevels.Tile(standard, columns).yMin, Is.GreaterThan(PhaseLevels.Tile(standard, 0).yMin));
     }
 }

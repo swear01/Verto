@@ -75,7 +75,7 @@ namespace Phase
     {
         // A tile is a 44×26 frame around the 40×22 thumbnail (one pixel per 8px cell) above its 2× number.
         const int Box = 44, BoxHeight = 26, TileHeight = 38, GapX = 6, GapY = 5;
-        static readonly int[] columnChoices = { 4, 6, 3, 2 };
+        static readonly int[] columnChoices = { 4, 5, 6, 3, 2 };
         static Color32[][] thumbnails;
         public int Choice { get; private set; }
         public PhaseLevels(int current = 0) { Choice = Mathf.Clamp(current, 0, Count - 1); }
@@ -94,6 +94,7 @@ namespace Phase
             return best;
         }
         static RectInt LocalTile(int columns, int i) => new RectInt(i % columns * (Box + GapX), i / columns * (TileHeight + GapY), Box, TileHeight);
+        public static int Columns(Vector2Int frame) => Layout(frame).columns;
         // A level's tile, thumbnail frame and number, in frame pixels.
         public static RectInt Tile(Vector2Int frame, int i) { var (columns, zoom) = Layout(frame); return zoom.Frame(LocalTile(columns, i)); }
         // Returns the chosen level number, 0 when Escape goes back, or -1.

@@ -314,15 +314,17 @@ public class MenuTests : InputTestFixture
         yield return Tap(Key.Escape);
         Assert.That(title.LevelSelect, Is.Null);
         yield return Tap(Key.Enter);
+        int columns = PhaseLevels.Columns(PhaseSandbox.ViewSize(Screen.width, Screen.height)), second = columns + 1;
         yield return Tap(Key.RightArrow); yield return Tap(Key.DownArrow);
-        Assert.That(title.LevelSelect.Choice, Is.EqualTo(5));
+        Assert.That(title.LevelSelect.Choice, Is.EqualTo(second));
         yield return Tap(Key.Enter);
-        yield return WaitFor(PhaseSandbox.Levels[5]);
+        yield return WaitFor(PhaseSandbox.Levels[second]);
 
         yield return Tap(Key.Escape); yield return Tap(Key.RightArrow); yield return Tap(Key.Enter);
         var levels = Sandbox().LevelSelect;
-        Assert.That(levels.Choice, Is.EqualTo(5), "pause level select starts at the current level");
-        yield return Tap(Key.DownArrow); yield return Tap(Key.DownArrow); yield return Tap(Key.DownArrow); yield return Tap(Key.RightArrow);
+        Assert.That(levels.Choice, Is.EqualTo(second), "pause level select starts at the current level");
+        yield return Tap(Key.DownArrow); yield return Tap(Key.DownArrow); yield return Tap(Key.DownArrow);
+        for (int i = 0; i < columns; i++) yield return Tap(Key.RightArrow);
         Assert.That(levels.Choice, Is.EqualTo(14), "the bottom row stops at the last level");
         yield return Tap(Key.Z);
         yield return WaitFor(PhaseSandbox.Levels[14]);
