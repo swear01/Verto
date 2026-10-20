@@ -54,10 +54,11 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 48 controller cases, 9 laser cases, 17 demo-route/authoring cases,
-15 crystal cases, 26 crystal-room cases, 18 pixel cases, 6 Grid authoring cases, 5 custom-map validation cases and
-3 key-binding cases (validation, PlayerPrefs persistence, key caps) in Edit Mode. The sixteen Play Mode cases cover
+15 crystal cases, 26 crystal-room cases, 18 pixel cases, 6 Grid authoring cases, 7 custom-map validation cases and
+3 key-binding cases (validation, PlayerPrefs persistence, key caps) in Edit Mode. The seventeen Play Mode cases cover
 bindings, pause/release gating, room persistence, multiple authored platforms, crystal triggers, imported maps, the
-title/editor flow, the pause menu with key settings, and level select from the title, pause and victory screens. Platform checks cover
+title/editor flow including editor platforms and gears, the pause menu with key settings, and level select from the
+title, pause and victory screens. Platform checks cover
 vertical return travel, independent routes/reset, rider and climb-hop attachment,
 crush/hazard sweeps, native collider synchronization and rendering.
 The three immutable reference files preserve 40 movement/action/climb traces.
@@ -164,8 +165,7 @@ timing. With `Returns` enabled, use two distinct horizontal or vertical stops:
 the platform travels to node1 in0.2s, waits0.2s, then returns in1.2s. Without
 `Returns`, each dash queues one move to the next node. Respawn restores every
 platform to its authored start. Riders and climb hops stay attached to the
-specific platform they contact. The Web custom-map painter still authors terrain
-and spikes; author dash platforms in Unity.
+specific platform they contact. Custom maps and the in-game editor also place dash platforms.
 
 ## Climb gear demo
 
@@ -276,13 +276,19 @@ jump activation/death, respawn and phase-preserving dash.
 The active `PHASE` object accepts `SelectDemoRoom("1".."12")` and
 `LoadCustomMap(json)`. Scene selection uses `PhaseSandbox.Levels` (Demo1–8, Crystal1–3, Demo12), which also defines both horizontal links.
 Custom maps use the `PhaseDemoRoom` fields `name`, `blocks`, `spikes`, `spawnX`,
-`spawnY`; blocks require explicit `phaseMask`1–7 and the Web editor sends
-`phase:-1`. Spike direction is Up0/Down1/Left2/Right3; length is native pixels.
+`spawnY` and the optional arrays `lasers`, `crystals`, `platforms`, `gears`; blocks require
+explicit `phaseMask`1–7. Spike direction is Up0/Down1/Left2/Right3; length is native pixels.
+A platform is `{w,h,nodeX[],nodeY[],returns}` with at least two map-coordinate stops, starting
+at the first. A gear is `{wall:{x,y,w,h},platform:{x,y,w,h},top,endX}`, the
+`PhaseClimbGear` wall start, wall top limit, platform start and platform end X.
 
 Custom geometry occupies non-overlapping8px cells within320×176, at most880cells.
 Spawn X is0–312 and Y0–160 on the same grid, with an8×11 player clear of initially
-red-active terrain and spike hitboxes. Empty terrain, invalid numbers/masks,
-non-grid geometry, moving nodes and gear data are rejected. JSON is limited to
+red-active terrain, spike hitboxes, platforms and gears. Platform and gear start positions
+occupy cells like other objects; every platform stop, the wall top and the bridge end must
+also lie on the grid inside the map, and gears must satisfy `ClimbGear`'s equal-travel and
+pinion rules. Empty terrain, invalid numbers/masks, non-grid geometry and the built-in single
+mover/gear fields (`nodeX`, `gearWall`, …) are rejected. JSON is limited to
 200000characters. Validation completes before replacing the current runtime root;
 no saved scene changes. The runtime map has no room-edge links.
 
@@ -291,12 +297,13 @@ Web completion dispatches `window` event `phase-map-result` with
 loading; custom-map success waits for the new root's controller and pixel surface.
 Invalid input preserves the current map and produces a failure callback without
 logging a gameplay error. `PhaseSandbox.LastMapError` exposes the last failure
-message for native verification and clears on success. Serialize only the supported
-five-field map shape: Unity serializes null nested `PhaseDemoRoom` gear fields as
-empty objects. The runtime uses the installed Newtonsoft.Json parser with a strict
-five-field schema, rejecting unknown/duplicate fields and non-numeric coordinates
-before constructing the room; it preserves absent mechanisms as null.
-Parsing and controller validation run in the four `CustomMapTests`;
+message for native verification and clears on success. `PhaseCustomMap.ToJson` writes the
+five base fields plus each optional array only when it is used, so older maps load unchanged.
+The runtime uses the installed Newtonsoft.Json parser with a strict schema, rejecting
+unknown/duplicate fields and non-numeric coordinates before constructing the room; it
+preserves absent arrays as null. `CreateCustom` turns platforms and gears into
+`PhaseMovingPlatform`/`PhaseClimbGear` children of the map root, so their nodes and limits
+are root-relative. Parsing and controller validation run in the seven `CustomMapTests`;
 `MapBridgeTests` adds one Play Mode import/keyboard/respawn/scene-selection case.
 
 For live verification, enter a demo in Play mode and run
@@ -360,7 +367,7 @@ Apply overrides only when the change should affect the shared Prefab.
 The demo builders instantiate these assets and preserve the existing room geometry;
 hand-authored scenes are never rebuilt. Existing direct children of the origin
 `PHASE` root retain their coordinates. The in-game editor places single-cell lasers
-and crystals; moving platforms and gears remain Unity authoring tools.
+and crystals and two-step dash platforms and climb gears; these Prefabs are the Unity authoring tools.
 
 ## Title and level editor
 
@@ -383,15 +390,24 @@ always navigate. Enter makes a slot blink and binds the next key; Escape cancels
 Backspace clears. The bottom icon restores the defaults. A rejected change flashes a red
 border and keeps the old map; Escape closes the screen.
 The editor paints the custom-map grid (40×22 cells, terrain, four spike directions,
-four laser directions, jump and dash crystals, spawn, erase; seven masks) and renders it with the game's own pixels in the starting
+four laser directions, jump and dash crystals, returning and one-way dash platforms, climb gear,
+spawn, erase; seven masks) and renders it with the game's own pixels in the starting
 red phase. Mouse: left paints, right erases, the toolbar flips away from the cursor.
 Keyboard: movement keys move the cursor, jump paints, grab erases, dash cycles the
-tool, 1–7 pick the mask, Enter playtests, Escape returns to the title. An invalid
+tool, 1–7 pick the mask, Enter playtests, Escape returns to the title.
+Platforms and gears take two placements: click or jump once for the body, move, then click
+or jump again for the end. A 24×8 platform's second point is its other stop; the returning
+platform snaps it to the body's row or column. A gear's first point is the 8×56 wall's top-left;
+the second picks the 56×8 bridge's row and end column. The bridge starts two cells right of the
+wall and travels 8–24px, matching the wall's upward travel. Escape, grab or right-click cancels
+a pending body. Bodies refuse occupied cells (red flash); erasing any cell of a body removes it.
+Dotted routes and faint outlines mark platform stops, the wall top and the bridge end. An invalid
 map flashes a red border instead of starting. The playtest runs a `PhaseSandbox`
 child named `Playtest`; Escape destroys it and returns to the unchanged draft. A Web
 `LoadCustomMap` sent in the editor scene plays that map the same way. The draft
 autosaves to PlayerPrefs `phase.editor.v1` as one tool/mask pair per cell
-(tool codes 1 terrain, 2–5 spikes, 7–10 lasers, 11–12 crystals).
+(tool codes 1 terrain, 2–5 spikes, 7–10 lasers, 11–12 crystals), followed by the platforms and
+gears as compact `{platforms,gears}` JSON; drafts saved before that suffix still load.
 The two arrow icons after the colors import (up) and export (down) custom-map JSON.
 On Web, export calls `PhaseExportMap` and the page downloads `phase-custom-map.json`;
 import calls `PhaseImportMap`, the page opens a file picker and sends the text to
@@ -399,7 +415,8 @@ import calls `PhaseImportMap`, the page opens a file picker and sends the text t
 Export validates first; an invalid map or file flashes the red border and keeps the draft.
 
 With `PhaseTitle` in Play mode, run `Verification/MenuLiveInput.cs`, entry
-`MenuLiveInput.Run`. It drives title→editor→paint terrain, a laser and a crystal→clipboard export/import→playtest→back→level1 by keyboard,
+`MenuLiveInput.Run`. It drives title→editor→paint terrain, a laser and a crystal→place a returning
+platform and a gear→clipboard export/import→playtest with a platform-moving dash→back→level1 by keyboard,
 restores the developer's draft and clipboard and saves captures to `TestResults/Menu/`.
 `Verification/KeysLiveInput.cs`, entry `KeysLiveInput.Run`, also starts from `PhaseTitle`
 in Play: title key settings→bind J to jump (a duplicate is rejected)→title level
@@ -413,7 +430,7 @@ restore defaults→back to title. It restores the saved bindings and writes capt
 8px Grid and native collider shapes; imported sizes, phase masks and scene links
 are retained, with positions snapped by at most half a cell. Edit it with the Grid
 painter and normal Inspector tools. It is not included in the explicit
-Web build or the Web room selector. Use `PhaseSandboxBuilder` only to rebuild
+Web build or the in-game level select. Use `PhaseSandboxBuilder` only to rebuild
 generated demo scenes; preserve hand-authored layouts.
 
 ## Colored crystals

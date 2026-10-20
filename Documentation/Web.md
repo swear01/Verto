@@ -64,13 +64,15 @@ Custom maps are made only in the in-game editor; the page has no map editor of i
 
 Custom maps contain `name`, `blocks`, `spikes`, `spawnX` and `spawnY`, plus optional
 `lasers` (`x`, `y`, `direction` 0–3 up/down/left/right, `phaseMask`) and `crystals`
-(`x`, `y`, `kind` 0 jump/1 dash, `phaseMask`), each one cell. Exports omit the two
-optional lists when empty, so older five-field maps and readers keep working.
+(`x`, `y`, `kind` 0 jump/1 dash, `phaseMask`), each one cell, `platforms`
+(`w`, `h`, `nodeX`, `nodeY`, `returns`) and `gears` (`wall`, `platform`, `top`, `endX`);
+see [Development](Development.md). Exports omit optional lists when empty, so older
+five-field maps and readers keep working.
 Geometry occupies at most 880 non-overlapping cells inside 320×176; spawn uses the
 8-pixel grid, stays inside 312×160, and avoids solids/hazards active in red,
 including any red laser beam not stopped by red-active terrain.
 Masks are 1 red, 2 blue, 4 green, 3 magenta, 5 yellow, 6 cyan and 7 permanent white.
-Moving platforms/gears and JSON over 200,000 characters are rejected.
+The built-in single-mover/gear fields and JSON over 200,000 characters are rejected.
 `PHASE.SelectDemoRoom("1".."12")` and `PHASE.LoadCustomMap(json)` remain Unity bridge
 methods, but the page no longer sends them; `phase-map-result` still reports each
 completed load and the browser smoke test waits for it.
