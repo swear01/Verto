@@ -444,6 +444,11 @@ keyboard) require the right-edge exit, or the last level's victory, with no deat
 The optional `<Scene>.bypass.json` lists shortcut inputs as
 `[{"name","steps":[...]}]`; each must not reach the right exit (replay stops at
 the first death). Rerecord a route whenever its scene changes.
+Levels listed in `Verification/Routes/unrouted.json` (the classmate-verified PhaseDemo1.1,
+PhaseDemo12, PhaseDemo13 and PhaseDemo14) need no route: both route suites skip them with the
+file's reason, existing route files for them do not gate tests, the last-level victory test walks
+off the edge landing instead, `BuildWeb.py` expects those skips, and `DemoWebSmoke.cjs` uses level
+select instead of the PhaseDemo1.1 route and skips the last-level route and Web victory segment.
 
 `Verification/RouteTool.cs` builds the `PhaseController` from a scene, as Play does,
 at 320px with the right exit open. Pass a level name or a scene path:

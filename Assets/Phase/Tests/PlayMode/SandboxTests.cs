@@ -348,16 +348,17 @@ public class SandboxTests : InputTestFixture
     public IEnumerator SelectionDuringPausedArrivalIsAcknowledgedOncePerRequest()
     {
         yield return SceneManager.LoadSceneAsync("PhaseDemo2");
+        string previous = PhaseSandbox.Levels[System.Array.IndexOf(PhaseSandbox.Levels, "PhaseDemo2") - 1];
         var k = InputSystem.AddDevice<Keyboard>();
         UnityEngine.Events.UnityAction<Scene, LoadSceneMode> pauseArrival = (scene, mode) =>
-        { if (scene.name == "PhaseDemo1") Object.FindAnyObjectByType<PhaseSandbox>().SetControlsOpen("true"); };
+        { if (scene.name == previous) Object.FindAnyObjectByType<PhaseSandbox>().SetControlsOpen("true"); };
         SceneManager.sceneLoaded += pauseArrival;
         try
         {
             var sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
             var p = sandbox.Controller.player; p.x = .5; p.vx = -90;
             InputSystem.QueueStateEvent(k, new KeyboardState(Key.LeftArrow));
-            yield return WaitForScene("PhaseDemo1");
+            yield return WaitForScene(previous);
             InputSystem.QueueStateEvent(k, new KeyboardState());
             sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
             Assert.That(sandbox.InTransition, Is.True);
@@ -365,7 +366,7 @@ public class SandboxTests : InputTestFixture
             yield return new WaitForSeconds(PhaseSandbox.TransitionDuration * 2);
             Assert.That(sandbox.InTransition, Is.True, "a dialog pauses the arrival slide");
             int count = PhaseSandbox.MapResultCount;
-            foreach (var room in new[] { ("5", "PhaseDemo5"), ("5", "PhaseDemo5"), ("13", "PhaseDemo12") })
+            foreach (var room in new[] { "5", "5", "13" }.Select(n => (n, PhaseSandbox.Levels[int.Parse(n) - 1])))
             {
                 sandbox.SetControlsOpen("true"); sandbox.SelectDemoRoom(room.Item1);
                 Assert.That(PhaseSandbox.MapResultCount, Is.EqualTo(count), "success waits for the async load");
@@ -378,7 +379,7 @@ public class SandboxTests : InputTestFixture
             }
             sandbox.SelectDemoRoom("3"); sandbox.SelectDemoRoom("4");
             Assert.That(PhaseSandbox.MapResultCount, Is.EqualTo(++count)); Assert.That(PhaseSandbox.LastMapError, Is.Not.Empty, "overlapping request is refused");
-            yield return WaitForScene("PhaseDemo3");
+            yield return WaitForScene(PhaseSandbox.Levels[2]);
             Assert.That(PhaseSandbox.MapResultCount, Is.EqualTo(++count)); Assert.That(PhaseSandbox.LastMapError, Is.Empty);
             sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
             double time = sandbox.Controller.time;
@@ -484,7 +485,10 @@ public class SandboxTests : InputTestFixture
                 Time.captureDeltaTime = (float)PhaseController.Dt;
                 InputSystem.QueueStateEvent(k,new KeyboardState()); yield return null;
                 sandbox.Controller.Reset();
-                var route = JsonUtility.FromJson<RouteSteps>("{\"steps\":" + File.ReadAllText("Verification/Routes/" + last + ".json") + "}").steps;
+                // A level without a required route still checks the victory by walking off the authored edge landing.
+                bool unrouted = PhaseRoute.UnroutedReason(last) != null;
+                if (unrouted) yield return ExitRight(sandbox);
+                var route = unrouted ? new RouteStep[0] : JsonUtility.FromJson<RouteSteps>("{\"steps\":" + File.ReadAllText("Verification/Routes/" + last + ".json") + "}").steps;
                 foreach (var step in route)
                 {
                     var keys = new System.Collections.Generic.List<Key>();

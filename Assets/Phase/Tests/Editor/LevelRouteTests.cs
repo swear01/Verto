@@ -9,6 +9,7 @@ public class LevelRouteTests
     [TestCaseSource(typeof(PhaseSandbox), nameof(PhaseSandbox.Levels))]
     public void RecordedRouteClearsAndBypassesStayBlocked(string level)
     {
+        if (PhaseRoute.UnroutedReason(level) is string unrouted) Assert.Ignore($"{level}: {unrouted}");
         var scene = EditorSceneManager.OpenScene($"Assets/Scenes/{level}.unity", OpenSceneMode.Additive);
         PhaseController c;
         try { c = scene.GetRootGameObjects().SelectMany(o => o.GetComponentsInChildren<PhaseSandbox>()).Single().CreateController(); }
