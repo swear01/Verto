@@ -43,7 +43,7 @@ const { chromium } = require('playwright');
       assert.deepEqual(checks.brokenImages, [], `${name}: broken images or missing alt text`);
       assert.equal(checks.overflowing, false, `${name}: document overflows`);
       assert.ok(checks.images >= 12, `${name}: missing scene images`);
-      for (const word of ['Wick', '攀爬', '衝刺', '雷射', '尖刺', 'PhaseDemo1.1', 'DemoRooms.json', 'phaseMask', 'phase.map.v1', 'Paint Grid terrain', '匯出 JSON', '七色水晶', 'Prefab', 'PhaseCrystal']) assert.ok(checks.text.includes(word), `${name}: missing ${word}`);
+      for (const word of ['Wick', '攀爬', '衝刺', '雷射', '尖刺', 'PhaseDemo1.1', 'DemoRooms.json', 'phaseMask', 'phase.editor.v1', 'Paint Grid terrain', '匯出 JSON', '七色水晶', 'Prefab', 'PhaseCrystal']) assert.ok(checks.text.includes(word), `${name}: missing ${word}`);
       await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
       await page.waitForFunction(() => !document.querySelector('.toc a[aria-current]'));
       await page.screenshot({ path: path.join(output, `${name}-top.png`) });

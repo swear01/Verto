@@ -86,6 +86,18 @@ namespace Phase
                     var hazard = tile.AddComponent<PhaseSpike>(); hazard.length = (int)spike.length / 8;
                     hazard.direction = spike.direction; hazard.phaseMask = spike.phaseMask;
                 }
+                foreach (var laser in room.lasers ?? Array.Empty<DemoLaser>())
+                {
+                    var tile = new GameObject("Phase laser"); tile.transform.SetParent(root.transform,false);
+                    tile.transform.localPosition = new Vector3((float)laser.x,-(float)laser.y,0);
+                    var emitter = tile.AddComponent<PhaseLaser>(); emitter.direction = laser.direction; emitter.phaseMask = laser.phaseMask;
+                }
+                foreach (var crystal in room.crystals ?? Array.Empty<DemoCrystal>())
+                {
+                    var tile = new GameObject("Phase crystal"); tile.transform.SetParent(root.transform,false);
+                    tile.transform.localPosition = new Vector3((float)crystal.x,-(float)crystal.y,0);
+                    var pickup = tile.AddComponent<PhaseCrystal>(); pickup.kind = crystal.kind; pickup.phaseMask = crystal.phaseMask;
+                }
                 var sandbox = root.AddComponent<PhaseSandbox>(); sandbox.custom = true;
                 sandbox.pixelCamera = camera; sandbox.pixelMaterial = material;
                 sandbox.spawn = new Vector2Int((int)room.spawnX,(int)room.spawnY);

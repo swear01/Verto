@@ -51,9 +51,9 @@ jobs:
         working-directory: Verification
         run: |
           npm ci
-          npx --no-install playwright install chromium --no-shell
-      - name: Verify map editor UI with a mock bridge
-        run: node Verification/MapEditorBrowser.cjs
+          npx --no-install playwright install chromium
+      - name: Verify Web page dialogs with a mock bridge
+        run: node Verification/WebPageBrowser.cjs
       - name: Verify browser rendering and keyboard input
         run: node Verification/DemoWebSmoke.cjs Builds/Web
       - name: Close CI Editor
@@ -65,7 +65,7 @@ jobs:
           name: web-verification
           path: |
             TestResults/Web/
-            TestResults/MapEditor/
+            TestResults/WebPage/
           if-no-files-found: warn
           retention-days: 7
       - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4

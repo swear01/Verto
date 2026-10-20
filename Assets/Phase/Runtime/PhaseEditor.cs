@@ -1,27 +1,35 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace Phase
 {
-    // Paints terrain, spikes and the spawn on the custom-map grid, then playtests it in place.
+    // Paints terrain, spikes, lasers, crystals and the spawn on the custom-map grid, then playtests it in place.
     public sealed class PhaseEditor : PhaseScreen
     {
         public const string Scene = "PhaseEditor", DraftKey = "phase.editor.v1";
         public const int Columns = 40, Rows = 22;
-        // Cell tools: 0 empty, 1 terrain, 2–5 Up/Down/Left/Right spikes. Spawn only moves the player start.
-        public const int Erase = 0, Terrain = 1, Spawn = 6;
-        static readonly int[] toolOrder = { Terrain, 2, 3, 4, 5, Spawn, Erase }, masks = { 7, 1, 2, 4, 5, 3, 6 };
-        static readonly string[] spikeUp = { ".......", "...#...", "..###..", "..###..", ".#####.", ".#####.", "#######" };
+        // Cell tools: 0 empty, 1 terrain, 2–5 Up/Down/Left/Right spikes, 7–10 Up/Down/Left/Right lasers,
+        // 11 jump crystal, 12 dash crystal. Spawn only moves the player start.
+        public const int Erase = 0, Terrain = 1, Spawn = 6, LaserTool = 7, CrystalTool = 11, LastTool = 12;
+        static readonly int[] toolOrder = { Terrain, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, Spawn, Erase }, masks = { 7, 1, 2, 4, 5, 3, 6 };
+        const int MaskSlot = 13, ImportSlot = 20, ExportSlot = 21, PlaySlot = 22, BackSlot = 23, SlotCount = 24;
+        static readonly string[] spikeUp = { ".......", "...#...", "..###..", "..###..", ".#####.", ".#####.", "#######" },
+            laserUp = { "...#...", "...#...", "...#...", ".#####.", ".#...#.", ".#.#.#.", ".#####." },
+            arrowDown = { "...#...", "...#...", "...#...", "#..#..#", ".#.#.#.", "..###..", "...#..." };
         static readonly string[][] toolIcons = {
-            Enumerable.Repeat("#######", 7).ToArray(), spikeUp, spikeUp.Reverse().ToArray(),
-            Turn(spikeUp), Turn(spikeUp).Select(r => new string(r.Reverse().ToArray())).ToArray(),
+            Enumerable.Repeat("#######", 7).ToArray(), spikeUp, spikeUp.Reverse().ToArray(), Turn(spikeUp), Mirror(Turn(spikeUp)),
+            laserUp, laserUp.Reverse().ToArray(), Turn(laserUp), Mirror(Turn(laserUp)),
+            new[] { "..###..", ".#####.", "##.####", "#######", "#######", ".#####.", "..###.." },
+            new[] { ".......", ".#####.", ".#.###.", ".#####.", ".#####.", ".#####.", "......." },
             new[] { "#......", "####...", "#####..", "####...", "#......", "#......", "#......" },
             new[] { "#.....#", ".#...#.", "..#.#..", "...#...", "..#.#..", ".#...#.", "#.....#" }
         };
-        static readonly string[] backIcon = { "...#...", "..#....", ".#.....", "#######", ".#.....", "..#....", "...#..." };
+        static readonly string[] backIcon = { "...#...", "..#....", ".#.....", "#######", ".#.....", "..#....", "...#..." },
+            importIcon = arrowDown.Reverse().ToArray();
         static readonly Color32 Warning = new Color32(255, 143, 145, 255);
         readonly byte[] tools = new byte[Columns * Rows], colors = new byte[Columns * Rows];
         public int Tool { get; private set; } = Terrain;
@@ -35,11 +43,16 @@ namespace Phase
         bool dirty, barPress;
 
         static string[] Turn(string[] art) => Enumerable.Range(0, 7).Select(r => new string(Enumerable.Range(0, 7).Select(c => art[c][r]).ToArray())).ToArray();
+        static string[] Mirror(string[] art) => art.Select(r => new string(r.Reverse().ToArray())).ToArray();
+#if UNITY_WEBGL && !UNITY_EDITOR
+        [DllImport("__Internal")] static extern void PhaseExportMap(string json);
+        [DllImport("__Internal")] static extern void PhaseImportMap();
+#endif
         protected override void Awake() { Load(); base.Awake(); }
         void Load()
         {
             string draft = PlayerPrefs.GetString(DraftKey, "");
-            var parts = draft.Split(';');
+            var parts = draft.Split(new[] { ';' }, 2);
             var spawn = parts[0].Split(',');
             if (parts.Length == 2 && parts[1].Length == tools.Length * 2 && spawn.Length == 2 &&
                 int.TryParse(spawn[0], out int sx) && int.TryParse(spawn[1], out int sy) && sx >= 0 && sx < Columns && sy >= 0 && sy <= Rows - 2)
@@ -48,7 +61,7 @@ namespace Phase
                 for (int i = 0; i < tools.Length && valid; i++)
                 {
                     int tool = parts[1][i * 2] - '0', mask = parts[1][i * 2 + 1] - '0';
-                    valid = tool == Erase ? mask == 0 : tool > 0 && tool < Spawn && mask >= 1 && mask <= 7;
+                    valid = tool == Erase ? mask == 0 : tool > 0 && tool <= LastTool && tool != Spawn && mask >= 1 && mask <= 7;
                     tools[i] = (byte)tool; colors[i] = (byte)mask;
                 }
                 if (valid) { SpawnCell = new Vector2Int(sx, sy); return; }
@@ -65,14 +78,17 @@ namespace Phase
         }
         public PhaseDemoRoom Room()
         {
-            var blocks = new List<Block>(); var spikes = new List<DemoSpike>();
+            var blocks = new List<Block>(); var spikes = new List<DemoSpike>(); var lasers = new List<DemoLaser>(); var crystals = new List<DemoCrystal>();
             for (int i = 0; i < tools.Length; i++)
             {
-                int x = i % Columns * 8, y = i / Columns * 8;
-                if (tools[i] == Terrain) blocks.Add(new Block(x, y, 8, 8, -1, colors[i]));
-                else if (tools[i] != Erase) spikes.Add(new DemoSpike { x = x, y = y, length = 8, direction = (SpikeDirection)(tools[i] - 2), phaseMask = colors[i] });
+                int x = i % Columns * 8, y = i / Columns * 8, tool = tools[i];
+                if (tool == Terrain) blocks.Add(new Block(x, y, 8, 8, -1, colors[i]));
+                else if (tool >= CrystalTool) crystals.Add(new DemoCrystal { x = x, y = y, kind = (CrystalKind)(tool - CrystalTool), phaseMask = colors[i] });
+                else if (tool >= LaserTool) lasers.Add(new DemoLaser { x = x, y = y, direction = (LaserDirection)(tool - LaserTool), phaseMask = colors[i] });
+                else if (tool != Erase) spikes.Add(new DemoSpike { x = x, y = y, length = 8, direction = (SpikeDirection)(tool - 2), phaseMask = colors[i] });
             }
-            return new PhaseDemoRoom { name = "自訂地圖", blocks = blocks.ToArray(), spikes = spikes.ToArray(), spawnX = SpawnCell.x * 8, spawnY = SpawnCell.y * 8 };
+            return new PhaseDemoRoom { name = "自訂地圖", blocks = blocks.ToArray(), spikes = spikes.ToArray(), lasers = lasers.ToArray(), crystals = crystals.ToArray(),
+                spawnX = SpawnCell.x * 8, spawnY = SpawnCell.y * 8 };
         }
         bool Apply(Vector2Int cell, int tool)
         {
@@ -87,18 +103,20 @@ namespace Phase
             tools[i] = (byte)tool; colors[i] = color; return dirty = true;
         }
 
-        int BarTop => Cursor.y * 8 - pixels.OriginY < 24 ? pixels.Height - 16 : 3;
-        static int SlotX(int slot) => 6 + slot * 11 + (slot >= 7 ? 4 : 0) + (slot >= 14 ? 4 : 0);
+        // Two rows (tools; colors, files, play, back) stay left of the Web page's top-right buttons.
+        int BarTop => Cursor.y * 8 - pixels.OriginY < 32 ? pixels.Height - 29 : 3;
+        static int SlotX(int slot) => slot < MaskSlot ? 6 + slot * 11 : 6 + (slot - MaskSlot) * 11 + (slot >= ImportSlot ? 4 : 0) + (slot >= PlaySlot ? 4 : 0);
+        int SlotY(int slot) => BarTop + 3 + (slot < MaskSlot ? 0 : 12);
         int? Slot(Vector2Int p)
         {
-            if (p.y < BarTop || p.y >= BarTop + 13) return null;
-            for (int slot = 0; slot < 16; slot++) if (p.x >= SlotX(slot) - 2 && p.x < SlotX(slot) + 9) return slot;
+            for (int slot = 0; slot < SlotCount; slot++)
+                if (p.x >= SlotX(slot) - 2 && p.x < SlotX(slot) + 9 && p.y >= SlotY(slot) - 2 && p.y < SlotY(slot) + 9) return slot;
             return null;
         }
         protected override void Render()
         {
             var room = Room();
-            var view = new PhaseController(room.blocks, room.spawnX, room.spawnY, spikes: room.CreateSpikes());
+            var view = new PhaseController(room.blocks, room.spawnX, room.spawnY, spikes: room.CreateSpikes(), lasers: room.CreateLasers(), crystals: room.CreateCrystals());
             view.ResizeRoom(pixels.Width);
             pixels.Draw(view);
             var frame = new PixelFrame(pixels.Texture);
@@ -107,24 +125,25 @@ namespace Phase
             if (Tool != Erase && Tool != Spawn) frame.Fill(cx, cy, 8, 8, color, .35f);
             frame.Outline(cx - 1, cy - 1, 10, 10, PixelFrame.Light, .9f);
             if (flash > 0) { frame.Outline(0, 0, frame.Width, frame.Height, Warning); frame.Outline(1, 1, frame.Width - 2, frame.Height - 2, Warning); }
-            int top = BarTop;
-            frame.Fill(2, top, SlotX(15) + 9, 13, PixelFrame.Ink, .85f);
-            for (int slot = 0; slot < 16; slot++)
+            frame.Fill(2, BarTop, SlotX(MaskSlot - 1) + 9, 26, PixelFrame.Ink, .85f);
+            for (int slot = 0; slot < SlotCount; slot++)
             {
-                int x = SlotX(slot), y = top + 3;
-                bool selected = slot < 7 ? toolOrder[slot] == Tool : slot < 14 && masks[slot - 7] == Mask;
-                if (slot < 7) frame.Blit(toolIcons[slot], x, y, slot < 5 ? color : PixelFrame.Light, amount: selected ? 1 : .45f);
-                else if (slot < 14) frame.Fill(x, y, 7, 7, PhasePixels.SurfaceColor(masks[slot - 7]), selected ? 1 : .6f);
-                else frame.Blit(slot == 14 ? PhaseTitle.PlayIcon : backIcon, x, y, PixelFrame.Light);
+                int x = SlotX(slot), y = SlotY(slot);
+                bool selected = slot < MaskSlot ? toolOrder[slot] == Tool : slot < ImportSlot && masks[slot - MaskSlot] == Mask;
+                if (slot < MaskSlot) frame.Blit(toolIcons[slot], x, y, toolOrder[slot] == Spawn || toolOrder[slot] == Erase ? PixelFrame.Light : color, amount: selected ? 1 : .45f);
+                else if (slot < ImportSlot) frame.Fill(x, y, 7, 7, PhasePixels.SurfaceColor(masks[slot - MaskSlot]), selected ? 1 : .6f);
+                else frame.Blit(slot == ImportSlot ? importIcon : slot == ExportSlot ? arrowDown : slot == PlaySlot ? PhaseTitle.PlayIcon : backIcon, x, y, PixelFrame.Light);
                 if (selected) frame.Outline(x - 2, y - 2, 11, 11, PixelFrame.Light);
             }
             frame.Apply();
         }
         void Choose(int slot)
         {
-            if (slot < 7) Tool = toolOrder[slot];
-            else if (slot < 14) Mask = masks[slot - 7];
-            else if (slot == 14) { StartPlaytest(); return; }
+            if (slot < MaskSlot) Tool = toolOrder[slot];
+            else if (slot < ImportSlot) Mask = masks[slot - MaskSlot];
+            else if (slot == ImportSlot) { RequestImport(); return; }
+            else if (slot == ExportSlot) { ExportDraft(); return; }
+            else if (slot == PlaySlot) { StartPlaytest(); return; }
             else { Leave(); return; }
             Refresh();
         }
@@ -171,6 +190,47 @@ namespace Phase
             if (dirty && !painting) Save();
             if (changed) Refresh();
         }
+        // Web saves and opens JSON files through the page; elsewhere the system clipboard carries the same JSON.
+        public bool ExportDraft()
+        {
+            var room = Room();
+            try { PhaseCustomMap.Validate(room); }
+            catch (ArgumentException) { flash = .4f; Refresh(); return false; }
+            string json = PhaseCustomMap.ToJson(room);
+#if UNITY_WEBGL && !UNITY_EDITOR
+            PhaseExportMap(json);
+#else
+            GUIUtility.systemCopyBuffer = json;
+#endif
+            return true;
+        }
+        void RequestImport()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            PhaseImportMap();
+#else
+            ImportDraft(GUIUtility.systemCopyBuffer);
+#endif
+        }
+        // Replaces the draft with a custom-map JSON file; an invalid file flashes and leaves the draft unchanged.
+        public void ImportDraft(string json)
+        {
+            PhaseDemoRoom room;
+            try { room = PhaseCustomMap.Parse(json); }
+            catch (ArgumentException) { flash = .4f; Refresh(); return; }
+            Array.Clear(tools, 0, tools.Length); Array.Clear(colors, 0, colors.Length);
+            void Put(double x, double y, double w, double h, int tool, int mask)
+            {
+                for (int cy = (int)y / 8; cy < (y + h) / 8; cy++)
+                    for (int cx = (int)x / 8; cx < (x + w) / 8; cx++) { tools[cy * Columns + cx] = (byte)tool; colors[cy * Columns + cx] = (byte)mask; }
+            }
+            foreach (var block in room.blocks) Put(block.x, block.y, block.w, block.h, Terrain, block.Mask);
+            foreach (var spike in room.CreateSpikes()) Put(spike.x, spike.y, spike.w, spike.h, 2 + (int)spike.direction, spike.Mask);
+            foreach (var laser in room.lasers ?? Array.Empty<DemoLaser>()) Put(laser.x, laser.y, 8, 8, LaserTool + (int)laser.direction, laser.phaseMask);
+            foreach (var crystal in room.crystals ?? Array.Empty<DemoCrystal>()) Put(crystal.x, crystal.y, 8, 8, CrystalTool + (int)crystal.kind, crystal.phaseMask);
+            SpawnCell = new Vector2Int((int)room.spawnX / 8, (int)room.spawnY / 8);
+            Save(); Refresh();
+        }
         public bool StartPlaytest()
         {
             var room = Room();
@@ -191,7 +251,7 @@ namespace Phase
             Playtest.gameObject.SetActive(false); Destroy(Playtest.gameObject); Playtest = null;
             surface.enabled = true; Refresh(true);
         }
-        // The Web map editor's playtest runs here too and returns to this draft unchanged.
+        // A bridge LoadCustomMap sent while editing plays here too and returns to this draft unchanged.
         public override void LoadCustomMap(string json)
         {
             if (leaving) { PhaseSandbox.MapResult(false, PhaseSandbox.Busy); return; }
