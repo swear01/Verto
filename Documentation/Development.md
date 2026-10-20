@@ -521,3 +521,12 @@ captures under `TestResults/DemoRooms/` or `TestResults/CrystalRooms/`.
 
 `PhaseDemo12` is the classmate-authored level formerly named `PhaseDemo1.2`; it is included in the Web build and selectable as **13**, after the crystal rooms. Its fourteen platform instances retain their authored routes, sizes and start nodes as scene overrides. Shared dash-platform Prefabs keep their original grid-aligned horizontal defaults; edit instance overrides for a single level. Preserve this handmade scene when rebuilding generated demos.
 `PhaseDemo13` and `PhaseDemo14` are the later classmate laser rooms (`Assets/Phase/Imported/level-a.json` and `level-b.json`). They stay after the authored course, selectable as **14** and **15**. Leaving level 15 to the right wins. `PhaseDemo1.1` and `PhaseDemo13` have keyboard routes. `PhaseDemo14` does not yet, so its level-route case fails until a clear is recorded. Recreate those two scenes through Pipeline with `unity command eval 'PhaseSandboxBuilder.CreateImportedLevels();'`.
+
+## Press images
+
+`python3 Verification/press_art.py` draws all press art as pixel art and enlarges it without
+smoothing. The motif is the phase shift: a light letterform trailed by red, blue and green
+echoes on the game's night-sky palette; the PHASE lettering is read from `PhaseTitle.cs`.
+It writes the itch.io cover `Documentation/press/cover.png` (960×480: 2:1 for itch link cards, logo inside the centre 1.25:1 grid crop), the link preview
+`social.png` (1280×640), the icon `icon.png` (256×256, a "P" mark on a dark tile), the default
+Player icon `Assets/Phase/Art/AppIcon.png` and the Web favicon.
