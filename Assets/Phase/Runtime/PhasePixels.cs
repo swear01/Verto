@@ -315,8 +315,49 @@ namespace Phase
         {
             for (int py = 0; py < image.height; py++) for (int px = 0; px < image.width; px++) Put(x + px, y + py, image.pixels[py * image.width + px], alpha);
         }
-        static readonly Bitmap moverTile = Paint(new[] { "TTTTTTTT","hRbbbbRh","hbbbbbbs","hbhhhhbs","hbhsshbs","hbbbbbbs","hRbbbbRs","ssssssss" }, new Dictionary<char, Color32> { ['T']=Color("f0f0f0"),['R']=Color("e8e8e8"),['b']=Color("787878"),['h']=Color("a0a0a0"),['s']=Color("484848") });
-        void Mover(MovingPlatform m)
+        static readonly Dictionary<int, Bitmap> moverTiles = new Dictionary<int, Bitmap>();
+        static Bitmap MoverTile(int mask)
+        {
+            if (!moverTiles.TryGetValue(mask, out var tile))
+                moverTiles[mask] = tile = Paint(new[] { "TTTTTTTT","hRbbbbRh","hbbbbbbs","hbhhhhbs","hbhsshbs","hbbbbbbs","hRbbbbRs","ssssssss" },
+                    new Dictionary<char, Color32> { ['T']=Tint("f0f0f0",mask),['R']=Tint("e8e8e8",mask),['b']=Tint("787878",mask),['h']=Tint("a0a0a0",mask),['s']=Tint("484848",mask) });
+            return tile;
+        }
+        // Colored mechanisms map their metal shades onto the terrain palette; mask 7 keeps the neutral art.
+        static Color32 Tint(string hex, int mask)
+        {
+            if (mask == 7) return Color(hex);
+            int c = surfaceIndices[mask];
+            switch (hex)
+            {
+                case "f0f0f0": case "e8e8e8": return Color(Highlights[c]);
+                case "a0a0a0": return Color(Edges[c]);
+                case "787878": return Color(Fills[c]);
+                case "646464": return Mix(Color(Fills[c]), Color(Edges[c]), .5);
+                case "484848": return Mix(Color(Fills[c]), Color("000000"), .4);
+                default: return Color(hex);
+            }
+        }
+        // Inactive mechanisms use the inactive-terrain ghost: faint body and dashed outline, solid while deferred.
+        void Ghost(Block b, bool deferred)
+        {
+            int c = surfaceIndices[b.Mask], x0 = Round(b.x), y0 = Round(b.y), w = Round(b.w), h = Round(b.h);
+            Color32 cap = Color(Highlights[c]), rim = Color(Edges[c]);
+            Rect(x0, y0, w, h, Color(Fills[c]), deferred ? .3 : .12);
+            double alpha = deferred ? .95 : .62;
+            for (int n = 0; n < w; n++) if (deferred || ((x0 + n) & 3) < 2 || n == 0 || n == w - 1)
+            { Rect(x0 + n, y0, 1, 1, cap, alpha); Rect(x0 + n, y0 + h - 1, 1, 1, rim, alpha); }
+            for (int n = 0; n < h; n++) if (deferred || ((y0 + n) & 3) < 2 || n == 0 || n == h - 1)
+            { Rect(x0, y0 + n, 1, 1, rim, alpha); Rect(x0 + w - 1, y0 + n, 1, 1, rim, alpha); }
+            MechanismPips(b, .6);
+        }
+        void MechanismPips(Block b, double alpha)
+        {
+            if (!Mixed(b.Mask)) return;
+            for (int y = Round(b.y); y < b.y + b.h; y += 8) for (int x = Round(b.x); x < b.x + b.w; x += 8)
+                if ((((x - Round(b.x) + y - Round(b.y)) >> 3) & 1) == 0) Pips(x, y, b.Mask, alpha);
+        }
+        void Mover(PhaseController s, MovingPlatform m)
         {
             for (int i = 0; i < (m.returns ? 1 : m.nodes.Length); i++)
             {
@@ -334,8 +375,11 @@ namespace Phase
             foreach (var n in m.nodes) vertical &= n[0] == m.nodes[0][0];
             // Vertical stops mirror the horizontal marker across the track.
             foreach (var n in m.nodes) Rect(n[0] + m.w / 2 - (vertical ? 2 : 1), vertical ? n[1] + m.h / 2 - 1 : n[1] + 2, 3, 3, "c8c8c8", .5);
+            if (!s.IsSolid(m)) { Ghost(m, s.blockedParts.Contains(m)); return; }
             Rect(m.x - 1, m.y - 1, m.w + 2, m.h + 2, Ink);
-            for (double y = m.y; y < m.y + m.h; y += 8) for (double x = m.x; x < m.x + m.w; x += 8) Blit(moverTile, Round(x) - 1, Round(y) - 1);
+            var tile = MoverTile(m.Mask);
+            for (double y = m.y; y < m.y + m.h; y += 8) for (double x = m.x; x < m.x + m.w; x += 8) Blit(tile, Round(x) - 1, Round(y) - 1);
+            MechanismPips(m, 1);
         }
         void GearWheel(int cx, int cy, double angle)
         {
@@ -363,7 +407,7 @@ namespace Phase
             if (t == 7 || u == 0) return "a0a0a0";
             return t == 5 && u % 8 == 4 ? "e8e8e8" : "787878";
         }
-        void Gear(ClimbGear gear)
+        void Gear(PhaseController s, ClimbGear gear)
         {
             var wall = gear.wall; var platform = gear.platform;
             int side = platform.y >= gear.bottom + wall.h - 16 ? -1 : 1;
@@ -386,14 +430,16 @@ namespace Phase
             Rect(gear.endX > gear.startX ? right : left - 1, track - 1, 1, 3, "484848");
             foreach (var block in new[] { wall, platform })
             {
+                if (!s.IsSolid(block)) { Ghost(block, s.blockedParts.Contains(block)); continue; }
                 Rect(block.x - 1, block.y - 1, block.w + 2, block.h + 2, Ink);
                 bool vertical = block == wall; int bx = Round(block.x), by = Round(block.y);
                 int length = Round(vertical ? block.h : block.w), phase = vertical ? phaseV : phaseH;
                 for (int y = by; y < by + block.h; y++) for (int x = bx; x < bx + block.w; x++)
                 {
                     int t = vertical ? face - 1 - x : side > 0 ? by + Round(block.h) - 1 - y : y - by;
-                    Rect(x, y, 1, 1, Profile(t, vertical ? y - by : x - bx, length, phase));
+                    Rect(x, y, 1, 1, Tint(Profile(t, vertical ? y - by : x - bx, length, phase), block.Mask));
                 }
+                MechanismPips(block, 1);
             }
             for (int i = 0; i < train.Length; i++) GearWheel(face + train[i].x, cy + train[i].y, angles[i]);
         }
@@ -489,9 +535,9 @@ namespace Phase
         public void Draw(PhaseController s, bool playerVisible = true)
         {
             Terrain(s);
-            foreach (var gear in s.gears) Gear(gear);
+            foreach (var gear in s.gears) Gear(s, gear);
             Spikes(s);
-            foreach (var mover in s.movers) Mover(mover);
+            foreach (var mover in s.movers) Mover(s, mover);
             Crystals(s);
             Lasers(s);
             foreach (var t in s.trails) Blit(Sprite("dash", s.player.facing, t.phase, 0, true), Round(t.x) - 2, Round(t.y) - 3, t.life * 2);

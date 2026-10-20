@@ -53,9 +53,9 @@ To recreate the sandbox, call its existing builder through the connected Editor:
 edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 48 controller cases, 9 laser cases, 17 demo-route/authoring cases,
-15 crystal cases, 26 crystal-room cases, 19 pixel cases, 6 Grid authoring cases, 7 custom-map validation cases,
-3 key-binding cases (validation, PlayerPrefs persistence, key caps) and 15 level-route cases in Edit Mode. The 35 Play Mode cases cover
+starting the next test run. There are 52 controller cases, 9 laser cases, 17 demo-route/authoring cases,
+15 crystal cases, 26 crystal-room cases, 20 pixel cases, 6 Grid authoring cases, 8 custom-map validation cases,
+3 key-binding cases (validation, PlayerPrefs persistence, key caps) and 15 level-route cases in Edit Mode. The 36 Play Mode cases cover
 each level's keyboard route, bindings, pause/release gating, room persistence, multiple authored platforms, crystal triggers, imported maps, the
 title/editor flow including editor platforms and gears, the editor's fixed tool panel under mouse input, the pause menu with key settings, the fullscreen switch, and level select from the
 title, pause and victory screens. Platform checks cover
@@ -165,7 +165,18 @@ timing. With `Returns` enabled, use two distinct horizontal or vertical stops:
 the platform travels to node1 in0.2s, waits0.2s, then returns in1.2s. Without
 `Returns`, each dash queues one move to the next node. Respawn restores every
 platform to its authored start. Riders and climb hops stay attached to the
-specific platform they contact. Custom maps and the in-game editor also place dash platforms.
+specific platform they contact. Custom maps and the in-game editor also place dash platforms. The editor stores a drawn line as a one-way route with the 24×8 default body, so consecutive stops may differ on both axes.
+
+`PhaseMovingPlatform.phaseMask` and `PhaseClimbGear.phaseMask` (wall and bridge share
+one mask) use the terrain masks R=1, B=2, G=4, Y=5, M=3, C=6, W=7; 0 or 7 is always solid,
+so existing scenes, prefabs and maps are unchanged. A colored platform or gear part is solid,
+climbable, carries riders and blocks lasers only in its active phases, and keeps moving or
+driving while inactive; riders fall through when it turns off. A part that turns on inside
+the player stays a ghost (`PhaseController.blockedParts`) until the player leaves it, like
+deferred terrain. An inactive gear wall cannot be grabbed, so climbing never drives it;
+an inactive bridge moves with the wall without colliding. Active parts use the terrain
+palette and mixed-mask inlays; inactive parts use the dashed terrain ghost. Racks, gears and
+platform tracks stay neutral decoration.
 
 ## Climb gear demo
 
@@ -279,9 +290,10 @@ The active `PHASE` object accepts `SelectDemoRoom("1".."15")` and
 Custom maps use the `PhaseDemoRoom` fields `name`, `blocks`, `spikes`, `spawnX`,
 `spawnY` and the optional arrays `lasers`, `crystals`, `platforms`, `gears`; blocks require
 explicit `phaseMask`1–7. Spike direction is Up0/Down1/Left2/Right3; length is native pixels.
-A platform is `{w,h,nodeX[],nodeY[],returns}` with at least two map-coordinate stops, starting
-at the first. A gear is `{wall:{x,y,w,h},platform:{x,y,w,h},top,endX}`, the
+A platform is `{w,h,nodeX[],nodeY[],returns,phaseMask?}` with at least two map-coordinate stops, starting
+at the first. A gear is `{wall:{x,y,w,h},platform:{x,y,w,h},top,endX,phaseMask?}`, the
 `PhaseClimbGear` wall start, wall top limit, platform start and platform end X.
+An absent `phaseMask` keeps the mechanism always solid; a present one must be1–7.
 
 Custom geometry occupies non-overlapping8px cells within320×176, at most880cells.
 Spawn X is0–312 and Y0–160 on the same grid, with an8×11 player clear of initially
@@ -368,7 +380,7 @@ Apply overrides only when the change should affect the shared Prefab.
 The demo builders instantiate these assets and preserve the existing room geometry;
 hand-authored scenes are never rebuilt. Existing direct children of the origin
 `PHASE` root retain their coordinates. The in-game editor places single-cell lasers
-and crystals and two-step dash platforms and climb gears; these Prefabs are the Unity authoring tools.
+and crystals, a one-way dash-platform line, and two-step climb gears; these Prefabs are the Unity authoring tools.
 
 ## Title and level editor
 
@@ -408,22 +420,24 @@ when on); Enter, jump or a click toggles it. It is player state, not saved by th
 standalone players keep Unity's own setting and Web starts windowed. Web applies the
 request within that key press or click. The Editor's Game view ignores `Screen.fullScreen`,
 so tests and `KeysLiveInput` swap `PhaseKeys.IsFullScreen`/`SetFullScreen`.
-The editor paints the custom-map grid (40×22 cells, terrain, four spike directions,
-four laser directions, jump and dash crystals, returning and one-way dash platforms, climb gear,
+The editor paints the custom-map grid (40×22 cells, terrain, spikes and lasers in four
+directions, jump and dash crystals, dash platforms, climb gear,
 spawn, erase; seven masks) and renders it with the game's own pixels in the starting
-red phase. The editor widens its own view (same aspect as the screen) so a fixed panel of 2× icons sits right
+red phase. The editor widens its own view (same aspect as the screen) so a fixed panel with one 2× icon per object type sits right
 of the grid, or below it when that leaves the grid larger (tall screens); the panel never moves and never covers a
 cell. Hovering a slot highlights it, a click picks it, and the selected tool and color are framed. Mouse: left paints,
 right erases; a stroke paints only if it starts on the grid, so a drag from the panel never paints.
 Keyboard: movement keys move the cursor, jump paints, grab erases, dash cycles the
-tool, 1–7 pick the mask, Enter playtests, Escape returns to the title.
-Platforms and gears take two placements: click or jump once for the body, move, then click
-or jump again for the end. A 24×8 platform's second point is its other stop; the returning
-platform snaps it to the body's row or column. A gear's first point is the 8×56 wall's top-left;
-the second picks the 56×8 bridge's row and end column. The bridge starts two cells right of the
-wall and travels 8–24px, matching the wall's upward travel. Escape, grab or right-click cancels
-a pending body. Bodies refuse occupied cells (red flash); erasing any cell of a body removes it.
-Dotted routes and faint outlines mark platform stops, the wall top and the bridge end. An invalid
+tool type, R/E (or the mouse wheel) turn spikes and lasers clockwise/counter-clockwise, 1–7 pick the mask, Enter playtests, Escape returns to the title.
+A dash platform starts with one click or jump on the 8px grid. That cell is the 24×8 origin.
+Each later click adds the next stop, and a stop may differ on both axes. Those stops are one
+platform, `{w:24,h:8,nodeX,nodeY,returns:false}`; each dash advances it to the next stop.
+Escape, grab or right-click ends the line, or drops a start that has no stop yet. A gear's first
+point is the 8×56 wall's top-left; the second picks the 56×8 bridge's row and end column. The bridge
+starts two cells right of the wall and travels 8–24px, matching the wall's upward travel. Escape, grab
+or right-click also cancels a pending gear wall. Bodies refuse occupied cells (red flash); erasing any
+cell of a body removes it. Dotted segments and faint outlines mark the platform line, the wall top and
+the bridge end. An invalid
 map flashes a red border instead of starting; when Wick's start overlaps terrain, a hazard or a mechanism,
 Wick's start box and the flag slot also blink red. The playtest runs a `PhaseSandbox`
 child named `Playtest`; Escape destroys it and returns to the unchanged draft. A Web
@@ -431,18 +445,15 @@ child named `Playtest`; Escape destroys it and returns to the unchanged draft. A
 autosaves to PlayerPrefs `phase.editor.v1` as one tool/mask pair per cell
 (tool codes 1 terrain, 2–5 spikes, 7–10 lasers, 11–12 crystals), followed by the platforms and
 gears as compact `{platforms,gears}` JSON; drafts saved before that suffix still load.
-The two arrow icons after the colors import (up) and export (down) custom-map JSON.
+The two tray icons after the colors import (arrow out of the tray) and export (arrow into the tray) custom-map JSON.
 On Web, export calls `PhaseExportMap` and the page downloads `phase-custom-map.json`;
 import calls `PhaseImportMap`, the page opens a file picker and sends the text to
 `PHASE.ImportDraft`. In the Unity Editor and other players both use the clipboard.
 Export validates first; an invalid map or file flashes the red border and keeps the draft.
 
 With `PhaseTitle` in Play mode, run `Verification/MenuLiveInput.cs`, entry
-`MenuLiveInput.Run`. It drives title→editor→paint terrain, a laser and a crystal→place a returning
-platform and a gear by keyboard, then a virtual mouse sweeps the grid's top and bottom rows (the panel's pixels must
-not change), hovers and clicks a color and tool, drags from the panel (nothing paints), paints and right-click erases a
-cell→clipboard export/import→the play slot starts a playtest with a platform-moving dash→back→level1. It uses the default
-keys in memory, because every Editor of this project shares one PlayerPrefs store. It
+`MenuLiveInput.Run`. It drives title→editor→paint terrain, a laser and a crystal→draw a diagonal platform
+line and a gear→clipboard export/import→playtest with a dash along that diagonal→back→level1 by keyboard,
 restores the developer's draft and clipboard and saves captures to `TestResults/Menu/`.
 `Verification/KeysLiveInput.cs`, entry `KeysLiveInput.Run`, also starts from `PhaseTitle`
 in Play: title settings→bind J to jump (a duplicate is rejected)→title level

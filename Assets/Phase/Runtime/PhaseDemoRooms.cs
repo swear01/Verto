@@ -69,10 +69,11 @@ namespace Phase
         public double w = 24, h = 8;
         public double[] nodeX, nodeY;
         public bool returns;
+        public int phaseMask;
         public MovingPlatform Create()
         {
             if (nodeX == null || nodeY == null || nodeX.Length != nodeY.Length) throw new ArgumentException("Platform requires matching nodes.");
-            return new MovingPlatform(nodeX.Select((x,i) => new[] { x,nodeY[i] }).ToArray(), w, h, returns);
+            return new MovingPlatform(nodeX.Select((x,i) => new[] { x,nodeY[i] }).ToArray(), w, h, returns, phaseMask: phaseMask);
         }
     }
     [Serializable]
@@ -80,10 +81,11 @@ namespace Phase
     {
         public Block wall, platform;
         public double top, endX;
+        public int phaseMask;
         public ClimbGear Create()
         {
             if (wall == null || platform == null) throw new ArgumentException("Gear requires a wall and a platform.");
-            return new ClimbGear(new Block(wall.x,wall.y,wall.w,wall.h), top, new Block(platform.x,platform.y,platform.w,platform.h), endX);
+            return new ClimbGear(new Block(wall.x,wall.y,wall.w,wall.h,phaseMask:phaseMask), top, new Block(platform.x,platform.y,platform.w,platform.h,phaseMask:phaseMask), endX);
         }
     }
     [Serializable]
