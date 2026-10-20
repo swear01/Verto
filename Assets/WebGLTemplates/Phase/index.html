@@ -39,10 +39,10 @@
   <script>
     const canvas = document.getElementById('unity-canvas');
     const loading = document.getElementById('loading');
+    // The backbuffer matches the display so each scene, including the wider editor, picks its own native-pixel view.
     function resize() {
-      const w = Math.max(1, innerWidth), h = Math.max(1, innerHeight);
-      const width = Math.max(320, Math.round(180 * w / h));
-      const height = Math.max(180, Math.ceil(320 * h / w));
+      const width = Math.max(1, Math.round(innerWidth * devicePixelRatio));
+      const height = Math.max(1, Math.round(innerHeight * devicePixelRatio));
       if (canvas.width !== width) canvas.width = width;
       if (canvas.height !== height) canvas.height = height;
       canvas.style.width = `${innerWidth}px`;

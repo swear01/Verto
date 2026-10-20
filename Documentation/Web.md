@@ -58,7 +58,8 @@ builds (see [Development](Development.md)). The build opens on the PHASE title; 
 start level1, open the level select, the in-game level editor or key settings. Escape in
 a level pauses. Bindings are stored with Unity PlayerPrefs (`phase.keys.v1`) in this
 browser's IndexedDB; bindings saved by the old page dialog (`phase.controls.v2`) are not
-migrated. Only the focused game canvas sends keys to Unity, and leaving the page
+migrated. Right-click on the canvas never opens the browser menu (it erases in the
+editor). Only the focused game canvas sends keys to Unity, and leaving the page
 (blur or hidden tab) pauses play through `PHASE.SetControlsOpen`.
 Custom maps are made only in the in-game editor; the page has no map editor of its own.
 
@@ -85,7 +86,8 @@ built Web Player before publishing.
 `DemoWebSmoke.cjs` selects all twelve rooms through the pause menu's level select,
 reaches the victory banner and replays through its level select, rebinds keys in the
 in-game settings and checks they persist across reload, then checks in-game editor
-laser/crystal import and export, draft persistence across reload, playing that draft
+laser/crystal import and export, panel clicks, panel drags and grid strokes at 960×540, 2560×1080 and
+390×844 (saving `demo-editor-*.png`), draft persistence across reload, playing that draft
 as a custom map, and movement after fullscreen exit. Room 1 synchronizes its staircase landings, Room 5 its low-ceiling jump/dash, and
 Room 8 its gear lift and ferry stops with visible phase/position checkpoints.
 Short walking pulses preserve narrow checkpoints; the final Room8 approach releases
@@ -136,8 +138,10 @@ References: [Unity Web deployment](https://docs.unity3d.com/6000.4/Documentation
 [Pages publishing](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
 
 Rendering reference: [Unity Web canvas sizing](https://docs.unity.com/en-us/engine/6000.0/manual/platform-specific/webgl/develop/canvas-size).
-The template keeps automatic sizing disabled and sets both native backing dimensions
-explicitly on resize; CSS covers the full viewport.
+The template keeps automatic sizing disabled and sets the backing store to the display size
+(CSS size × `devicePixelRatio`) on resize; CSS covers the full viewport. Unity's `Screen`
+therefore reports real pixels, and each scene picks its native-pixel view from the aspect,
+including the in-game editor's wider view.
 
 ## Crystal course
 

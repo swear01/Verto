@@ -120,6 +120,109 @@ public class MenuTests : InputTestFixture
         }
     }
 
+    Mouse mouse;
+    // Points at a frame pixel's center, inverting PhaseScreen.FramePoint, and holds the given buttons for two frames.
+    IEnumerator Point(Vector2Int view, Vector2Int frame, params MouseButton[] buttons)
+    {
+        var state = new MouseState { position = new Vector2((frame.x + .5f) * Screen.width / view.x, Screen.height - (frame.y + .5f) * Screen.height / view.y) };
+        foreach (var button in buttons) state = state.WithButton(button);
+        InputSystem.QueueStateEvent(mouse, state); yield return null; yield return null;
+    }
+    static Vector2Int Center(RectInt rect) => new Vector2Int(rect.x + rect.width / 2, rect.y + rect.height / 2);
+    [UnityTest]
+    public IEnumerator EditorPanelStaysFixedAndTakesMouseClicks()
+    {
+        // Every layout keeps the screen's aspect and puts 18-pixel slots inside the view, beside or below the grid and never on it.
+        foreach (var (width, height, side) in new[] { (960, 540, true), (2560, 1080, true), (390, 844, false) })
+        {
+            var view = PhaseEditor.ViewFor(width, height);
+            var grid = new RectInt(0, -((180 - view.y) / 2), 320, 176);
+            Assert.That(Mathf.Abs(view.x * height - view.y * width), Is.LessThan(Mathf.Max(width, height)), $"{width}x{height} keeps its aspect");
+            var panel = PhaseEditor.PanelIn(view);
+            Assert.That(side ? panel.xMin >= grid.xMax : panel.yMin >= grid.yMax, Is.True, $"{width}x{height} panel position");
+            var cells = Enumerable.Range(0, PhaseEditor.SlotCount).Select(slot => PhaseEditor.SlotIn(view, slot)).ToList();
+            foreach (var cell in cells)
+                Assert.That((cell.width, cell.height, cell.xMin >= panel.xMin && cell.yMin >= panel.yMin && cell.xMax <= panel.xMax && cell.yMax <= panel.yMax,
+                    panel.xMin >= 0 && panel.yMin >= 0 && panel.xMax <= view.x && panel.yMax <= view.y, cell.Overlaps(grid), cells.Count(c => c.Overlaps(cell))),
+                    Is.EqualTo((18, 18, true, true, false, 1)), $"{width}x{height} slot {cells.IndexOf(cell)}");
+        }
+
+        string saved = PlayerPrefs.HasKey(PhaseEditor.DraftKey) ? PlayerPrefs.GetString(PhaseEditor.DraftKey) : null;
+        PlayerPrefs.DeleteKey(PhaseEditor.DraftKey);
+        try
+        {
+            yield return OpenTitle();
+            yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
+            yield return WaitFor(PhaseEditor.Scene);
+            var editor = Object.FindAnyObjectByType<PhaseEditor>();
+            mouse = InputSystem.AddDevice<Mouse>();
+            var view = PhaseEditor.ViewFor(Screen.width, Screen.height);
+            var texture = editor.GetComponentInChildren<SpriteRenderer>().sprite.texture;
+            Assert.That((texture.width, texture.height), Is.EqualTo((view.x, view.y)), "the editor draws its own wider view");
+            var panel = PhaseEditor.PanelIn(view);
+            Color[] Panel() => texture.GetPixels(panel.x, view.y - panel.yMax, panel.width, panel.height);
+            Vector2Int Cell(int x, int y) => new Vector2Int(x * 8 + 4, y * 8 + 4 - (180 - view.y) / 2);
+
+            // With the gear's tall preview, the pointer sweeps the top and bottom rows: the cursor follows and the panel's pixels never change.
+            var gear = Center(PhaseEditor.SlotIn(view, 13));
+            yield return Point(view, gear, MouseButton.Left); yield return Point(view, gear);
+            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.GearTool));
+            yield return Point(view, Cell(5, 0));
+            var still = Panel();
+            foreach (var cell in new[] { new Vector2Int(30, 0), new Vector2Int(39, 0), new Vector2Int(30, 21), new Vector2Int(0, 21), new Vector2Int(5, 0) })
+            {
+                yield return Point(view, Cell(cell.x, cell.y));
+                Assert.That((editor.Cursor, editor.Hover), Is.EqualTo((cell, (int?)null)));
+                Assert.That(Panel(), Is.EqualTo(still), $"the panel stays put with the cursor at {cell}");
+            }
+
+            // Hovering a slot highlights it; a click selects its tool or color and never paints.
+            string draft = PhaseCustomMap.ToJson(editor.Room());
+            var tools = new System.Collections.Generic.List<int>(); var masks = new System.Collections.Generic.List<int>();
+            for (int slot = 0; slot < PhaseEditor.ImportSlot; slot++)
+            {
+                var at = Center(PhaseEditor.SlotIn(view, slot));
+                yield return Point(view, at);
+                Assert.That(editor.Hover, Is.EqualTo(slot));
+                var hovered = Panel();
+                Assert.That(hovered, Is.Not.EqualTo(still), $"slot {slot} shows a hover highlight");
+                yield return Point(view, at, MouseButton.Left); yield return Point(view, at);
+                if (slot < PhaseEditor.MaskSlot) tools.Add(editor.Tool); else masks.Add(editor.Mask);
+                still = Panel();
+            }
+            Assert.That(tools, Is.EqualTo(tools.Distinct()).And.EquivalentTo(Enumerable.Range(0, 16)), "each tool slot picks its own tool");
+            Assert.That(masks, Is.EqualTo(masks.Distinct()).And.EquivalentTo(Enumerable.Range(1, 7)), "each color slot picks its own color");
+            Assert.That(PhaseCustomMap.ToJson(editor.Room()), Is.EqualTo(draft), "panel clicks never paint");
+
+            // A drag that starts on the panel never paints; strokes that start on the grid paint and erase.
+            var terrain = Center(PhaseEditor.SlotIn(view, 0)); var blue = Center(PhaseEditor.SlotIn(view, PhaseEditor.MaskSlot + 2));
+            yield return Point(view, blue, MouseButton.Left); yield return Point(view, blue);
+            yield return Point(view, terrain, MouseButton.Left);
+            yield return Point(view, Cell(10, 10), MouseButton.Left); yield return Point(view, Cell(11, 10), MouseButton.Left); yield return Point(view, Cell(11, 10));
+            Assert.That((editor.Tool, editor.Mask, PhaseCustomMap.ToJson(editor.Room())), Is.EqualTo((PhaseEditor.Terrain, 2, draft)), "a drag from the panel never paints");
+            yield return Point(view, Cell(10, 10), MouseButton.Left); yield return Point(view, Cell(11, 10), MouseButton.Left); yield return Point(view, Cell(11, 10));
+            Assert.That(editor.Room().blocks.Count(b => b.y == 80 && (b.x == 80 || b.x == 88) && b.phaseMask == 2), Is.EqualTo(2), "a stroke on the grid paints");
+            yield return Point(view, Cell(10, 10), MouseButton.Right); yield return Point(view, Cell(10, 10));
+            Assert.That(editor.Room().blocks.Count(b => b.y == 80), Is.EqualTo(1), "right-click erases");
+
+            // The play and back slots work by mouse too; the playtest returns to the same view.
+            var play = Center(PhaseEditor.SlotIn(view, PhaseEditor.PlaySlot));
+            yield return Point(view, play, MouseButton.Left); yield return Point(view, play);
+            Assert.That(editor.Playtest, Is.Not.Null, "the play slot starts a playtest");
+            yield return Tap(Key.Escape);
+            Assert.That((editor.Playtest, texture.width, texture.height), Is.EqualTo(((PhaseSandbox)null, view.x, view.y)), "the playtest returns to the editor view");
+            var back = Center(PhaseEditor.SlotIn(view, PhaseEditor.BackSlot));
+            yield return Point(view, back, MouseButton.Left); yield return Point(view, back);
+            yield return WaitFor(PhaseTitle.Scene);
+            LogAssert.NoUnexpectedReceived();
+        }
+        finally
+        {
+            if (saved == null) PlayerPrefs.DeleteKey(PhaseEditor.DraftKey); else PlayerPrefs.SetString(PhaseEditor.DraftKey, saved);
+            PlayerPrefs.Save();
+        }
+    }
+
     static PhaseSandbox Sandbox() => Object.FindAnyObjectByType<PhaseSandbox>();
     [UnityTest]
     public IEnumerator PauseFreezesPlayAndKeySettingsRebindAndPersist()

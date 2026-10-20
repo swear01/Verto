@@ -106,7 +106,7 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     async function tap(key, times=1) { for(let n=0;n<times;n++){await page.keyboard.press(key,{delay:60});await page.waitForTimeout(60);} }
     // The victory banner's first letter strokes, drawn in the light ink at the center of the frame.
     async function victoryShown(buffer) {
-      const top=Math.floor(await canvas.evaluate(c=>c.height)/2)-22;
+      const top=Math.floor(await canvas.evaluate(c=>Math.max(180,Math.ceil(320*c.clientHeight/c.clientWidth)))/2)-22;
       return [[137,8],[137,9],[136,10],[135,11]].every(([x,y])=>pixelMatches(buffer,x,top+y,[234,223,197]));
     }
     async function visible(label, predicate, seconds=6) {
@@ -360,7 +360,7 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     for(const [width,height] of [[320,407],[800,600],[2560,1080],[844,390],[390,844]]) {
       await page.setViewportSize({width,height}); await page.waitForTimeout(250);
       const box=await canvas.boundingBox();assert.deepEqual([box.x,box.y,box.width,box.height],[0,0,width,height]);
-      assert.deepEqual(await canvas.evaluate(c=>[c.width,c.height]),[Math.max(320,Math.round(180*width/height)),Math.max(180,Math.ceil(320*height/width))]);
+      assert.deepEqual(await canvas.evaluate(c=>[c.width,c.height]),[width,height],'The backbuffer matches the display');
       assert(character(await capture()),'Player remains visible after resize');
       await page.screenshot({path:path.join(reports,`demo-viewport-${width}.png`)});
     }
@@ -400,30 +400,64 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     await page.keyboard.press('ArrowRight',{delay:120});const resumed=await observe();
     assert(resumed.x>afterFullscreen.x+12,'Exiting fullscreen restores native movement without another canvas click');
     console.log('Passed fullscreen and resumed input; checking in-game editor files');
-    // The editor toolbar's second row: 7 colors, import, export, play, back; 7px icons at y=18 in a 320px-wide frame.
-    async function editorIcon(slot) {
-      const box=await canvas.boundingBox(),scale=box.width/320,x=6+slot*11+(slot>=7?4:0)+(slot>=9?4:0)+3.5;
-      await page.mouse.move(box.x+x*scale,box.y+21.5*scale);await page.waitForTimeout(100);
-      await page.mouse.down();await page.waitForTimeout(80);await page.mouse.up();
+    // Mirrors PhaseEditor.ViewFor/PanelIn/SlotIn: 18px slots in a fixed panel right of the 320x176 grid, or below it on
+    // tall screens. Slots 0-15 are tools, 16-22 colors, then import, export, play and back. Returns page coordinates.
+    async function editorPoint(frame) {
+      const box=await canvas.boundingBox(),fit=(w,h)=>[Math.max(w,Math.floor(h*box.width/box.height+.5)),Math.max(h,Math.ceil(w*box.height/box.width))];
+      const side=fit(400,180),below=fit(320,280),[vw,vh]=side[0]<=below[0]?side:below,top=-Math.trunc((180-vh)/2);
+      const [x,y]=frame(vw>=400,top);return [box.x+(x+.5)*box.width/vw,box.y+(y+.5)*box.height/vh];
+    }
+    const editorSlot=slot=>editorPoint((side,top)=>{
+      const group=slot<16?0:slot<23?1:2,i=slot-[0,16,23][group];
+      const [x,y]=side?[324+i%4*18,top+19+([0,4,6][group]+Math.floor(i/4))*18+group*6]:[16+(group===2?(7+i)*18+6:i*18),top+184+(group?24:0)];
+      return [x+9,y+9];
+    });
+    const editorCell=(cx,cy)=>editorPoint((side,top)=>[cx*8+4,top+cy*8+4]);
+    async function editorClick([x,y],button='left') {
+      await page.mouse.move(x,y);await page.waitForTimeout(100);
+      await page.mouse.down({button});await page.waitForTimeout(80);await page.mouse.up({button});await page.waitForTimeout(80);
+    }
+    const editorIcon=async slot=>editorClick(await editorSlot(slot));
+    async function exportDraft() {
+      const download=page.waitForEvent('download');await editorIcon(24);
+      return JSON.parse(fs.readFileSync(await (await download).path(),'utf8'));
     }
     await page.reload();await loaded();await canvas.click();
     await tap('ArrowRight',2);await page.keyboard.press('z',{delay:80});await page.waitForTimeout(1500);
+    // At each window shape the panel's color and tool slots take clicks, strokes paint only when they start on the grid,
+    // and right-click erases without opening the browser menu.
+    await page.evaluate(()=>{window.__menus=[];addEventListener('contextmenu',e=>__menus.push(e.defaultPrevented));});
+    const editorLayouts=[[960,540,18,2],[2560,1080,19,4],[390,844,20,5]];
+    for(const [[width,height,slot,mask],n] of editorLayouts.map((layout,n)=>[layout,n])) {
+      await page.setViewportSize({width,height});await page.waitForTimeout(400);
+      await editorIcon(slot);await editorIcon(0);
+      const [sx,sy]=await editorSlot(0),[gx,gy]=await editorCell(20+n,6);
+      await page.mouse.move(sx,sy);await page.mouse.down();await page.waitForTimeout(80);
+      await page.mouse.move(gx,gy,{steps:4});await page.waitForTimeout(80);await page.mouse.up();
+      await editorClick(await editorCell(20+n,4));await editorClick(await editorCell(20+n,5));await editorClick(await editorCell(20+n,5),'right');
+      await page.mouse.move(...await editorSlot(slot));await page.waitForTimeout(150);
+      await page.screenshot({path:path.join(reports,`demo-editor-${width}x${height}.png`)});
+    }
+    const painted=(await exportDraft()).blocks.filter(b=>b.y<168).map(b=>[b.x,b.y,b.phaseMask]);
+    assert.deepEqual(painted.sort((a,b)=>a[0]-b[0]),[[160,32,2],[168,32,4],[176,32,5]],'Panel clicks pick each color; panel drags paint nothing; right-click erases');
+    assert(await page.evaluate(()=>__menus.length===3&&__menus.every(Boolean)),'Right-click never opens the browser menu');
+    await page.setViewportSize({width:1280,height:720});await page.waitForTimeout(400);
     const editorMap={name:'Unity editor import',blocks:[{x:0,y:168,w:320,h:8,phase:-1,phaseMask:7}],spikes:[],
       lasers:[{x:160,y:96,direction:1,phaseMask:2}],crystals:[{x:80,y:120,kind:1,phaseMask:7}],spawnX:24,spawnY:152};
-    const editorChooser=page.waitForEvent('filechooser');await editorIcon(7);
+    const editorChooser=page.waitForEvent('filechooser');await editorIcon(23);
     await (await editorChooser).setFiles({name:'phase-editor-map.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(editorMap))});
     await page.waitForTimeout(500);fs.writeFileSync(path.join(reports,'demo-editor-import.png'),await capture());
-    const editorDownload=page.waitForEvent('download');await editorIcon(8);
+    const editorDownload=page.waitForEvent('download');await editorIcon(24);
     const editorExport=JSON.parse(fs.readFileSync(await (await editorDownload).path(),'utf8'));
     assert.equal((await editorDownload).suggestedFilename(),'phase-custom-map.json');
     assert.deepEqual([editorExport.blocks.length,editorExport.spikes,editorExport.lasers,editorExport.crystals,editorExport.spawnX,editorExport.spawnY],
       [40,[],editorMap.lasers,editorMap.crystals,24,152],'In-game editor imports and exports lasers and crystals');
     await page.waitForTimeout(500);await page.reload();await loaded();await canvas.click();
     await tap('ArrowRight',2);await page.keyboard.press('z',{delay:80});await page.waitForTimeout(1500);
-    const reloadedDownload=page.waitForEvent('download');await editorIcon(8);
+    const reloadedDownload=page.waitForEvent('download');await editorIcon(24);
     assert.deepEqual(JSON.parse(fs.readFileSync(await (await reloadedDownload).path(),'utf8')),editorExport,'In-game editor draft persists across reload');
-    // The play icon runs the draft natively as a custom map; the toolbar is hidden while it plays.
-    await editorIcon(9);
+    // The play icon runs the draft natively as a custom map; the panel is hidden while it plays.
+    await editorIcon(25);
     const customStart=await visible('custom-map-loaded',p=>Math.abs(p.x/4-28)<2&&p.phase===0);
     await page.keyboard.press('ArrowRight',{delay:150});const customMoved=await observe();assert(customMoved.x>customStart.x+20,'Custom map accepts native movement');
     await page.keyboard.press('z',{delay:90});const customJumped=await observe();assert(customJumped.y<customMoved.y-12&&customJumped.phase===1,'Custom map accepts native jump/phase');

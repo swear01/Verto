@@ -87,11 +87,13 @@ namespace Phase
         }
         protected void Refresh(bool present = false)
         {
-            var size = PhaseSandbox.ViewSize(Screen.width, Screen.height);
+            var size = ViewSize(Screen.width, Screen.height);
             if (present || size.x != pixels.Width || size.y != pixels.Height) { pixels.SetView(size.x, size.y, 0); present = true; }
             Render();
             if (present) sprite = PhaseSandbox.Present(pixels, surface, sprite, pixelCamera);
         }
+        // The native view for a screen; the editor widens it to fit its tool panel.
+        protected virtual Vector2Int ViewSize(int width, int height) => PhaseSandbox.ViewSize(width, height);
         protected abstract void Render();
         protected abstract void Tick(Keyboard k, Mouse m);
         protected virtual bool Hidden => false;
@@ -99,7 +101,7 @@ namespace Phase
         {
             if (!Hidden)
             {
-                var size = PhaseSandbox.ViewSize(Screen.width, Screen.height);
+                var size = ViewSize(Screen.width, Screen.height);
                 if (size.x != pixels.Width || size.y != pixels.Height) Refresh();
             }
             if (leaving || PhaseSandbox.InputPaused(Keyboard.current)) return;

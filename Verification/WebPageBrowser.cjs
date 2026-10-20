@@ -21,6 +21,12 @@ const server=http.createServer((req,res)=>{
   assert.deepEqual(await page.locator('#game-tools button').evaluateAll(b=>b.map(e=>e.id)),['fullscreen-toggle'],'the page keeps only fullscreen');
   assert.equal(await page.locator('body').innerText(),'');
   await page.screenshot({path:path.join(reports,'page-desktop.png')});
+  // The backbuffer matches the display; right-click (the editor's erase) never opens the browser menu.
+  const canvasSize=()=>page.locator('#unity-canvas').evaluate(c=>[c.width,c.height,c.clientWidth,c.clientHeight]);
+  assert.deepEqual(await canvasSize(),[1280,720,1280,720]);
+  await page.evaluate(()=>{window.__menus=[];addEventListener('contextmenu',e=>__menus.push(e.defaultPrevented));});
+  await page.locator('#unity-canvas').click({button:'right'});
+  assert.deepEqual(await page.evaluate(()=>__menus),[true],'right-click on the game never opens the browser menu');
   // Keys reach Unity only from the canvas; Tab and keys on page buttons stay in the page.
   await page.evaluate(()=>{window.__keys=[];addEventListener('keydown',e=>__keys.push(e.code));});
   await page.locator('#unity-canvas').focus();await page.keyboard.press('Escape');await page.keyboard.press('Tab');
@@ -32,6 +38,8 @@ const server=http.createServer((req,res)=>{
   await page.evaluate(()=>{dispatchEvent(new Event('focus'));});
   assert.equal(await page.evaluate(()=>__calls.filter(c=>c.m==='SetControlsOpen').at(-1).v),'false','returning resumes play');
   await page.setViewportSize({width:390,height:844});
+  await page.waitForFunction(()=>document.getElementById('unity-canvas').width===390);
+  assert.deepEqual(await canvasSize(),[390,844,390,844]);
   assert(await page.evaluate(()=>document.getElementById('fullscreen-toggle').getBoundingClientRect().right<=innerWidth));
   await page.screenshot({path:path.join(reports,'page-mobile.png')});
   await page.setViewportSize({width:1280,height:720});
@@ -50,6 +58,6 @@ const server=http.createServer((req,res)=>{
   await (await gameChooser).setFiles({name:'in-game.json',mimeType:'application/json',buffer:Buffer.from(gameJson)});
   await page.waitForFunction(()=>__calls.some(c=>c.m==='ImportDraft'));
   assert.deepEqual(await page.evaluate(()=>__calls.filter(c=>c.m==='ImportDraft')),[{o:'PHASE',m:'ImportDraft',v:gameJson}],'in-game import sends the file to Unity');
-  assert.deepEqual(errors,[]);console.log('PASS: fullscreen-only page, canvas-only keys, background pause, mobile, repeated resized fullscreen and in-game editor file bridge');
+  assert.deepEqual(errors,[]);console.log('PASS: fullscreen-only page, display-sized backbuffer, no canvas context menu, canvas-only keys, background pause, mobile, repeated resized fullscreen and in-game editor file bridge');
  }finally{if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -55,9 +55,9 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 48 controller cases, 9 laser cases, 17 demo-route/authoring cases,
 15 crystal cases, 26 crystal-room cases, 18 pixel cases, 6 Grid authoring cases, 7 custom-map validation cases,
-3 key-binding cases (validation, PlayerPrefs persistence, key caps) and 12 level-route cases in Edit Mode. The 29 Play Mode cases cover
+3 key-binding cases (validation, PlayerPrefs persistence, key caps) and 12 level-route cases in Edit Mode. The 30 Play Mode cases cover
 each level's keyboard route, bindings, pause/release gating, room persistence, multiple authored platforms, crystal triggers, imported maps, the
-title/editor flow including editor platforms and gears, the pause menu with key settings, and level select from the
+title/editor flow including editor platforms and gears, the editor's fixed tool panel under mouse input, the pause menu with key settings, and level select from the
 title, pause and victory screens. Platform checks cover
 vertical return travel, independent routes/reset, rider and climb-hop attachment,
 crush/hazard sweeps, native collider synchronization and rendering.
@@ -233,7 +233,8 @@ stays320 and height grows around the vertically centered180-pixel play area.
 Stone fills the area above the native top boundary; terrain touching the last
 complete 8px row (bottom176) extends below. Gaps and voids remain open, with a
 short fade to black between native Y180 and the existing Y194 death boundary, followed by quiet receding quarry terraces. This extension is visual padding. Each built-in demo also has a visible, solid 8px ceiling at Y0; custom maps use their authored terrain.
-Both axes fill the viewport without stretching native pixels.
+Both axes fill the viewport without stretching native pixels. The in-game editor alone widens its view further to fit
+its tool panel beside or below the 320×176 grid, keeping the screen's aspect.
 Terrain ending at the right room edge and room bounds expand above320pixels. Resizing preserves
 controller state and rebuilds the pixel surface/cache; resizing during a slide
 completes its handoff, including a height-only resize.
@@ -392,7 +393,10 @@ border and keeps the old map; Escape closes the screen.
 The editor paints the custom-map grid (40×22 cells, terrain, four spike directions,
 four laser directions, jump and dash crystals, returning and one-way dash platforms, climb gear,
 spawn, erase; seven masks) and renders it with the game's own pixels in the starting
-red phase. Mouse: left paints, right erases, the toolbar flips away from the cursor.
+red phase. The editor widens its own view (same aspect as the screen) so a fixed panel of 2× icons sits right
+of the grid, or below it when that leaves the grid larger (tall screens); the panel never moves and never covers a
+cell. Hovering a slot highlights it, a click picks it, and the selected tool and color are framed. Mouse: left paints,
+right erases; a stroke paints only if it starts on the grid, so a drag from the panel never paints.
 Keyboard: movement keys move the cursor, jump paints, grab erases, dash cycles the
 tool, 1–7 pick the mask, Enter playtests, Escape returns to the title.
 Platforms and gears take two placements: click or jump once for the body, move, then click
@@ -416,7 +420,10 @@ Export validates first; an invalid map or file flashes the red border and keeps 
 
 With `PhaseTitle` in Play mode, run `Verification/MenuLiveInput.cs`, entry
 `MenuLiveInput.Run`. It drives title→editor→paint terrain, a laser and a crystal→place a returning
-platform and a gear→clipboard export/import→playtest with a platform-moving dash→back→level1 by keyboard,
+platform and a gear by keyboard, then a virtual mouse sweeps the grid's top and bottom rows (the panel's pixels must
+not change), hovers and clicks a color and tool, drags from the panel (nothing paints), paints and right-click erases a
+cell→clipboard export/import→the play slot starts a playtest with a platform-moving dash→back→level1. It uses the default
+keys in memory, because every Editor of this project shares one PlayerPrefs store. It
 restores the developer's draft and clipboard and saves captures to `TestResults/Menu/`.
 `Verification/KeysLiveInput.cs`, entry `KeysLiveInput.Run`, also starts from `PhaseTitle`
 in Play: title key settings→bind J to jump (a duplicate is rejected)→title level
