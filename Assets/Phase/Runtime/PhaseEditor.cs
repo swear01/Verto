@@ -13,6 +13,7 @@ namespace Phase
         public const string Scene = "PhaseEditor", DraftKey = "phase.editor.v1";
         public const int Columns = 40, Rows = 22;
         // Cell tools: 0 empty, 1 terrain, 2–5 Up/Down/Left/Right spikes, 7–10 Up/Down/Left/Right lasers,
+<<<<<<< HEAD
         // 11 jump crystal, 12 dash crystal. Spawn only moves the player start. Platforms (returning or one-way) and gears
         // are placed in two steps, body then end, and are kept outside the cell grid.
         public const int Erase = 0, Terrain = 1, Spawn = 6, LaserTool = 7, CrystalTool = 11, LastTool = 12, ReturnPlatform = 13, PlatformTool = 14, GearTool = 15;
@@ -20,6 +21,13 @@ namespace Phase
         // Panel slots: 16 tools, 7 colors, then import, export, play and back.
         public const int MaskSlot = 16, ImportSlot = 23, ExportSlot = 24, PlaySlot = 25, BackSlot = 26, SlotCount = 27;
         const int PlatformWidth = 24;
+=======
+        // 11 jump crystal, 12 dash crystal. Spawn only moves the player start. A platform is one 24×8 start plus the
+        // one-way line behind it; a gear is still body then end. Both stay outside the cell grid.
+        public const int Erase = 0, Terrain = 1, Spawn = 6, LaserTool = 7, CrystalTool = 11, LastTool = 12, PlatformTool = 13, GearTool = 14;
+        static readonly int[] toolOrder = { Terrain, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, PlatformTool, GearTool, Spawn, Erase }, masks = { 7, 1, 2, 4, 5, 3, 6 };
+        const int MaskSlot = 15, ImportSlot = 22, ExportSlot = 23, PlaySlot = 24, BackSlot = 25, SlotCount = 26, PlatformWidth = 24;
+>>>>>>> origin/cld/editor-platforms-ux
         static readonly string[] spikeUp = { ".......", "...#...", "..###..", "..###..", ".#####.", ".#####.", "#######" },
             laserUp = { "...#...", "...#...", "...#...", ".#####.", ".#...#.", ".#.#.#.", ".#####." },
             arrowDown = { "...#...", "...#...", "...#...", "#..#..#", ".#.#.#.", "..###..", "...#..." };
@@ -28,7 +36,6 @@ namespace Phase
             laserUp, laserUp.Reverse().ToArray(), Turn(laserUp), Mirror(Turn(laserUp)),
             new[] { "..###..", ".#####.", "##.####", "#######", "#######", ".#####.", "..###.." },
             new[] { ".......", ".#####.", ".#.###.", ".#####.", ".#####.", ".#####.", "......." },
-            new[] { ".#...#.", "#######", ".#...#.", ".......", "#######", "#.#.#.#", "#######" },
             new[] { ".....#.", "#######", ".....#.", ".......", "#######", "#.#.#.#", "#######" },
             new[] { "...#...", ".#####.", ".##.##.", "##...##", ".##.##.", ".#####.", "...#..." },
             new[] { "#......", "####...", "#####..", "####...", "#......", "#......", "#......" },
@@ -39,8 +46,9 @@ namespace Phase
         readonly byte[] tools = new byte[Columns * Rows], colors = new byte[Columns * Rows];
         readonly List<DemoPlatform> platforms = new List<DemoPlatform>();
         readonly List<DemoGear> gears = new List<DemoGear>();
-        // The placed body while a platform or gear waits for its end point.
+        // The placed origin while a platform line or a gear wall is still open.
         public Vector2Int? Anchor { get; private set; }
+        DemoPlatform line;
         public int Tool { get; private set; } = Terrain;
         public int Mask { get; private set; } = 7;
         public Vector2Int Cursor { get; private set; } = new Vector2Int(8, 18);
@@ -113,7 +121,7 @@ namespace Phase
             return new PhaseDemoRoom { name = "自訂地圖", blocks = blocks.ToArray(), spikes = spikes.ToArray(), lasers = lasers.ToArray(), crystals = crystals.ToArray(),
                 platforms = platforms.ToArray(), gears = gears.ToArray(), spawnX = SpawnCell.x * 8, spawnY = SpawnCell.y * 8 };
         }
-        static bool IsMechanism(int tool) => tool >= ReturnPlatform;
+        static bool IsMechanism(int tool) => tool >= PlatformTool;
         static RectInt Box(Block b) => new RectInt((int)b.x, (int)b.y, (int)b.w, (int)b.h);
         static RectInt Box(DemoPlatform p) => new RectInt((int)p.nodeX[0], (int)p.nodeY[0], (int)p.w, (int)p.h);
         static RectInt Box(Vector2Int cell, int w = 8, int h = 8) => new RectInt(cell.x * 8, cell.y * 8, w, h);
@@ -124,12 +132,14 @@ namespace Phase
             for (int y = area.yMin / 8; y < area.yMax / 8; y++) for (int x = area.xMin / 8; x < area.xMax / 8; x++) if (tools[y * Columns + x] != Erase) return false;
             return true;
         }
-        // A 24×8 platform's second stop; returning platforms keep to one axis.
-        Vector2Int RouteEnd(Vector2Int start, Vector2Int cell)
+        // The 24×8 body stays inside the map. Stops keep both axes, so a segment may be diagonal.
+        static Vector2Int Fit(Vector2Int cell) { cell.x = Math.Min(cell.x, Columns - PlatformWidth / 8); return cell; }
+        static RectInt Stop(DemoPlatform platform, int i) => new RectInt((int)platform.nodeX[i], (int)platform.nodeY[i], (int)platform.w, (int)platform.h);
+        static void AddStop(DemoPlatform platform, Vector2Int cell)
         {
-            cell.x = Math.Min(cell.x, Columns - PlatformWidth / 8);
-            if (Tool == ReturnPlatform) cell = Math.Abs(cell.x - start.x) >= Math.Abs(cell.y - start.y) ? new Vector2Int(cell.x, start.y) : new Vector2Int(start.x, cell.y);
-            return cell;
+            int n = platform.nodeX.Length;
+            Array.Resize(ref platform.nodeX, n + 1); Array.Resize(ref platform.nodeY, n + 1);
+            platform.nodeX[n] = cell.x * 8; platform.nodeY[n] = cell.y * 8;
         }
         // An 8×56 wall at the anchor drives a 56×8 bridge two cells to its right on the chosen row. The end column sets
         // equal wall and bridge travel of 8–24 px, which keeps the bridge rack over the output pinion.
@@ -139,35 +149,46 @@ namespace Phase
             int travel = Mathf.Clamp(cell.x * 8 - startX, 8, Math.Min(24, Math.Min(y, Columns * 8 - 56 - startX)));
             return new DemoGear { wall = new Block(x, y, 8, 56), top = y - travel, platform = new Block(startX, cell.y * 8, 56, 8), endX = startX + travel };
         }
-        // The first press places the body, the second sets the platform's route end or the gear bridge's end.
+        // The first press places the platform origin or the gear wall. Later presses extend the one-way line, or set the gear's end.
         bool Place(Vector2Int cell)
         {
+            if (Tool == GearTool)
+            {
+                if (Anchor is Vector2Int wall)
+                {
+                    var gear = GearAt(wall, cell);
+                    if (!Free(Box(gear.platform))) { flash = .4f; return true; }
+                    gears.Add(gear); Anchor = null; return dirty = true;
+                }
+                if (cell.y >= 1 && cell.x * 8 + 80 <= Columns * 8 && Free(Box(cell, 8, 56))) Anchor = cell; else flash = .4f;
+                return true;
+            }
+            cell = Fit(cell);
             if (Anchor is Vector2Int start)
             {
-                if (Tool == GearTool)
+                if (line == null)
                 {
-                    var gear = GearAt(start, cell);
-                    if (!Free(Box(gear.platform))) { flash = .4f; return true; }
-                    gears.Add(gear);
+                    if (cell == start) return false;
+                    line = new DemoPlatform { nodeX = new double[] { start.x * 8, cell.x * 8 }, nodeY = new double[] { start.y * 8, cell.y * 8 } };
+                    platforms.Add(line);
                 }
                 else
                 {
-                    var end = RouteEnd(start, cell);
-                    if (end == start) return false;
-                    platforms.Add(new DemoPlatform { nodeX = new double[] { start.x * 8, end.x * 8 }, nodeY = new double[] { start.y * 8, end.y * 8 }, returns = Tool == ReturnPlatform });
+                    int last = line.nodeX.Length - 1;
+                    if (line.nodeX[last] == cell.x * 8 && line.nodeY[last] == cell.y * 8) return false;
+                    AddStop(line, cell);
                 }
-                Anchor = null; return dirty = true;
+                return dirty = true;
             }
-            bool fits = Tool == GearTool ? cell.y >= 1 && cell.x * 8 + 80 <= Columns * 8 && Free(Box(cell, 8, 56)) : Free(Box(cell, PlatformWidth));
-            if (fits) Anchor = cell; else flash = .4f;
-            return true;
+            if (!Free(Box(cell, PlatformWidth))) { flash = .4f; return true; }
+            Anchor = cell; line = null; return true;
         }
         bool Cancel()
         {
             if (Anchor == null) return false;
-            Anchor = null; return true;
+            Anchor = null; line = null; return true;
         }
-        void Select(int tool) { Tool = tool; Anchor = null; }
+        void Select(int tool) { Tool = tool; Anchor = null; line = null; }
         bool Apply(Vector2Int cell, int tool)
         {
             if (tool == Spawn)
@@ -178,7 +199,10 @@ namespace Phase
             }
             var area = Box(cell);
             if (tool == Erase && platforms.RemoveAll(p => Box(p).Overlaps(area)) + gears.RemoveAll(g => Box(g.wall).Overlaps(area) || Box(g.platform).Overlaps(area)) > 0)
+            {
+                if (line != null && !platforms.Contains(line)) { line = null; Anchor = null; }
                 return dirty = true;
+            }
             if (tool != Erase && Bodies().Any(b => b.Overlaps(area))) return false;
             int i = cell.y * Columns + cell.x; byte color = (byte)(tool == Erase ? 0 : Mask);
             if (tools[i] == tool && colors[i] == color) return false;
@@ -240,16 +264,22 @@ namespace Phase
                 var start = Box(g.platform); var end = new RectInt((int)g.endX, start.y, start.width, start.height);
                 Body(new RectInt((int)g.wall.x, (int)g.top, (int)g.wall.w, (int)g.wall.h), amount); Body(end, amount); Route(start, end, amount);
             }
-            // Dotted routes and faint end outlines show where each mechanism travels.
+            // Dotted segments follow the clicked stops, including a diagonal.
             foreach (var p in platforms)
-                for (int i = 1; i < p.nodeX.Length; i++) { var stop = new RectInt((int)p.nodeX[i], (int)p.nodeY[i], (int)p.w, (int)p.h); Route(Box(p), stop, .5f); Body(stop, .35f); }
+                for (int i = 1; i < p.nodeX.Length; i++) { Route(Stop(p, i - 1), Stop(p, i), .5f); Body(Stop(p, i), .35f); }
             foreach (var g in gears) Gear(g, .35f);
             if (Anchor is Vector2Int anchor)
             {
                 if (Tool == GearTool) { var g = GearAt(anchor, Cursor); Body(Box(g.wall), 1); Body(Box(g.platform), 1); Gear(g, .8f); }
-                else { var body = Box(anchor, PlatformWidth); var stop = Box(RouteEnd(anchor, Cursor), PlatformWidth); Body(body, 1); Route(body, stop, .8f); Body(stop, .8f); }
+                else
+                {
+                    var body = Box(anchor, PlatformWidth); Body(body, 1);
+                    var from = line == null ? body : Stop(line, line.nodeX.Length - 1);
+                    var next = Box(Fit(Cursor), PlatformWidth);
+                    if (next.x != from.x || next.y != from.y) { Route(from, next, .8f); Body(next, .8f); }
+                }
             }
-            else if (IsMechanism(Tool)) Body(Tool == GearTool ? Box(Cursor, 8, 56) : Box(Cursor, PlatformWidth), .6f);
+            else if (IsMechanism(Tool)) Body(Tool == GearTool ? Box(Cursor, 8, 56) : Box(Fit(Cursor), PlatformWidth), .6f);
             if (Tool != Erase && Tool != Spawn && !IsMechanism(Tool)) frame.Fill(cx, cy, 8, 8, color, .35f);
             frame.Outline(cx - 1, cy - 1, 10, 10, PixelFrame.Light, .9f);
             // The opaque panel hides the cursor outline and previews that reach past the grid's edge.
@@ -366,7 +396,7 @@ namespace Phase
             PhaseDemoRoom room;
             try { room = PhaseCustomMap.Parse(json); }
             catch (ArgumentException) { flash = .4f; Refresh(); return; }
-            Array.Clear(tools, 0, tools.Length); Array.Clear(colors, 0, colors.Length); Anchor = null;
+            Array.Clear(tools, 0, tools.Length); Array.Clear(colors, 0, colors.Length); Anchor = null; line = null;
             platforms.Clear(); platforms.AddRange(room.platforms ?? Array.Empty<DemoPlatform>());
             gears.Clear(); gears.AddRange(room.gears ?? Array.Empty<DemoGear>());
             void Put(double x, double y, double w, double h, int tool, int mask)
@@ -383,7 +413,7 @@ namespace Phase
         }
         public bool StartPlaytest()
         {
-            Anchor = null;
+            Anchor = null; line = null;
             var room = Room();
             try { PhaseCustomMap.Validate(room); }
             catch (ArgumentException error) { Refuse(error); return false; }

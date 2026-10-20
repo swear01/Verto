@@ -165,7 +165,7 @@ timing. With `Returns` enabled, use two distinct horizontal or vertical stops:
 the platform travels to node1 in0.2s, waits0.2s, then returns in1.2s. Without
 `Returns`, each dash queues one move to the next node. Respawn restores every
 platform to its authored start. Riders and climb hops stay attached to the
-specific platform they contact. Custom maps and the in-game editor also place dash platforms.
+specific platform they contact. Custom maps and the in-game editor also place dash platforms. The editor stores a drawn line as a one-way route with the 24×8 default body, so consecutive stops may differ on both axes.
 
 ## Climb gear demo
 
@@ -368,7 +368,7 @@ Apply overrides only when the change should affect the shared Prefab.
 The demo builders instantiate these assets and preserve the existing room geometry;
 hand-authored scenes are never rebuilt. Existing direct children of the origin
 `PHASE` root retain their coordinates. The in-game editor places single-cell lasers
-and crystals and two-step dash platforms and climb gears; these Prefabs are the Unity authoring tools.
+and crystals, a one-way dash-platform line, and two-step climb gears; these Prefabs are the Unity authoring tools.
 
 ## Title and level editor
 
@@ -391,7 +391,7 @@ always navigate. Enter makes a slot blink and binds the next key; Escape cancels
 Backspace clears. The bottom icon restores the defaults. A rejected change flashes a red
 border and keeps the old map; Escape closes the screen.
 The editor paints the custom-map grid (40×22 cells, terrain, four spike directions,
-four laser directions, jump and dash crystals, returning and one-way dash platforms, climb gear,
+four laser directions, jump and dash crystals, dash platforms, climb gear,
 spawn, erase; seven masks) and renders it with the game's own pixels in the starting
 red phase. The editor widens its own view (same aspect as the screen) so a fixed panel of 2× icons sits right
 of the grid, or below it when that leaves the grid larger (tall screens); the panel never moves and never covers a
@@ -399,6 +399,7 @@ cell. Hovering a slot highlights it, a click picks it, and the selected tool and
 right erases; a stroke paints only if it starts on the grid, so a drag from the panel never paints.
 Keyboard: movement keys move the cursor, jump paints, grab erases, dash cycles the
 tool, 1–7 pick the mask, Enter playtests, Escape returns to the title.
+<<<<<<< HEAD
 Platforms and gears take two placements: click or jump once for the body, move, then click
 or jump again for the end. A 24×8 platform's second point is its other stop; the returning
 platform snaps it to the body's row or column. A gear's first point is the 8×56 wall's top-left;
@@ -408,6 +409,18 @@ a pending body. Bodies refuse occupied cells (red flash); erasing any cell of a 
 Dotted routes and faint outlines mark platform stops, the wall top and the bridge end. An invalid
 map flashes a red border instead of starting; when Wick's start overlaps terrain, a hazard or a mechanism,
 Wick's start box and the flag slot also blink red. The playtest runs a `PhaseSandbox`
+=======
+A dash platform starts with one click or jump on the 8px grid. That cell is the 24×8 origin.
+Each later click adds the next stop, and a stop may differ on both axes. Those stops are one
+platform, `{w:24,h:8,nodeX,nodeY,returns:false}`; each dash advances it to the next stop.
+Escape, grab or right-click ends the line, or drops a start that has no stop yet. A gear's first
+point is the 8×56 wall's top-left; the second picks the 56×8 bridge's row and end column. The bridge
+starts two cells right of the wall and travels 8–24px, matching the wall's upward travel. Escape, grab
+or right-click also cancels a pending gear wall. Bodies refuse occupied cells (red flash); erasing any
+cell of a body removes it. Dotted segments and faint outlines mark the platform line, the wall top and
+the bridge end. An invalid
+map flashes a red border instead of starting. The playtest runs a `PhaseSandbox`
+>>>>>>> origin/cld/editor-platforms-ux
 child named `Playtest`; Escape destroys it and returns to the unchanged draft. A Web
 `LoadCustomMap` sent in the editor scene plays that map the same way. The draft
 autosaves to PlayerPrefs `phase.editor.v1` as one tool/mask pair per cell
@@ -420,11 +433,16 @@ import calls `PhaseImportMap`, the page opens a file picker and sends the text t
 Export validates first; an invalid map or file flashes the red border and keeps the draft.
 
 With `PhaseTitle` in Play mode, run `Verification/MenuLiveInput.cs`, entry
+<<<<<<< HEAD
 `MenuLiveInput.Run`. It drives title→editor→paint terrain, a laser and a crystal→place a returning
 platform and a gear by keyboard, then a virtual mouse sweeps the grid's top and bottom rows (the panel's pixels must
 not change), hovers and clicks a color and tool, drags from the panel (nothing paints), paints and right-click erases a
 cell→clipboard export/import→the play slot starts a playtest with a platform-moving dash→back→level1. It uses the default
 keys in memory, because every Editor of this project shares one PlayerPrefs store. It
+=======
+`MenuLiveInput.Run`. It drives title→editor→paint terrain, a laser and a crystal→draw a diagonal platform
+line and a gear→clipboard export/import→playtest with a dash along that diagonal→back→level1 by keyboard,
+>>>>>>> origin/cld/editor-platforms-ux
 restores the developer's draft and clipboard and saves captures to `TestResults/Menu/`.
 `Verification/KeysLiveInput.cs`, entry `KeysLiveInput.Run`, also starts from `PhaseTitle`
 in Play: title key settings→bind J to jump (a duplicate is rejected)→title level
