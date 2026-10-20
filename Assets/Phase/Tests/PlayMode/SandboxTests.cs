@@ -297,6 +297,55 @@ public class SandboxTests : InputTestFixture
     #endif
 
     [UnityTest]
+    public IEnumerator BigRoomCameraFollowsAKeyboardRunAndStaysInsideTheRoom()
+    {
+        yield return SceneManager.LoadSceneAsync("PhaseSandbox");
+        var original=Object.FindAnyObjectByType<PhaseSandbox>();
+        var root=new GameObject("Big room probe");root.SetActive(false);
+        var cameraParent=original.pixelCamera.transform.parent;
+        root.AddComponent<Grid>().cellSize=new Vector3(8,8,1);root.AddComponent<PhaseGrid>();
+        var tile=new GameObject("Floor");tile.transform.SetParent(root.transform);tile.transform.position=new Vector3(0,-344);
+        tile.AddComponent<PhaseTerrain>().size=new Vector2Int(640,16);
+        var sandbox=root.AddComponent<PhaseSandbox>();sandbox.pixelCamera=original.pixelCamera;sandbox.pixelMaterial=original.pixelMaterial;
+        sandbox.spawn=new Vector2Int(16,333);sandbox.roomSize=new Vector2Int(640,360);
+        if(original.pixelCamera.transform.IsChildOf(original.transform))original.pixelCamera.transform.SetParent(null,true);
+        var k=InputSystem.AddDevice<Keyboard>();
+        var background=Application.runInBackground;var capture=Time.captureDeltaTime;
+        var focus=InputSystem.settings.backgroundBehavior;var editorInput=InputSystem.settings.editorInputBehaviorInPlayMode;
+        Vector2Int View(){var at=sandbox.pixelCamera.transform.position;return new Vector2Int(Mathf.RoundToInt(at.x-sandbox.Frame.width/2f),Mathf.RoundToInt(-at.y-sandbox.Frame.height/2f));}
+        try
+        {
+            Application.runInBackground=true;Time.captureDeltaTime=1f/60;
+            InputSystem.settings.backgroundBehavior=InputSettings.BackgroundBehavior.IgnoreFocus;
+            InputSystem.settings.editorInputBehaviorInPlayMode=InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+            original.gameObject.SetActive(false);root.SetActive(true);sandbox.SetControlsOpen("false");
+            InputSystem.QueueStateEvent(k,new KeyboardState());yield return null;yield return null;
+            var size=new Vector2Int(sandbox.Frame.width,sandbox.Frame.height);
+            Assert.That((sandbox.Controller.Width,sandbox.Controller.Height),Is.EqualTo((640,360)));
+            Assert.That(View(),Is.EqualTo(new Vector2Int(0,Mathf.Max(0,360-size.y))),"the view starts clamped to the bottom-left");
+            int frame=Time.frameCount;double time=sandbox.Controller.time;
+            InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow));
+            for(int i=0;i<150;i++){yield return null;var v=View();Assert.That(v.x,Is.InRange(0,640-size.x));Assert.That(v.y,Is.InRange(Mathf.Min(0,(360-size.y)/2),Mathf.Max(0,360-size.y)));}
+            InputSystem.QueueStateEvent(k,new KeyboardState());
+            Assert.That(Time.frameCount,Is.GreaterThan(frame));Assert.That(sandbox.Controller.time,Is.GreaterThan(time));
+            Assert.That(sandbox.Controller.player.x,Is.GreaterThan(200));Assert.That(View().x,Is.GreaterThan(0),"the view follows the run");
+            sandbox.Controller.player.x=624;
+            yield return new WaitForSeconds(2);
+            Assert.That(View().x,Is.EqualTo(640-size.x),"the view stops at the room's right edge");
+            Assert.That(sandbox.Controller.deaths,Is.Zero);
+            LogAssert.NoUnexpectedReceived();
+        }
+        finally
+        {
+            InputSystem.RemoveDevice(k);InputSystem.settings.backgroundBehavior=focus;
+            InputSystem.settings.editorInputBehaviorInPlayMode=editorInput;
+            Application.runInBackground=background;Time.captureDeltaTime=capture;
+            if(original!=null){original.pixelCamera.transform.SetParent(cameraParent,true);original.gameObject.SetActive(true);}
+            Object.Destroy(root);
+        }
+    }
+
+    [UnityTest]
     public IEnumerator CrystalNativeTriggerTracksPhasePickupAndReset()
     {
         yield return SceneManager.LoadSceneAsync("PhaseCrystal1");

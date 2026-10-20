@@ -37,10 +37,15 @@ public static class PhaseMechanismPrefabs
     {
         var root = Object.FindAnyObjectByType<PhaseSandbox>();
         if (root == null) throw new System.InvalidOperationException("Open a PHASE scene first.");
-        var instance = Instantiate(name, root.transform, new Vector3(80, -120));
+        var view = SceneView.lastActiveSceneView;
+        var instance = Instantiate(name, root.transform, AddPoint(root, view != null ? view.pivot : new Vector3(80, -120)));
         Undo.RegisterCreatedObjectUndo(instance, "Add PHASE mechanism");
         Selection.activeGameObject = instance;
     }
+
+    // New mechanisms appear at the Scene view centre, kept inside the room bounds with room for the largest Prefab.
+    public static Vector3 AddPoint(PhaseSandbox root, Vector3 pivot) =>
+        new Vector3(Mathf.Clamp(pivot.x, 0, root.roomSize.x - 64), Mathf.Clamp(pivot.y, 64 - root.roomSize.y, 0));
 
     [MenuItem("PHASE/Add/Dash platform horizontal", true)]
     [MenuItem("PHASE/Add/Dash platform vertical", true)]

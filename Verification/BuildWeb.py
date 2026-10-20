@@ -74,9 +74,10 @@ def main():
     for mode, test_filter, expected in [
         ("editor", "ControllerTests", 52), ("editor", "LaserTests", 9), ("editor", "DemoRoomTests", 17),
         ("editor", "CrystalTests", 15), ("editor", "CrystalRoomTests", 26),
-        ("editor", "PixelTests", 20), ("editor", "GridGeometryTests", 6),
-        ("editor", "CustomMapTests", 8), ("editor", "KeyBindingTests", 3), ("editor", "LevelRouteTests", 15),
-        ("playmode", "SandboxTests", 11), ("playmode", "MapBridgeTests", 1), ("playmode", "MenuTests", 9),
+        ("editor", "PixelTests", 21), ("editor", "GridGeometryTests", 7),
+        ("editor", "CustomMapTests", 8), ("editor", "KeyBindingTests", 3), ("editor", "ScrollRoomTests", 6),
+        ("editor", "LevelRouteTests", 15),
+        ("playmode", "SandboxTests", 12), ("playmode", "MapBridgeTests", 1), ("playmode", "MenuTests", 9),
         ("playmode", "LevelRoutePlayTests", 15),
     ]:
         wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)

@@ -54,9 +54,9 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 52 controller cases, 9 laser cases, 17 demo-route/authoring cases,
-15 crystal cases, 26 crystal-room cases, 20 pixel cases, 6 Grid authoring cases, 8 custom-map validation cases,
-3 key-binding cases (validation, PlayerPrefs persistence, key caps) and 15 level-route cases in Edit Mode. The 36 Play Mode cases cover
-each level's keyboard route, bindings, pause/release gating, room persistence, multiple authored platforms, crystal triggers, imported maps, the
+15 crystal cases, 26 crystal-room cases, 21 pixel cases, 7 Grid authoring cases, 8 custom-map validation cases,
+6 scrolling-room cases, 3 key-binding cases (validation, PlayerPrefs persistence, key caps) and 15 level-route cases in Edit Mode. The 37 Play Mode cases cover
+each level's keyboard route, a big-room camera following a keyboard run, bindings, pause/release gating, room persistence, multiple authored platforms, crystal triggers, imported maps, the
 title/editor flow including editor platforms and gears, the editor's fixed tool panel under mouse input, the pause menu with key settings, the fullscreen switch, and level select from the
 title, pause and victory screens. Platform checks cover
 vertical return travel, independent routes/reset, rider and climb-hop attachment,
@@ -135,8 +135,8 @@ sandbox. Crossing an assigned horizontal edge loads that scene asynchronously,
 places the player at the opposite edge at the same height, and carries color,
 velocity, jump/dash state and counters. Empty links keep the side closed. Both
 scenes must be in Build Settings and in the Web build's explicit scene list.
-Deaths respawn in the current room. The controller’s top/bottom clamp and immutable reference
-fixtures stay unchanged; there is no player text.
+Deaths respawn in the current room. The room top clamps the player and death is below room height+14
+(194 for the default room); the immutable reference fixtures stay unchanged and there is no player text.
 Default movement, dash aiming and climb bindings accept arrow keys or WASD.
 Each action has two independent key slots; logical `Shift` activates both physical
 Shift keys. `PhaseSandbox.ApplyControls` takes 14 key names in left/right/up/down/
@@ -177,6 +177,16 @@ deferred terrain. An inactive gear wall cannot be grabbed, so climbing never dri
 an inactive bridge moves with the wall without colliding. Active parts use the terrain
 palette and mixed-mask inlays; inactive parts use the dashed terrain ghost. Racks, gears and
 platform tracks stay neutral decoration.
+
+## Scrolling room demo
+
+`Assets/Scenes/Drafts/ScrollTest.unity` is a 640×360 room with a long floor run and a three-step
+wall climb; it has no room links and is not in the build. Recreate it with
+`unity command eval 'PhaseSandboxBuilder.CreateScrollTest();'`. In Play, call
+`Verification/ScrollLiveInput.cs` (entry `ScrollLiveInput.Run`, CLI `--timeout 90`, script
+`--timeout_ms 90000`) five times, capturing the Game View after each: run, reach the wall, then
+climb onto steps A, B and C. Each call drives the keyboard, checks that the view never leaves the
+room and moves as expected, waits for the camera to settle and saves the frame to `TestResults/ScrollTest/`.
 
 ## Climb gear demo
 
@@ -238,6 +248,18 @@ they are not covered by this hosted controller job. The separate
 [Web build and preview](Web.md) workflow runs them through a licensed GUI runner
 and deploys only after browser verification. It requires owner setup before use.
 
+`PhaseSandbox.roomSize` sets the room in native pixels: default and minimum 320×180, width
+in 8px steps and height 180 or a multiple of 8. The Scene view draws it as a white gizmo from the
+Grid origin. Side exits sit at the room's left/right edge, lasers end at the room edges, and
+`PhaseController(width:, height:)` takes the same size. An axis larger than the view scrolls:
+`PhaseCamera` eases the view origin toward the player each 60 Hz step, rounds it to whole pixels
+and clamps it inside the room. `PhasePixels` caches the backdrop and terrain once per phase over
+the whole room and copies the visible window each frame; a taller room keeps the skyline at its
+bottom with open sky above. Room slides arrive at the opposite edge at the same height,
+clamped into a room of different height; vertical exits are not supported. Custom maps and the
+in-game editor keep 320×176.
+
+On an axis the room does not exceed, the view behaves as below.
 The view always contains at least the original 320x180 native-pixel play area.
 At wider aspects, height stays180 and width grows; at taller aspects, width
 stays320 and height grows around the vertically centered180-pixel play area.
@@ -363,7 +385,7 @@ from `Assets/Phase/Prefabs/` under the scene's `PHASE` Grid, or use `PHASE/Add`:
 `DashPlatformHorizontal`, `DashPlatformVertical`, `ClimbGear`, `Laser`, `Spikes`,
 `JumpCrystal`, `DashCrystal`.
 Both dash platform prefabs keep a horizontal body; only their travel differs.
-The menu places new instances at native (80,120), with Undo support.
+The menu places new instances at the Scene view centre, kept inside the room bounds, with Undo support.
 
 Move or duplicate the **Prefab root** to move the complete mechanism and route.
 Keep rotation0/scale1 and use Unity's8px move snapping. Select its `Platform` or

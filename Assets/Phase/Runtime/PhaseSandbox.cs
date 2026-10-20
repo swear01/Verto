@@ -14,9 +14,12 @@ namespace Phase
         public string leftScene, rightScene;
         public bool checkpointOnEntry;
         public Vector2Int spawn = new Vector2Int(32, 149);
+        // Native pixels; larger rooms scroll to follow the player.
+        public Vector2Int roomSize = new Vector2Int(320, 180);
         public PhaseController Controller { get; private set; }
         public Texture2D Frame => pixels?.Texture;
         PhasePixels pixels;
+        readonly PhaseCamera view = new PhaseCamera();
         Sprite sprite;
         SpriteRenderer surface;
         double accumulator;
@@ -60,7 +63,7 @@ namespace Phase
                 GetComponentsInChildren<PhaseMovingPlatform>().Select(m => m.CreatePlatform()), gears: GetComponentsInChildren<PhaseClimbGear>().Select(g => g.CreateGear()),
                 spikes: GetComponentsInChildren<PhaseSpike>().Select(t => t.CreateSpike()),
                 lasers: GetComponentsInChildren<PhaseLaser>().Select(t => t.CreateLaser()),
-                crystals: GetComponentsInChildren<PhaseCrystal>().Select(t => t.CreateCrystal()));
+                crystals: GetComponentsInChildren<PhaseCrystal>().Select(t => t.CreateCrystal()), width: roomSize.x, height: roomSize.y);
             controller.exitLeft = !string.IsNullOrEmpty(leftScene);
             controller.exitRight = !string.IsNullOrEmpty(rightScene) || level == Levels.Length - 1;
             controller.ResizeRoom(width);
@@ -127,6 +130,7 @@ namespace Phase
             ClearTravel();
             pixels = new PhasePixels();
             pixels.SetView(size.x, size.y, 0);
+            Look(true);
             pixels.Draw(Controller);
             if (departingFrame != null)
             {
@@ -138,16 +142,28 @@ namespace Phase
             UpdateSurface();
         }
         void UpdateSurface() => sprite = Present(pixels, surface, sprite, pixelCamera);
+        void Look(bool snap = false)
+        {
+            if (snap) view.Follow(Controller, pixels.Width, pixels.Height, true);
+            pixels.Scroll(view.X, view.Y);
+            if (surface != null) Place(pixels, surface.transform, pixelCamera);
+        }
         internal static Sprite Present(PhasePixels pixels, SpriteRenderer surface, Sprite previous, Camera camera)
         {
             if (previous != null) Destroy(previous);
             var sprite = Sprite.Create(pixels.Texture, new Rect(0, 0, pixels.Width, pixels.Height), new Vector2(.5f, .5f), 1, 0, SpriteMeshType.FullRect);
-            surface.sprite = sprite; surface.transform.position = new Vector3(pixels.Width / 2f, -pixels.OriginY - pixels.Height / 2f, 0);
+            surface.sprite = sprite;
             camera.rect = new Rect(0, 0, 1, 1);
             camera.aspect = pixels.Width / (float)pixels.Height;
             camera.orthographicSize = pixels.Height / 2f;
-            camera.transform.position = new Vector3(pixels.Width / 2f, -pixels.OriginY - pixels.Height / 2f, -10);
+            Place(pixels, surface.transform, camera);
             return sprite;
+        }
+        // Keeps the surface and camera over the view's room pixels so world-space colliders and gizmos line up.
+        static void Place(PhasePixels pixels, Transform surface, Camera camera)
+        {
+            var center = new Vector3(pixels.OriginX + pixels.Width / 2f, -pixels.OriginY - pixels.Height / 2f, 0);
+            surface.position = center; camera.transform.position = center + new Vector3(0, 0, -10);
         }
         void ResizeCamera()
         {
@@ -157,7 +173,7 @@ namespace Phase
                 Controller.ResizeRoom(size.x);
                 departingFrame = arrivingFrame = null;
                 pixels.SetView(size.x, size.y, 0);
-                Render(); UpdateSurface();
+                Look(true); Render(); UpdateSurface();
             }
         }
         void Render()
@@ -242,10 +258,11 @@ namespace Phase
             {
                 input.jump = jumpQueued; input.dash = dashQueued;
                 Controller.Step(input); jumpQueued = dashQueued = false;
+                view.Follow(Controller, pixels.Width, pixels.Height);
                 accumulator -= PhaseController.Dt;
                 if (Controller.ExitDirection != 0) { Travel(Controller.ExitDirection); break; }
             }
-            if (!Won) pixels.Draw(Controller);
+            if (!Won) { Look(); pixels.Draw(Controller); }
         }
         void TickPause(Keyboard k)
         {
@@ -353,6 +370,13 @@ namespace Phase
             return new Vector2Int(
                 Math.Max(320, (int)Math.Floor(180.0 * width / height + .5)),
                 Math.Max(180, (int)Math.Ceiling(320.0 * height / width)));
+        }
+        void OnValidate() => roomSize = new Vector2Int(Mathf.Max(320, Mathf.RoundToInt(roomSize.x / 8f) * 8),
+            roomSize.y <= 180 ? 180 : Mathf.RoundToInt(roomSize.y / 8f) * 8);
+        void OnDrawGizmos()
+        {
+            Gizmos.color = Color.white;
+            Gizmos.DrawWireCube(new Vector3(roomSize.x / 2f, -roomSize.y / 2f), new Vector3(roomSize.x, roomSize.y));
         }
         void OnDestroy() { if (sprite != null) Destroy(sprite); pixels?.Dispose(); }
     }

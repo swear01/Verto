@@ -17,12 +17,16 @@ namespace Phase
         }
         const string Ink = "0b0f16";
         static readonly Dictionary<string, Color32> colors = new Dictionary<string, Color32>();
-        Color32[] buffer = new Color32[320 * 180];
+        Color32[] view = new Color32[320 * 180], buffer;
         public int Width => Texture.width;
         public int Height => Texture.height;
-        public int OriginY => (180 - Height) / 2;
-        int BottomY => OriginY + Height;
+        // View origin in room pixels; Draw clamps it to the room like PhaseCamera.
         public int OriginX { get; private set; }
+        public int OriginY { get; private set; }
+        // Current drawing target in room pixels: the view, or the room canvas while static art is cached.
+        int left, top, cols, rows, roomHeight = 180;
+        int BottomY => top + rows;
+        (int width, int height, int top, int room) canvas;
         readonly Dictionary<(string, int, int, int, bool, int), Bitmap> sprites = new Dictionary<(string, int, int, int, bool, int), Bitmap>();
         readonly Dictionary<(int, int), int> cells = new Dictionary<(int, int), int>();
         readonly Dictionary<string, Color32[]> terrain = new Dictionary<string, Color32[]>();
@@ -31,17 +35,21 @@ namespace Phase
         Color32[] backdrop;
         public Texture2D Texture { get; }
         public PhasePixels()
-        { Texture = new Texture2D(320, 180, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, name = "PHASE 320x180" }; }
+        { Texture = new Texture2D(320, 180, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, name = "PHASE 320x180" }; Target(false); }
         public void SetView(int width, int height, int origin)
         {
-            if (width == Width && height == Height && origin == OriginX) return;
             if (width != Width || height != Height)
             {
                 if (!Texture.Reinitialize(width, height)) throw new InvalidOperationException("Cannot resize PHASE pixel surface");
-                buffer = new Color32[width * height];
-                terrainBlocks = null;
+                view = new Color32[width * height];
             }
-            OriginX = origin; backdrop = null; terrain.Clear();
+            Scroll(origin, (180 - height) / 2);
+        }
+        public void Scroll(int x, int y) { OriginX = x; OriginY = y; Target(false); }
+        void Target(bool room)
+        {
+            if (room) { left = 0; top = canvas.top; cols = canvas.width; rows = canvas.height; buffer = new Color32[cols * rows]; }
+            else { left = OriginX; top = OriginY; cols = Width; rows = Height; buffer = view; }
         }
         public static Color Hex(string hex) { ColorUtility.TryParseHtmlString("#" + hex, out var c); return c; }
         static Color32 Color(string hex)
@@ -53,56 +61,60 @@ namespace Phase
         static Color32 Mix(Color32 a, Color32 b, double k) => new Color32((byte)Round(a.r + (b.r - a.r) * k), (byte)Round(a.g + (b.g - a.g) * k), (byte)Round(a.b + (b.b - a.b) * k), 255);
         void Put(int x, int y, Color32 c, double alpha = 1)
         {
-            x -= OriginX; y -= OriginY;
-            if (x < 0 || x >= Width || y < 0 || y >= Height || c.a == 0) return;
-            int i = (Height - 1 - y) * Width + x;
+            x -= left; y -= top;
+            if (x < 0 || x >= cols || y < 0 || y >= rows || c.a == 0) return;
+            int i = (rows - 1 - y) * cols + x;
             buffer[i] = alpha >= 1 ? c : Mix(buffer[i], c, alpha);
         }
         void Rect(double x, double y, double w, double h, string color, double alpha = 1) => Rect(x, y, w, h, Color(color), alpha);
         void Rect(double x, double y, double w, double h, Color32 color, double alpha = 1)
         {
             int left = Round(x), top = Round(y);
-            for (int py = Math.Max(OriginY, top); py < Math.Min(BottomY, top + h); py++)
-                for (int px = Math.Max(OriginX, left); px < Math.Min(OriginX + Width, left + w); px++) Put(px, py, color, alpha);
+            for (int py = Math.Max(this.top, top); py < Math.Min(BottomY, top + h); py++)
+                for (int px = Math.Max(this.left, left); px < Math.Min(this.left + cols, left + w); px++) Put(px, py, color, alpha);
         }
         static uint Hash(int x, int y)
         { unchecked { uint h = (uint)(x * 73856093) ^ (uint)(y * 19349663); h = (h ^ (h >> 13)) * 1274126177; return h ^ (h >> 16); } }
         void Background()
         {
             if (backdrop != null) { Array.Copy(backdrop, buffer, buffer.Length); return; }
-            var bands = new[] { "0a1018", "0c131d", "0e1520", "101a26", "121e2b" };
-            Rect(OriginX, OriginY, Width, -OriginY, Fills[3]);
-            for (int y = (int)Math.Floor(OriginY / 8.0) * 8; y < 0; y += 8)
-                for (int x = OriginX / 8 * 8; x < OriginX + Width; x += 8)
+            // A taller room keeps the skyline at its bottom and adds open sky above.
+            var bands = new[] { "0a1018", "0c131d", "0e1520", "101a26", "121e2b" }; int g = roomHeight - 180;
+            Rect(left, top, cols, -top, Fills[3]);
+            for (int y = (int)Math.Floor(top / 8.0) * 8; y < 0; y += 8)
+                for (int x = left / 8 * 8; x < left + cols; x += 8)
                 {
                     Rect(x, y, 8, 1, "4c4c4c"); Rect(x, y + 1, 1, 7, "787878");
                     Rect(x + 3, y + 4, 2, 1, "565656");
                 }
-            if (OriginY < 0) Rect(OriginX, -1, Width, 1, Highlights[3]);
-            Rect(OriginX, 180, Width, BottomY - 180, "0b111a");
+            if (top < 0) Rect(left, -1, cols, 1, Highlights[3]);
+            Rect(left, 180 + g, cols, BottomY - 180 - g, "0b111a");
+            Rect(left, 0, cols, g, bands[0]);
+            for (int y = 0; y < g; y += 60) for (int x = left / 18 * 18; x < left + cols; x += 18)
+                Rect(x, y + 6 + (int)(Hash(x, y + 2) % 50), 1, 1, Hash(x, y + 3) % 3 != 0 ? "2a394c" : "3c4e64");
             for (int i = 0; i < bands.Length; i++)
             {
-                Rect(OriginX, i * 36, Width, 36, bands[i]);
-                if (i > 0) for (int y = i * 36 - 2; y < i * 36; y++) for (int x = OriginX / 2 * 2 + (y & 1); x < OriginX + Width; x += 2) Rect(x, y, 1, 1, bands[i]);
+                Rect(left, i * 36 + g, cols, 36, bands[i]);
+                if (i > 0) for (int y = i * 36 - 2 + g; y < i * 36 + g; y++) for (int x = left / 2 * 2 + (y & 1); x < left + cols; x += 2) Rect(x, y, 1, 1, bands[i]);
             }
             for (int y = -11; y <= 11; y++) for (int x = -11; x <= 11; x++)
             {
                 if (x * x + y * y > 110) continue;
-                Rect(262 + x, 34 + y, 1, 1, (x + 4) * (x + 4) + (y + 3) * (y + 3) <= 86 ? "162131" : x * x + y * y > 86 ? "24344a" : "1d2b3d");
+                Rect(262 + x, 34 + g + y, 1, 1, (x + 4) * (x + 4) + (y + 3) * (y + 3) <= 86 ? "162131" : x * x + y * y > 86 ? "24344a" : "1d2b3d");
             }
             var stars = new[] { (18,14),(47,30),(71,9),(103,22),(131,41),(150,12),(178,27),(204,8),(221,44),(240,17),(292,12),(307,46),(86,52),(12,58),(164,60),(283,66) };
             for (int i = 0; i < stars.Length; i++)
             {
-                var (x,y) = stars[i];
+                var (x,y) = stars[i]; y += g;
                 if (i % 5 == 2) { Rect(x - 1, y, 3, 1, "26364a"); Rect(x, y - 1, 1, 3, "26364a"); Rect(x, y, 1, 1, "4a5d74"); }
                 else Rect(x, y, 1, 1, i % 3 != 0 ? "2a394c" : "3c4e64");
             }
-            for (int x = 320; x < OriginX + Width; x += 18)
-                Rect(x, 12 + (int)(Hash(x, 0) % 50), 1, 1, "2a394c");
-            for (int x = OriginX / 4 * 4; x < OriginX + Width; x += 4)
+            for (int x = 320; x < left + cols; x += 18)
+                Rect(x, 12 + g + (int)(Hash(x, 0) % 50), 1, 1, "2a394c");
+            for (int x = left / 4 * 4; x < left + cols; x += 4)
             {
-                int y = 2 * Round((104 + 9 * Math.Sin(x * .021) + 6 * Math.Sin(x * .057 + 1.3) + 3 * Math.Sin(x * .13 + .4)) / 2);
-                Rect(x, y, 4, 180 - y, "152131"); Rect(x, y, 4, 1, "1b293b");
+                int y = 2 * Round((104 + 9 * Math.Sin(x * .021) + 6 * Math.Sin(x * .057 + 1.3) + 3 * Math.Sin(x * .13 + .4)) / 2) + g;
+                Rect(x, y, 4, 180 + g - y, "152131"); Rect(x, y, 4, 1, "1b293b");
             }
             foreach (var pillar in new[] { (26,6,30,1),(44,6,30,1),(96,5,18,0),(150,6,40,1),(204,5,14,0),(246,6,26,1),(264,6,26,1),(300,5,20,0) })
             {
@@ -113,20 +125,26 @@ namespace Phase
             }
             Rect(26, Hill(29) - 30, 24, 3, "0f1722"); Rect(26, Hill(29) - 30, 24, 1, "162030");
             Rect(246, Hill(249) - 26, 26, 3, "0f1722"); Rect(246, Hill(249) - 26, 26, 1, "162030");
-            for (int x = 340; x < OriginX + Width; x += 48)
+            for (int x = 340; x < left + cols; x += 48)
             {
                 int top = Hill(x + 3) - 18 - (int)(Hash(x, 1) % 20);
-                Rect(x, top, 6, 160 - top, "0f1722"); Rect(x - 1, top, 8, 1, "162030");
+                Rect(x, top, 6, 160 + g - top, "0f1722"); Rect(x - 1, top, 8, 1, "162030");
             }
-            for (int x = OriginX / 2 * 2; x < OriginX + Width; x += 2) { int y = Hill(x); Rect(x, y, 2, 180 - y, "0b111a"); Rect(x, y, 2, 1, "111a26"); }
+            for (int x = left / 2 * 2; x < left + cols; x += 2) { int y = Hill(x); Rect(x, y, 2, 180 + g - y, "0b111a"); Rect(x, y, 2, 1, "111a26"); }
             backdrop = (Color32[])buffer.Clone();
         }
-        static int Hill(int x) => Round(146 + 5 * Math.Sin(x * .031 + 2) + 3 * Math.Sin(x * .09));
-        double RenderBottom(Block block) => block.y < 180 && block.y + block.h >= 176
-            ? Math.Max(block.y + block.h, BottomY) : block.y + block.h;
+        int Hill(int x) => Round(146 + 5 * Math.Sin(x * .031 + 2) + 3 * Math.Sin(x * .09)) + roomHeight - 180;
+        double RenderBottom(Block block) => block.y < roomHeight && block.y + block.h >= roomHeight - 4
+            ? Math.Max(block.y + block.h, canvas.top + canvas.height) : block.y + block.h;
         // shortcut: Same-count terrain edits need a revision when live terrain editing is supported.
+        // Static backdrop and terrain are cached over the whole room canvas; each frame copies the visible window.
         void Terrain(PhaseController s)
         {
+            int width = Math.Max(s.Width, Width), height = Math.Max(s.Height, Height);
+            var room = (width, height, s.Height < Height ? (s.Height - Height) / 2 : 0, s.Width);
+            if (room != canvas) { canvas = room; roomHeight = s.Height; terrainBlocks = null; backdrop = null; terrain.Clear(); }
+            OriginX = (int)PhaseCamera.Clamp(OriginX, width, Width, false);
+            OriginY = (int)PhaseCamera.Clamp(OriginY, s.Height, Height, true);
             if (terrainBlocks != s.blocks || terrainBlockCount != s.blocks.Count)
             {
                 terrainBlocks = s.blocks; terrainBlockCount = s.blocks.Count; cells.Clear(); terrain.Clear();
@@ -134,8 +152,19 @@ namespace Phase
             }
             var blocked = new List<int>(s.blocked); blocked.Sort();
             string key = s.phase + "|" + string.Join(",", blocked);
-            if (terrain.TryGetValue(key, out var cached)) { Array.Copy(cached, buffer, buffer.Length); return; }
-            Background();
+            if (!terrain.TryGetValue(key, out var cached))
+            {
+                Target(true); Background();
+                cached = PaintTerrain(s);
+                if (terrain.Count > 12) terrain.Clear();
+                terrain[key] = cached;
+            }
+            Target(false);
+            for (int y = 0; y < Height; y++)
+                Array.Copy(cached, (canvas.height - 1 - (OriginY + y - canvas.top)) * canvas.width + OriginX, view, (Height - 1 - y) * Width, Width);
+        }
+        Color32[] PaintTerrain(PhaseController s)
+        {
             for (int i = 0; i < s.blocks.Count; i++)
             {
                 var b = s.blocks[i]; int color = surfaceIndices[b.Mask];
@@ -185,8 +214,7 @@ namespace Phase
                     if (Mixed(b.Mask) && (((X-(int)b.x+Y-(int)b.y)>>3)&1)==0) Pips(X,Y,b.Mask,1);
                 }
             }
-            if (terrain.Count > 12) terrain.Clear();
-            terrain[key] = (Color32[])buffer.Clone();
+            return buffer;
         }
         static bool Mixed(int mask) => mask == 3 || mask == 5 || mask == 6;
         void Pips(int x, int y, int mask, double alpha)
@@ -509,21 +537,22 @@ namespace Phase
         }
         void VoidBoundary(PhaseController s)
         {
-            if (BottomY <= 180) return;
-            for (int x = OriginX; x < OriginX + Width; x++)
+            int floor = s.Height;
+            if (BottomY <= floor) return;
+            for (int x = left; x < left + cols; x++)
             {
                 bool stone = false;
                 for (int i = 0; i < s.blocks.Count && !stone; i++)
                 {
                     var b = s.blocks[i];
                     stone = b.ActiveInPhase(s.phase) && !s.blocked.Contains(i) &&
-                        b.y < 180 && b.y + b.h >= 176 && x >= b.x && x < b.x + b.w;
+                        b.y < floor && b.y + b.h >= floor - 4 && x >= b.x && x < b.x + b.w;
                 }
                 if (stone) continue;
-                for (int y = 180; y < Math.Min(194, BottomY); y++) Rect(x, y, 1, 1, Ink, (y - 180) / 14.0);
-                Rect(x, 194, 1, 16, Ink);
+                for (int y = floor; y < Math.Min(floor + 14, BottomY); y++) Rect(x, y, 1, 1, Ink, (y - floor) / 14.0);
+                Rect(x, floor + 14, 1, 16, Ink);
                 // Quiet quarry terraces step down and darken below the death line; purely visual.
-                for (int i = 0, edge = 204; edge < BottomY; i++, edge += 26)
+                for (int i = 0, edge = floor + 24; edge < BottomY; i++, edge += 26)
                 {
                     double k = Math.Max(.1, .4 - i * .06);
                     int top = edge + (int)(Hash((int)Math.Floor((x - i * 11) / 20.0), i) % 3) * 3;
@@ -555,7 +584,7 @@ namespace Phase
             foreach (var p in s.particles) Rect(p.x, p.y, 1, 1, p.phase < 0 ? "dce7ee" : Highlights[p.phase], Math.Min(1, p.life * 3));
             if (s.flash > 0) Rect(OriginX, OriginY, Width, Height, Highlights[s.phase], s.flash * .3);
             VoidBoundary(s);
-            Texture.SetPixels32(buffer); Texture.Apply(false);
+            Texture.SetPixels32(view); Texture.Apply(false);
         }
         public void Slide(Color32[] from, Color32[] to, double progress, int direction)
         {
@@ -563,9 +592,9 @@ namespace Phase
             for (int y = 0; y < Height; y++) for (int x = 0; x < Width; x++)
             {
                 int source = x + shift, row = y * Width;
-                buffer[row + x] = source >= 0 && source < Width ? from[row + source] : to[row + source - direction * Width];
+                view[row + x] = source >= 0 && source < Width ? from[row + source] : to[row + source - direction * Width];
             }
-            Texture.SetPixels32(buffer); Texture.Apply(false);
+            Texture.SetPixels32(view); Texture.Apply(false);
         }
         public void Dispose() { UnityEngine.Object.Destroy(Texture); }
     }
