@@ -402,6 +402,8 @@ banner, pause row, level select and settings each use it, so they grow with the 
 instead of staying at 1×. Navigation reads key presses per frame, so a tap shorter than
 a frame still moves the selection, and the click that refocuses the page (which re-arms
 the held-key gate) still acts.
+Player Settings keep Run In Background on: with it off, the Input System resets the mouse when the
+page gains focus and drops the click that focused it. `maps.js` still pauses play while the page is unfocused.
 Level select and settings replace the screen behind them. Level select picks 4, 5, 6, 3 or
 2 columns, whichever shows the grid largest. Each tile frames a 40×22 thumbnail of the
 room (one pixel per 8px cell) above its 2× number; the selected tile has a blue frame.
