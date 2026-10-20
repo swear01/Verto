@@ -493,7 +493,8 @@ captures under `TestResults/DemoRooms/` or `TestResults/CrystalRooms/`.
 ## Press images
 
 `Verification/PressArt.cs` (Pipeline `run_script`, entry `PressArt.Run`) renders the
-store cover (`Documentation/press/cover.png`, 630×500), the link-preview banner
-(`social.png`, 1280×640), the icon (`icon.png`, 256×256) and the Web favicon with the
-game's own pixel renderer, upscaled without smoothing. `Assets/Phase/Art/AppIcon.png`
-is a copy of the icon, set as the default Player icon.
+store cover (`Documentation/press/cover.png`, 630×500) and the link-preview banner
+(`social.png`, 1280×640) with the game's own pixel renderer, upscaled without smoothing.
+The icon is a separate 32×32 design: a pixel "P" with red, blue and green phase echoes
+on a dark tile. `python3 Verification/press_icon.py` writes `Documentation/press/icon.png`
+(256×256), the default Player icon `Assets/Phase/Art/AppIcon.png` and the Web favicon.

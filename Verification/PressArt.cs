@@ -3,7 +3,7 @@ using System.Reflection;
 using Phase;
 using UnityEngine;
 
-// Renders the store cover, link-preview banner and icons with the game's own pixel renderer.
+// Renders the store cover and link-preview banner with the game's own pixel renderer (icons: press_icon.py).
 // Run through Pipeline run_script, entry PressArt.Run; outputs are nearest-neighbour upscales of native pixels.
 public static class PressArt
 {
@@ -51,7 +51,7 @@ public static class PressArt
     {
         pixels.SetView(width, height, 0);
         pixels.Draw(room);
-        if (scale > 0) { var frame = new PixelFrame(pixels.Texture); Logo(frame, logoTop, scale); frame.Apply(); }
+        var frame = new PixelFrame(pixels.Texture); Logo(frame, logoTop, scale); frame.Apply();
     }
     public static string Run()
     {
@@ -62,11 +62,7 @@ public static class PressArt
             Save(pixels.Texture, 2, "Documentation/press/cover.png");
             Frame(pixels, Showcase(14), 320, 160, 14, 3);
             Save(pixels.Texture, 4, "Documentation/press/social.png");
-            var icon = new PhaseController(new[] { new Block(0, 96, 16, 8, phaseMask: 7) }, 6, 85);
-            Frame(pixels, icon, 16, 16, 0, 0);
-            Save(pixels.Texture, 16, "Documentation/press/icon.png");
-            Save(pixels.Texture, 4, "Assets/WebGLTemplates/Phase/favicon.png");
-            return "cover 630x500, social 1280x640, icon 256x256, favicon 64x64";
+            return "cover 630x500, social 1280x640";
         }
         finally { Object.DestroyImmediate(pixels.Texture); }
     }
