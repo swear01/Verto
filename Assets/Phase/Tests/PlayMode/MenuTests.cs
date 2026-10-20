@@ -141,7 +141,7 @@ public class MenuTests : InputTestFixture
             Assert.That(sandbox.Menu.Choice, Is.EqualTo(2));
             yield return Tap(Key.Enter);
             var keys = sandbox.Keys;
-            Assert.That(keys, Is.Not.Null, "the keyboard icon opens key settings");
+            Assert.That(keys, Is.Not.Null, "the gear opens settings");
             for (int i = 0; i < 4; i++) yield return Tap(Key.DownArrow);
             yield return Tap(Key.Enter);
             Assert.That(keys.Capturing, Is.True);
@@ -194,7 +194,7 @@ public class MenuTests : InputTestFixture
         var title = Object.FindAnyObjectByType<PhaseTitle>();
         for (int i = 0; i < 3; i++) yield return Tap(Key.RightArrow);
         yield return Tap(Key.Enter);
-        Assert.That((title.Choice, title.Keys != null), Is.EqualTo((3, true)), "title keyboard icon opens key settings");
+        Assert.That((title.Choice, title.Keys != null), Is.EqualTo((3, true)), "title gear opens settings");
         yield return Tap(Key.Escape);
         Assert.That(title.Keys, Is.Null);
         yield return Tap(Key.LeftArrow); yield return Tap(Key.LeftArrow);
@@ -228,6 +228,66 @@ public class MenuTests : InputTestFixture
         yield return Tap(Key.LeftArrow); yield return Tap(Key.Enter);
         yield return WaitFor("PhaseDemo1");
         LogAssert.NoUnexpectedReceived();
+    }
+
+    // Lit pixels at the switch's off and on knob positions, drawn at the live frame size.
+    static (bool off, bool on) Knob(PhaseKeys keys)
+    {
+        var size = PhaseSandbox.ViewSize(Screen.width, Screen.height);
+        var texture = new Texture2D(size.x, size.y);
+        try
+        {
+            var frame = new PixelFrame(texture); keys.Draw(frame); frame.Apply();
+            var full = PhaseKeys.Area(size, PhaseKeys.FullScreenRow, 0); var pixels = texture.GetPixels32();
+            bool Lit(int x) => pixels[(size.y - 1 - full.y - 5) * size.x + full.x + x].Equals(PixelFrame.Light);
+            return (Lit(15), Lit(20));
+        }
+        finally { Object.Destroy(texture); }
+    }
+    [UnityTest]
+    public IEnumerator SettingsFullScreenSwitchFollowsKeysClicksAndScenes()
+    {
+        // Screen.fullScreen does nothing in the Editor, so the switch drives a stand-in here.
+        var (isFull, setFull) = (PhaseKeys.IsFullScreen, PhaseKeys.SetFullScreen);
+        bool full = false; int requests = 0;
+        PhaseKeys.IsFullScreen = () => full; PhaseKeys.SetFullScreen = on => { full = on; requests++; };
+        try
+        {
+            yield return OpenTitle();
+            var title = Object.FindAnyObjectByType<PhaseTitle>();
+            for (int i = 0; i < 3; i++) yield return Tap(Key.RightArrow);
+            yield return Tap(Key.Z);
+            var keys = title.Keys;
+            Assert.That(keys, Is.Not.Null, "jump on the gear opens settings");
+            for (int i = 0; i < 10; i++) yield return Tap(Key.DownArrow);
+            Assert.That((keys.Row, Knob(keys)), Is.EqualTo((PhaseKeys.FullScreenRow, (true, false))), "the last row is the switch, off");
+            yield return Tap(Key.Enter);
+            Assert.That((full, Knob(keys)), Is.EqualTo((true, (false, true))), "Enter turns fullscreen on");
+            yield return Tap(Key.Z);
+            Assert.That((full, keys.Capturing), Is.EqualTo((false, false)), "jump turns it off");
+
+            var mouse = InputSystem.AddDevice<Mouse>();
+            var size = PhaseSandbox.ViewSize(Screen.width, Screen.height); var center = PhaseKeys.Area(size, PhaseKeys.FullScreenRow, 0).center;
+            var point = new Vector2(center.x / size.x * Screen.width, (1 - center.y / size.y) * Screen.height);
+            InputSystem.QueueStateEvent(mouse, new MouseState { position = point }.WithButton(MouseButton.Left)); yield return null; yield return null;
+            InputSystem.QueueStateEvent(mouse, new MouseState { position = point }); yield return null;
+            Assert.That(full, Is.True, "a click toggles the switch");
+
+            // Fullscreen is player state, so a level's pause settings show the same switch.
+            yield return Tap(Key.Escape);
+            for (int i = 0; i < 3; i++) yield return Tap(Key.LeftArrow);
+            yield return Tap(Key.Enter);
+            yield return WaitFor("PhaseDemo1");
+            var sandbox = Sandbox();
+            yield return Tap(Key.Escape); yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Enter);
+            keys = sandbox.Keys;
+            for (int i = 0; i < PhaseKeys.FullScreenRow; i++) yield return Tap(Key.DownArrow);
+            Assert.That(Knob(keys), Is.EqualTo((false, true)), "the switch stays on in another scene");
+            yield return Tap(Key.Enter);
+            Assert.That((full, requests), Is.EqualTo((false, 4)));
+            LogAssert.NoUnexpectedReceived();
+        }
+        finally { PhaseKeys.IsFullScreen = isFull; PhaseKeys.SetFullScreen = setFull; }
     }
 
     IEnumerator Move(Key key, int count) { for (int i = 0; i < count; i++) yield return Tap(key); }

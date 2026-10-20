@@ -9,7 +9,7 @@ namespace Phase
     public sealed class PhaseMenu
     {
         public static readonly string[] PlayIcon = { "#......", "###....", "#####..", "#######", "#####..", "###....", "#......" },
-            KeysIcon = { "#########", "#.#.#.#.#", "#########", "##.#.#.##", "#########", "##.....##", "#########" },
+            KeysIcon = { "..#.#..", ".#####.", "###.###", ".#...#.", "###.###", ".#####.", "..#.#.." },
             LevelsIcon = { "###.###", "#.#.#.#", "###.###", ".......", "###.###", "#.#.#.#", "###.###" },
             HomeIcon = { "...#...", "..###..", ".#####.", "#######", ".#...#.", ".#.#.#.", ".#.#.#." },
             RetryIcon = { "..####.#.", ".#....##.", "#....###.", "#........", "#.......#", "#.......#", ".#.....#.", "..#####.." };
@@ -33,12 +33,17 @@ namespace Phase
             lastX = x;
             if (m != null && m.leftButton.wasPressedThisFrame)
             {
-                var p = m.position.ReadValue();
-                int px = Mathf.FloorToInt(p.x / Screen.width * frameSize.x), py = Mathf.FloorToInt((1 - p.y / Screen.height) * frameSize.y);
+                var p = FramePoint(m, frameSize);
                 for (int i = 0; i < icons.Length; i++)
-                    if (px >= Left(frameSize.x, i) - 3 && px < Left(frameSize.x, i) + icons[i][0].Length + 3 && py >= top - 3 && py < top + 10) { Choice = i; return i; }
+                    if (p.x >= Left(frameSize.x, i) - 3 && p.x < Left(frameSize.x, i) + icons[i][0].Length + 3 && p.y >= top - 3 && p.y < top + 10) { Choice = i; return i; }
             }
             return Confirmed(k) ? Choice : -1;
+        }
+        // The mouse position in frame pixels from the top-left.
+        public static Vector2Int FramePoint(Mouse m, Vector2Int frameSize)
+        {
+            var p = m.position.ReadValue();
+            return new Vector2Int(Mathf.FloorToInt(p.x / Screen.width * frameSize.x), Mathf.FloorToInt((1 - p.y / Screen.height) * frameSize.y));
         }
         public static bool Confirmed(Keyboard k) =>
             k != null && (PhaseSandbox.Pressed(k, 4, true) || k.enterKey.wasPressedThisFrame || k.numpadEnterKey.wasPressedThisFrame);
@@ -67,8 +72,7 @@ namespace Phase
             last = step;
             if (m != null && m.leftButton.wasPressedThisFrame)
             {
-                var p = m.position.ReadValue();
-                var at = new Vector2Int(Mathf.FloorToInt(p.x / Screen.width * frameSize.x), Mathf.FloorToInt((1 - p.y / Screen.height) * frameSize.y));
+                var at = PhaseMenu.FramePoint(m, frameSize);
                 for (int i = 0; i < PhaseSandbox.Levels.Length; i++)
                 {
                     var tile = Tile(frameSize, i);
@@ -89,11 +93,15 @@ namespace Phase
         }
     }
 
-    // Key binding settings: seven action rows with two key slots each, then restore defaults.
-    // Arrows move, Enter captures the next key, Backspace clears, Escape cancels or closes.
+    // Settings: seven action rows with two key slots each, restore defaults, then the fullscreen switch.
+    // Arrows move; Enter, jump or a click captures the next key, restores or toggles; Backspace clears; Escape cancels or closes.
     public sealed class PhaseKeys
     {
-        public const int RestoreRow = 7;
+        public const int RestoreRow = 7, FullScreenRow = 8;
+        static readonly string[] fullScreenIcon = { "##...##", "#.....#", ".......", ".......", ".......", "#.....#", "##...##" };
+        // Unity applies Screen.fullScreen natively and, within the confirming key or click, on Web; the Editor ignores it, so tests swap these.
+        public static System.Func<bool> IsFullScreen = () => Screen.fullScreen;
+        public static System.Action<bool> SetFullScreen = on => Screen.fullScreen = on;
         static readonly string[] arrowLeft = { "...#...", "..#....", ".#.....", "#######", ".#.....", "..#....", "...#..." },
             arrowDown = { "...#...", "...#...", "...#...", "#..#..#", ".#.#.#.", "..###..", "...#..." };
         static readonly string[][] actionIcons = {
@@ -120,6 +128,7 @@ namespace Phase
         public bool Capturing { get; private set; }
         public bool Flashing => flash > 0;
         float flash;
+        Vector2Int size;
 
         // Returns true when Escape closes the screen.
         public bool Tick(Keyboard k)
@@ -136,16 +145,26 @@ namespace Phase
             }
             if (k.escapeKey.wasPressedThisFrame) return true;
             if (k.upArrowKey.wasPressedThisFrame) Row = Mathf.Max(0, Row - 1);
-            if (k.downArrowKey.wasPressedThisFrame) Row = Mathf.Min(RestoreRow, Row + 1);
+            if (k.downArrowKey.wasPressedThisFrame) Row = Mathf.Min(FullScreenRow, Row + 1);
             if (k.leftArrowKey.wasPressedThisFrame) Column = 0;
             if (k.rightArrowKey.wasPressedThisFrame) Column = 1;
-            if (k.enterKey.wasPressedThisFrame || k.numpadEnterKey.wasPressedThisFrame)
+            var m = Mouse.current;
+            if (m != null && m.leftButton.wasPressedThisFrame)
             {
-                if (Row == RestoreRow) { PhaseSandbox.ApplyControls(PhaseSandbox.DefaultSlots); PhaseSandbox.SaveControls(); }
-                else Capturing = true;
+                var at = PhaseMenu.FramePoint(m, size);
+                for (int row = 0; row <= FullScreenRow; row++)
+                    for (int column = 0; column < 2; column++)
+                        if (Area(size, row, column).Contains(at)) { Row = row; Column = column; Confirm(); return false; }
             }
+            else if (PhaseMenu.Confirmed(k)) Confirm();
             else if (k.backspaceKey.wasPressedThisFrame && Row < RestoreRow) Set("");
             return false;
+        }
+        void Confirm()
+        {
+            if (Row == FullScreenRow) SetFullScreen(!IsFullScreen());
+            else if (Row == RestoreRow) { PhaseSandbox.ApplyControls(PhaseSandbox.DefaultSlots); PhaseSandbox.SaveControls(); }
+            else Capturing = true;
         }
         // An invalid binding (unsupported key, duplicate, or an action left without keys) flashes and keeps the old map.
         void Set(string name)
@@ -157,27 +176,41 @@ namespace Phase
         }
         public void Draw(PixelFrame frame)
         {
+            size = new Vector2Int(frame.Width, frame.Height);
             frame.Fill(0, 0, frame.Width, frame.Height, PixelFrame.Ink, .85f);
             if (Flashing) frame.Warn();
-            int left = frame.Width / 2 - 34, top = frame.Height / 2 - 46;
             var slots = PhaseSandbox.Slots;
             for (int row = 0; row < actionIcons.Length; row++)
             {
-                int y = top + row * Pitch;
-                frame.Blit(actionIcons[row], left, y + 1, PixelFrame.Light);
+                var icon = Area(size, row, 0);
+                frame.Blit(actionIcons[row], icon.x - 13, icon.y + 1, PixelFrame.Light);
                 for (int column = 0; column < 2; column++)
                 {
-                    int x = left + 13 + column * (CapWidth + 4);
+                    var cap = Area(size, row, column);
                     bool selected = row == Row && column == Column;
-                    if (selected && Capturing && Time.unscaledTime * 4 % 2 < 1) frame.Fill(x, y, CapWidth, 9, PixelFrame.Light, .5f);
-                    frame.Outline(x, y, CapWidth, 9, PixelFrame.Light, selected ? 1 : .3f);
+                    if (selected && Capturing && Time.unscaledTime * 4 % 2 < 1) frame.Fill(cap.x, cap.y, cap.width, cap.height, PixelFrame.Light, .5f);
+                    frame.Outline(cap.x, cap.y, cap.width, cap.height, PixelFrame.Light, selected ? 1 : .3f);
                     string label = slots[row * 2 + column] == "" ? "" : Labels[slots[row * 2 + column]];
-                    frame.Text(label, x + (CapWidth - PixelFrame.TextWidth(label) + 1) / 2, y + 2);
+                    frame.Text(label, cap.x + (CapWidth - PixelFrame.TextWidth(label) + 1) / 2, cap.y + 2);
                 }
             }
-            int restoreY = top + RestoreRow * Pitch + 3, restoreX = frame.Width / 2 - 4;
-            frame.Blit(PhaseMenu.RetryIcon, restoreX, restoreY, PixelFrame.Light, amount: Row == RestoreRow ? 1 : .35f);
-            if (Row == RestoreRow) frame.Outline(restoreX - 2, restoreY - 2, 13, 12, PixelFrame.Light);
+            var restore = Area(size, RestoreRow, 0);
+            frame.Blit(PhaseMenu.RetryIcon, restore.x + 2, restore.y + 2, PixelFrame.Light, amount: Row == RestoreRow ? 1 : .35f);
+            if (Row == RestoreRow) frame.Outline(restore.x, restore.y, restore.width, restore.height, PixelFrame.Light);
+            // Screen corners, then a switch whose knob sits right on a lit track when fullscreen.
+            var full = Area(size, FullScreenRow, 0); bool on = IsFullScreen(); float amount = Row == FullScreenRow ? 1 : .35f;
+            frame.Blit(fullScreenIcon, full.x + 2, full.y + 2, PixelFrame.Light, amount: amount);
+            frame.Outline(full.x + 12, full.y + 2, 13, 7, PixelFrame.Light, amount);
+            if (on) frame.Fill(full.x + 13, full.y + 3, 11, 5, PixelFrame.Light, amount * .35f);
+            frame.Fill(full.x + (on ? 19 : 14), full.y + 4, 4, 3, PixelFrame.Light, amount);
+            if (Row == FullScreenRow) frame.Outline(full.x, full.y, full.width, full.height, PixelFrame.Light);
+        }
+        // A key cap, or the restore and fullscreen controls with their selection border, in frame pixels.
+        public static RectInt Area(Vector2Int frame, int row, int column)
+        {
+            int left = frame.x / 2 - 34, top = frame.y / 2 - 51;
+            if (row < RestoreRow) return new RectInt(left + 13 + column * (CapWidth + 4), top + row * Pitch, CapWidth, 9);
+            return row == RestoreRow ? new RectInt(frame.x / 2 - 6, top + 78, 13, 12) : new RectInt(frame.x / 2 - 13, top + 91, 27, 11);
         }
     }
 }

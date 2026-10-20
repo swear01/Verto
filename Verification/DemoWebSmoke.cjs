@@ -31,8 +31,6 @@ function character(buffer) {
   const image = PNG.sync.read(buffer);
   let xSum = 0, ySum = 0, count = 0, minX = image.width, maxX = 0, minY = image.height, maxY = 0;
   for (let y = 0; y < image.height; y++) for (let x = 0; x < image.width; x++) {
-    // Toolbar icons share the cloak color in full-viewport captures.
-    if (y < 80 && x > image.width - 192) continue;
     const i = (y * image.width + x) * 4;
     if (image.data[i]>=232 && cloakColors.some(rgb=>rgb.every((v,k)=>Math.abs(image.data[i+k]-v)<4))) {
       xSum += x; ySum += y; count++;
@@ -52,10 +50,10 @@ function character(buffer) {
 }
 
 const pixelProbe=new PNG({width:320,height:180});
-for(const [x,y,rgb] of [[100,100,[234,223,197]],[100,90,[121,201,255]],[101,90,[121,201,255]],[310,20,[234,223,197]]]) {
+for(const [x,y,rgb] of [[100,100,[234,223,197]],[100,90,[121,201,255]],[101,90,[121,201,255]]]) {
   const i=(y*pixelProbe.width+x)*4;pixelProbe.data.set([...rgb,255],i);
 }
-assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,height:1,phase:1},'Eye phase detection excludes toolbar pixels');
+assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,height:1,phase:1},'Eye phase detection');
 
 (async () => {
   let browser;
@@ -137,8 +135,8 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
         return stable>=2;
       });
     }
-    function pixelMatches(buffer,x,y,rgb) {
-      const image=PNG.sync.read(buffer),scale=image.width/320;
+    function pixelMatches(buffer,x,y,rgb,width=320) {
+      const image=PNG.sync.read(buffer),scale=image.width/width;
       const i=(Math.floor((y+.5)*scale)*image.width+Math.floor((x+.5)*scale))*4;
       return rgb.every((value,k)=>Math.abs(image.data[i+k]-value)<4);
     }
@@ -366,7 +364,7 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     }
     await page.setViewportSize({width:1280,height:720}); await page.waitForTimeout(250);
     console.log('Passed viewport checks; checking key settings');
-    // Pause freezes play; the keyboard icon opens key settings (arrows move, Enter captures, Backspace clears).
+    // Pause freezes play; the gear opens settings (arrows move, Enter captures, Backspace clears).
     await page.waitForTimeout(150);const paused=character(await capture());
     await tap('Escape');await page.keyboard.press('x',{delay:180});await page.waitForTimeout(60);
     await tap('ArrowRight',2);await tap('Enter');
@@ -391,14 +389,29 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     await page.waitForTimeout(400);start=await observe();await page.keyboard.press('z',{delay:90});
     assert((await observe()).y<start.y-12,'Restore brings back the default jump');
     console.log('Passed key settings; checking fullscreen');
-    await page.locator('#fullscreen-toggle').click();
-    await page.waitForFunction(()=>document.fullscreenElement===document.documentElement);
-    await page.waitForFunction(()=>document.getElementById('fullscreen-toggle').getAttribute('aria-label')==='退出全螢幕');
+    // The settings' last row is a switch for Unity's Screen.fullScreen: its knob sits right on a lit track when on.
+    async function fullscreenSwitch() {
+      const [width,height]=await canvas.evaluate(c=>[c.width,c.height]),buffer=await capture(),x=Math.floor(width/2)-13,y=Math.floor(height/2)-51+91+5;
+      const off=pixelMatches(buffer,x+15,y,[234,223,197],width),on=pixelMatches(buffer,x+20,y,[234,223,197],width);
+      assert(off!==on,'The switch knob is drawn');return on;
+    }
+    await page.waitForTimeout(150);const windowed=await observe();
+    await tap('Escape');await tap('ArrowRight',2);await tap('Enter');await tap('ArrowDown',8);
+    assert.equal(await fullscreenSwitch(),false,'The switch starts off');
+    await tap('Enter');await page.waitForFunction(()=>document.fullscreenElement?.id==='unity-canvas');await page.waitForTimeout(150);
+    const screen=await page.evaluate(()=>[innerWidth,innerHeight]),full=await canvas.boundingBox();
+    assert.deepEqual([full.x,full.y,full.width,full.height],[0,0,...screen],'Fullscreen canvas fills the screen');
+    assert.deepEqual(await canvas.evaluate(c=>[c.width,c.height]),[Math.max(320,Math.round(180*screen[0]/screen[1])),Math.max(180,Math.ceil(320*screen[1]/screen[0]))]);
+    assert.equal(await fullscreenSwitch(),true,'Enter turns fullscreen on');
     await page.screenshot({path:path.join(reports,'demo-fullscreen.png')});
-    await page.locator('#fullscreen-toggle').click();await page.waitForFunction(()=>!document.fullscreenElement);
-    await page.waitForTimeout(150);const afterFullscreen=await observe();
+    await tap('z');await page.waitForFunction(()=>!document.fullscreenElement);await page.waitForTimeout(150);
+    assert.equal(await fullscreenSwitch(),false,'Jump turns fullscreen off');
+    fs.writeFileSync(path.join(reports,'demo-settings.png'),await capture());
+    await tap('Escape');await tap('Escape');await page.waitForTimeout(150);
+    const afterFullscreen=await observe();
+    assert(windowed&&afterFullscreen&&Math.abs(afterFullscreen.x-windowed.x)<1&&Math.abs(afterFullscreen.y-windowed.y)<1,'Settings hold the player');
     await page.keyboard.press('ArrowRight',{delay:120});const resumed=await observe();
-    assert(resumed.x>afterFullscreen.x+12,'Exiting fullscreen restores native movement without another canvas click');
+    assert(resumed.x>afterFullscreen.x+12,'Leaving fullscreen keeps native movement without another canvas click');
     console.log('Passed fullscreen and resumed input; checking in-game editor files');
     // The editor toolbar's second row: 7 colors, import, export, play, back; 7px icons at y=18 in a 320px-wide frame.
     async function editorIcon(slot) {

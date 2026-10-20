@@ -49,14 +49,16 @@ square pixels without cropping the room to enlarge the player. Wide rooms extend
 quarry scenery, full-width floor collision and their right exit. Resizing preserves
 movement/color state and clamps positions within a shortened room; resizing during
 a slide completes the handoff safely. Fixed obstacles and movers retain their
-world coordinates. The page toolbar has only the fullscreen button. Fullscreen
-needs a user click and browser/iframe permission; denied requests show a recovery
-message. Loading failures remain visible.
+world coordinates. The page has no controls of its own. Fullscreen is the last row
+of the in-game settings, Unity's `Screen.fullScreen` on the canvas; the browser applies
+it within the confirming key press or click, and an embedding iframe must allow
+fullscreen. itch.io's own fullscreen button enlarges the iframe instead, and the canvas
+follows that resize like any other. Loading failures remain visible.
 
 Level select, pause and keyboard bindings are in-game screens, the same as in native
 builds (see [Development](Development.md)). The build opens on the PHASE title; its icons
-start level1, open the level select, the in-game level editor or key settings. Escape in
-a level pauses. Bindings are stored with Unity PlayerPrefs (`phase.keys.v1`) in this
+start level1, open the level select, the in-game level editor or settings (key bindings
+and fullscreen). Escape in a level pauses. Bindings are stored with Unity PlayerPrefs (`phase.keys.v1`) in this
 browser's IndexedDB; bindings saved by the old page dialog (`phase.controls.v2`) are not
 migrated. Only the focused game canvas sends keys to Unity, and leaving the page
 (blur or hidden tab) pauses play through `PHASE.SetControlsOpen`.
@@ -86,7 +88,8 @@ built Web Player before publishing.
 reaches the victory banner and replays through its level select, rebinds keys in the
 in-game settings and checks they persist across reload, then checks in-game editor
 laser/crystal import and export, draft persistence across reload, playing that draft
-as a custom map, and movement after fullscreen exit. Room 1 synchronizes its staircase landings, Room 5 its low-ceiling jump/dash, and
+as a custom map, and fullscreen on and off through the in-game settings by keyboard,
+followed by movement. Room 1 synchronizes its staircase landings, Room 5 its low-ceiling jump/dash, and
 Room 8 its gear lift and ferry stops with visible phase/position checkpoints.
 Short walking pulses preserve narrow checkpoints; the final Room8 approach releases
 right before the linked crystal-room exit.

@@ -105,11 +105,7 @@ namespace Phase
             if (leaving || PhaseSandbox.InputPaused(Keyboard.current)) return;
             Tick(Keyboard.current, Mouse.current);
         }
-        protected Vector2Int FramePoint(Mouse m)
-        {
-            var p = m.position.ReadValue();
-            return new Vector2Int(Mathf.FloorToInt(p.x / Screen.width * pixels.Width), Mathf.FloorToInt((1 - p.y / Screen.height) * pixels.Height));
-        }
+        protected Vector2Int FramePoint(Mouse m) => PhaseMenu.FramePoint(m, new Vector2Int(pixels.Width, pixels.Height));
         protected void Open(string scene) { leaving = true; SceneManager.LoadSceneAsync(scene); }
 
         public void SetControlsOpen(string value) => PhaseSandbox.Pause(value);

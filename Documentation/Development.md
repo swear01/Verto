@@ -55,9 +55,9 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 48 controller cases, 9 laser cases, 17 demo-route/authoring cases,
 15 crystal cases, 26 crystal-room cases, 18 pixel cases, 6 Grid authoring cases, 7 custom-map validation cases,
-3 key-binding cases (validation, PlayerPrefs persistence, key caps) and 12 level-route cases in Edit Mode. The 29 Play Mode cases cover
+3 key-binding cases (validation, PlayerPrefs persistence, key caps) and 12 level-route cases in Edit Mode. The 30 Play Mode cases cover
 each level's keyboard route, bindings, pause/release gating, room persistence, multiple authored platforms, crystal triggers, imported maps, the
-title/editor flow including editor platforms and gears, the pause menu with key settings, and level select from the
+title/editor flow including editor platforms and gears, the pause menu with key settings, the fullscreen switch, and level select from the
 title, pause and victory screens. Platform checks cover
 vertical return travel, independent routes/reset, rider and climb-hop attachment,
 crush/hazard sweeps, native collider synchronization and rendering.
@@ -204,7 +204,7 @@ Built-in levels link in both directions: Demo1–8, Crystal1–3, then Demo12. B
 See [room designs and live input verification](Demo.md).
 `BuildWeb.py` verifies these tests and builds `PhaseDemo1` through
 `PhaseDemo8`, followed by `PhaseCrystal1` through `PhaseCrystal3` and the hand-authored `PhaseDemo12`. `DemoWebSmoke.cjs` replays keyboard routes through
-all twelve Web scenes and checks in-game level select, victory, key settings, sizing, fullscreen and loading failure.
+all twelve Web scenes and checks in-game level select, victory, key settings, sizing, the in-game fullscreen switch and loading failure.
 The older `WebSmoke.cjs` remains a verifier for the original two-sandbox build.
 
 ## CI
@@ -378,17 +378,22 @@ Each has a `PHASE` root (`PhaseScreen`) answering the same Web bridge messages a
 
 The title draws the PHASE banner and four icons: left/right (arrows or movement keys)
 chooses, jump or Enter confirms (or click an icon). Play loads level1, the grid opens
-level select, the pencil opens the editor and the keyboard opens key settings.
+level select, the pencil opens the editor and the gear opens settings.
 Escape in a level (not an editor playtest) pauses play like the Web dialog gate, with
-resume, level select, key settings and back-to-title icons; Escape resumes, and keys
+resume, level select, settings and back-to-title icons; Escape resumes, and keys
 held to close it stay ignored until released. The level12 victory banner has replay-level1
 and level-select icons.
 Level select is a 4×3 grid of pixel-digit tiles; every level is always selectable, it
-opens at the current level from pause, and Escape goes back. Key settings show seven
+opens at the current level from pause, and Escape goes back. Settings show seven
 action icons with two key caps each, labelled in a tiny pixel font. Arrows and Enter
-always navigate. Enter makes a slot blink and binds the next key; Escape cancels and
-Backspace clears. The bottom icon restores the defaults. A rejected change flashes a red
-border and keeps the old map; Escape closes the screen.
+always navigate. Enter, jump or a click makes a slot blink and binds the next key; Escape
+cancels and Backspace clears. The icon below restores the defaults. A rejected change
+flashes a red border and keeps the old map; Escape closes the screen. The last row is
+screen corners and a switch for Unity's `Screen.fullScreen` (knob right on a lit track
+when on); Enter, jump or a click toggles it. It is player state, not saved by the game:
+standalone players keep Unity's own setting and Web starts windowed. Web applies the
+request within that key press or click. The Editor's Game view ignores `Screen.fullScreen`,
+so tests and `KeysLiveInput` swap `PhaseKeys.IsFullScreen`/`SetFullScreen`.
 The editor paints the custom-map grid (40×22 cells, terrain, four spike directions,
 four laser directions, jump and dash crystals, returning and one-way dash platforms, climb gear,
 spawn, erase; seven masks) and renders it with the game's own pixels in the starting
@@ -419,9 +424,9 @@ With `PhaseTitle` in Play mode, run `Verification/MenuLiveInput.cs`, entry
 platform and a gear→clipboard export/import→playtest with a platform-moving dash→back→level1 by keyboard,
 restores the developer's draft and clipboard and saves captures to `TestResults/Menu/`.
 `Verification/KeysLiveInput.cs`, entry `KeysLiveInput.Run`, also starts from `PhaseTitle`
-in Play: title key settings→bind J to jump (a duplicate is rejected)→title level
+in Play: title settings→bind J to jump (a duplicate is rejected)→title level
 select→level1 jumps with J→Escape pause freezes play→pause level select→level2→
-restore defaults→back to title. It restores the saved bindings and writes captures to
+restore defaults→fullscreen switch on with Enter, off with jump→back to title. It restores the saved bindings and writes captures to
 `TestResults/Keys/`.
 
 ## Hand-authored scenes
