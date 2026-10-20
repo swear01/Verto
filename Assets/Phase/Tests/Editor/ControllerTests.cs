@@ -188,6 +188,65 @@ public class ControllerTests
         Ticks(s,12,new Controls { y=-1,grab=true });
         Assert.That(s.gears[0].Lift,Is.Zero,"a blocked climb does not drive the mechanism");
     }
+    static void Launch(MovingPlatform m) { m.fromX=m.x;m.fromY=m.y;m.index=1;m.duration=.3;m.moving=true; }
+    static MovingPlatform Colored(int mask) => new MovingPlatform(new[]{new[]{72.0,72},new[]{120.0,72}},48,8,phaseMask:mask);
+    [Test]
+    public void ColoredPlatformIsSolidOnlyInItsPhasesAndDropsRidersWhenItTurnsOff()
+    {
+        var s=new PhaseController(Array.Empty<Block>(),88,61,new[]{Colored(2)});
+        Ticks(s,6);Assert.That(s.player.y,Is.GreaterThan(61),"an inactive blue platform is not solid");
+        Assert.That(s.Solid(),Is.Empty);
+        s=new PhaseController(Array.Empty<Block>(),88,61,new[]{Colored(1)});
+        Ticks(s,6);Assert.That((s.player.y,s.player.grounded),Is.EqualTo((61.0,true)),"red is solid in the starting phase");
+        Assert.That(s.movers[0].Fresh().phaseMask,Is.EqualTo(1));
+        Ticks(s,1,new Controls{jump=true});Assert.That(s.phase,Is.EqualTo(1));
+        bool below=false;
+        for(int i=0;i<90&&!below;i++){s.Step(new Controls());below=s.player.y>72;}
+        Assert.That(below,Is.True,"the rider falls through once its platform turns inactive");
+        s=new PhaseController(Array.Empty<Block>(),88,61,new[]{Colored(1)});
+        Ticks(s,6);Launch(s.movers[0]);
+        Ticks(s,24);Assert.That(s.movers[0].x,Is.EqualTo(120));Assert.That(s.player.x,Is.EqualTo(136),"an active platform carries its rider");
+        s=new PhaseController(Array.Empty<Block>(),88,40,new[]{Colored(2)});s.player.vy=0;
+        Ticks(s,1,new Controls{dash=true});Ticks(s,30);
+        Assert.That(s.movers[0].x,Is.EqualTo(120),"an inactive platform keeps moving on dashes");
+    }
+    [Test]
+    public void ColoredPlatformTurningOnInsideThePlayerWaitsUntilVacated()
+    {
+        var s=new PhaseController(Array.Empty<Block>(),88,40,new[]{Colored(2)});
+        var p=s.player;p.y=68;p.grounded=false;p.coyote=.1;
+        s.Step(new Controls{jump=true,jumpHeld=true});
+        Assert.That(s.phase,Is.EqualTo(1));Assert.That(s.blockedParts.Contains(s.movers[0]),Is.True);
+        Assert.That(s.Solid(),Is.Empty,"a deferred platform is not solid yet");
+        bool landed=false;
+        for(int i=0;i<120&&!landed;i++){s.Step(new Controls{jumpHeld=i<10});landed=p.grounded&&p.y+p.h==72;}
+        Assert.That(landed,Is.True,"after the player leaves it the platform solidifies and catches the fall");
+        Assert.That(s.blockedParts,Is.Empty);Assert.That(s.deaths,Is.Zero);
+    }
+    [Test]
+    public void ColoredMechanismsBlockLasersOnlyWhileActive()
+    {
+        var laser=new Laser(40,64,LaserDirection.Right);
+        var s=new PhaseController(Array.Empty<Block>(),8,8,new[]{new MovingPlatform(new[]{new[]{96.0,64},new[]{96.0,96}},24,8,phaseMask:2)},lasers:new[]{laser});
+        var beam=s.LaserBeam(laser);Assert.That(beam.x+beam.w,Is.EqualTo(320),"inactive platform lets the beam through");
+        s.phase=1;beam=s.LaserBeam(laser);Assert.That(beam.x+beam.w,Is.EqualTo(96));
+        s=new PhaseController(Array.Empty<Block>(),8,8,gears:new[]{new ClimbGear(new Block(96,40,8,56,phaseMask:4),16,new Block(112,40,48,8,phaseMask:4),136)},lasers:new[]{laser});
+        beam=s.LaserBeam(laser);Assert.That(beam.x+beam.w,Is.EqualTo(320));
+        s.phase=2;beam=s.LaserBeam(laser);Assert.That(beam.x+beam.w,Is.EqualTo(96),"an active green gear wall blocks the beam");
+    }
+    [Test]
+    public void InactiveGearWallCannotBeClimbedOrDriven()
+    {
+        var s=new PhaseController(new[]{new Block(0,160,88,24)},64,149,gears:new[]{
+            new ClimbGear(new Block(72,88,8,72,phaseMask:2),64,new Block(88,104,48,8,phaseMask:2),112)});
+        var gear=s.gears[0];
+        Ticks(s,30,new Controls{x=1,y=-1,grab=true});
+        Assert.That((gear.wall.y,gear.platform.x),Is.EqualTo((88.0,88.0)));Assert.That(s.player.climbing,Is.False);
+        Assert.That(s.gears[0].Fresh().wall.phaseMask,Is.EqualTo(2));
+        s.Reset();s.phase=1;gear=s.gears[0];
+        Ticks(s,30,new Controls{x=1,y=-1,grab=true});
+        Assert.That(gear.wall.y,Is.LessThan(88),"the active blue wall climbs and drives as before");Assert.That(gear.platform.x,Is.GreaterThan(88));
+    }
     [Test]
     public void AdaptiveRoomExtendsFloorAndEdgesWithoutResettingState()
     {

@@ -50,11 +50,11 @@ namespace Phase
             var controller = sandbox.Controller;
             for (int i = 0; i < terrain.Length; i++)
                 Sync(terrain[i].GetComponent<BoxCollider2D>(), controller.blocks[i], controller.blocks[i].ActiveInPhase(controller.phase) && !controller.blocked.Contains(i));
-            for (int i = 0; i < movers.Length; i++) Sync(movers[i].GetComponent<BoxCollider2D>(), controller.movers[i]);
+            for (int i = 0; i < movers.Length; i++) Sync(movers[i].GetComponent<BoxCollider2D>(), controller.movers[i], controller.IsSolid(controller.movers[i]));
             for (int i = 0; i < gears.Length; i++)
             {
-                Sync(gears[i].GetComponent<BoxCollider2D>(), controller.gears[i].wall);
-                Sync(gears[i].transform.Find("Platform collider").GetComponent<BoxCollider2D>(), controller.gears[i].platform);
+                Sync(gears[i].GetComponent<BoxCollider2D>(), controller.gears[i].wall, controller.IsSolid(controller.gears[i].wall));
+                Sync(gears[i].transform.Find("Platform collider").GetComponent<BoxCollider2D>(), controller.gears[i].platform, controller.IsSolid(controller.gears[i].platform));
             }
             for (int i = 0; i < crystals.Length; i++)
                 Sync(crystals[i].GetComponent<BoxCollider2D>(), controller.crystals[i],

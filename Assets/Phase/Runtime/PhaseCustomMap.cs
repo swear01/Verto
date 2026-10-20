@@ -79,17 +79,20 @@ namespace Phase
             room.platforms = (data["platforms"] as JArray)?.Select(item =>
             {
                 var platform = item as JObject;
-                CheckFields(platform, new[] { "w", "h", "nodeX", "nodeY", "returns" });
+                CheckFields(platform, new[] { "w", "h", "nodeX", "nodeY", "returns", "phaseMask" });
                 CheckNumbers(platform, "w", "h");
+                CheckMask(platform);
                 if (platform["returns"] != null && platform["returns"].Type != JTokenType.Boolean) throw new ArgumentException("平台returns必須是布林值。");
                 return new DemoPlatform { w = platform["w"].Value<double>(), h = platform["h"].Value<double>(),
-                    nodeX = Numbers(platform["nodeX"], "nodeX"), nodeY = Numbers(platform["nodeY"], "nodeY"), returns = platform["returns"]?.Value<bool>() ?? false };
+                    nodeX = Numbers(platform["nodeX"], "nodeX"), nodeY = Numbers(platform["nodeY"], "nodeY"), returns = platform["returns"]?.Value<bool>() ?? false,
+                    phaseMask = platform["phaseMask"]?.Value<int>() ?? 0 };
             }).ToArray();
             room.gears = (data["gears"] as JArray)?.Select(item =>
             {
                 var gear = item as JObject;
-                CheckFields(gear, new[] { "wall", "platform", "top", "endX" });
+                CheckFields(gear, new[] { "wall", "platform", "top", "endX", "phaseMask" });
                 CheckNumbers(gear, "top", "endX");
+                CheckMask(gear);
                 Block Box(JToken token)
                 {
                     var box = token as JObject;
@@ -97,7 +100,8 @@ namespace Phase
                     CheckNumbers(box, "x", "y", "w", "h");
                     return new Block(box["x"].Value<double>(), box["y"].Value<double>(), box["w"].Value<double>(), box["h"].Value<double>());
                 }
-                return new DemoGear { wall = Box(gear["wall"]), platform = Box(gear["platform"]), top = gear["top"].Value<double>(), endX = gear["endX"].Value<double>() };
+                return new DemoGear { wall = Box(gear["wall"]), platform = Box(gear["platform"]), top = gear["top"].Value<double>(), endX = gear["endX"].Value<double>(),
+                    phaseMask = gear["phaseMask"]?.Value<int>() ?? 0 };
             }).ToArray();
         }
         internal static PhaseDemoRoom ReadMechanisms(string json)
@@ -110,11 +114,18 @@ namespace Phase
         static JObject WriteMechanisms(PhaseDemoRoom room, JObject data)
         {
             JObject Box(Block b) => new JObject { ["x"] = (int)b.x, ["y"] = (int)b.y, ["w"] = (int)b.w, ["h"] = (int)b.h };
-            if (room.platforms?.Length > 0) data["platforms"] = new JArray(room.platforms.Select(p => new JObject {
-                ["w"] = (int)p.w, ["h"] = (int)p.h, ["nodeX"] = new JArray(p.nodeX.Select(x => (int)x)), ["nodeY"] = new JArray(p.nodeY.Select(y => (int)y)), ["returns"] = p.returns }));
-            if (room.gears?.Length > 0) data["gears"] = new JArray(room.gears.Select(g => new JObject {
-                ["wall"] = Box(g.wall), ["platform"] = Box(g.platform), ["top"] = (int)g.top, ["endX"] = (int)g.endX }));
+            // An absent phaseMask keeps the mechanism always solid.
+            JObject Colored(JObject item, int mask) { if (mask != 0) item["phaseMask"] = mask; return item; }
+            if (room.platforms?.Length > 0) data["platforms"] = new JArray(room.platforms.Select(p => Colored(new JObject {
+                ["w"] = (int)p.w, ["h"] = (int)p.h, ["nodeX"] = new JArray(p.nodeX.Select(x => (int)x)), ["nodeY"] = new JArray(p.nodeY.Select(y => (int)y)), ["returns"] = p.returns }, p.phaseMask)));
+            if (room.gears?.Length > 0) data["gears"] = new JArray(room.gears.Select(g => Colored(new JObject {
+                ["wall"] = Box(g.wall), ["platform"] = Box(g.platform), ["top"] = (int)g.top, ["endX"] = (int)g.endX }, g.phaseMask)));
             return data;
+        }
+        static void CheckMask(JObject item)
+        {
+            if (item?["phaseMask"] != null && (Number(item["phaseMask"], "phaseMask") < 1 || item["phaseMask"].Value<double>() > 7))
+                throw new ArgumentException("平台與齒輪顏色必須是1–7。");
         }
         static double[] Numbers(JToken token, string field)
         {
@@ -191,6 +202,7 @@ namespace Phase
             foreach (var platform in room.platforms ?? Array.Empty<DemoPlatform>())
             {
                 MovingPlatform mover;
+                if (platform != null && (platform.phaseMask < 0 || platform.phaseMask > 7)) throw new ArgumentException("平台顏色無效。");
                 try { mover = platform?.Create() ?? throw new ArgumentException(); }
                 catch (ArgumentException) { throw new ArgumentException("平台路線無效。"); }
                 for (int i = 1; i < platform.nodeX.Length; i++) Inside(platform.nodeX[i], platform.nodeY[i], platform.w, platform.h);
@@ -200,6 +212,7 @@ namespace Phase
             foreach (var gear in room.gears ?? Array.Empty<DemoGear>())
             {
                 ClimbGear drive;
+                if (gear != null && (gear.phaseMask < 0 || gear.phaseMask > 7)) throw new ArgumentException("齒輪顏色無效。");
                 try { drive = gear?.Create() ?? throw new ArgumentException(); }
                 catch (ArgumentException) { throw new ArgumentException("齒輪行程無效。"); }
                 AddCells(drive.wall.x, drive.wall.y, drive.wall.w, drive.wall.h, occupied);
