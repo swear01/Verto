@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -8,7 +10,7 @@ namespace Phase
     // Draws over a rendered frame; coordinates are frame pixels from the top-left.
     public sealed class PixelFrame
     {
-        public static readonly Color32 Ink = new Color32(11, 15, 22, 255), Light = new Color32(234, 223, 197, 255);
+        public static readonly Color32 Ink = new Color32(11, 15, 22, 255), Light = new Color32(234, 223, 197, 255), Warning = new Color32(255, 143, 145, 255);
         readonly Texture2D texture;
         readonly Color32[] pixels;
         public int Width { get; }
@@ -28,6 +30,8 @@ namespace Phase
             for (int y = 0; y < art.Length * scale; y++) for (int x = 0; x < art[0].Length * scale; x++)
                 if (art[y / scale][x / scale] == '#') Set(left + x, top + y, color, amount);
         }
+        // A red border marks a rejected change.
+        public void Warn() { Outline(0, 0, Width, Height, Warning); Outline(1, 1, Width - 2, Height - 2, Warning); }
         // A 44-row band across the middle of the frame; returns its top row.
         public int Banner()
         {
@@ -39,6 +43,27 @@ namespace Phase
             }
             return top;
         }
+        static readonly Dictionary<char, string[]> font = new Dictionary<string, string> {
+            ["A"] = ".#. #.# ### #.# #.#", ["B"] = "##. #.# ##. #.# ##.", ["C"] = ".## #.. #.. #.. .##", ["D"] = "##. #.# #.# #.# ##.",
+            ["E"] = "### #.. ##. #.. ###", ["F"] = "### #.. ##. #.. #..", ["G"] = ".## #.. #.# #.# .##", ["H"] = "#.# #.# ### #.# #.#",
+            ["I"] = "### .#. .#. .#. ###", ["J"] = "..# ..# ..# #.# .#.", ["K"] = "#.# #.# ##. #.# #.#", ["L"] = "#.. #.. #.. #.. ###",
+            ["M"] = "#.# ### ### #.# #.#", ["N"] = "##. #.# #.# #.# #.#", ["O"] = ".#. #.# #.# #.# .#.", ["P"] = "##. #.# ##. #.. #..",
+            ["Q"] = ".#. #.# #.# ##. .##", ["R"] = "##. #.# ##. #.# #.#", ["S"] = ".## #.. .#. ..# ##.", ["T"] = "### .#. .#. .#. .#.",
+            ["U"] = "#.# #.# #.# #.# ###", ["V"] = "#.# #.# #.# #.# .#.", ["W"] = "#.# #.# ### ### #.#", ["X"] = "#.# #.# .#. #.# #.#",
+            ["Y"] = "#.# #.# .#. .#. .#.", ["Z"] = "### ..# .#. #.. ###",
+            ["0"] = "### #.# #.# #.# ###", ["1"] = ".#. ##. .#. .#. ###", ["2"] = "##. ..# .#. #.. ###", ["3"] = "##. ..# .#. ..# ##.",
+            ["4"] = "#.# #.# ### ..# ..#", ["5"] = "### #.. ##. ..# ##.", ["6"] = ".## #.. ### #.# ###", ["7"] = "### ..# .#. .#. .#.",
+            ["8"] = "### #.# ### #.# ###", ["9"] = "### #.# ### ..# ##.",
+            [","] = "... ... ... .#. #..", ["."] = "... ... ... ... .#.", ["/"] = "..# ..# .#. #.. #..", [";"] = "... .#. ... .#. #..",
+            ["'"] = ".#. .#. ... ... ...", ["["] = "##. #.. #.. #.. ##.", ["]"] = ".## ..# ..# ..# .##", ["\\"] = "#.. #.. .#. ..# ..#",
+            ["`"] = "#.. .#. ... ... ...", ["-"] = "... ... ### ... ...", ["="] = "... ### ... ### ...",
+            ["←"] = "..#.. .#... ##### .#... ..#..", ["→"] = "..#.. ...#. ##### ...#. ..#..",
+            ["↑"] = "..#.. .###. #.#.# ..#.. ..#..", ["↓"] = "..#.. ..#.. #.#.# .###. ..#.."
+        }.ToDictionary(g => g.Key[0], g => g.Value.Split(' '));
+        public static int TextWidth(string text) => text.Sum(c => font[c][0].Length + 1) - (text.Length > 0 ? 1 : 0);
+        // Draws key-cap and level labels in the tiny pixel font.
+        public void Text(string text, int left, int top, float amount = 1)
+        { foreach (char c in text) { Blit(font[c], left, top, Light, amount: amount); left += font[c][0].Length + 1; } }
         public void Apply() { texture.SetPixels32(pixels); texture.Apply(false); }
     }
 
@@ -85,12 +110,9 @@ namespace Phase
             var p = m.position.ReadValue();
             return new Vector2Int(Mathf.FloorToInt(p.x / Screen.width * pixels.Width), Mathf.FloorToInt((1 - p.y / Screen.height) * pixels.Height));
         }
-        protected static bool Confirmed(Keyboard k) =>
-            k != null && (PhaseSandbox.Pressed(k, 4, true) || k.enterKey.wasPressedThisFrame || k.numpadEnterKey.wasPressedThisFrame);
         protected void Open(string scene) { leaving = true; SceneManager.LoadSceneAsync(scene); }
 
         public void SetControlsOpen(string value) => PhaseSandbox.Pause(value);
-        public void ConfigureControls(string json) => PhaseSandbox.ApplyControls(json);
         public void SelectDemoRoom(string value)
         {
             if (leaving) { PhaseSandbox.MapResult(false, PhaseSandbox.Busy); return; }

@@ -21,7 +21,7 @@ public class SandboxTests : InputTestFixture
         var custom = new[] { "LeftArrow", "A", "L", "D", "UpArrow", "W", "DownArrow", "S", "J", "Space", "K", "", "H", "Shift" };
         try
         {
-            sandbox.ConfigureControls(Map(custom));
+            PhaseSandbox.ApplyControls(custom);
             InputSystem.QueueStateEvent(k, new KeyboardState(Key.RightArrow, Key.Z, Key.X, Key.C));
             yield return null;
             var input = PhaseSandbox.ReadControls(k);
@@ -36,7 +36,7 @@ public class SandboxTests : InputTestFixture
                 Assert.That(PhaseSandbox.ReadControls(k).grab, Is.True, shift.ToString());
             }
             custom[3] = "P";
-            sandbox.ConfigureControls(Map(custom));
+            PhaseSandbox.ApplyControls(custom);
             foreach (var right in new[] { Key.L, Key.P })
             {
                 InputSystem.QueueStateEvent(k, new KeyboardState(right)); yield return null;
@@ -60,14 +60,14 @@ public class SandboxTests : InputTestFixture
             yield return new WaitForSeconds(.1f);
             Assert.That(sandbox.Controller.dashes, Is.EqualTo(1));
             Assert.That(PhaseSandbox.ReadControls(k).grab, Is.True);
-            foreach (string invalid in new[] { "{}", "{\"keys\":[null]}", Map(custom).Replace("\"L\"", "null") }) sandbox.ConfigureControls(invalid);
+            PhaseSandbox.ApplyControls(null); PhaseSandbox.ApplyControls(new string[3]);
             int invalidCase = 0;
             foreach (var invalid in new System.Action<string[]>[] {
                 a => a[8] = "L", a => a[2] = "Escape", a => a[2] = a[3] = "",
                 a => a[3] = "L", a => a[11] = "LeftShift", a => a[2] = "Delete", a => a[2] = "1"
             })
             {
-                var candidate = (string[])custom.Clone(); invalid(candidate); sandbox.ConfigureControls(Map(candidate));
+                var candidate = (string[])custom.Clone(); invalid(candidate); PhaseSandbox.ApplyControls(candidate);
                 InputSystem.QueueStateEvent(k, new KeyboardState(Key.L)); yield return null;
                 Assert.That(PhaseSandbox.ReadControls(k).x, Is.EqualTo(1), "invalid case " + invalidCase++);
             }
@@ -81,13 +81,12 @@ public class SandboxTests : InputTestFixture
         finally
         {
             var current = Object.FindAnyObjectByType<PhaseSandbox>();
-            if (current != null) { current.ConfigureControls(Map(defaults)); current.SetControlsOpen("false"); }
+            PhaseSandbox.ApplyControls(defaults);
+            if (current != null) current.SetControlsOpen("false");
             InputSystem.RemoveDevice(k);
         }
     }
 
-    [System.Serializable] class Bindings { public string[] keys; }
-    static string Map(string[] keys) => JsonUtility.ToJson(new Bindings { keys = keys });
 
     [UnityTest]
     public IEnumerator SceneKeyboardPixelFrameAndNoText()

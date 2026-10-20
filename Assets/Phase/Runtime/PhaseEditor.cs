@@ -34,7 +34,6 @@ namespace Phase
         };
         static readonly string[] backIcon = { "...#...", "..#....", ".#.....", "#######", ".#.....", "..#....", "...#..." },
             importIcon = arrowDown.Reverse().ToArray();
-        static readonly Color32 Warning = new Color32(255, 143, 145, 255);
         readonly byte[] tools = new byte[Columns * Rows], colors = new byte[Columns * Rows];
         readonly List<DemoPlatform> platforms = new List<DemoPlatform>();
         readonly List<DemoGear> gears = new List<DemoGear>();
@@ -222,7 +221,7 @@ namespace Phase
             else if (IsMechanism(Tool)) Body(Tool == GearTool ? Box(Cursor, 8, 56) : Box(Cursor, PlatformWidth), .6f);
             if (Tool != Erase && Tool != Spawn && !IsMechanism(Tool)) frame.Fill(cx, cy, 8, 8, color, .35f);
             frame.Outline(cx - 1, cy - 1, 10, 10, PixelFrame.Light, .9f);
-            if (flash > 0) { frame.Outline(0, 0, frame.Width, frame.Height, Warning); frame.Outline(1, 1, frame.Width - 2, frame.Height - 2, Warning); }
+            if (flash > 0) frame.Warn();
             frame.Fill(2, BarTop, SlotX(MaskSlot - 1) + 9, 26, PixelFrame.Ink, .85f);
             for (int slot = 0; slot < SlotCount; slot++)
             {
@@ -230,7 +229,7 @@ namespace Phase
                 bool selected = slot < MaskSlot ? toolOrder[slot] == Tool : slot < ImportSlot && masks[slot - MaskSlot] == Mask;
                 if (slot < MaskSlot) frame.Blit(toolIcons[slot], x, y, toolOrder[slot] == Spawn || toolOrder[slot] == Erase || IsMechanism(toolOrder[slot]) ? PixelFrame.Light : color, amount: selected ? 1 : .45f);
                 else if (slot < ImportSlot) frame.Fill(x, y, 7, 7, PhasePixels.SurfaceColor(masks[slot - MaskSlot]), selected ? 1 : .6f);
-                else frame.Blit(slot == ImportSlot ? importIcon : slot == ExportSlot ? arrowDown : slot == PlaySlot ? PhaseTitle.PlayIcon : backIcon, x, y, PixelFrame.Light);
+                else frame.Blit(slot == ImportSlot ? importIcon : slot == ExportSlot ? arrowDown : slot == PlaySlot ? PhaseMenu.PlayIcon : backIcon, x, y, PixelFrame.Light);
                 if (selected) frame.Outline(x - 2, y - 2, 11, 11, PixelFrame.Light);
             }
             frame.Apply();

@@ -47,8 +47,8 @@ public class MenuTests : InputTestFixture
         try
         {
             yield return OpenTitle();
-            yield return Tap(Key.RightArrow);
-            Assert.That(Object.FindAnyObjectByType<PhaseTitle>().Choice, Is.EqualTo(1));
+            yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow);
+            Assert.That(Object.FindAnyObjectByType<PhaseTitle>().Choice, Is.EqualTo(2));
             yield return Tap(Key.Z);
             yield return WaitFor(PhaseEditor.Scene);
             var editor = Object.FindAnyObjectByType<PhaseEditor>();
@@ -105,7 +105,7 @@ public class MenuTests : InputTestFixture
             Assert.That(sandbox == null, Is.True, "playtest room is destroyed");
             yield return Tap(Key.Escape);
             yield return WaitFor(PhaseTitle.Scene);
-            yield return Tap(Key.RightArrow);
+            yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow);
             yield return Tap(Key.Z);
             yield return WaitFor(PhaseEditor.Scene);
             room = Object.FindAnyObjectByType<PhaseEditor>().Room();
@@ -119,6 +119,117 @@ public class MenuTests : InputTestFixture
             PlayerPrefs.Save(); GUIUtility.systemCopyBuffer = clipboard;
         }
     }
+
+    static PhaseSandbox Sandbox() => Object.FindAnyObjectByType<PhaseSandbox>();
+    [UnityTest]
+    public IEnumerator PauseFreezesPlayAndKeySettingsRebindAndPersist()
+    {
+        string saved = PlayerPrefs.HasKey(PhaseSandbox.ControlsKey) ? PlayerPrefs.GetString(PhaseSandbox.ControlsKey) : null;
+        try
+        {
+            yield return SceneManager.LoadSceneAsync("PhaseDemo1");
+            keyboard = InputSystem.AddDevice<Keyboard>();
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState()); yield return null; yield return null;
+            var sandbox = Sandbox();
+            yield return Tap(Key.Escape);
+            Assert.That(sandbox.Menu, Is.Not.Null, "Escape pauses");
+            double time = sandbox.Controller.time;
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.C)); yield return new WaitForSeconds(.1f);
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState()); yield return null;
+            Assert.That(sandbox.Controller.time, Is.EqualTo(time), "pause freezes play");
+            yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow);
+            Assert.That(sandbox.Menu.Choice, Is.EqualTo(2));
+            yield return Tap(Key.Enter);
+            var keys = sandbox.Keys;
+            Assert.That(keys, Is.Not.Null, "the keyboard icon opens key settings");
+            for (int i = 0; i < 4; i++) yield return Tap(Key.DownArrow);
+            yield return Tap(Key.Enter);
+            Assert.That(keys.Capturing, Is.True);
+            yield return Tap(Key.J);
+            Assert.That((keys.Capturing, PhaseSandbox.Slots[8]), Is.EqualTo((false, "J")), "the next key binds the jump slot");
+            Assert.That(PlayerPrefs.GetString(PhaseSandbox.ControlsKey).Split(',')[8], Is.EqualTo("J"), "bindings persist");
+            yield return Tap(Key.RightArrow); yield return Tap(Key.Enter); yield return Tap(Key.J);
+            Assert.That((keys.Flashing, PhaseSandbox.Slots[9]), Is.EqualTo((true, "Space")), "a duplicate key flashes and is not applied");
+            yield return Tap(Key.Enter); yield return Tap(Key.F1);
+            Assert.That((keys.Flashing, PhaseSandbox.Slots[9]), Is.EqualTo((true, "Space")), "an unsupported key is not applied");
+            yield return Tap(Key.Enter); yield return Tap(Key.Escape);
+            Assert.That((keys.Capturing, sandbox.Keys, PhaseSandbox.Slots[9]), Is.EqualTo((false, keys, "Space")), "Escape cancels a capture");
+            yield return Tap(Key.Backspace);
+            Assert.That(PhaseSandbox.Slots[9], Is.Empty, "Backspace clears a slot");
+            yield return new WaitForSeconds(.5f);
+            yield return Tap(Key.LeftArrow); yield return Tap(Key.Backspace);
+            Assert.That((keys.Flashing, PhaseSandbox.Slots[8]), Is.EqualTo((true, "J")), "the last key of an action stays");
+            yield return Tap(Key.Escape);
+            Assert.That((sandbox.Keys, sandbox.Menu != null), Is.EqualTo(((PhaseKeys)null, true)), "Escape returns to the pause menu");
+            yield return Tap(Key.Escape);
+            Assert.That(sandbox.Menu, Is.Null, "Escape resumes");
+            sandbox.Controller.Reset();
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.J)); yield return new WaitForSeconds(.05f);
+            InputSystem.QueueStateEvent(keyboard, new KeyboardState()); yield return null;
+            Assert.That(sandbox.Controller.jumps, Is.EqualTo(1), "the new key jumps");
+
+            yield return Tap(Key.Escape); yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Enter);
+            for (int i = 0; i < PhaseKeys.RestoreRow; i++) yield return Tap(Key.DownArrow);
+            yield return Tap(Key.Enter);
+            Assert.That(PhaseSandbox.Slots, Is.EqualTo(PhaseSandbox.DefaultSlots), "restore defaults");
+            Assert.That(PlayerPrefs.GetString(PhaseSandbox.ControlsKey), Is.EqualTo(string.Join(",", PhaseSandbox.DefaultSlots)));
+            yield return Tap(Key.Escape);
+            yield return Tap(Key.RightArrow);
+            Assert.That(sandbox.Menu.Choice, Is.EqualTo(3));
+            yield return Tap(Key.Z);
+            yield return WaitFor(PhaseTitle.Scene);
+            LogAssert.NoUnexpectedReceived();
+        }
+        finally
+        {
+            PhaseSandbox.ApplyControls(PhaseSandbox.DefaultSlots);
+            if (saved == null) PlayerPrefs.DeleteKey(PhaseSandbox.ControlsKey); else PlayerPrefs.SetString(PhaseSandbox.ControlsKey, saved);
+            PlayerPrefs.Save(); PhaseSandbox.LoadControls();
+        }
+    }
+    [UnityTest]
+    public IEnumerator TitlePauseAndVictoryOpenLevelSelect()
+    {
+        yield return OpenTitle();
+        var title = Object.FindAnyObjectByType<PhaseTitle>();
+        for (int i = 0; i < 3; i++) yield return Tap(Key.RightArrow);
+        yield return Tap(Key.Enter);
+        Assert.That((title.Choice, title.Keys != null), Is.EqualTo((3, true)), "title keyboard icon opens key settings");
+        yield return Tap(Key.Escape);
+        Assert.That(title.Keys, Is.Null);
+        yield return Tap(Key.LeftArrow); yield return Tap(Key.LeftArrow);
+        yield return Tap(Key.Z);
+        Assert.That(title.LevelSelect, Is.Not.Null, "title grid icon opens level select");
+        yield return Tap(Key.Escape);
+        Assert.That(title.LevelSelect, Is.Null);
+        yield return Tap(Key.Enter);
+        yield return Tap(Key.RightArrow); yield return Tap(Key.DownArrow);
+        Assert.That(title.LevelSelect.Choice, Is.EqualTo(5));
+        yield return Tap(Key.Enter);
+        yield return WaitFor("PhaseDemo6");
+
+        yield return Tap(Key.Escape); yield return Tap(Key.RightArrow); yield return Tap(Key.Enter);
+        var levels = Sandbox().LevelSelect;
+        Assert.That(levels.Choice, Is.EqualTo(5), "pause level select starts at the current level");
+        yield return Tap(Key.DownArrow); yield return Tap(Key.DownArrow); yield return Tap(Key.DownArrow); yield return Tap(Key.RightArrow);
+        Assert.That(levels.Choice, Is.EqualTo(10));
+        yield return Tap(Key.Z);
+        yield return WaitFor(PhaseSandbox.Levels[10]);
+
+        yield return SceneManager.LoadSceneAsync("PhaseDemo12"); yield return null;
+        var sandbox = Sandbox();
+        typeof(PhaseSandbox).GetMethod("Win", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).Invoke(sandbox, null);
+        yield return null;
+        Assert.That((sandbox.Won, sandbox.VictoryMenu.Choice), Is.EqualTo((true, 0)));
+        yield return Tap(Key.RightArrow); yield return Tap(Key.Enter);
+        Assert.That(sandbox.LevelSelect, Is.Not.Null, "victory grid icon opens level select");
+        yield return Tap(Key.Escape);
+        Assert.That((sandbox.LevelSelect, sandbox.Won), Is.EqualTo(((PhaseLevels)null, true)), "Escape returns to the victory screen");
+        yield return Tap(Key.LeftArrow); yield return Tap(Key.Enter);
+        yield return WaitFor("PhaseDemo1");
+        LogAssert.NoUnexpectedReceived();
+    }
+
     IEnumerator Move(Key key, int count) { for (int i = 0; i < count; i++) yield return Tap(key); }
     [UnityTest]
     public IEnumerator EditorPlacesPlatformsAndGearsInTwoSteps()
@@ -128,7 +239,7 @@ public class MenuTests : InputTestFixture
         try
         {
             yield return OpenTitle();
-            yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
+            yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
             yield return WaitFor(PhaseEditor.Scene);
             var editor = Object.FindAnyObjectByType<PhaseEditor>();
             yield return Move(Key.X, 11);
@@ -183,7 +294,7 @@ public class MenuTests : InputTestFixture
             yield return Tap(Key.Escape);
             yield return Tap(Key.Escape);
             yield return WaitFor(PhaseTitle.Scene);
-            yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
+            yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
             yield return WaitFor(PhaseEditor.Scene);
             Assert.That(PhaseCustomMap.ToJson(Object.FindAnyObjectByType<PhaseEditor>().Room()), Is.EqualTo(exported), "platforms and gears survive in the draft");
             LogAssert.NoUnexpectedReceived();

@@ -70,7 +70,7 @@
 <section id="controls" aria-labelledby="controls-h">
   <h2 id="controls-h">操作</h2>
   <table>
-    <caption>預設鍵位（Unity Editor 與網頁版相同）</caption>
+    <caption>預設鍵位（所有版本相同）</caption>
     <thead><tr><th scope="col">動作</th><th scope="col">按鍵</th><th scope="col">說明</th></tr></thead>
     <tbody>
       <tr><th scope="row">左右移動</th><td><kbd>←</kbd> <kbd>→</kbd> 或 <kbd>A</kbd> <kbd>D</kbd></td><td>空中仍可控制，但加速較慢。</td></tr>
@@ -81,17 +81,17 @@
     </tbody>
   </table>
 
-  <h3 id="web-keys">網頁版改鍵</h3>
-  <p>先點一下遊戲畫面取得鍵盤焦點。右上角依序有選擇關卡、全螢幕與鍵位設定。遊戲角色仍需鍵盤操作；遊戲內編輯器可用滑鼠繪圖。</p>
+  <h3 id="web-keys">選單、選關與改鍵</h3>
+  <p>網頁版先點一下遊戲畫面取得鍵盤焦點；右上角只有全螢幕按鈕。選單都在遊戲畫面內，原生版與網頁版相同。</p>
   <ul>
-    <li>開啟設定會暫停遊戲。每個動作有<strong>兩個獨立鍵位格</strong>，選一格再按鍵即可，另一格不受影響。</li>
-    <li><kbd>Shift</kbd> 是一個邏輯鍵，同時接受左右 Shift。</li>
-    <li>正在錄鍵時：<kbd>Esc</kbd> 清除該格（每個動作至少保留一鍵），<kbd>Tab</kbd> 取消錄鍵並移動焦點。沒在錄鍵時，<kbd>Esc</kbd> 關閉設定。</li>
-    <li>重複的按鍵、瀏覽器修飾鍵組合會被拒絕；Esc、Tab、Delete、Ctrl、Alt、Meta 不能綁定。</li>
-    <li>每個動作各有「還原」按鈕，只重設該動作。設定立即套用、跨房間保留，並存在這個瀏覽器（<code>phase.controls.v2</code>）。</li>
-    <li>關閉設定後先放開所有按鍵，遊戲才會繼續。</li>
+    <li>標題四個圖示：開始第 1 關、選關、遊戲內編輯器、鍵位。左右（方向鍵或移動鍵）選擇，跳躍或 <kbd>Enter</kbd> 確認，也可點擊。</li>
+    <li>關卡中按 <kbd>Esc</kbd> 暫停：繼續、選關、鍵位、回標題。再按 <kbd>Esc</kbd> 繼續；關閉選單後先放開所有按鍵，遊戲才會繼續。</li>
+    <li>選關是 4×3 格，十二關隨時都能選；從暫停開啟時游標停在目前關卡。完成第 12 關的勝利橫幅下有「重玩第 1 關」與「選關」兩個圖示。</li>
+    <li>鍵位畫面每個動作有<strong>兩個獨立鍵位格</strong>。方向鍵移動、<kbd>Enter</kbd> 讓格子閃爍並綁定下一個按鍵，<kbd>Esc</kbd> 取消、<kbd>Backspace</kbd> 清除；底部圖示還原全部預設。這些導覽鍵不受改鍵影響。</li>
+    <li><kbd>Shift</kbd> 是一個邏輯鍵，同時接受左右 Shift。可綁定字母、數字、方向鍵、Space、Shift、Enter 與常用標點。重複的按鍵、無法顯示的按鍵，或讓動作沒有任何鍵的變更，會以紅框閃爍並保留原設定。</li>
+    <li>設定立即套用、跨房間保留，存在這台裝置（Unity PlayerPrefs <code>phase.keys.v1</code>；網頁版存在瀏覽器的網站資料）。舊網頁設定視窗的鍵位不會轉移。</li>
   </ul>
-  <p>Unity Editor 內沒有改鍵介面，固定使用上表預設鍵位。</p>
+  <figure class="shot"><img src="images/key-settings.png" width="320" height="180" loading="lazy" alt="遊戲內鍵位畫面：七列動作圖示，每列兩個鍵帽，跳躍列為 J 與 SPACE，底部是還原圖示。"><figcaption>遊戲內鍵位畫面。</figcaption></figure>
 </section>
 
 <section id="movement" aria-labelledby="movement-h">
@@ -481,15 +481,15 @@
 
   <h3 id="game-editor">遊戲內編輯器：畫圖、試玩與保存</h3>
   <ol>
-    <li>開啟遊戲，在標題畫面按右選鉛筆，再按跳躍或 <kbd>Enter</kbd>（也可直接點鉛筆）。</li>
+    <li>開啟遊戲，在標題畫面按右兩次選鉛筆，再按跳躍或 <kbd>Enter</kbd>（也可直接點鉛筆）。</li>
     <li>上排是工具：地板、四向尖刺、四向雷射、跳躍水晶（圓）、衝刺水晶（方）、出生點與橡皮擦。下排是七種顏色：永久白、紅、藍、綠、黃、洋紅、青。一格是 8×8 原生像素。</li>
     <li>滑鼠左鍵繪製、右鍵擦除；也可用方向鍵移動游標，跳躍鍵繪製、抓牆鍵擦除、衝刺鍵切換工具、<kbd>1</kbd>–<kbd>7</kbd> 選顏色。游標靠近上緣時，工具列會移到下方。</li>
     <li>出生時是紅色，Wick 不能與紅色有效的地形、尖刺或紅色雷射光束重疊。按下排的播放圖示或 <kbd>Enter</kbd> 試玩；地圖無效時畫面閃紅框，不會開始。試玩中按 <kbd>Esc</kbd> 回到原本草稿，再按 <kbd>Esc</kbd> 回標題。</li>
     <li>下排的上箭頭匯入、下箭頭匯出 JSON。網頁版會下載 <code>phase-custom-map.json</code> 或開啟檔案選擇器，也就是網頁版的匯出 JSON／匯入 JSON；在 Unity Editor 中則使用剪貼簿。</li>
   </ol>
-  <figure class="shot interface selector"><img src="images/room-selector.png" width="400" height="322" loading="lazy" alt="網頁選關視窗：第 1 到 12 關的按鈕。"><figcaption>網頁選關。直接選關會從該房間檢查點重新開始。</figcaption></figure>
+  <figure class="shot"><img src="images/level-select.png" width="320" height="180" loading="lazy" alt="遊戲內選關：4×3 格，以像素數字標示第 1 到 12 關。"><figcaption>遊戲內選關。直接選關會從該房間檢查點重新開始。</figcaption></figure>
   <figure class="shot"><img src="images/game-editor.png" width="320" height="180" loading="lazy" alt="遊戲內編輯器：左上兩排像素圖示，上排是地板、尖刺、雷射、水晶、出生點與橡皮擦，下排是七色、匯入、匯出、試玩與返回；場景中有藍色地形、紅色向下雷射與白色跳躍水晶。"><figcaption>遊戲內編輯器的實際畫面。</figcaption></figure>
-  <p><strong>草稿只存在目前裝置</strong>（Unity PlayerPrefs <code>phase.editor.v1</code>；網頁版存在瀏覽器的網站資料），沒有雲端同步。換裝置或清除網站資料前先匯出。試玩不會改寫 Unity 場景或正式關卡；開啟網頁選關視窗會暫停遊戲。</p>
+  <p><strong>草稿只存在目前裝置</strong>（Unity PlayerPrefs <code>phase.editor.v1</code>；網頁版存在瀏覽器的網站資料），沒有雲端同步。換裝置或清除網站資料前先匯出。試玩不會改寫 Unity 場景或正式關卡。</p>
   <p>目前可編<strong>靜態地形、四向尖刺、四向雷射、跳躍／衝刺水晶與出生點</strong>，範圍 40×22 格（320×176 像素）。移動平台、齒輪與房間串接需使用 Unity。</p>
 
   <h4 id="custom-json">自訂地圖 JSON</h4>

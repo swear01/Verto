@@ -52,7 +52,7 @@ public static class MenuLiveInput
             InputSystem.QueueStateEvent(keyboard, new KeyboardState()); await Frames(2);
             Capture(UnityEngine.Object.FindAnyObjectByType<PhaseTitle>(), "title");
 
-            await Tap(keyboard, Key.RightArrow); await Tap(keyboard, Key.Space);
+            await Tap(keyboard, Key.RightArrow); await Tap(keyboard, Key.RightArrow); await Tap(keyboard, Key.Space);
             await Scene(PhaseEditor.Scene);
             var editor = UnityEngine.Object.FindAnyObjectByType<PhaseEditor>();
             await Tap(keyboard, Key.Digit3);

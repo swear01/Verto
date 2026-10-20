@@ -89,12 +89,12 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
       fs.writeFileSync(path.join(reports,'demo-title.png'),await capture());
       return startLevel();
     };
-    // Title letters can look like the player, so wait for the level-load result instead.
+    // Title letters can look like the player, so wait for the level-load result instead. Enter confirms whatever jump is bound to.
     const startLevel = async () => {
       await page.evaluate(()=>{window.__levelStarted=false;addEventListener('phase-map-result',()=>window.__levelStarted=true,{once:true});});
-      // A press right after a dialog closes is ignored until keys are released; retry only after a full wait.
+      // A press right after a screen opens is ignored until keys are released; retry only after a full wait.
       for (let attempt=0;attempt<3&&!await page.evaluate(()=>window.__levelStarted);attempt++) {
-        await page.keyboard.press('z',{delay:80});
+        await page.keyboard.press('Enter',{delay:80});
         for (let n=0;n<30&&!await page.evaluate(()=>window.__levelStarted);n++) await page.waitForTimeout(100);
       }
       if(!await page.evaluate(()=>window.__levelStarted))throw Error('Title did not start level1');
@@ -102,6 +102,13 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
       throw Error('Player pixels did not render');
     };
     const observe = async () => character(await capture());
+    // In-game menus read key edges per frame, so each tap is held and released for a few frames.
+    async function tap(key, times=1) { for(let n=0;n<times;n++){await page.keyboard.press(key,{delay:60});await page.waitForTimeout(60);} }
+    // The victory banner's first letter strokes, drawn in the light ink at the center of the frame.
+    async function victoryShown(buffer) {
+      const top=Math.floor(await canvas.evaluate(c=>c.height)/2)-22;
+      return [[137,8],[137,9],[136,10],[135,11]].every(([x,y])=>pixelMatches(buffer,x,top+y,[234,223,197]));
+    }
     async function visible(label, predicate, seconds=6) {
       const deadline=Date.now()+seconds*1000;let last=null,buffer;
       while(Date.now()<deadline) {
@@ -280,18 +287,20 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
       const response=await page.evaluate(()=>window.__nativeMapResults.at(-1));assert.equal(response.success,true,response.message);
       return response;
     }
+    // Escape pauses; the grid icon opens the 4×3 level select at the current level.
     async function selectRoom(number, expected=rooms[number-1]) {
       const before=await page.evaluate(()=>window.__nativeMapResults.length);
-      await page.locator('#rooms-toggle').click();
-      await page.evaluate(()=>{window.__roomClosed=new Promise(resolve=>document.getElementById('rooms').addEventListener('close',()=>resolve(true),{once:true}));});
-      await page.locator(`[data-room="${number}"]`).click();
-      const response=await nativeResult(before);await page.evaluate(()=>window.__roomClosed);await page.locator('#rooms').waitFor({state:'hidden'});
+      await tap('Escape');await tap('ArrowRight');await tap('Enter');
+      await tap('ArrowUp',2);await tap('ArrowLeft',3);
+      await tap('ArrowRight',(number-1)%4);await tap('ArrowDown',Math.floor((number-1)/4));
+      if(number===12)fs.writeFileSync(path.join(reports,'demo-level-select.png'),await capture());
+      await tap('Enter');
+      const response=await nativeResult(before);
       const player=await visible(`select-${number}`,p=>Math.abs(p.x/4-expected.spawnX-4)<2&&p.phase===0);
       return {room:number,response,player};
     }
     result.selectedRooms=[];for(let number=1;number<=rooms.length;number++)result.selectedRooms.push(await selectRoom(number));
     const handmade=await selectRoom(12,{spawnX:24});result.selectedRooms.push(handmade);
-    assert.equal(await page.locator('[data-room="12"]').innerText(),'12');
     await page.keyboard.press('z',{delay:80});
     const handmadeJump=await observe();assert(handmadeJump.phase===1&&handmadeJump.y<handmade.player.y-12,'Room12 accepts native jump');
     await page.keyboard.down('ArrowRight');await page.keyboard.press('x',{delay:80});await page.keyboard.up('ArrowRight');
@@ -299,16 +308,14 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     await capture({path:path.join(reports,'room-12-dash.png')});
     result.handmade={start:handmade.player,jumped:handmadeJump,dashed:handmadeDash};
     await selectRoom(12,{spawnX:24});
-    await page.evaluate(()=>{window.__victories=0;addEventListener('phase-victory',()=>window.__victories++);});
     await page.clock.pauseAt(await page.evaluate(()=>Date.now()+100));
-    // Align input edges to fixed simulation steps using the measured browser frame cadence.
-    await page.locator('#controls-toggle').click();
+    // Align input edges to fixed simulation steps using the measured browser frame cadence; the pause menu holds play meanwhile.
+    await page.keyboard.down('Escape');await page.clock.runFor(50);await page.keyboard.up('Escape');
     await page.evaluate(()=>{window.__routeRaf=[];function tick(t){__routeRaf.push(t);if(__routeRaf.length<4)requestAnimationFrame(tick);}requestAnimationFrame(tick);});
     await page.clock.runFor(100);
     const routeRaf=await page.evaluate(()=>__routeRaf[1]-__routeRaf[0]);
     assert(routeRaf>0&&Number.isFinite(routeRaf));
-    await page.evaluate(()=>{window.__routeControlsClosed=new Promise(resolve=>document.getElementById('controls').addEventListener('close',()=>resolve(true),{once:true}));});
-    await page.locator('#controls-close').click();await page.evaluate(()=>window.__routeControlsClosed);await page.clock.runFor(routeRaf);
+    await page.keyboard.down('Escape');await page.clock.runFor(50);await page.keyboard.up('Escape');await page.clock.runFor(routeRaf);
     let routeKeys=new Set(),routeFrames=0,lastRaf=0;
     result.level12Steps=[];
     const route12=JSON.parse(fs.readFileSync(path.join(__dirname,'Room12Route.json')));
@@ -326,20 +333,16 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
       result.level12Steps.push({frames:routeFrames,player:await observe()});
     }
     for(const key of routeKeys)await page.keyboard.up(key);
-    for(let n=0;n<20&&!await page.locator('#victory').isVisible();n++) {
+    for(let n=0;n<20&&!await victoryShown(await capture());n++) {
       await page.keyboard.down('ArrowRight');await page.clock.runFor(100);await page.keyboard.up('ArrowRight');
     }
-    assert(await page.locator('#victory').isVisible(),'Full level12 keyboard route reaches the compiled victory bridge');
-    assert.equal(await page.evaluate(()=>window.__victories),1);
-    assert.equal(await page.locator('#victory-title').innerText(),'你贏了');
-    await page.screenshot({path:path.join(reports,'demo-12-victory.png')});
+    assert(await victoryShown(await capture({path:path.join(reports,'demo-12-victory.png')})),'Full level12 keyboard route reaches the victory banner');
     await page.setViewportSize({width:390,height:844});await page.clock.runFor(100);
-    assert(await page.evaluate(()=>document.getElementById('victory').getBoundingClientRect().right<=innerWidth));
-    await page.screenshot({path:path.join(reports,'demo-12-victory-portrait.png')});
+    assert(await victoryShown(await capture({path:path.join(reports,'demo-12-victory-portrait.png')})),'Victory banner stays centered in portrait');
     await page.setViewportSize({width:1280,height:720});await page.clock.resume();
+    // The victory grid icon opens level select; Enter on its first tile replays level1.
     const beforeReplay=await page.evaluate(()=>window.__nativeMapResults.length);
-    await page.locator('#victory-retry').click();await nativeResult(beforeReplay);
-    await page.locator('#victory').waitFor({state:'hidden'});
+    await tap('ArrowRight');await tap('Enter');await tap('Enter');await nativeResult(beforeReplay);
     result.victory={route:true,rafInterval:routeRaf,frames:route12.reduce((n,s)=>n+s.frames,0),restarted:await visible('victory-replay',p=>Math.abs(p.x/4-28)<2&&p.phase===0)};
     result.backtracking=[];
     for(const [number,previous] of [[2,1],[9,8],[12,11]]) {
@@ -361,35 +364,32 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
       await page.screenshot({path:path.join(reports,`demo-viewport-${width}.png`)});
     }
     await page.setViewportSize({width:1280,height:720}); await page.waitForTimeout(250);
-    console.log('Passed viewport checks; checking controls');
-    await page.locator('#controls-toggle').click();
-    const binding=(action,slot=0)=>page.locator(`#bindings button[data-action="${action}"][data-slot="${slot}"]`);
-    const reset=action=>page.locator(`#bindings button[data-reset="${action}"]`);
-    assert.equal(await page.locator('#bindings button[data-slot]').count(),14);
-    await page.waitForTimeout(150);
-    const paused=character(await capture());await page.keyboard.press('ArrowRight',{delay:180});
-    const still=character(await capture());
-    assert(paused&&still&&Math.abs(still.x-paused.x)<1&&Math.abs(still.y-paused.y)<1,'Settings pause player movement');
-    await binding(1).click();await page.keyboard.press('l');
-    assert.equal(await binding(1,1).innerText(),'D','Other movement slot survives');
-    await binding(4).click();await page.keyboard.press('j');
-    await binding(4,1).click();await page.keyboard.press('Escape');
-    assert.equal(await binding(4,1).innerText(),'未設定');
-    assert(await page.locator('#controls').isVisible());
-    await page.locator('#controls-close').click();await page.waitForTimeout(150);
+    console.log('Passed viewport checks; checking key settings');
+    // Pause freezes play; the keyboard icon opens key settings (arrows move, Enter captures, Backspace clears).
+    await page.waitForTimeout(150);const paused=character(await capture());
+    await tap('Escape');await page.keyboard.press('x',{delay:180});await page.waitForTimeout(60);
+    await tap('ArrowRight',2);await tap('Enter');
+    await tap('ArrowDown');await tap('Enter');await tap('l');
+    await tap('ArrowDown',3);await tap('Enter');await tap('j');await tap('ArrowRight');await tap('Backspace');
+    fs.writeFileSync(path.join(reports,'demo-keys.png'),await capture());
+    await tap('Escape');await tap('Escape');await page.waitForTimeout(150);
     const before=character(await capture());
+    assert(paused&&before&&Math.abs(before.x-paused.x)<1&&Math.abs(before.y-paused.y)<1,'Pause and key settings hold player movement');
     await page.keyboard.press('l',{delay:100});
     const moved=character(await capture());assert(moved.x>before.x+12,'Custom move reaches Unity');
+    await page.keyboard.press('d',{delay:100});
+    const other=character(await capture());assert(other.x>moved.x+12,'Other movement slot survives');
     await page.keyboard.press('j',{delay:90});
-    const jumped=character(await capture());assert(jumped.y<moved.y-12,'Custom jump reaches Unity');
-    await page.reload();await loaded();await page.locator('#controls-toggle').click();
-    assert.equal(await binding(1).innerText(),'L');assert.equal(await binding(4).innerText(),'J');
-    assert.equal(await binding(4,1).innerText(),'未設定','Cleared slot persists');
-    await reset(4).click();assert.equal(await binding(4).innerText(),'Z');
-    assert.equal(await binding(1).innerText(),'L','Per-action restore preserves another action');
-    await reset(1).click();await page.locator('#controls-close').click();
-    await startLevel();
-    console.log('Passed controls; checking fullscreen');
+    const jumped=character(await capture());assert(jumped.y<other.y-12,'Custom jump reaches Unity');
+    await page.reload();await startLevel();await page.waitForTimeout(400);
+    let start=await observe();await page.keyboard.press('Space',{delay:90});
+    assert(Math.abs((await observe()).y-start.y)<1,'Cleared jump slot persists');
+    await page.keyboard.press('l',{delay:100});
+    assert((await observe()).x>start.x+12,'Saved move binding persists');
+    await tap('Escape');await tap('ArrowRight',2);await tap('Enter');await tap('ArrowDown',7);await tap('Enter');await tap('Escape');await tap('Escape');
+    await page.waitForTimeout(400);start=await observe();await page.keyboard.press('z',{delay:90});
+    assert((await observe()).y<start.y-12,'Restore brings back the default jump');
+    console.log('Passed key settings; checking fullscreen');
     await page.locator('#fullscreen-toggle').click();
     await page.waitForFunction(()=>document.fullscreenElement===document.documentElement);
     await page.waitForFunction(()=>document.getElementById('fullscreen-toggle').getAttribute('aria-label')==='退出全螢幕');
@@ -406,7 +406,7 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
       await page.mouse.down();await page.waitForTimeout(80);await page.mouse.up();
     }
     await page.reload();await loaded();await canvas.click();
-    await page.keyboard.press('ArrowRight',{delay:80});await page.keyboard.press('z',{delay:80});await page.waitForTimeout(1500);
+    await tap('ArrowRight',2);await page.keyboard.press('z',{delay:80});await page.waitForTimeout(1500);
     const editorMap={name:'Unity editor import',blocks:[{x:0,y:168,w:320,h:8,phase:-1,phaseMask:7}],spikes:[],
       lasers:[{x:160,y:96,direction:1,phaseMask:2}],crystals:[{x:80,y:120,kind:1,phaseMask:7}],spawnX:24,spawnY:152};
     const editorChooser=page.waitForEvent('filechooser');await editorIcon(7);
@@ -418,7 +418,7 @@ assert.deepEqual(character(PNG.sync.write(pixelProbe)),{x:100,y:100,width:1,heig
     assert.deepEqual([editorExport.blocks.length,editorExport.spikes,editorExport.lasers,editorExport.crystals,editorExport.spawnX,editorExport.spawnY],
       [40,[],editorMap.lasers,editorMap.crystals,24,152],'In-game editor imports and exports lasers and crystals');
     await page.waitForTimeout(500);await page.reload();await loaded();await canvas.click();
-    await page.keyboard.press('ArrowRight',{delay:80});await page.keyboard.press('z',{delay:80});await page.waitForTimeout(1500);
+    await tap('ArrowRight',2);await page.keyboard.press('z',{delay:80});await page.waitForTimeout(1500);
     const reloadedDownload=page.waitForEvent('download');await editorIcon(8);
     assert.deepEqual(JSON.parse(fs.readFileSync(await (await reloadedDownload).path(),'utf8')),editorExport,'In-game editor draft persists across reload');
     // The play icon runs the draft natively as a custom map; the toolbar is hidden while it plays.

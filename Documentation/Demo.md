@@ -4,7 +4,7 @@ Start from `Assets/Scenes/PhaseTitle.unity`, or open `PhaseDemo1.unity` and pres
 advances to the next room with the existing pixel slide. Each room starts red,
 with full stamina and dash, at its own checkpoint. Death resets that room's
 mechanisms. The eighth room ends on a resting platform. There are no game labels,
-tutorial messages or added controls; the title's two icons are the only menu.
+tutorial messages; the title, pause and victory icons are the only menus.
 
 | Room | Question | Intended solution |
 | --- | --- | --- |

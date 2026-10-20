@@ -38,17 +38,20 @@ namespace Phase
         static Vector2Int travelSize;
         static string arrivalScene;
         static int arrivalDirection;
-        static readonly Key[][] defaultKeys = {
-            new[] { Key.LeftArrow, Key.A }, new[] { Key.RightArrow, Key.D },
-            new[] { Key.UpArrow, Key.W }, new[] { Key.DownArrow, Key.S },
-            new[] { Key.Z, Key.Space }, new[] { Key.X }, new[] { Key.C, Key.LeftShift, Key.RightShift }
-        };
-        static Key[][] keys = defaultKeys;
+        // Two slots per action in left/right/up/down/jump/dash/grab order; "" leaves a slot empty and Shift means both Shift keys.
+        public static readonly string[] DefaultSlots = { "LeftArrow", "A", "RightArrow", "D", "UpArrow", "W", "DownArrow", "S", "Z", "Space", "X", "", "C", "Shift" };
+        public const string ControlsKey = "phase.keys.v1";
+        public static IReadOnlyList<string> Slots => slots;
+        static string[] slots;
+        static Key[][] keys;
         static bool controlsOpen, releaseControls;
-        [Serializable] public sealed class KeyOverrides { public string[] keys; }
+        public PhaseMenu Menu { get; private set; }
+        public PhaseKeys Keys { get; private set; }
+        public PhaseLevels LevelSelect { get; private set; }
+        public PhaseMenu VictoryMenu { get; } = new PhaseMenu(PhaseMenu.RetryIcon, PhaseMenu.LevelsIcon);
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetSession() { ClearTravel(); keys = defaultKeys; controlsOpen = releaseControls = false; }
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        static void ResetSession() { ClearTravel(); LoadControls(); controlsOpen = releaseControls = false; }
         static void ClearTravel() { traveler = null; travelFrame = null; travelSize = default; arrivalScene = null; arrivalDirection = 0; }
 
         PhaseController Build(Vector2Int at, int width)
@@ -151,7 +154,18 @@ namespace Phase
                 Render(); UpdateSurface();
             }
         }
-        void Render() { pixels.Draw(Controller, !Won); if (Won) StampVictory(); }
+        void Render()
+        {
+            pixels.Draw(Controller, !Won); if (Won) StampVictory();
+            if (Menu == null && Keys == null && LevelSelect == null) return;
+            var frame = new PixelFrame(Frame);
+            if (Keys != null) Keys.Draw(frame);
+            else if (LevelSelect != null) LevelSelect.Draw(frame);
+            else { frame.Fill(0, 0, frame.Width, frame.Height, PixelFrame.Ink, .6f); Menu.Draw(frame, MenuTop); }
+            frame.Apply();
+        }
+        int MenuTop => pixels.Height / 2 - 3;
+        int VictoryTop => pixels.Height / 2 - 22 + 29;
         static readonly string[] victoryText = {
             "...#....#................#..........................",
             "...#...#...........##############.....###########...",
@@ -169,19 +183,18 @@ namespace Phase
             "..#.......#.......####.#####.#..#...........#.......",
             "..#.......#.......#..#..#.#..#..#...........#.......",
             "..#.....###.......#.##.#...#.#..##.......####......."
-        }, retryIcon = { "..####.#.", ".#....##.", "#....###.", "#........", "#.......#", "#.......#", ".#.....#.", "..#####.." };
+        };
         void StampVictory()
         {
             var frame = new PixelFrame(Frame); int top = frame.Banner();
             frame.Blit(victoryText, (frame.Width - victoryText[0].Length) / 2, top + 8, PixelFrame.Light);
-            frame.Blit(retryIcon, (frame.Width - retryIcon[0].Length) / 2, top + 29, PixelFrame.Light);
+            VictoryMenu.Draw(frame, top + 29);
             frame.Apply();
         }
         void Win()
         {
             Won = true; jumpQueued = dashQueued = false; accumulator = 0;
-            Render();
-            Victory();
+            ReleaseInput(); Render();
         }
         void Update()
         {
@@ -189,6 +202,14 @@ namespace Phase
             ResizeCamera();
             var k = Keyboard.current;
             if (InputPaused(k)) { jumpQueued = dashQueued = false; accumulator = 0; return; }
+            // Escape pauses play; an editor playtest leaves Escape to the editor.
+            if (Keys != null || LevelSelect != null) { TickScreen(k); return; }
+            if (Menu == null && k != null && k.escapeKey.wasPressedThisFrame && transform.parent == null)
+            {
+                Menu = new PhaseMenu(PhaseMenu.PlayIcon, PhaseMenu.LevelsIcon, PhaseMenu.KeysIcon, PhaseMenu.HomeIcon);
+                jumpQueued = dashQueued = false; accumulator = 0; Render(); return;
+            }
+            if (Menu != null) { TickPause(k); return; }
             if (departingFrame != null)
             {
                 jumpQueued = dashQueued = false; accumulator = 0;
@@ -198,7 +219,14 @@ namespace Phase
                 if (t >= 1) departingFrame = arrivingFrame = null;
                 return;
             }
-            if (Won) { if (Pressed(k, 4, true)) SelectDemoRoom("1"); return; }
+            if (Won)
+            {
+                int chosen = VictoryMenu.Tick(k, Mouse.current, new Vector2Int(pixels.Width, pixels.Height), VictoryTop, out bool changed);
+                if (chosen == 0) SelectDemoRoom("1");
+                else if (chosen == 1) { LevelSelect = new PhaseLevels(); Render(); }
+                else if (changed) Render();
+                return;
+            }
             var input = ReadControls(k);
             jumpQueued |= Pressed(k, 4, true);
             dashQueued |= Pressed(k, 5, true);
@@ -212,6 +240,34 @@ namespace Phase
             }
             if (!Won) pixels.Draw(Controller);
         }
+        void TickPause(Keyboard k)
+        {
+            jumpQueued = dashQueued = false; accumulator = 0;
+            if (k != null && k.escapeKey.wasPressedThisFrame) { Resume(); return; }
+            switch (Menu.Tick(k, Mouse.current, new Vector2Int(pixels.Width, pixels.Height), MenuTop, out _))
+            {
+                case 0: Resume(); return;
+                case 1: LevelSelect = new PhaseLevels(level); break;
+                case 2: Keys = new PhaseKeys(); break;
+                case 3: transitioning = true; SceneManager.LoadSceneAsync(PhaseTitle.Scene); break;
+            }
+            Render();
+        }
+        // Key settings and level select open from the pause menu or victory; Escape returns there.
+        void TickScreen(Keyboard k)
+        {
+            jumpQueued = dashQueued = false; accumulator = 0;
+            if (Keys != null) { if (Keys.Tick(k)) Keys = null; }
+            else
+            {
+                int chosen = LevelSelect.Tick(k, Mouse.current, new Vector2Int(pixels.Width, pixels.Height));
+                if (chosen > 0) { SelectDemoRoom(chosen.ToString()); return; }
+                if (chosen == 0) LevelSelect = null;
+            }
+            Render();
+        }
+        // Keys held to close the menu stay ignored until released.
+        public void Resume() { Menu = null; ReleaseInput(); Render(); }
         void Travel(int direction)
         {
             if (direction > 0 && level == Levels.Length - 1) { Win(); return; }
@@ -250,39 +306,36 @@ namespace Phase
         internal static void ReleaseInput() => releaseControls = true;
         public void SetControlsOpen(string value) => Pause(value);
         internal static void Pause(string value) { controlsOpen = value == "true"; releaseControls = true; }
-        public void ConfigureControls(string json)
-        { if (ApplyControls(json)) { jumpQueued = dashQueued = false; accumulator = 0; } }
-        internal static bool ApplyControls(string json)
+        // Applies the whole map atomically: every name must be a supported key, no key may repeat and each action keeps a key.
+        public static bool ApplyControls(IReadOnlyList<string> names)
         {
-            // JsonUtility turns null string-array entries into empty strings.
-            if (json == null || json.Contains("null")) return false;
-            KeyOverrides map;
-            try { map = JsonUtility.FromJson<KeyOverrides>(json); }
-            catch (ArgumentException) { return false; }
-            if (map?.keys == null || map.keys.Length != defaultKeys.Length * 2) return false;
-            var next = new Key[defaultKeys.Length][];
+            if (names == null || names.Count != DefaultSlots.Length) return false;
+            var next = new Key[DefaultSlots.Length / 2][];
             for (int i = 0; i < next.Length; i++)
             {
                 var action = new List<Key>();
                 for (int slot = 0; slot < 2; slot++)
                 {
-                    string name = map.keys[i * 2 + slot];
+                    string name = names[i * 2 + slot];
                     if (name == "") continue;
-                    if (name == "Shift") { action.Add(Key.LeftShift); action.Add(Key.RightShift); continue; }
-                    if (!Enum.TryParse(name, out Key key) || !Enum.IsDefined(typeof(Key), key) || key.ToString() != name ||
-                        key == Key.None || key == Key.Escape || key == Key.Tab || key == Key.Delete || (int)key >= Keyboard.KeyCount ||
-                        key == Key.LeftCtrl || key == Key.RightCtrl || key == Key.LeftAlt || key == Key.RightAlt ||
-                        key == Key.LeftMeta || key == Key.RightMeta) return false;
-                    action.Add(key);
+                    if (name == null || !PhaseKeys.Labels.ContainsKey(name)) return false;
+                    if (name == "Shift") { action.Add(Key.LeftShift); action.Add(Key.RightShift); }
+                    else action.Add(Enum.Parse<Key>(name));
                 }
                 if (action.Count == 0) return false;
                 next[i] = action.ToArray();
             }
             var all = next.SelectMany(action => action).ToArray();
             if (all.Distinct().Count() != all.Length) return false;
-            keys = next;
+            keys = next; slots = names.ToArray();
             return true;
         }
+        // Saved bindings load at startup; a missing or invalid entry falls back to the defaults.
+        public static void LoadControls()
+        {
+            if (!ApplyControls(PlayerPrefs.GetString(ControlsKey, "").Split(','))) ApplyControls(DefaultSlots);
+        }
+        public static void SaveControls() { PlayerPrefs.SetString(ControlsKey, string.Join(",", slots)); PlayerPrefs.Save(); }
         public static Vector2Int ViewSize(int width, int height)
         {
             width = Mathf.Max(1, width); height = Mathf.Max(1, height);

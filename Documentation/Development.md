@@ -54,9 +54,11 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 48 controller cases, 9 laser cases, 17 demo-route/authoring cases,
-15 crystal cases, 26 crystal-room cases, 18 pixel cases, 6 Grid authoring cases and 7 custom-map validation cases in Edit
-Mode. The fifteen Play Mode cases cover bindings, pause/release gating, room
-persistence, multiple authored platforms, crystal triggers, imported maps and the title/editor flow. Platform checks cover
+15 crystal cases, 26 crystal-room cases, 18 pixel cases, 6 Grid authoring cases, 7 custom-map validation cases and
+3 key-binding cases (validation, PlayerPrefs persistence, key caps) in Edit Mode. The seventeen Play Mode cases cover
+bindings, pause/release gating, room persistence, multiple authored platforms, crystal triggers, imported maps, the
+title/editor flow including editor platforms and gears, the pause menu with key settings, and level select from the
+title, pause and victory screens. Platform checks cover
 vertical return travel, independent routes/reset, rider and climb-hop attachment,
 crush/hazard sweeps, native collider synchronization and rendering.
 The three immutable reference files preserve 40 movement/action/climb traces.
@@ -136,13 +138,14 @@ scenes must be in Build Settings and in the Web build's explicit scene list.
 Deaths respawn in the current room. The controller’s top/bottom clamp and immutable reference
 fixtures stay unchanged; there is no player text.
 Default movement, dash aiming and climb bindings accept arrow keys or WASD.
-Web settings expose two independent slots per action; changing one preserves the
-other. Logical `Shift` activates both physical Shift keys. The Web bridge sends
-14 strings to `ConfigureControls`, in left/right/up/down/jump/dash/grab order,
-with two adjacent slots per action; empty strings disable a slot. The native
-validator rejects duplicate physical keys, reserved keys and actions with no key,
-then applies the entire map atomically. Browser storage/migration is described
-in [Web preview](Web.md).
+Each action has two independent key slots; logical `Shift` activates both physical
+Shift keys. `PhaseSandbox.ApplyControls` takes 14 key names in left/right/up/down/
+jump/dash/grab order (two adjacent slots per action, "" for an empty slot). It accepts
+only the keys the settings screen can label (letters, digits, arrows, Space, Shift,
+Enter, Backspace and common punctuation), rejects duplicate physical keys and actions
+with no key, then applies the entire map atomically. Settings save the map to
+PlayerPrefs `phase.keys.v1` as comma-separated names; startup loads it and falls back
+to the defaults when it is missing or invalid.
 
 ## Dash platforms
 
@@ -201,7 +204,7 @@ Built-in levels link in both directions: Demo1–8, Crystal1–3, then Demo12. B
 See [room designs and live input verification](Demo.md).
 `BuildWeb.py` verifies these tests and builds `PhaseDemo1` through
 `PhaseDemo8`, followed by `PhaseCrystal1` through `PhaseCrystal3` and the hand-authored `PhaseDemo12`. `DemoWebSmoke.cjs` replays keyboard routes through
-all twelve Web scenes and checks settings, sizing, fullscreen and loading failure.
+all twelve Web scenes and checks in-game level select, victory, key settings, sizing, fullscreen and loading failure.
 The older `WebSmoke.cjs` remains a verifier for the original two-sandbox build.
 
 ## CI
@@ -373,8 +376,19 @@ their Build Settings entries with `unity command eval 'PhaseSandboxBuilder.Creat
 Each has a `PHASE` root (`PhaseScreen`) answering the same Web bridge messages as
 `PhaseSandbox`; any key held when a screen opens is ignored until released.
 
-The title draws the PHASE banner and two icons: left/right chooses, jump or Enter
-confirms (or click an icon). Play loads level1; the pencil opens the editor.
+The title draws the PHASE banner and four icons: left/right (arrows or movement keys)
+chooses, jump or Enter confirms (or click an icon). Play loads level1, the grid opens
+level select, the pencil opens the editor and the keyboard opens key settings.
+Escape in a level (not an editor playtest) pauses play like the Web dialog gate, with
+resume, level select, key settings and back-to-title icons; Escape resumes, and keys
+held to close it stay ignored until released. The level12 victory banner has replay-level1
+and level-select icons.
+Level select is a 4×3 grid of pixel-digit tiles; every level is always selectable, it
+opens at the current level from pause, and Escape goes back. Key settings show seven
+action icons with two key caps each, labelled in a tiny pixel font. Arrows and Enter
+always navigate. Enter makes a slot blink and binds the next key; Escape cancels and
+Backspace clears. The bottom icon restores the defaults. A rejected change flashes a red
+border and keeps the old map; Escape closes the screen.
 The editor paints the custom-map grid (40×22 cells, terrain, four spike directions,
 four laser directions, jump and dash crystals, returning and one-way dash platforms, climb gear,
 spawn, erase; seven masks) and renders it with the game's own pixels in the starting
@@ -404,6 +418,11 @@ With `PhaseTitle` in Play mode, run `Verification/MenuLiveInput.cs`, entry
 `MenuLiveInput.Run`. It drives title→editor→paint terrain, a laser and a crystal→place a returning
 platform and a gear→clipboard export/import→playtest with a platform-moving dash→back→level1 by keyboard,
 restores the developer's draft and clipboard and saves captures to `TestResults/Menu/`.
+`Verification/KeysLiveInput.cs`, entry `KeysLiveInput.Run`, also starts from `PhaseTitle`
+in Play: title key settings→bind J to jump (a duplicate is rejected)→title level
+select→level1 jumps with J→Escape pause freezes play→pause level select→level2→
+restore defaults→back to title. It restores the saved bindings and writes captures to
+`TestResults/Keys/`.
 
 ## Hand-authored scenes
 
@@ -411,7 +430,7 @@ restores the developer's draft and clipboard and saves captures to `TestResults/
 8px Grid and native collider shapes; imported sizes, phase masks and scene links
 are retained, with positions snapped by at most half a cell. Edit it with the Grid
 painter and normal Inspector tools. It is not included in the explicit
-Web build or the Web room selector. Use `PhaseSandboxBuilder` only to rebuild
+Web build or the in-game level select. Use `PhaseSandboxBuilder` only to rebuild
 generated demo scenes; preserve hand-authored layouts.
 
 ## Colored crystals

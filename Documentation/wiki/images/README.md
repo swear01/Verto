@@ -8,7 +8,7 @@
 | `room-1-start.png` 至 `room-8-start.png` | 八個正式 Demo 場景的開始畫面，320×180 原生像素 |
 | `room-1-end.png` 至 `room-8-end.png` | `Verification/DemoLiveInput.cs` 以虛擬鍵盤完成各關路線後的畫面 |
 | `sandbox.png`、`room-2-sandbox.png`、`gear-demo.png`、`demo-1-1.png` | 對應獨立場景在 Play 中的 `PhaseSandbox.Frame`，已確認 frame count 與 controller time 前進 |
-| `room-selector.png` | 2026-10-19 本機 Web build 的實際 Chromium 選關對話框（移除 HTML 編輯器後），1280×900 viewport 中擷取 |
+| `level-select.png`、`key-settings.png` | 2026-10-19 `Verification/KeysLiveInput.cs` 在 Play 中以虛擬鍵盤開啟的遊戲內選關與鍵位（跳躍改為 J）畫面，320×180 原生像素 |
 | `game-editor.png` | 2026-10-19 `Verification/MenuLiveInput.cs` 在 Play 中以虛擬鍵盤畫出藍地形、紅雷射與白水晶後的遊戲內編輯器畫面，320×180 原生像素 |
 | `character-ready.png`、`character-spent.png`、`character-tired.png` | 正式 `PhasePixels` renderer 產生的 24×28 角色狀態示意：衝刺存量 1、衝刺存量 0、空中耐力 10。這三張是狀態示意，不是鍵盤遊玩截圖 |
 
