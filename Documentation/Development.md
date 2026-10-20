@@ -54,8 +54,8 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 52 controller cases, 9 laser cases, 17 demo-route/authoring cases,
-15 crystal cases, 26 crystal-room cases, 19 pixel cases, 6 Grid authoring cases, 8 custom-map validation cases,
-3 key-binding cases (validation, PlayerPrefs persistence, key caps) and 15 level-route cases in Edit Mode. The 35 Play Mode cases cover
+15 crystal cases, 26 crystal-room cases, 20 pixel cases, 6 Grid authoring cases, 8 custom-map validation cases,
+3 key-binding cases (validation, PlayerPrefs persistence, key caps) and 15 level-route cases in Edit Mode. The 36 Play Mode cases cover
 each level's keyboard route, bindings, pause/release gating, room persistence, multiple authored platforms, crystal triggers, imported maps, the
 title/editor flow including editor platforms and gears, the editor's fixed tool panel under mouse input, the pause menu with key settings, the fullscreen switch, and level select from the
 title, pause and victory screens. Platform checks cover
