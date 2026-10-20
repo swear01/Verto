@@ -92,7 +92,7 @@ namespace Phase
             }
             finally { c.phase = authored; }
         }
-        void Awake()
+        void LinkLevel()
         {
             level = custom ? -1 : Array.IndexOf(Levels, gameObject.scene.name);
             if (level >= 0)
@@ -100,6 +100,12 @@ namespace Phase
                 leftScene = level > 0 ? Levels[level - 1] : "";
                 rightScene = level < Levels.Length - 1 ? Levels[level + 1] : "";
             }
+        }
+        // Route checks build the authored room as Play does, at the native width.
+        public PhaseController CreateController() { LinkLevel(); return Build(spawn, 320); }
+        void Awake()
+        {
+            LinkLevel();
             bool arriving = traveler != null && gameObject.scene.name == arrivalScene;
             var size = arriving && travelFrame != null ? travelSize : ViewSize(Screen.width, Screen.height);
             Controller = Build(spawn, size.x);

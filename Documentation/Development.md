@@ -55,8 +55,8 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 48 controller cases, 9 laser cases, 17 demo-route/authoring cases,
 15 crystal cases, 26 crystal-room cases, 19 pixel cases, 7 Grid authoring cases, 7 custom-map validation cases,
-6 scrolling-room cases and 3 key-binding cases (validation, PlayerPrefs persistence, key caps) in Edit Mode.
-The eighteen Play Mode cases cover a big-room camera following a keyboard run,
+6 scrolling-room cases, 3 key-binding cases (validation, PlayerPrefs persistence, key caps) and 12 level-route cases in Edit Mode.
+The 30 Play Mode cases cover each level's keyboard route, a big-room camera following a keyboard run,
 bindings, pause/release gating, room persistence, multiple authored platforms, crystal triggers, imported maps, the
 title/editor flow including editor platforms and gears, the pause menu with key settings, and level select from the
 title, pause and victory screens. Platform checks cover
@@ -455,6 +455,36 @@ are retained, with positions snapped by at most half a cell. Edit it with the Gr
 painter and normal Inspector tools. It is not included in the explicit
 Web build or the in-game level select. Use `PhaseSandboxBuilder` only to rebuild
 generated demo scenes; preserve hand-authored layouts.
+
+## Level routes
+
+Each level in `PhaseSandbox.Levels` has a recorded keyboard route in
+`Verification/Routes/<Scene>.json`: an array of held-key steps
+(`{"frames","x","y","jump","dash","grab"}`, y -1 is up), pressed from a reset room;
+jump and dash fire when their key goes down. After the last step the checks hold
+right. `LevelRouteTests` (Edit Mode, controller) and `LevelRoutePlayTests` (Play Mode,
+keyboard) require the right-edge exit, or the level-12 victory, with no deaths.
+The optional `<Scene>.bypass.json` lists shortcut inputs as
+`[{"name","steps":[...]}]`; each must not reach the right exit (replay stops at
+the first death). Rerecord a route whenever its scene changes.
+
+`Verification/RouteTool.cs` builds the `PhaseController` from a scene, as Play does,
+at 320px with the right exit open. Pass a level name or a scene path:
+
+```sh
+unity command run_script --project-path "$PWD" --result-only -- --file Verification/RouteTool.cs --entry RouteTool.Validate --args '["PhaseDemo12"]'
+unity command run_script --project-path "$PWD" --timeout 900 --result-only -- --file Verification/RouteTool.cs --entry RouteTool.Search --timeout_ms 900000 --args '["Assets/Scenes/Drafts/Color1.unity","","{\"feet\":136,\"minX\":96,\"dash\":true}","x:-1,0,1 y:-1,0 j:0,1 d:0,1 g:0",4,25,"Temp/route.json"]'
+unity command run_script --project-path "$PWD" --timeout 900 --result-only -- --file Verification/RouteTool.cs --entry RouteTool.Harden --timeout_ms 900000 --args '["PhaseDemo12","Temp/route.json",300,1,"Temp/route.json"]'
+```
+
+`Search` runs a breadth-first search from the end of a prefix route ("" starts at spawn)
+and writes prefix plus found steps. The goal is `{"exit":true}` or a standing target
+using `minX`/`maxX` (player X), `feet` (platform top), `dash` (dash ready),
+`movers` (0 authored, 1 toggled; all settled) and `minY`/`maxY` to prune.
+Keys list the values tried per action; each choice is held for the given frames,
+up to the given depth. Search cost grows quickly; chain short segments by
+passing each output as the next prefix. `Harden` keeps the route winning while
+reducing the one-frame step shifts that break it; browser timing can shift a step.
 
 ## Colored crystals
 
