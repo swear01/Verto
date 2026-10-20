@@ -24,6 +24,9 @@ namespace Phase
         public DemoSpike[] spikes;
         public DemoLaser[] lasers;
         public DemoCrystal[] crystals;
+        // Custom maps hold any number of platforms and gears; built-in rooms keep the single mover and gear above.
+        public DemoPlatform[] platforms;
+        public DemoGear[] gears;
 
         public MovingPlatform CreateMover()
         {
@@ -35,6 +38,8 @@ namespace Phase
         public ClimbGear CreateGear() => hasGear ? new ClimbGear(gearWall, gearTop, gearPlatform, gearEndX) : null;
         public Spike[] CreateSpikes() => spikes?.Select(s => new Spike(s.x,s.y,s.length,s.direction,s.phaseMask)).ToArray() ?? Array.Empty<Spike>();
         public Laser[] CreateLasers() => lasers?.Select(l => new Laser(l.x,l.y,l.direction,l.phaseMask)).ToArray() ?? Array.Empty<Laser>();
+        public MovingPlatform[] CreatePlatforms() => platforms?.Select(p => p.Create()).ToArray() ?? Array.Empty<MovingPlatform>();
+        public ClimbGear[] CreateGears() => gears?.Select(g => g.Create()).ToArray() ?? Array.Empty<ClimbGear>();
         public Crystal[] CreateCrystals() => crystals?.Select(c => new Crystal(c.x,c.y,c.kind,c.phaseMask)).ToArray() ?? Array.Empty<Crystal>();
         public PhaseController CreateController()
         {
@@ -47,7 +52,8 @@ namespace Phase
             if (hasGear) { foreach (var b in new[] { gearWall, gearPlatform }) { Cell(b.x); Cell(b.y); Cell(b.w); Cell(b.h); } Cell(gearTop); Cell(gearEndX); }
             var gear = CreateGear(); var mover = CreateMover();
             return new PhaseController(blocks.Select(b => new Block(b.x,b.y,b.w,b.h,b.phase,b.phaseMask)), spawnX, spawnY,
-                mover == null ? null : new[] { mover }, gears: gear == null ? null : new[] { gear }, spikes: CreateSpikes(), lasers: CreateLasers(), crystals: CreateCrystals());
+                (mover == null ? CreatePlatforms() : CreatePlatforms().Prepend(mover)), gears: gear == null ? CreateGears() : CreateGears().Prepend(gear),
+                spikes: CreateSpikes(), lasers: CreateLasers(), crystals: CreateCrystals());
         }
     }
     [Serializable]
@@ -56,6 +62,29 @@ namespace Phase
         public double x,y,length;
         public SpikeDirection direction;
         public int phaseMask;
+    }
+    [Serializable]
+    public sealed class DemoPlatform
+    {
+        public double w = 24, h = 8;
+        public double[] nodeX, nodeY;
+        public bool returns;
+        public MovingPlatform Create()
+        {
+            if (nodeX == null || nodeY == null || nodeX.Length != nodeY.Length) throw new ArgumentException("Platform requires matching nodes.");
+            return new MovingPlatform(nodeX.Select((x,i) => new[] { x,nodeY[i] }).ToArray(), w, h, returns);
+        }
+    }
+    [Serializable]
+    public sealed class DemoGear
+    {
+        public Block wall, platform;
+        public double top, endX;
+        public ClimbGear Create()
+        {
+            if (wall == null || platform == null) throw new ArgumentException("Gear requires a wall and a platform.");
+            return new ClimbGear(new Block(wall.x,wall.y,wall.w,wall.h), top, new Block(platform.x,platform.y,platform.w,platform.h), endX);
+        }
     }
     [Serializable]
     public sealed class DemoLaser
