@@ -61,10 +61,10 @@ public class MenuTests : InputTestFixture
             yield return Tap(Key.X);
             Assert.That(editor.Tool, Is.EqualTo(2));
             yield return Tap(Key.Z);
-            for (int i = 0; i < 4; i++) yield return Tap(Key.X);
+            yield return Tap(Key.X);
             Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.LaserTool));
             yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
-            for (int i = 0; i < 5; i++) yield return Tap(Key.X);
+            yield return Tap(Key.X); yield return Tap(Key.X);
             Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.CrystalTool + 1));
             yield return Tap(Key.Digit5); yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
             var room = editor.Room();
@@ -120,6 +120,43 @@ public class MenuTests : InputTestFixture
         }
     }
 
+    [UnityTest]
+    public IEnumerator EditorTurnsSpikesAndLasersWithRAndE()
+    {
+        string saved = PlayerPrefs.HasKey(PhaseEditor.DraftKey) ? PlayerPrefs.GetString(PhaseEditor.DraftKey) : null;
+        PlayerPrefs.DeleteKey(PhaseEditor.DraftKey);
+        try
+        {
+            yield return OpenTitle();
+            yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
+            yield return WaitFor(PhaseEditor.Scene);
+            var editor = Object.FindAnyObjectByType<PhaseEditor>();
+            yield return Tap(Key.R);
+            Assert.That((editor.Tool, editor.Facing), Is.EqualTo((PhaseEditor.Terrain, 0)), "R leaves terrain alone");
+            yield return Tap(Key.X); yield return Tap(Key.R);
+            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.SpikeTool + (int)SpikeDirection.Right), "R turns clockwise");
+            yield return Tap(Key.Z);
+            yield return Tap(Key.RightArrow); yield return Tap(Key.E); yield return Tap(Key.E); yield return Tap(Key.Z);
+            yield return Tap(Key.X);
+            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.LaserTool + (int)LaserDirection.Left), "the laser keeps the spike's direction");
+            yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
+            yield return Tap(Key.RightArrow); yield return Tap(Key.R); yield return Tap(Key.Z);
+            yield return Tap(Key.Escape);
+            yield return WaitFor(PhaseTitle.Scene);
+            yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
+            yield return WaitFor(PhaseEditor.Scene);
+            var room = Object.FindAnyObjectByType<PhaseEditor>().Room();
+            Assert.That(room.spikes.Select(s => (s.x, s.direction)), Is.EqualTo(new[] { (64.0, SpikeDirection.Right), (72.0, SpikeDirection.Left) }), "the draft keeps each spike's direction");
+            Assert.That(room.lasers.Select(l => (l.x, l.direction)), Is.EqualTo(new[] { (80.0, LaserDirection.Left), (88.0, LaserDirection.Up) }), "the draft keeps each laser's direction");
+            LogAssert.NoUnexpectedReceived();
+        }
+        finally
+        {
+            if (saved == null) PlayerPrefs.DeleteKey(PhaseEditor.DraftKey); else PlayerPrefs.SetString(PhaseEditor.DraftKey, saved);
+            PlayerPrefs.Save();
+        }
+    }
+
     Mouse mouse;
     // Points at a frame pixel's center, inverting PhaseScreen.FramePoint, and holds the given buttons for two frames.
     IEnumerator Point(Vector2Int view, Vector2Int frame, params MouseButton[] buttons)
@@ -164,7 +201,7 @@ public class MenuTests : InputTestFixture
             Vector2Int Cell(int x, int y) => new Vector2Int(x * 8 + 4, y * 8 + 4 - (180 - view.y) / 2);
 
             // With the gear's tall preview, the pointer sweeps the top and bottom rows: the cursor follows and the panel's pixels never change.
-            var gear = Center(PhaseEditor.SlotIn(view, 13));
+            var gear = Center(PhaseEditor.SlotIn(view, 6));
             yield return Point(view, gear, MouseButton.Left); yield return Point(view, gear);
             Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.GearTool));
             yield return Point(view, Cell(5, 0));
@@ -190,7 +227,7 @@ public class MenuTests : InputTestFixture
                 if (slot < PhaseEditor.MaskSlot) tools.Add(editor.Tool); else masks.Add(editor.Mask);
                 still = Panel();
             }
-            Assert.That(tools, Is.EqualTo(tools.Distinct()).And.EquivalentTo(Enumerable.Range(0, 16)), "each tool slot picks its own tool");
+            Assert.That(tools, Is.EqualTo(tools.Distinct()).And.EquivalentTo(new[] { 0, 1, 2, 6, 7, 11, 12, PhaseEditor.PlatformTool, PhaseEditor.GearTool }), "each type slot picks its own tool");
             Assert.That(masks, Is.EqualTo(masks.Distinct()).And.EquivalentTo(Enumerable.Range(1, 7)), "each color slot picks its own color");
             Assert.That(PhaseCustomMap.ToJson(editor.Room()), Is.EqualTo(draft), "panel clicks never paint");
 
@@ -351,7 +388,7 @@ public class MenuTests : InputTestFixture
             yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
             yield return WaitFor(PhaseEditor.Scene);
             var editor = Object.FindAnyObjectByType<PhaseEditor>();
-            yield return Move(Key.X, 11);
+            yield return Move(Key.X, 5);
             Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.PlatformTool));
             yield return Move(Key.UpArrow, 4);
             yield return Tap(Key.Z);

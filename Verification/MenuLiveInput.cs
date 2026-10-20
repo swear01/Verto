@@ -70,10 +70,10 @@ public static class MenuLiveInput
             await Tap(keyboard, Key.Z);
             await Tap(keyboard, Key.RightArrow); await Tap(keyboard, Key.Z);
             Require(editor.Room().blocks.Count(b => b.phaseMask == 2) == 2, "Keyboard did not paint two blue cells.");
-            for (int i = 0; i < 6; i++) await Tap(keyboard, Key.X);
-            Require(editor.Tool == PhaseEditor.LaserTool + 1, "Dash did not cycle to the down laser.");
+            await Tap(keyboard, Key.X); await Tap(keyboard, Key.X); await Tap(keyboard, Key.R); await Tap(keyboard, Key.R);
+            Require(editor.Tool == PhaseEditor.LaserTool + 1, "Dash and R did not pick the down laser.");
             await Tap(keyboard, Key.Digit2); await Tap(keyboard, Key.UpArrow); await Tap(keyboard, Key.Z);
-            for (int i = 0; i < 3; i++) await Tap(keyboard, Key.X);
+            await Tap(keyboard, Key.X);
             Require(editor.Tool == PhaseEditor.CrystalTool, "Dash did not cycle to the jump crystal.");
             await Tap(keyboard, Key.Digit1); await Tap(keyboard, Key.RightArrow); await Tap(keyboard, Key.Z);
             var room = editor.Room();

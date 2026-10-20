@@ -13,36 +13,31 @@ namespace Phase
         public const string Scene = "PhaseEditor", DraftKey = "phase.editor.v1";
         public const int Columns = 40, Rows = 22;
         // Cell tools: 0 empty, 1 terrain, 2–5 Up/Down/Left/Right spikes, 7–10 Up/Down/Left/Right lasers,
-<<<<<<< HEAD
-        // 11 jump crystal, 12 dash crystal. Spawn only moves the player start. Platforms (returning or one-way) and gears
-        // are placed in two steps, body then end, and are kept outside the cell grid.
-        public const int Erase = 0, Terrain = 1, Spawn = 6, LaserTool = 7, CrystalTool = 11, LastTool = 12, ReturnPlatform = 13, PlatformTool = 14, GearTool = 15;
-        static readonly int[] toolOrder = { Terrain, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, ReturnPlatform, PlatformTool, GearTool, Spawn, Erase }, masks = { 7, 1, 2, 4, 5, 3, 6 };
-        // Panel slots: 16 tools, 7 colors, then import, export, play and back.
-        public const int MaskSlot = 16, ImportSlot = 23, ExportSlot = 24, PlaySlot = 25, BackSlot = 26, SlotCount = 27;
-        const int PlatformWidth = 24;
-=======
         // 11 jump crystal, 12 dash crystal. Spawn only moves the player start. A platform is one 24×8 start plus the
         // one-way line behind it; a gear is still body then end. Both stay outside the cell grid.
-        public const int Erase = 0, Terrain = 1, Spawn = 6, LaserTool = 7, CrystalTool = 11, LastTool = 12, PlatformTool = 13, GearTool = 14;
-        static readonly int[] toolOrder = { Terrain, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, PlatformTool, GearTool, Spawn, Erase }, masks = { 7, 1, 2, 4, 5, 3, 6 };
-        const int MaskSlot = 15, ImportSlot = 22, ExportSlot = 23, PlaySlot = 24, BackSlot = 25, SlotCount = 26, PlatformWidth = 24;
->>>>>>> origin/cld/editor-platforms-ux
+        // The panel holds one slot per type; R/E or the wheel turns spikes and lasers.
+        public const int Erase = 0, Terrain = 1, SpikeTool = 2, Spawn = 6, LaserTool = 7, CrystalTool = 11, LastTool = 12, PlatformTool = 13, GearTool = 14;
+        static readonly int[] kinds = { Terrain, SpikeTool, LaserTool, CrystalTool, LastTool, PlatformTool, GearTool, Spawn, Erase }, masks = { 7, 1, 2, 4, 5, 3, 6 },
+            clockwise = { 0, 3, 1, 2 };
+        // Panel slots: 9 types, 7 colors, then import, export, play and back.
+        public const int MaskSlot = 9, ImportSlot = 16, ExportSlot = 17, PlaySlot = 18, BackSlot = 19, SlotCount = 20;
+        const int PlatformWidth = 24;
         static readonly string[] spikeUp = { ".......", "...#...", "..###..", "..###..", ".#####.", ".#####.", "#######" },
             laserUp = { "...#...", "...#...", "...#...", ".#####.", ".#...#.", ".#.#.#.", ".#####." },
-            arrowDown = { "...#...", "...#...", "...#...", "#..#..#", ".#.#.#.", "..###..", "...#..." };
+            spawnIcon = { "#......", "####...", "#####..", "####...", "#......", "#......", "#......" };
+        // Indexed by cell tool code: erase, terrain, four spikes (Up, Down, Left, Right), spawn, four lasers, crystals, platform, gear.
         static readonly string[][] toolIcons = {
-            Enumerable.Repeat("#######", 7).ToArray(), spikeUp, spikeUp.Reverse().ToArray(), Turn(spikeUp), Mirror(Turn(spikeUp)),
+            new[] { "#.....#", ".#...#.", "..#.#..", "...#...", "..#.#..", ".#...#.", "#.....#" },
+            Enumerable.Repeat("#######", 7).ToArray(), spikeUp, spikeUp.Reverse().ToArray(), Turn(spikeUp), Mirror(Turn(spikeUp)), spawnIcon,
             laserUp, laserUp.Reverse().ToArray(), Turn(laserUp), Mirror(Turn(laserUp)),
             new[] { "..###..", ".#####.", "##.####", "#######", "#######", ".#####.", "..###.." },
             new[] { ".......", ".#####.", ".#.###.", ".#####.", ".#####.", ".#####.", "......." },
             new[] { ".....#.", "#######", ".....#.", ".......", "#######", "#.#.#.#", "#######" },
-            new[] { "...#...", ".#####.", ".##.##.", "##...##", ".##.##.", ".#####.", "...#..." },
-            new[] { "#......", "####...", "#####..", "####...", "#......", "#......", "#......" },
-            new[] { "#.....#", ".#...#.", "..#.#..", "...#...", "..#.#..", ".#...#.", "#.....#" }
+            new[] { "...#...", ".#####.", ".##.##.", "##...##", ".##.##.", ".#####.", "...#..." }
         };
         static readonly string[] backIcon = { "...#...", "..#....", ".#.....", "#######", ".#.....", "..#....", "...#..." },
-            importIcon = arrowDown.Reverse().ToArray();
+            exportIcon = { "....###....", "....###....", "....###....", ".#########.", "..#######..", "...#####...", "....###....", ".....#.....", "##.......##", "##.......##", "###########" },
+            importIcon = { ".....#.....", "....###....", "...#####...", "..#######..", ".#########.", "....###....", "....###....", "....###....", "##.......##", "##.......##", "###########" };
         readonly byte[] tools = new byte[Columns * Rows], colors = new byte[Columns * Rows];
         readonly List<DemoPlatform> platforms = new List<DemoPlatform>();
         readonly List<DemoGear> gears = new List<DemoGear>();
@@ -50,6 +45,8 @@ namespace Phase
         public Vector2Int? Anchor { get; private set; }
         DemoPlatform line;
         public int Tool { get; private set; } = Terrain;
+        // The spike/laser direction index (Up, Down, Left, Right), kept across type changes.
+        public int Facing { get; private set; }
         public int Mask { get; private set; } = 7;
         public Vector2Int Cursor { get; private set; } = new Vector2Int(8, 18);
         public Vector2Int SpawnCell { get; private set; } = new Vector2Int(3, 19);
@@ -188,7 +185,17 @@ namespace Phase
             if (Anchor == null) return false;
             Anchor = null; line = null; return true;
         }
-        void Select(int tool) { Tool = tool; Anchor = null; line = null; }
+        static int KindOf(int tool) => tool >= SpikeTool && tool < Spawn ? SpikeTool : tool >= LaserTool && tool < CrystalTool ? LaserTool : tool;
+        static bool Turns(int kind) => kind == SpikeTool || kind == LaserTool;
+        int ToolFor(int kind) => Turns(kind) ? kind + Facing : kind;
+        void Select(int kind) { Tool = ToolFor(kind); Anchor = null; line = null; }
+        // One clockwise (1) or counter-clockwise (-1) turn; other types ignore it.
+        bool Rotate(int turn)
+        {
+            if (!Turns(KindOf(Tool))) return false;
+            Facing = clockwise[(Array.IndexOf(clockwise, Facing) + turn + 4) % 4];
+            Tool = ToolFor(KindOf(Tool)); return true;
+        }
         bool Apply(Vector2Int cell, int tool)
         {
             if (tool == Spawn)
@@ -210,8 +217,8 @@ namespace Phase
         }
 
         // A fixed panel of 2× icons sits right of the grid, or below it on tall screens, and never covers a cell.
-        const int Pitch = 18, Gap = 6, Pad = 4, SideW = Pad * 2 + 4 * Pitch, SideH = Pad * 2 + 7 * Pitch + 2 * Gap,
-            BelowTop = Rows * 8 + 4, BelowW = Pad * 2 + 16 * Pitch, BelowH = Pad * 2 + 2 * Pitch + Gap;
+        const int Pitch = 18, Gap = 6, Pad = 4, SideW = Pad * 2 + 4 * Pitch, SideH = Pad * 2 + 6 * Pitch + 2 * Gap,
+            BelowTop = Rows * 8 + 4, BelowW = Pad * 2 + 11 * Pitch + Gap, BelowH = Pad * 2 + 2 * Pitch + Gap;
         // The view keeps the screen's aspect and grows until the grid and panel fit; the layout with the larger grid wins.
         public static Vector2Int ViewFor(int width, int height)
         {
@@ -233,7 +240,7 @@ namespace Phase
         {
             var panel = PanelIn(view);
             int group = slot < MaskSlot ? 0 : slot < ImportSlot ? 1 : 2, i = slot - (group == 0 ? 0 : group == 1 ? MaskSlot : ImportSlot);
-            var cell = Side(view) ? new Vector2Int(i % 4 * Pitch, (new[] { 0, 4, 6 }[group] + i / 4) * Pitch + group * Gap)
+            var cell = Side(view) ? new Vector2Int(i % 4 * Pitch, (new[] { 0, 3, 5 }[group] + i / 4) * Pitch + group * Gap)
                 : new Vector2Int(group == 2 ? (7 + i) * Pitch + Gap : i * Pitch, group == 0 ? 0 : Pitch + Gap);
             return new RectInt(panel.x + Pad + cell.x, panel.y + Pad + cell.y, Pitch, Pitch);
         }
@@ -281,6 +288,7 @@ namespace Phase
             }
             else if (IsMechanism(Tool)) Body(Tool == GearTool ? Box(Cursor, 8, 56) : Box(Fit(Cursor), PlatformWidth), .6f);
             if (Tool != Erase && Tool != Spawn && !IsMechanism(Tool)) frame.Fill(cx, cy, 8, 8, color, .35f);
+            if (Turns(KindOf(Tool))) frame.Blit(toolIcons[Tool], cx, cy, color, 1, .9f);
             frame.Outline(cx - 1, cy - 1, 10, 10, PixelFrame.Light, .9f);
             // The opaque panel hides the cursor outline and previews that reach past the grid's edge.
             var panel = PanelIn(View);
@@ -288,11 +296,12 @@ namespace Phase
             for (int slot = 0; slot < SlotCount; slot++)
             {
                 var cell = SlotIn(View, slot); int x = cell.x + 2, y = cell.y + 2;
-                bool selected = slot < MaskSlot ? toolOrder[slot] == Tool : slot < ImportSlot && masks[slot - MaskSlot] == Mask;
+                bool selected = slot < MaskSlot ? kinds[slot] == KindOf(Tool) : slot < ImportSlot && masks[slot - MaskSlot] == Mask;
                 if (slot == Hover) frame.Fill(cell.x, cell.y, Pitch, Pitch, PixelFrame.Light, .2f);
-                if (slot < MaskSlot) frame.Blit(toolIcons[slot], x, y, toolOrder[slot] == Spawn || toolOrder[slot] == Erase || IsMechanism(toolOrder[slot]) ? PixelFrame.Light : color, 2, selected ? 1 : .45f);
+                if (slot < MaskSlot) frame.Blit(toolIcons[ToolFor(kinds[slot])], x, y, kinds[slot] == Spawn || kinds[slot] == Erase || IsMechanism(kinds[slot]) ? PixelFrame.Light : color, 2, selected ? 1 : .45f);
                 else if (slot < ImportSlot) frame.Fill(x, y, 14, 14, PhasePixels.SurfaceColor(masks[slot - MaskSlot]), selected ? 1 : .6f);
-                else frame.Blit(slot == ImportSlot ? importIcon : slot == ExportSlot ? arrowDown : slot == PlaySlot ? PhaseMenu.PlayIcon : backIcon, x, y, PixelFrame.Light, 2);
+                else if (slot < PlaySlot) frame.Blit(slot == ImportSlot ? importIcon : exportIcon, cell.x + 4, cell.y + 4, PixelFrame.Light);
+                else frame.Blit(slot == PlaySlot ? PhaseMenu.PlayIcon : backIcon, x, y, PixelFrame.Light, 2);
                 if (selected) frame.Outline(cell.x, cell.y, Pitch, Pitch, PixelFrame.Light);
             }
             if (flash > 0) frame.Warn();
@@ -301,14 +310,14 @@ namespace Phase
                 var wick = new Player(SpawnCell.x * 8, SpawnCell.y * 8);
                 frame.Fill((int)wick.x - ox, (int)wick.y - oy, (int)wick.w, (int)wick.h, PixelFrame.Warning, .5f);
                 frame.Outline((int)wick.x - ox - 1, (int)wick.y - oy - 1, (int)wick.w + 2, (int)wick.h + 2, PixelFrame.Warning);
-                var flag = SlotIn(View, Array.IndexOf(toolOrder, Spawn));
+                var flag = SlotIn(View, Array.IndexOf(kinds, Spawn));
                 frame.Outline(flag.x, flag.y, Pitch, Pitch, PixelFrame.Warning); frame.Outline(flag.x + 1, flag.y + 1, Pitch - 2, Pitch - 2, PixelFrame.Warning);
             }
             frame.Apply();
         }
         void Choose(int slot)
         {
-            if (slot < MaskSlot) Select(toolOrder[slot]);
+            if (slot < MaskSlot) Select(kinds[slot]);
             else if (slot < ImportSlot) Mask = masks[slot - MaskSlot];
             else if (slot == ImportSlot) RequestImport();
             else if (slot == ExportSlot) ExportDraft();
@@ -333,8 +342,12 @@ namespace Phase
                 if (k.escapeKey.wasPressedThisFrame) { if (!Cancel()) { Leave(); return; } changed = true; }
                 if (k.enterKey.wasPressedThisFrame || k.numpadEnterKey.wasPressedThisFrame) { StartPlaytest(); return; }
                 for (int i = 0; i < masks.Length; i++) if (k[Key.Digit1 + i].wasPressedThisFrame) { Mask = masks[i]; changed = true; }
-                if (PhaseSandbox.Pressed(k, 5, true)) { Select(toolOrder[(Array.IndexOf(toolOrder, Tool) + 1) % toolOrder.Length]); changed = true; }
-                var input = PhaseSandbox.ReadControls(k);
+                // R/E turn the tool even when bound to an action; that action waits until they are released.
+                if (k.rKey.wasPressedThisFrame) changed |= Rotate(1);
+                if (k.eKey.wasPressedThisFrame) changed |= Rotate(-1);
+                bool turning = k.rKey.isPressed || k.eKey.isPressed;
+                if (!turning && PhaseSandbox.Pressed(k, 5, true)) { Select(kinds[(Array.IndexOf(kinds, KindOf(Tool)) + 1) % kinds.Length]); changed = true; }
+                var input = turning ? default : PhaseSandbox.ReadControls(k);
                 var step = new Vector2Int(input.x, input.y);
                 if (step != Vector2Int.zero && (step != held || Time.unscaledTime >= repeatAt))
                 {
@@ -354,6 +367,8 @@ namespace Phase
                 int x = (p.x + pixels.OriginX) >> 3, y = (p.y + pixels.OriginY) >> 3;
                 bool onGrid = x >= 0 && x < Columns && y >= 0 && y < Rows;
                 if (slot != Hover) { Hover = slot; changed = true; }
+                float wheel = m.scroll.ReadValue().y;
+                if (wheel != 0) changed |= Rotate(wheel < 0 ? 1 : -1);
                 if (m.leftButton.wasPressedThisFrame || m.rightButton.wasPressedThisFrame) stroke = onGrid;
                 if (m.leftButton.wasPressedThisFrame && slot is int chosen) { Choose(chosen); return; }
                 if (onGrid && p != lastMouse) { Cursor = new Vector2Int(x, y); changed = true; }
