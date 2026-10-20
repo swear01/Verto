@@ -212,6 +212,59 @@ public static class PhaseSandboxBuilder
         RecordOverrides(root);
         EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), second ? "Assets/Scenes/PhaseRoom2.unity" : "Assets/Scenes/PhaseSandbox.unity");
     }
+    // Imports level-a and level-b and puts every playable scene, including the hand-authored color room, in the build.
+    public static string CreateImportedLevels()
+    {
+        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) throw new System.OperationCanceledException("Unsaved scenes were kept.");
+        var maps = new[] { ("Assets/Phase/Imported/level-a.json", "PhaseDemo13"), ("Assets/Phase/Imported/level-b.json", "PhaseDemo14") };
+        foreach (var (source, sceneName) in maps)
+        {
+            var room = PhaseCustomMap.Parse(System.IO.File.ReadAllText(source)); room.CreateController();
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            var root = new GameObject("PHASE"); root.AddComponent<Grid>().cellSize = new Vector3(8, 8, 1); root.AddComponent<PhaseGrid>(); var sandbox = root.AddComponent<PhaseSandbox>();
+            var camera = new GameObject("Camera").AddComponent<Camera>();
+            camera.orthographic = true; camera.orthographicSize = 90;
+            camera.clearFlags = CameraClearFlags.SolidColor; camera.backgroundColor = Color.black;
+            sandbox.pixelCamera = camera;
+            sandbox.pixelMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Phase/PixelSurface.mat");
+            sandbox.spawn = new Vector2Int((int)room.spawnX, (int)room.spawnY);
+            sandbox.checkpointOnEntry = true;
+            int level = System.Array.IndexOf(PhaseSandbox.Levels, sceneName);
+            if (level < 0) throw new System.InvalidOperationException(sceneName + " is not in the level list.");
+            sandbox.leftScene = level > 0 ? PhaseSandbox.Levels[level - 1] : "";
+            sandbox.rightScene = level < PhaseSandbox.Levels.Length - 1 ? PhaseSandbox.Levels[level + 1] : "";
+            foreach (var b in room.blocks) Add(root, "Terrain", (int)b.x, (int)b.y, (int)b.w, (int)b.h, b.phase, b.phaseMask);
+            foreach (var spike in room.CreateSpikes())
+            {
+                var go = PhaseMechanismPrefabs.Instantiate("Spikes", root.transform, new Vector3((float)spike.x, -(float)spike.y));
+                var teeth = go.GetComponent<PhaseSpike>(); teeth.direction = spike.direction; teeth.phaseMask = spike.Mask;
+                teeth.length = (int)(spike.direction == SpikeDirection.Up || spike.direction == SpikeDirection.Down ? spike.w : spike.h) / 8;
+            }
+            foreach (var laser in room.CreateLasers())
+            {
+                var go = PhaseMechanismPrefabs.Instantiate("Laser", root.transform, new Vector3((float)laser.x, -(float)laser.y));
+                var emitter = go.GetComponent<PhaseLaser>(); emitter.direction = laser.direction; emitter.phaseMask = laser.Mask;
+            }
+            string path = "Assets/Scenes/" + sceneName + ".unity";
+            RecordOverrides(root);
+            EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), path);
+        }
+        var scenes = new System.Collections.Generic.List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
+        var kept = new System.Collections.Generic.List<EditorBuildSettingsScene>();
+        foreach (var scene in scenes)
+        {
+            string name = System.IO.Path.GetFileNameWithoutExtension(scene.path);
+            if (scene.path == "Assets/Scenes/PhaseTitle.unity" || scene.path == "Assets/Scenes/PhaseEditor.unity" || System.Array.IndexOf(PhaseSandbox.Levels, name) >= 0) continue;
+            kept.Add(scene);
+        }
+        var ordered = new System.Collections.Generic.List<EditorBuildSettingsScene> { new EditorBuildSettingsScene("Assets/Scenes/PhaseTitle.unity", true) };
+        foreach (var level in PhaseSandbox.Levels) ordered.Add(new EditorBuildSettingsScene("Assets/Scenes/" + level + ".unity", true));
+        ordered.AddRange(kept);
+        ordered.Add(new EditorBuildSettingsScene("Assets/Scenes/PhaseEditor.unity", true));
+        EditorBuildSettings.scenes = ordered.ToArray();
+        AssetDatabase.SaveAssets();
+        return string.Join(",", System.Array.ConvertAll(maps, m => m.Item2));
+    }
     static void RecordOverrides(GameObject root)
     {
         foreach (var component in root.GetComponentsInChildren<Component>())

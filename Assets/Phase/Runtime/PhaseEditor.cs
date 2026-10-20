@@ -17,7 +17,9 @@ namespace Phase
         // are placed in two steps, body then end, and are kept outside the cell grid.
         public const int Erase = 0, Terrain = 1, Spawn = 6, LaserTool = 7, CrystalTool = 11, LastTool = 12, ReturnPlatform = 13, PlatformTool = 14, GearTool = 15;
         static readonly int[] toolOrder = { Terrain, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, ReturnPlatform, PlatformTool, GearTool, Spawn, Erase }, masks = { 7, 1, 2, 4, 5, 3, 6 };
-        const int MaskSlot = 16, ImportSlot = 23, ExportSlot = 24, PlaySlot = 25, BackSlot = 26, SlotCount = 27, PlatformWidth = 24;
+        // Panel slots: 16 tools, 7 colors, then import, export, play and back.
+        public const int MaskSlot = 16, ImportSlot = 23, ExportSlot = 24, PlaySlot = 25, BackSlot = 26, SlotCount = 27;
+        const int PlatformWidth = 24;
         static readonly string[] spikeUp = { ".......", "...#...", "..###..", "..###..", ".#####.", ".#####.", "#######" },
             laserUp = { "...#...", "...#...", "...#...", ".#####.", ".#...#.", ".#.#.#.", ".#####." },
             arrowDown = { "...#...", "...#...", "...#...", "#..#..#", ".#.#.#.", "..###..", "...#..." };
@@ -44,10 +46,15 @@ namespace Phase
         public Vector2Int Cursor { get; private set; } = new Vector2Int(8, 18);
         public Vector2Int SpawnCell { get; private set; } = new Vector2Int(3, 19);
         public PhaseSandbox Playtest { get; private set; }
+        // The panel slot under the mouse.
+        public int? Hover { get; private set; }
         protected override bool Hidden => Playtest != null;
         Vector2Int held, lastMouse = new Vector2Int(-1, -1);
         float repeatAt, flash;
-        bool dirty, barPress;
+        // A mouse stroke paints or erases only when its press began on the grid.
+        bool dirty, stroke;
+        // A refused map whose spawn overlaps something: Wick's start and the flag slot blink with the border.
+        public bool SpawnBlocked { get; private set; }
 
         static string[] Turn(string[] art) => Enumerable.Range(0, 7).Select(r => new string(Enumerable.Range(0, 7).Select(c => art[c][r]).ToArray())).ToArray();
         static string[] Mirror(string[] art) => art.Select(r => new string(r.Reverse().ToArray())).ToArray();
@@ -178,22 +185,46 @@ namespace Phase
             tools[i] = (byte)tool; colors[i] = color; return dirty = true;
         }
 
-        // Two rows (tools; colors, files, play, back) stay left of the Web page's top-right buttons.
-        int BarTop => Cursor.y * 8 - pixels.OriginY < 32 ? pixels.Height - 29 : 3;
-        static int SlotX(int slot) => slot < MaskSlot ? 6 + slot * 11 : 6 + (slot - MaskSlot) * 11 + (slot >= ImportSlot ? 4 : 0) + (slot >= PlaySlot ? 4 : 0);
-        int SlotY(int slot) => BarTop + 3 + (slot < MaskSlot ? 0 : 12);
+        // A fixed panel of 2× icons sits right of the grid, or below it on tall screens, and never covers a cell.
+        const int Pitch = 18, Gap = 6, Pad = 4, SideW = Pad * 2 + 4 * Pitch, SideH = Pad * 2 + 7 * Pitch + 2 * Gap,
+            BelowTop = Rows * 8 + 4, BelowW = Pad * 2 + 16 * Pitch, BelowH = Pad * 2 + 2 * Pitch + Gap;
+        // The view keeps the screen's aspect and grows until the grid and panel fit; the layout with the larger grid wins.
+        public static Vector2Int ViewFor(int width, int height)
+        {
+            double w = Math.Max(1, width), h = Math.Max(1, height);
+            Vector2Int Fit(int minW, int minH) => new Vector2Int(Math.Max(minW, (int)Math.Floor(minH * w / h + .5)), Math.Max(minH, (int)Math.Ceiling(minW * h / w)));
+            // PhasePixels centers the 180-pixel play band, so the panel below the grid needs that much room under the band too.
+            Vector2Int side = Fit(Columns * 8 + SideW, 180), below = Fit(Columns * 8, 2 * (BelowTop + BelowH) - 180);
+            return side.x <= below.x ? side : below;
+        }
+        static bool Side(Vector2Int view) => view.x >= Columns * 8 + SideW;
+        // The grid's top row in the frame, as PhasePixels.OriginY places it.
+        static int GridTop(Vector2Int view) => -((180 - view.y) / 2);
+        public static RectInt PanelIn(Vector2Int view) => Side(view)
+            ? new RectInt(Columns * 8, GridTop(view) + (Rows * 8 - SideH) / 2, SideW, SideH)
+            : new RectInt((Columns * 8 - BelowW) / 2, GridTop(view) + BelowTop, BelowW, BelowH);
+        // The side panel stacks tools, colors and files/play/back in four columns; below the grid the tools fill
+        // one row and the colors share the next with files/play/back.
+        public static RectInt SlotIn(Vector2Int view, int slot)
+        {
+            var panel = PanelIn(view);
+            int group = slot < MaskSlot ? 0 : slot < ImportSlot ? 1 : 2, i = slot - (group == 0 ? 0 : group == 1 ? MaskSlot : ImportSlot);
+            var cell = Side(view) ? new Vector2Int(i % 4 * Pitch, (new[] { 0, 4, 6 }[group] + i / 4) * Pitch + group * Gap)
+                : new Vector2Int(group == 2 ? (7 + i) * Pitch + Gap : i * Pitch, group == 0 ? 0 : Pitch + Gap);
+            return new RectInt(panel.x + Pad + cell.x, panel.y + Pad + cell.y, Pitch, Pitch);
+        }
+        protected override Vector2Int ViewSize(int width, int height) => ViewFor(width, height);
+        Vector2Int View => new Vector2Int(pixels.Width, pixels.Height);
         int? Slot(Vector2Int p)
         {
-            for (int slot = 0; slot < SlotCount; slot++)
-                if (p.x >= SlotX(slot) - 2 && p.x < SlotX(slot) + 9 && p.y >= SlotY(slot) - 2 && p.y < SlotY(slot) + 9) return slot;
+            for (int slot = 0; slot < SlotCount; slot++) if (SlotIn(View, slot).Contains(p)) return slot;
             return null;
         }
         protected override void Render()
         {
             var room = Room();
-            var view = new PhaseController(room.blocks, room.spawnX, room.spawnY, room.CreatePlatforms(), room.CreateGears(), room.CreateSpikes(), room.CreateLasers(), room.CreateCrystals());
-            view.ResizeRoom(pixels.Width);
-            pixels.Draw(view);
+            // The room keeps its 320-pixel width, so the floor stops at the grid's edge.
+            pixels.Draw(new PhaseController(room.blocks, room.spawnX, room.spawnY, room.CreatePlatforms(), room.CreateGears(), room.CreateSpikes(), room.CreateLasers(), room.CreateCrystals()));
             var frame = new PixelFrame(pixels.Texture);
             Color32 color = PhasePixels.SurfaceColor(Mask);
             int cx = Cursor.x * 8 - pixels.OriginX, cy = Cursor.y * 8 - pixels.OriginY;
@@ -221,16 +252,27 @@ namespace Phase
             else if (IsMechanism(Tool)) Body(Tool == GearTool ? Box(Cursor, 8, 56) : Box(Cursor, PlatformWidth), .6f);
             if (Tool != Erase && Tool != Spawn && !IsMechanism(Tool)) frame.Fill(cx, cy, 8, 8, color, .35f);
             frame.Outline(cx - 1, cy - 1, 10, 10, PixelFrame.Light, .9f);
-            if (flash > 0) frame.Warn();
-            frame.Fill(2, BarTop, SlotX(MaskSlot - 1) + 9, 26, PixelFrame.Ink, .85f);
+            // The opaque panel hides the cursor outline and previews that reach past the grid's edge.
+            var panel = PanelIn(View);
+            frame.Fill(panel.x, panel.y, panel.width, panel.height, PixelFrame.Ink);
             for (int slot = 0; slot < SlotCount; slot++)
             {
-                int x = SlotX(slot), y = SlotY(slot);
+                var cell = SlotIn(View, slot); int x = cell.x + 2, y = cell.y + 2;
                 bool selected = slot < MaskSlot ? toolOrder[slot] == Tool : slot < ImportSlot && masks[slot - MaskSlot] == Mask;
-                if (slot < MaskSlot) frame.Blit(toolIcons[slot], x, y, toolOrder[slot] == Spawn || toolOrder[slot] == Erase || IsMechanism(toolOrder[slot]) ? PixelFrame.Light : color, amount: selected ? 1 : .45f);
-                else if (slot < ImportSlot) frame.Fill(x, y, 7, 7, PhasePixels.SurfaceColor(masks[slot - MaskSlot]), selected ? 1 : .6f);
-                else frame.Blit(slot == ImportSlot ? importIcon : slot == ExportSlot ? arrowDown : slot == PlaySlot ? PhaseMenu.PlayIcon : backIcon, x, y, PixelFrame.Light);
-                if (selected) frame.Outline(x - 2, y - 2, 11, 11, PixelFrame.Light);
+                if (slot == Hover) frame.Fill(cell.x, cell.y, Pitch, Pitch, PixelFrame.Light, .2f);
+                if (slot < MaskSlot) frame.Blit(toolIcons[slot], x, y, toolOrder[slot] == Spawn || toolOrder[slot] == Erase || IsMechanism(toolOrder[slot]) ? PixelFrame.Light : color, 2, selected ? 1 : .45f);
+                else if (slot < ImportSlot) frame.Fill(x, y, 14, 14, PhasePixels.SurfaceColor(masks[slot - MaskSlot]), selected ? 1 : .6f);
+                else frame.Blit(slot == ImportSlot ? importIcon : slot == ExportSlot ? arrowDown : slot == PlaySlot ? PhaseMenu.PlayIcon : backIcon, x, y, PixelFrame.Light, 2);
+                if (selected) frame.Outline(cell.x, cell.y, Pitch, Pitch, PixelFrame.Light);
+            }
+            if (flash > 0) frame.Warn();
+            if (SpawnBlocked && (int)(flash * 6) % 2 == 0)
+            {
+                var wick = new Player(SpawnCell.x * 8, SpawnCell.y * 8);
+                frame.Fill((int)wick.x - ox, (int)wick.y - oy, (int)wick.w, (int)wick.h, PixelFrame.Warning, .5f);
+                frame.Outline((int)wick.x - ox - 1, (int)wick.y - oy - 1, (int)wick.w + 2, (int)wick.h + 2, PixelFrame.Warning);
+                var flag = SlotIn(View, Array.IndexOf(toolOrder, Spawn));
+                frame.Outline(flag.x, flag.y, Pitch, Pitch, PixelFrame.Warning); frame.Outline(flag.x + 1, flag.y + 1, Pitch - 2, Pitch - 2, PixelFrame.Warning);
             }
             frame.Apply();
         }
@@ -238,12 +280,14 @@ namespace Phase
         {
             if (slot < MaskSlot) Select(toolOrder[slot]);
             else if (slot < ImportSlot) Mask = masks[slot - MaskSlot];
-            else if (slot == ImportSlot) { RequestImport(); return; }
-            else if (slot == ExportSlot) { ExportDraft(); return; }
+            else if (slot == ImportSlot) RequestImport();
+            else if (slot == ExportSlot) ExportDraft();
             else if (slot == PlaySlot) { StartPlaytest(); return; }
             else { Leave(); return; }
             Refresh();
         }
+        // Every spawn refusal in PhaseCustomMap.Validate names 出生點 (the spawn).
+        void Refuse(ArgumentException error) { flash = 1.2f; SpawnBlocked = error.Message.Contains("出生點"); Refresh(); }
         void Leave() { if (dirty) Save(); Open(PhaseTitle.Scene); }
         protected override void Tick(Keyboard k, Mouse m)
         {
@@ -253,7 +297,7 @@ namespace Phase
                 return;
             }
             bool changed = false, painting = false;
-            if (flash > 0) { flash -= Time.unscaledDeltaTime; changed = true; }
+            if (flash > 0) { flash -= Time.unscaledDeltaTime; SpawnBlocked &= flash > 0; changed = true; }
             if (k != null)
             {
                 if (k.escapeKey.wasPressedThisFrame) { if (!Cancel()) { Leave(); return; } changed = true; }
@@ -277,17 +321,19 @@ namespace Phase
             if (m != null)
             {
                 var p = FramePoint(m); var slot = Slot(p);
-                if (m.leftButton.wasPressedThisFrame) { barPress = slot != null; if (slot is int chosen) { Choose(chosen); return; } }
                 int x = (p.x + pixels.OriginX) >> 3, y = (p.y + pixels.OriginY) >> 3;
-                bool onGrid = slot == null && x >= 0 && x < Columns && y >= 0 && y < Rows;
+                bool onGrid = x >= 0 && x < Columns && y >= 0 && y < Rows;
+                if (slot != Hover) { Hover = slot; changed = true; }
+                if (m.leftButton.wasPressedThisFrame || m.rightButton.wasPressedThisFrame) stroke = onGrid;
+                if (m.leftButton.wasPressedThisFrame && slot is int chosen) { Choose(chosen); return; }
                 if (onGrid && p != lastMouse) { Cursor = new Vector2Int(x, y); changed = true; }
                 lastMouse = p;
-                if (onGrid && m.leftButton.isPressed && !barPress)
+                if (onGrid && stroke && m.leftButton.isPressed)
                 {
                     if (!IsMechanism(Tool)) { painting = true; changed |= Apply(Cursor, Tool); }
                     else if (m.leftButton.wasPressedThisFrame) changed |= Place(Cursor);
                 }
-                else if (onGrid && m.rightButton.isPressed) { painting = true; changed |= Cancel() || Apply(Cursor, Erase); }
+                else if (onGrid && stroke && m.rightButton.isPressed) { painting = true; changed |= Cancel() || Apply(Cursor, Erase); }
             }
             if (dirty && !painting) Save();
             if (changed) Refresh();
@@ -297,7 +343,7 @@ namespace Phase
         {
             var room = Room();
             try { PhaseCustomMap.Validate(room); }
-            catch (ArgumentException) { flash = .4f; Refresh(); return false; }
+            catch (ArgumentException error) { Refuse(error); return false; }
             string json = PhaseCustomMap.ToJson(room);
 #if UNITY_WEBGL && !UNITY_EDITOR
             PhaseExportMap(json);
@@ -340,7 +386,7 @@ namespace Phase
             Anchor = null;
             var room = Room();
             try { PhaseCustomMap.Validate(room); }
-            catch (ArgumentException) { flash = .4f; Refresh(); return false; }
+            catch (ArgumentException error) { Refuse(error); return false; }
             Play(room); return true;
         }
         void Play(PhaseDemoRoom room)
