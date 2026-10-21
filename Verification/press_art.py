@@ -1,7 +1,7 @@
-"""Draws PHASE's press art: the icon, the itch.io cover and the link-preview banner.
+"""Draws Verto's press art: the icon, the itch.io cover and the link-preview banner.
 
 Everything is pixel art drawn at native size and enlarged without smoothing. The motif is the
-game's phase shift: a light letterform trailed by red, blue and green echoes, on the game's
+game's color shift: a light letterform trailed by red, blue and green echoes, on the game's
 night-sky palette. Run from the repository root: python3 Verification/press_art.py
 """
 import re
@@ -11,24 +11,12 @@ INK, RIM, LIGHT = (11, 15, 22, 255), (42, 57, 76, 255), (234, 223, 197, 255)
 RED, BLUE, GREEN = (255, 143, 145, 255), (121, 201, 255, 255), (120, 216, 146, 255)
 SKY = [(10, 16, 24, 255), (12, 19, 29, 255), (14, 21, 32, 255), (16, 26, 38, 255), (18, 30, 43, 255)]
 STARS = [(42, 57, 76, 255), (60, 78, 100, 255)]
-P_GLYPH = [
-    "###########...",
-    "############..",
-    "#############.",
-    "##############",
-    "####......####",
-    "####......####",
-    "####......####",
-    "####......####",
-    "##############",
-    "#############.",
-    "############..",
-    "###########...",
-] + ["####.........."] * 8
+V_GLYPH = (["####......####"] * 6 + [".####....####."] * 3 + ["..####..####.."] * 3
+           + ["...########..."] * 3 + ["....######...."] * 2 + [".....####....."] * 2 + ["......##......"])
 
 
 def title_glyph():
-    """The in-game PHASE title art, read from PhaseTitle.cs so both stay identical."""
+    """The in-game Verto title art, read from PhaseTitle.cs so both stay identical."""
     source = open("Assets/Phase/Runtime/PhaseTitle.cs", encoding="utf-8").read()
     block = source[source.index("titleText = {"):]
     return re.findall(r'"([#.]+)"', block[:block.index("};")])
@@ -119,7 +107,7 @@ def icon():
             if inside(x, y):
                 rim = not all(inside(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
                 image.putpixel((x, y), RIM if rim else INK)
-    echo_mark(image, P_GLYPH, 13, 4, 2)
+    echo_mark(image, V_GLYPH, 13, 4, 2)
     return image
 
 

@@ -54,7 +54,7 @@ const server=http.createServer((req,res)=>{
   }
   const gameJson='{"name":"in-game"}',gameDownload=page.waitForEvent('download');
   await page.evaluate(json=>dispatchEvent(new CustomEvent('phase-map-export',{detail:{json}})),gameJson);
-  const gameFile=await gameDownload;assert.equal(gameFile.suggestedFilename(),'phase-custom-map.json');
+  const gameFile=await gameDownload;assert.equal(gameFile.suggestedFilename(),'verto-custom-map.json');
   assert.equal(fs.readFileSync(await gameFile.path(),'utf8'),gameJson,'in-game export saves Unity JSON unchanged');
   const gameChooser=page.waitForEvent('filechooser');await page.evaluate(()=>dispatchEvent(new CustomEvent('phase-map-import')));
   await (await gameChooser).setFiles({name:'in-game.json',mimeType:'application/json',buffer:Buffer.from(gameJson)});

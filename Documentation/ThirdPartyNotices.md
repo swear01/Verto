@@ -1,6 +1,6 @@
 # References
 
-PHASE controller is ported from the local three-color HTML prototype
+The controller is ported from the local three-color HTML prototype
 (SHA-256 `263b80ae0014b042603f5ec44b6a42b3216142b6e6ad25e1978d5ac8be598934`).
 The current Wick character, connected stone terrain, riveted platform and night
 backdrop are ported from the user's [published demo](https://phase-three-color.swear01.chatgpt.site/).
@@ -9,7 +9,7 @@ The renderer SHA-256 is `b7178e0f6c0a613a10a92d276a2b6f9c37db75420a0ec3426545042
 The user-requested character revision enlarges the phase-colored eyes and
 moves the progressive fatigue tint/shake onto the helmet, keeping the cloak
 bone white. The scarf independently shows dash charge. A45px/s exhausted-grab
-slide and neutral high-speed landing dust are PHASE-specific tuning.
+slide and neutral high-speed landing dust are project-specific tuning.
 Permanent stone, moving platforms, routes and stops use white and gray at the
 user's request. The immutable reference images remain unchanged; pixel tests
 check terrain and mechanisms outside the revised character, while separate

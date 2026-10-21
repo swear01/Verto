@@ -1,5 +1,5 @@
 ---
-name: PHASE
+name: Verto
 description: 忠實移植示範版的月夜染色採石場
 colors:
   ink: "#0b0f16"
@@ -29,7 +29,7 @@ colors:
   night-top: "#0a1018"
   night-bottom: "#121e2b"
 ---
-# PHASE 美術
+# Verto 美術
 
 ## Overview
 

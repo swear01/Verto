@@ -50,7 +50,7 @@ follows that resize like any other. Loading failures remain visible.
 Level select, pause and keyboard bindings are in-game screens, the same as in native
 builds (see [Development](Development.md)). Opening level select or settings replaces the
 screen behind it. Both scale by whole pixels so the screen fills most of the view; each
-level tile is a thumbnail of that room. The build opens on the PHASE title; its icons
+level tile is a thumbnail of that room. The build opens on the Verto title; its icons
 start level1, open the level select, the in-game level editor or settings (key bindings
 and fullscreen). Escape in a level pauses. Bindings are stored with Unity PlayerPrefs (`phase.keys.v1`) in this
 browser's IndexedDB; bindings saved by the old page dialog (`phase.controls.v2`) are not

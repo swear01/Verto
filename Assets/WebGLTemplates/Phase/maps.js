@@ -12,7 +12,7 @@ function setupMaps(instance, gameCanvas) {
   // The in-game editor's export and import icons; Unity validates the file and flashes on failure.
   addEventListener('phase-map-export',event=>{
     const url=URL.createObjectURL(new Blob([event.detail.json],{type:'application/json'})),a=document.createElement('a');
-    a.href=url;a.download='phase-custom-map.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    a.href=url;a.download='verto-custom-map.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   });
   addEventListener('phase-map-import',()=>{
     const input=document.createElement('input');input.type='file';input.accept='application/json,.json';
