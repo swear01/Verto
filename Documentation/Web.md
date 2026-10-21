@@ -1,7 +1,7 @@
 # Web preview
 
-[Play online](https://phase-gamejam1-20261016.swear01.chatgpt.site). This is a
-manually published eight-room demo; automatic CI/Pages still needs the owner
+[Play online](https://verto.5334601.xyz). This is a
+manually published Cloudflare Pages preview; automatic CI/Pages still needs the owner
 setup below.
 
 Unity **6000.4.7f1**, Web Build Support and Unity CLI are required. Open the GUI
