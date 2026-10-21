@@ -331,7 +331,8 @@ namespace Phase
                 bool turning = k.rKey.isPressed || k.eKey.isPressed || k.xKey.isPressed;
                 if (k.xKey.wasPressedThisFrame) { Select(kinds[(Array.IndexOf(kinds, KindOf(Tool)) + 1) % kinds.Length]); changed = true; }
                 var input = turning ? default : PhaseSandbox.ReadControls(k);
-                var step = new Vector2Int(input.x, input.y);
+                // Up and down are not bindable, so the cursor takes them from the arrow keys.
+                var step = new Vector2Int(input.x, turning ? 0 : (k.downArrowKey.isPressed ? 1 : 0) - (k.upArrowKey.isPressed ? 1 : 0));
                 if (step != Vector2Int.zero && (step != held || Time.unscaledTime >= repeatAt))
                 {
                     repeatAt = Time.unscaledTime + (step != held ? .25f : .06f);

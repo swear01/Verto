@@ -59,10 +59,10 @@ public static class KeysLiveInput
 
             await Repeat(keyboard, Key.RightArrow, 3); await Tap(keyboard, Key.Enter);
             Require(title.Keys != null, "The gear did not open settings.");
-            await Repeat(keyboard, Key.DownArrow, 4); await Tap(keyboard, Key.Enter); await Tap(keyboard, Key.J);
-            Require(PhaseSandbox.Slots[8] == "J" && PlayerPrefs.GetString(PhaseSandbox.ControlsKey).Split(',')[8] == "J", "J was not bound and saved to jump.");
+            await Repeat(keyboard, Key.DownArrow, 2); await Tap(keyboard, Key.Enter); await Tap(keyboard, Key.J);
+            Require(PhaseSandbox.Slots[4] == "J" && PlayerPrefs.GetString(PhaseSandbox.ControlsKey).Split(',')[4] == "J", "J was not bound and saved to jump.");
             await Tap(keyboard, Key.RightArrow); await Tap(keyboard, Key.Enter); await Tap(keyboard, Key.J);
-            Require(title.Keys.Flashing && PhaseSandbox.Slots[9] == "Space", "A duplicate key was not rejected.");
+            Require(title.Keys.Flashing && PhaseSandbox.Slots[5] == "Space", "A duplicate key was not rejected.");
             Capture(title, "keys-rejected");
             await Task.Delay(500); await Frames(2);
             Capture(title, "keys");

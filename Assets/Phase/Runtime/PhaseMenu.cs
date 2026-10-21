@@ -37,7 +37,7 @@ namespace Phase
         public int Tick(Keyboard k, Mouse m, Vector2Int frameSize, int middle, out bool changed, int scale = 1)
         {
             changed = false;
-            int x = Step(k, 0, 1);
+            int x = Horizontal(k);
             if (x != 0 && Choice + x >= 0 && Choice + x < icons.Length) { Choice += x; changed = true; }
             int over = -1;
             if (m != null && Screen.width > 0 && Screen.height > 0)
@@ -56,17 +56,13 @@ namespace Phase
             var p = m.position.ReadValue();
             return new Vector2Int(Mathf.FloorToInt(p.x / Screen.width * frameSize.x), Mathf.FloorToInt((1 - p.y / Screen.height) * frameSize.y));
         }
-        // -1, 0 or 1 from this frame's presses of two movement actions (0 left, 1 right, 2 up, 3 down) or their arrows;
+        // -1, 0 or 1 from this frame's presses: left/right come from their bindings or arrows, up/down from the arrows alone;
         // a tap shorter than a frame still counts.
-        public static int Step(Keyboard k, int less, int more)
-        {
-            if (k == null) return 0;
-            bool horizontal = less == 0;
-            bool down(int action, KeyControl arrow) => PhaseSandbox.Pressed(k, action, true) || arrow.wasPressedThisFrame;
-            return (down(more, horizontal ? k.rightArrowKey : k.downArrowKey) ? 1 : 0) - (down(less, horizontal ? k.leftArrowKey : k.upArrowKey) ? 1 : 0);
-        }
+        public static int Horizontal(Keyboard k) => k == null ? 0 :
+            (PhaseSandbox.Pressed(k, 1, true) || k.rightArrowKey.wasPressedThisFrame ? 1 : 0) - (PhaseSandbox.Pressed(k, 0, true) || k.leftArrowKey.wasPressedThisFrame ? 1 : 0);
+        public static int Vertical(Keyboard k) => k == null ? 0 : (k.downArrowKey.wasPressedThisFrame ? 1 : 0) - (k.upArrowKey.wasPressedThisFrame ? 1 : 0);
         public static bool Confirmed(Keyboard k) =>
-            k != null && (PhaseSandbox.Pressed(k, 4, true) || k.enterKey.wasPressedThisFrame || k.numpadEnterKey.wasPressedThisFrame);
+            k != null && (PhaseSandbox.Pressed(k, 2, true) || k.enterKey.wasPressedThisFrame || k.numpadEnterKey.wasPressedThisFrame);
     }
 
     // Level select: a grid of room thumbnails numbered in pixel digits; every level is always available.
@@ -104,7 +100,7 @@ namespace Phase
             var (columns, zoom) = Layout(frameSize);
             if (k != null)
             {
-                int column = Choice % columns + PhaseMenu.Step(k, 0, 1), row = Choice / columns + PhaseMenu.Step(k, 2, 3);
+                int column = Choice % columns + PhaseMenu.Horizontal(k), row = Choice / columns + PhaseMenu.Vertical(k);
                 if (column >= 0 && column < columns && row >= 0 && row * columns + column < Count) Choice = row * columns + column;
             }
             if (m != null && m.leftButton.wasPressedThisFrame)
@@ -139,24 +135,24 @@ namespace Phase
         }
     }
 
-    // Settings: five action rows (left, right, up, down, jump) with two key slots each, restore defaults, the fullscreen switch and close.
+    // Settings: three action rows (left, right, jump) with two key slots each, restore defaults, the fullscreen switch and close.
     // Arrows move; Enter, jump or a click captures the next key or uses the control; Backspace clears; Escape cancels or closes.
     public sealed class PhaseKeys
     {
-        public const int RestoreRow = 5, FullScreenRow = 6, BackRow = 7;
+        public const int RestoreRow = 3, FullScreenRow = 4, BackRow = 5;
         static readonly string[] fullScreenIcon = { "###.....###", "###.....###", "#.........#", "...........", "...........", "...........", "...........", "...........", "#.........#", "###.....###", "###.....###" };
         // Unity applies Screen.fullScreen natively and, within the confirming key or click, on Web; the Editor ignores it, so tests swap these.
         public static System.Func<bool> IsFullScreen = () => Screen.fullScreen;
         public static System.Action<bool> SetFullScreen = on => Screen.fullScreen = on;
-        static readonly string[] arrowLeft = { "...#...", "..#....", ".#.....", "#######", ".#.....", "..#....", "...#..." },
-            arrowDown = { "...#...", "...#...", "...#...", "#..#..#", ".#.#.#.", "..###..", "...#..." };
+        static readonly string[] arrowLeft = { "...#...", "..#....", ".#.....", "#######", ".#.....", "..#....", "...#..." };
         static readonly string[][] actionIcons = {
-            arrowLeft, arrowLeft.Select(r => new string(r.Reverse().ToArray())).ToArray(), arrowDown.Reverse().ToArray(), arrowDown,
+            arrowLeft, arrowLeft.Select(r => new string(r.Reverse().ToArray())).ToArray(),
             new[] { "...#...", "..#.#..", ".#...#.", "...#...", "..#.#..", ".#...#.", "#######" }
         };
         // Bindable key names (Unity Key names, plus Shift for both Shift keys) and their key-cap labels.
+        // Up and down arrows stay reserved for menu and editor navigation.
         public static readonly Dictionary<string, string> Labels = new Dictionary<string, string> {
-            ["LeftArrow"] = "←", ["RightArrow"] = "→", ["UpArrow"] = "↑", ["DownArrow"] = "↓",
+            ["LeftArrow"] = "←", ["RightArrow"] = "→",
             ["Space"] = "SPACE", ["Shift"] = "SHIFT", ["Enter"] = "ENTER", ["Backspace"] = "BKSP",
             ["Comma"] = ",", ["Period"] = ".", ["Slash"] = "/", ["Semicolon"] = ";", ["Quote"] = "'", ["LeftBracket"] = "[",
             ["RightBracket"] = "]", ["Backslash"] = "\\", ["Backquote"] = "`", ["Minus"] = "-", ["Equals"] = "="
@@ -166,7 +162,7 @@ namespace Phase
             for (char c = 'A'; c <= 'Z'; c++) Labels[c.ToString()] = c.ToString();
             for (char c = '0'; c <= '9'; c++) Labels["Digit" + c] = c.ToString();
         }
-        const int CapWidth = 25, Pitch = 11, PageWidth = 67, PageHeight = 106;
+        const int CapWidth = 25, Pitch = 11, PageWidth = 67, PageHeight = 84;
         public int Row { get; private set; }
         public int Column { get; private set; }
         public bool Capturing { get; private set; }
@@ -179,9 +175,9 @@ namespace Phase
         static RectInt Cell(int row, int column) => row switch
         {
             < RestoreRow => new RectInt(13 + column * (CapWidth + 4), row * Pitch, CapWidth, 9),
-            RestoreRow => new RectInt(26, 57, 15, 15),
-            FullScreenRow => new RectInt(17, 74, 32, 15),
-            _ => new RectInt(26, 91, 15, 15)
+            RestoreRow => new RectInt(26, 35, 15, 15),
+            FullScreenRow => new RectInt(17, 52, 32, 15),
+            _ => new RectInt(26, 69, 15, 15)
         };
         // The same in frame pixels.
         public static RectInt Area(Vector2Int frame, int row, int column) => Page(frame).Frame(Cell(row, column));
@@ -200,7 +196,7 @@ namespace Phase
                 return false;
             }
             if (k.escapeKey.wasPressedThisFrame) return true;
-            int vertical = PhaseMenu.Step(k, 2, 3), horizontal = PhaseMenu.Step(k, 0, 1);
+            int vertical = PhaseMenu.Vertical(k), horizontal = PhaseMenu.Horizontal(k);
             if (vertical < 0) Row = Mathf.Max(0, Row - 1);
             if (vertical > 0) Row = Mathf.Min(BackRow, Row + 1);
             if (horizontal < 0) Column = 0;

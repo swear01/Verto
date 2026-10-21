@@ -41,17 +41,17 @@ namespace Phase
 
     public struct Controls
     {
-        public int x, y;
+        public int x;
         public bool jump, jumpHeld;
     }
 
     public sealed class Player : Block
     {
         public double vx, vy, coyote = .1, buffer, remX, remY;
-        public double wallLock, slide, maxFall = 160, retention, retained;
+        public double wallLock, slide, retention, retained;
         public double varTime, varSpeed = -105;
         public int facing = 1, airJump, wall, forceX;
-        public bool grounded = true, ducking;
+        public bool grounded = true;
         public Player(double x, double y) : base(x, y, 8, 11) { }
     }
 
@@ -240,18 +240,10 @@ namespace Phase
             Burst(player.x + 4, player.y + 5, phase);
             CheckInteractions();
         }
-        static bool Duck(Player p, List<Block> solids, bool value)
-        {
-            if (p.ducking == value) return true;
-            double h = value ? 6 : 11, y = p.y + p.h - h;
-            if (!value && solids.Any(b => Overlap(new Block(p.x, y, p.w, h), b))) return false;
-            p.y = y; p.h = h; p.ducking = value; return true;
-        }
         // A wall jump pushes away from the wall and briefly locks steering toward it.
         void Jump(int wall, Controls input, bool airborne = false)
         {
             var p = player;
-            if (wall != 0 && !Duck(p, Solid(), false)) return;
             airJumpRequested = false;
             if (airborne) p.airJump = 0;
             if (wall != 0)
@@ -289,21 +281,19 @@ namespace Phase
                 else if (WallAt(p, solids, Math.Sign(p.retained), 1) == 0) { p.vx = p.retained; p.retention = 0; }
                 else p.retention = Math.Max(0, p.retention - dt);
             }
-            if (p.grounded) Duck(p, solids, input.y == 1);
             double mult = p.grounded ? 1 : .65, acceleration = Math.Abs(p.vx) > 90 && Math.Sign(p.vx) == move ? 400 : 1000;
-            p.vx = p.ducking && p.grounded ? Approach(p.vx, 0, 500 * dt) : Approach(p.vx, move * 90, acceleration * mult * dt);
+            p.vx = Approach(p.vx, move * 90, acceleration * mult * dt);
             if (move != 0) p.facing = move;
-            p.maxFall = Approach(p.maxFall, input.y > 0 && p.vy >= 160 ? 240 : 160, 300 * dt); double maxFall = p.maxFall;
+            double maxFall = 160;
             // Pressing into a wall while falling slides down it, slowly at first.
             int slide = WallAt(p, solids, p.facing, 1);
-            if (slide == p.facing && move == p.facing && p.vy >= 0 && input.y != 1 && p.slide < 1.2)
+            if (slide == p.facing && move == p.facing && p.vy >= 0 && p.slide < 1.2)
             { maxFall = 20 + (160 - 20) * p.slide / 1.2; p.slide += dt; }
             if (!p.grounded) { double gravity = Math.Abs(p.vy) < 40 && input.jumpHeld ? 450 : 900; p.vy = Approach(p.vy, maxFall, gravity * dt); }
             if (p.varTime > 1e-9) { if (input.jumpHeld) p.vy = Math.Min(p.vy, p.varSpeed); else p.varTime = 0; }
             if (p.buffer > 0 && (p.coyote > 0 || contact != 0)) { var jumpInput = input; jumpInput.x = move; Jump(p.coyote > 0 ? 0 : contact, jumpInput); }
             else if (airJumpRequested && !airJumpCollected && p.airJump > 0 && !p.grounded) Jump(0, input, true);
             if (respawn > 0 || CheckHazards()) return;
-            if (p.vy > 0 && !p.grounded && p.ducking) Duck(p, Solid(), false);
             p.remX += p.vx * dt; int moveX = PixelRound(p.remX); p.remX -= moveX;
             bool hitX = false;
             for (int n = 0; n < Math.Abs(moveX) && !hitX; n++)
