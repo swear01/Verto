@@ -115,6 +115,7 @@ namespace Phase
                 sandbox.pixelCamera = camera; sandbox.pixelMaterial = material;
                 sandbox.spawn = new Vector2Int((int)room.spawnX,(int)room.spawnY);
                 sandbox.checkpointOnEntry = true;
+                sandbox.roomSize = new Vector2Int(room.GridWidth,room.RoomHeight);
                 ClearTravel();
                 root.SetActive(true);
                 if (sandbox.Controller == null || sandbox.Frame == null) throw new InvalidOperationException("自訂地圖載入失敗。");

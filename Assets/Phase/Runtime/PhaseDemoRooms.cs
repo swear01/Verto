@@ -27,6 +27,12 @@ namespace Phase
         // Custom maps hold any number of platforms and gears; built-in rooms keep the single mover and gear above.
         public DemoPlatform[] platforms;
         public DemoGear[] gears;
+        // Custom maps may be larger than one screen; 0 keeps the default 320×176 grid.
+        public int width, height;
+        public int GridWidth => width != 0 ? width : 320;
+        public int GridHeight => height != 0 ? height : 176;
+        // A one-screen grid sits in the 320×180 view; a taller one is its own height.
+        public int RoomHeight => Math.Max(180, GridHeight);
 
         public MovingPlatform CreateMover()
         {
@@ -53,7 +59,7 @@ namespace Phase
             var gear = CreateGear(); var mover = CreateMover();
             return new PhaseController(blocks.Select(b => new Block(b.x,b.y,b.w,b.h,b.phase,b.phaseMask)), spawnX, spawnY,
                 (mover == null ? CreatePlatforms() : CreatePlatforms().Prepend(mover)), gears: gear == null ? CreateGears() : CreateGears().Prepend(gear),
-                spikes: CreateSpikes(), lasers: CreateLasers(), crystals: CreateCrystals());
+                spikes: CreateSpikes(), lasers: CreateLasers(), crystals: CreateCrystals(), width: GridWidth, height: RoomHeight);
         }
     }
     [Serializable]

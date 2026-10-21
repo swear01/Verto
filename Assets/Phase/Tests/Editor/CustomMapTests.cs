@@ -125,6 +125,45 @@ public class CustomMapTests
         controller.Step(new Controls());
         Assert.That(controller.crystals[0].collected,Is.True,"the spawn crystal is collected at once");Assert.That(controller.deaths,Is.Zero);
     }
+    [Test]
+    public void LargeRoomsRoundTripTheirSizeAndBoundObjectsByIt()
+    {
+        var map=Simple();
+        Assert.That(JObject.Parse(PhaseCustomMap.ToJson(map)).ContainsKey("width"),Is.False,"one-screen maps write no size");
+        Assert.That(map.CreateController().Height,Is.EqualTo(180),"a one-screen room keeps the 320x180 view");
+        map.width=640;map.height=360;
+        map.blocks=new[]{new Block(0,168,320,8,phaseMask:7),new Block(600,344,40,8,phaseMask:7),new Block(320,0,8,8,phaseMask:2)};
+        map.crystals=new[]{new DemoCrystal{x=624,y=336,kind=CrystalKind.Jump,phaseMask=7}};
+        map.platforms=new[]{new DemoPlatform{nodeX=new double[]{400,400},nodeY=new double[]{304,200},returns=true}};
+        PhaseCustomMap.Validate(map);
+        string json=PhaseCustomMap.ToJson(map);var data=JObject.Parse(json);
+        Assert.That(data.Properties().Select(p=>p.Name).Take(3),Is.EqualTo(new[]{"name","width","height"}));
+        Assert.That(((int)data["width"],(int)data["height"]),Is.EqualTo((640,360)));
+        var parsed=PhaseCustomMap.Parse(json);
+        Assert.That((parsed.GridWidth,parsed.GridHeight),Is.EqualTo((640,360)));
+        Assert.That(PhaseCustomMap.ToJson(parsed),Is.EqualTo(json));
+        var controller=parsed.CreateController();
+        Assert.That((controller.Width,controller.Height),Is.EqualTo((640,360)));
+        Assert.That(controller.blocks.Count,Is.EqualTo(3));
+        var wide=JObject.Parse(PhaseCustomMap.ToJson(Simple()));wide["width"]=640;
+        Assert.That(PhaseCustomMap.Parse(wide.ToString()).GridHeight,Is.EqualTo(176),"an absent height is one screen");
+        Assert.That(Simple().CreateController().Width,Is.EqualTo(320));
+        foreach(var mutate in new Action<PhaseDemoRoom>[] {
+            m=>m.width=316,m=>m.width=312,m=>m.width=1288,m=>m.height=168,m=>m.height=728,m=>m.height=-8,
+            m=>m.blocks[1].x=608,m=>m.blocks[1].y=360,m=>m.spawnX=640,m=>m.spawnY=352,
+            m=>m.platforms[0].nodeX[1]=640,m=>m.crystals[0].x=640
+        }) {
+            var bad=Simple();bad.width=640;bad.height=360;bad.blocks=map.blocks.Select(b=>new Block(b.x,b.y,b.w,b.h,phaseMask:b.phaseMask)).ToArray();
+            bad.crystals=new[]{new DemoCrystal{x=624,y=336,kind=CrystalKind.Jump,phaseMask=7}};
+            bad.platforms=new[]{new DemoPlatform{nodeX=new double[]{400,400},nodeY=new double[]{304,200},returns=true}};
+            mutate(bad);Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Validate(bad));
+        }
+        foreach(var size in new JToken[]{316,312,1288,"640",640.5,0})
+        {
+            var bad=JObject.Parse(json);bad["width"]=size;
+            Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(bad.ToString()),size.ToString());
+        }
+    }
     static DemoGear Gear() => new DemoGear{wall=new Block(72,104,8,56),top=80,platform=new Block(88,160,56,8),endX=112};
     [Test]
     public void PlatformsAndGearsRoundTripAndMoveFromTheirOwnCells()
