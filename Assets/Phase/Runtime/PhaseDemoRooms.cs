@@ -18,6 +18,7 @@ namespace Phase
         public DemoSpike[] spikes;
         public DemoLaser[] lasers;
         public DemoCrystal[] crystals;
+        public DemoPlatform[] platforms;
         // Custom maps may be larger than one screen; 0 keeps the default 320×176 grid.
         public int width, height;
         public int GridWidth => width != 0 ? width : 320;
@@ -28,6 +29,7 @@ namespace Phase
         public Spike[] CreateSpikes() => spikes?.Select(s => new Spike(s.x,s.y,s.length,s.direction,s.phaseMask)).ToArray() ?? Array.Empty<Spike>();
         public Laser[] CreateLasers() => lasers?.Select(l => new Laser(l.x,l.y,l.direction,l.phaseMask)).ToArray() ?? Array.Empty<Laser>();
         public Crystal[] CreateCrystals() => crystals?.Select(c => new Crystal(c.x,c.y,c.phaseMask)).ToArray() ?? Array.Empty<Crystal>();
+        public Platform[] CreatePlatforms() => platforms?.Select(p => p.Create()).ToArray() ?? Array.Empty<Platform>();
         public PhaseController CreateController()
         {
             void Cell(double value) { if (value % 8 != 0) throw new InvalidOperationException("Demo geometry must use whole 8px Grid cells."); }
@@ -35,8 +37,8 @@ namespace Phase
             foreach (var spike in CreateSpikes()) { Cell(spike.x); Cell(spike.y); }
             foreach (var laser in CreateLasers()) { Cell(laser.x); Cell(laser.y); }
             foreach (var crystal in CreateCrystals()) { Cell(crystal.x); Cell(crystal.y); }
-            return new PhaseController(blocks.Select(b => new Block(b.x,b.y,b.w,b.h,b.phase,b.phaseMask)), spawnX, spawnY,
-                spikes: CreateSpikes(), lasers: CreateLasers(), crystals: CreateCrystals(), width: GridWidth, height: RoomHeight);
+            return new PhaseController(blocks.Select(b => new Block(b.x,b.y,b.w,b.h,b.phase,b.phaseMask) { spiked = b.spiked }), spawnX, spawnY,
+                spikes: CreateSpikes(), lasers: CreateLasers(), crystals: CreateCrystals(), width: GridWidth, height: RoomHeight, platforms: CreatePlatforms());
         }
     }
     [Serializable]
@@ -58,5 +60,14 @@ namespace Phase
     {
         public double x, y;
         public int phaseMask;
+    }
+    // Pivots are centre cells in visiting order; the first is the start.
+    public sealed class DemoPlatform
+    {
+        public bool vertical, reverse, spiked;
+        public int length = 1, phaseMask = 7;
+        public (int x, int y)[] pivots;
+        public SpikeDirection[] spikes = Array.Empty<SpikeDirection>();
+        public Platform Create() => new Platform(vertical, length, pivots, reverse, phaseMask, spiked, spikes);
     }
 }

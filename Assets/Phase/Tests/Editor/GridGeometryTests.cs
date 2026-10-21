@@ -80,4 +80,27 @@ public class GridGeometryTests
         data.rooms[0].crystals = new[] { new DemoCrystal { x = 40, y = 81, phaseMask = 7 } };
         Assert.Throws<System.InvalidOperationException>(() => data.rooms[0].CreateController());
     }
+
+    [Test]
+    public void JumpPlatformComponentBuildsCenterCellPivotsAndSpikeRowsAndSanitizesItself()
+    {
+        var scene = EditorSceneManager.NewPreviewScene();
+        try
+        {
+            var root = new GameObject("Grid probe"); SceneManager.MoveGameObjectToScene(root, scene);
+            root.AddComponent<Grid>().cellSize = new Vector3(8, 8, 1);
+            var go = new GameObject("Platform"); go.transform.SetParent(root.transform); go.transform.position = new Vector3(24, -40);
+            var component = go.AddComponent<PhaseJumpPlatform>();
+            component.length = 3; component.reverse = true; component.spikes = PlatformSides.Up | PlatformSides.Right;
+            component.pivots = new[] { Vector2Int.zero, new Vector2Int(3, 0), new Vector2Int(3, -2) };
+            var platform = component.CreatePlatform();
+            Assert.That(platform.pivots, Is.EqualTo(new[] { (4, 5), (7, 5), (7, 3) }), "offsets become centre cells, with Y down");
+            Assert.That((platform.x, platform.y, platform.w, platform.h, platform.reverse), Is.EqualTo((24d, 40d, 24d, 8d, true)));
+            Assert.That(platform.attached.Select(s => s.direction), Is.EquivalentTo(new[] { SpikeDirection.Up, SpikeDirection.Right }));
+            component.length = 4; component.phaseMask = 0; component.pivots = null; component.vertical = true;
+            platform = component.CreatePlatform();
+            Assert.That((platform.length, platform.Mask, platform.pivots.Length), Is.EqualTo((5, 7, 2)), "an odd length, a color and two stops are restored");
+        }
+        finally { EditorSceneManager.ClosePreviewScene(scene); }
+    }
 }

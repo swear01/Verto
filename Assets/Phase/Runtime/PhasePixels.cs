@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace Phase
@@ -148,9 +149,11 @@ namespace Phase
             if (terrainBlocks != s.blocks || terrainBlockCount != s.blocks.Count)
             {
                 terrainBlocks = s.blocks; terrainBlockCount = s.blocks.Count; cells.Clear(); terrain.Clear();
-                foreach (var b in s.blocks) for (int y = (int)b.y; y < RenderBottom(b); y += 8) for (int x = (int)b.x; x < b.x + b.w; x += 8) cells[(x,y)] = b.Mask;
+                foreach (var b in s.blocks) if (!(b is Platform)) for (int y = (int)b.y; y < RenderBottom(b); y += 8) for (int x = (int)b.x; x < b.x + b.w; x += 8) cells[(x,y)] = b.Mask;
             }
-            var blocked = new List<int>(s.blocked); blocked.Sort();
+            var blocked = new List<int>();
+            foreach (int i in s.blocked) if (!(s.blocks[i] is Platform)) blocked.Add(i);
+            blocked.Sort();
             string key = s.phase + "|" + string.Join(",", blocked);
             if (!terrain.TryGetValue(key, out var cached))
             {
@@ -165,56 +168,70 @@ namespace Phase
         }
         Color32[] PaintTerrain(PhaseController s)
         {
-            for (int i = 0; i < s.blocks.Count; i++)
-            {
-                var b = s.blocks[i]; int color = surfaceIndices[b.Mask];
-                Color32 cap = Color(Highlights[color]), rim = Color(Edges[color]), body = Color(Fills[color]);
-                Color32 lift = Mix(body, rim, .45), dim = Mix(body, Color("000000"), .14), seam = Mix(body, Color("000000"), .4), deep = Mix(body, Color("000000"), .58);
-                bool active = b.ActiveInPhase(s.phase) && !s.blocked.Contains(i), deferred = s.blocked.Contains(i);
-                for (int Y = (int)b.y; Y < RenderBottom(b); Y += 8) for (int X = (int)b.x; X < b.x + b.w; X += 8)
-                {
-                    bool Neighbor(int dx, int dy) => cells.TryGetValue((X + dx * 8, Y + dy * 8), out var kind) && kind == b.Mask;
-                    bool u = Neighbor(0,-1), d = Neighbor(0,1), l = Neighbor(-1,0), r = Neighbor(1,0);
-                    if (!active)
-                    {
-                        Rect(X, Y, 8, 8, body, deferred ? .3 : .12);
-                        double alpha = deferred ? .95 : .62;
-                        for (int n = 0; n < 8; n++)
-                        {
-                            bool dx = deferred || ((X + n) & 3) < 2 || n == 0 || n == 7, dy = deferred || ((Y + n) & 3) < 2 || n == 0 || n == 7;
-                            if (!u && dx) Rect(X + n, Y, 1, 1, cap, alpha);
-                            if (!d && dx) Rect(X + n, Y + 7, 1, 1, rim, alpha);
-                            if (!l && dy) Rect(X, Y + n, 1, 1, rim, alpha);
-                            if (!r && dy) Rect(X + 7, Y + n, 1, 1, rim, alpha);
-                        }
-                        if (Mixed(b.Mask) && (((X-(int)b.x+Y-(int)b.y)>>3)&1)==0) Pips(X,Y,b.Mask,.6);
-                        continue;
-                    }
-                    for (int y = 0; y < 8; y++)
-                    {
-                        int course = (Y + y) >> 2, row = (Y + y) & 3;
-                        if (row == 3) { Rect(X, Y + y, 8, 1, seam); continue; }
-                        for (int x = 0; x < 8; x++)
-                        {
-                            int wx = X + x + (course & 1) * 4, brick = wx >> 3, along = wx & 7;
-                            bool joint = along == 7 && Hash(brick, course * 7 + 3) % 3 != 0;
-                            Rect(X + x, Y + y, 1, 1, joint ? seam : row == 0 && along < 2 ? lift : Hash(brick, course) % 5 == 0 ? dim : body);
-                        }
-                    }
-                    int top = u ? 0 : 2;
-                    if (!u) { Rect(X, Y, 8, 1, cap); Rect(X, Y + 1, 8, 1, rim); }
-                    if (!d) Rect(X, Y + 7, 8, 1, deep);
-                    if (!l) { Rect(X, Y + top, 1, 8 - top, rim); if (!d) Rect(X, Y + 7, 1, 1, seam); }
-                    if (!r) { Rect(X + 7, Y + top, 1, 8 - top, seam); if (!d) Rect(X + 7, Y + 7, 1, 1, deep); }
-                    if (!u && !l) Rect(X, Y, 1, 1, rim);
-                    if (!u && !r) { Rect(X + 7, Y, 1, 1, rim); Rect(X + 7, Y + 1, 1, 1, lift); }
-                    if (u && l && !Neighbor(-1,-1)) Rect(X, Y, 1, 1, seam);
-                    if (u && r && !Neighbor(1,-1)) Rect(X + 7, Y, 1, 1, seam);
-                    if (u && d && l && r && Hash(X,Y) % 11 == 0) { Rect(X + 2, Y + 1, 1, 1, seam); Rect(X + 3, Y + 2, 1, 1, seam); Rect(X + 3, Y + 4, 1, 1, deep); }
-                    if (Mixed(b.Mask) && (((X-(int)b.x+Y-(int)b.y)>>3)&1)==0) Pips(X,Y,b.Mask,1);
-                }
-            }
+            for (int i = 0; i < s.blocks.Count; i++) if (!(s.blocks[i] is Platform)) PaintBlock(s, i);
             return buffer;
+        }
+        // Platforms move, so they are painted over the cached terrain each frame.
+        void Platforms(PhaseController s)
+        {
+            for (int i = 0; i < s.blocks.Count; i++) if (s.blocks[i] is Platform) PaintBlock(s, i);
+        }
+        void PaintBlock(PhaseController s, int i)
+        {
+            var b = s.blocks[i]; int color = surfaceIndices[b.Mask];
+            Color32 cap = Color(Highlights[color]), rim = Color(Edges[color]), body = Color(Fills[color]);
+            Color32 lift = Mix(body, rim, .45), dim = Mix(body, Color("000000"), .14), seam = Mix(body, Color("000000"), .4), deep = Mix(body, Color("000000"), .58);
+            bool active = b.ActiveInPhase(s.phase) && !s.blocked.Contains(i), deferred = s.blocked.Contains(i);
+            // A moving platform keeps its brick pattern relative to itself.
+            bool isPlatform = b is Platform;
+            int ox = isPlatform ? (int)b.x : 0, oy = isPlatform ? (int)b.y : 0;
+            for (int Y = (int)b.y; Y < (isPlatform ? b.y + b.h : RenderBottom(b)); Y += 8) for (int X = (int)b.x; X < b.x + b.w; X += 8)
+            {
+                bool Neighbor(int dx, int dy) => isPlatform ? X + dx * 8 >= b.x && X + dx * 8 < b.x + b.w && Y + dy * 8 >= b.y && Y + dy * 8 < b.y + b.h
+                    : cells.TryGetValue((X + dx * 8, Y + dy * 8), out var kind) && kind == b.Mask;
+                bool u = Neighbor(0,-1), d = Neighbor(0,1), l = Neighbor(-1,0), r = Neighbor(1,0);
+                if (b.spiked && active) { Rect(X, Y, 8, 8, Mix(body, Color("000000"), .5)); Blit(Covered(b.Mask, true), X - 1, Y - 1);
+                    if (Mixed(b.Mask) && (((X-(int)b.x+Y-(int)b.y)>>3)&1)==0) Pips(X,Y,b.Mask,1);
+                    continue; }
+                if (!active)
+                {
+                    Rect(X, Y, 8, 8, body, deferred ? .3 : .12);
+                    double alpha = deferred ? .95 : .62;
+                    for (int n = 0; n < 8; n++)
+                    {
+                        bool dx = deferred || ((X - ox + n) & 3) < 2 || n == 0 || n == 7, dy = deferred || ((Y - oy + n) & 3) < 2 || n == 0 || n == 7;
+                        if (!u && dx) Rect(X + n, Y, 1, 1, cap, alpha);
+                        if (!d && dx) Rect(X + n, Y + 7, 1, 1, rim, alpha);
+                        if (!l && dy) Rect(X, Y + n, 1, 1, rim, alpha);
+                        if (!r && dy) Rect(X + 7, Y + n, 1, 1, rim, alpha);
+                    }
+                    if (b.spiked) Blit(Covered(b.Mask, false), X - 1, Y - 1);
+                    if (Mixed(b.Mask) && (((X-(int)b.x+Y-(int)b.y)>>3)&1)==0) Pips(X,Y,b.Mask,.6);
+                    continue;
+                }
+                for (int y = 0; y < 8; y++)
+                {
+                    int course = (Y - oy + y) >> 2, row = (Y - oy + y) & 3;
+                    if (row == 3) { Rect(X, Y + y, 8, 1, seam); continue; }
+                    for (int x = 0; x < 8; x++)
+                    {
+                        int wx = X - ox + x + (course & 1) * 4, brick = wx >> 3, along = wx & 7;
+                        bool joint = along == 7 && Hash(brick, course * 7 + 3) % 3 != 0;
+                        Rect(X + x, Y + y, 1, 1, joint ? seam : row == 0 && along < 2 ? lift : Hash(brick, course) % 5 == 0 ? dim : body);
+                    }
+                }
+                int top = u ? 0 : 2;
+                if (!u) { Rect(X, Y, 8, 1, cap); Rect(X, Y + 1, 8, 1, rim); }
+                if (!d) Rect(X, Y + 7, 8, 1, deep);
+                if (!l) { Rect(X, Y + top, 1, 8 - top, rim); if (!d) Rect(X, Y + 7, 1, 1, seam); }
+                if (!r) { Rect(X + 7, Y + top, 1, 8 - top, seam); if (!d) Rect(X + 7, Y + 7, 1, 1, deep); }
+                if (!u && !l) Rect(X, Y, 1, 1, rim);
+                if (!u && !r) { Rect(X + 7, Y, 1, 1, rim); Rect(X + 7, Y + 1, 1, 1, lift); }
+                if (u && l && !Neighbor(-1,-1)) Rect(X, Y, 1, 1, seam);
+                if (u && r && !Neighbor(1,-1)) Rect(X + 7, Y, 1, 1, seam);
+                if (u && d && l && r && Hash(X - ox,Y - oy) % 11 == 0) { Rect(X + 2, Y + 1, 1, 1, seam); Rect(X + 3, Y + 2, 1, 1, seam); Rect(X + 3, Y + 4, 1, 1, deep); }
+                if (Mixed(b.Mask) && (((X-(int)b.x+Y-(int)b.y)>>3)&1)==0) Pips(X,Y,b.Mask,1);
+            }
         }
         static bool Mixed(int mask) => mask == 3 || mask == 5 || mask == 6;
         void Pips(int x, int y, int mask, double alpha)
@@ -224,6 +241,21 @@ namespace Phase
             { int at=x+2+dot++*3; Rect(at,y+6,2,1,Ink,alpha); Rect(at,y+4,2,2,Highlights[phase],alpha); }
         }
         static readonly string[] spikeRows = {".oo..oo.","oTMooTMo","oLMooLMo","oLMooLMo","LLMMLLMM","LMMDLMMD","MMDDMMDD","DDDDDDDD"};
+        static Dictionary<char,Color32> SpikePalette(int mask,bool active)
+        {
+            int color=surfaceIndices[mask];var cap=Color(Highlights[color]);var rim=Color(Edges[color]);var body=Color(Fills[color]);
+            var palette=new Dictionary<char,Color32>{['T']=active?Mix(cap,Color("ffffff"),.6):Mix(rim,Color("101a26"),.45),['L']=active?cap:Mix(body,Color("101a26"),.4),['M']=active?rim:Mix(body,Color("101a26"),.6),['D']=active?body:Mix(body,Color("101a26"),.6)};
+            if(active)palette['o']=Color(Ink);
+            return palette;
+        }
+        // A spike-covered cell: teeth on all four sides.
+        static readonly string[] coveredRows = {"...TT...","..TLMM..",".oLLMMo.","TLLMMMDD","LLMMMDDD",".oMMDDo.","..MDDD..","...DD..."};
+        readonly Dictionary<(int,bool),Bitmap> coveredTiles = new Dictionary<(int,bool),Bitmap>();
+        Bitmap Covered(int mask,bool active)
+        {
+            if(!coveredTiles.TryGetValue((mask,active),out var tile))coveredTiles[(mask,active)]=tile=Paint(coveredRows,SpikePalette(mask,active));
+            return tile;
+        }
         readonly Dictionary<(int,SpikeDirection,bool),Bitmap> spikeTiles = new Dictionary<(int,SpikeDirection,bool),Bitmap>();
         void Spikes(PhaseController s)
         {
@@ -232,9 +264,6 @@ namespace Phase
                 bool active=spike.ActiveInPhase(s.phase);var key=(spike.Mask,spike.direction,active);
                 if (!spikeTiles.TryGetValue(key,out var tile))
                 {
-                    int color=surfaceIndices[spike.Mask];var cap=Color(Highlights[color]);var rim=Color(Edges[color]);var body=Color(Fills[color]);
-                    var palette=new Dictionary<char,Color32>{['T']=active?Mix(cap,Color("ffffff"),.6):Mix(rim,Color("101a26"),.45),['L']=active?cap:Mix(body,Color("101a26"),.4),['M']=active?rim:Mix(body,Color("101a26"),.6),['D']=active?body:Mix(body,Color("101a26"),.6)};
-                    if(active)palette['o']=Color(Ink);
                     var rows=new char[8][];for(int v=0;v<8;v++)rows[v]=new char[8];
                     for(int v=0;v<8;v++)for(int u=0;u<8;u++)
                     {
@@ -243,7 +272,7 @@ namespace Phase
                         rows[y][x]=spikeRows[v][u];
                     }
                     var text=new string[8];for(int v=0;v<8;v++)text[v]=new string(rows[v]);
-                    spikeTiles[key]=tile=Paint(text,palette);
+                    spikeTiles[key]=tile=Paint(text,SpikePalette(spike.Mask,active));
                 }
                 for(int y=(int)spike.y;y<spike.y+spike.h;y+=8)for(int x=(int)spike.x;x<spike.x+spike.w;x+=8)
                 {
@@ -403,7 +432,7 @@ namespace Phase
                 for (int i = 0; i < s.blocks.Count && !stone; i++)
                 {
                     var b = s.blocks[i];
-                    stone = b.ActiveInPhase(s.phase) && !s.blocked.Contains(i) &&
+                    stone = !(b is Platform) && b.ActiveInPhase(s.phase) && !s.blocked.Contains(i) &&
                         b.y < floor && b.y + b.h >= floor - 4 && x >= b.x && x < b.x + b.w;
                 }
                 if (stone) continue;
@@ -422,6 +451,7 @@ namespace Phase
         public void Draw(PhaseController s, bool playerVisible = true)
         {
             Terrain(s);
+            Platforms(s);
             Spikes(s);
             Crystals(s);
             Lasers(s);

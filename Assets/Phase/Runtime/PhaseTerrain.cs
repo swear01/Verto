@@ -7,7 +7,9 @@ namespace Phase
         public Vector2Int size = new Vector2Int(8, 8);
         [Range(-1, 2)] public int phase = -1;
         [Range(0, 7)] public int phaseMask;
-        public Block CreateBlock() => PhaseGrid.CreateBox(this, transform.position, size, phase, phaseMask);
+        // Covered in spikes: lethal on any face while solid.
+        public bool spiked;
+        public Block CreateBlock() { var block = PhaseGrid.CreateBox(this, transform.position, size, phase, phaseMask); block.spiked = spiked; return block; }
         void OnValidate() { size.x = Mathf.Max(8, Mathf.RoundToInt(size.x / 8f) * 8); size.y = Mathf.Max(8, Mathf.RoundToInt(size.y / 8f) * 8); }
         void OnDrawGizmos()
         {

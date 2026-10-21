@@ -9,6 +9,8 @@ namespace Phase
     {
         public double x, y, w, h;
         public int phase = -1, phaseMask;
+        // A block fully covered in spikes: active, it kills on any contact. It still blocks like terrain.
+        [NonSerialized] public bool spiked;
         public int Mask => phaseMask == 0 ? (phase < 0 ? 7 : 1 << phase) : phaseMask;
         public bool ActiveInPhase(int state) => (Mask & (1 << state)) != 0;
         public Block(double x, double y, double w, double h, int phase = -1, int phaseMask = 0)
@@ -25,6 +27,8 @@ namespace Phase
     public sealed class Spike : Block
     {
         public SpikeDirection direction;
+        // The platform an attached row belongs to; it stops hurting while that platform passes through the player.
+        [NonSerialized] public Platform owner;
         public Spike(double x, double y, double length, SpikeDirection direction, int phaseMask = 7)
             : base(x,y,direction == SpikeDirection.Up || direction == SpikeDirection.Down ? length : 8,
                 direction == SpikeDirection.Up || direction == SpikeDirection.Down ? 8 : length,phaseMask:phaseMask)
@@ -85,6 +89,8 @@ namespace Phase
         public readonly List<Spike> spikes;
         public readonly List<Laser> lasers;
         public readonly List<Crystal> crystals;
+        public readonly List<Platform> platforms;
+        readonly int[] spikedBlocks;
         public readonly HashSet<int> blocked = new HashSet<int>();
         public readonly List<Particle> particles = new List<Particle>();
         public readonly double spawnX, spawnY;
@@ -104,7 +110,7 @@ namespace Phase
         {
             width = Math.Max(RoomWidth, width);
             if (width == Width) return;
-            foreach (var block in blocks) if (block.x + block.w == Width) block.w += width - Width;
+            foreach (var block in blocks) if (!(block is Platform) && block.x + block.w == Width) block.w += width - Width;
             Width = width;
             player.x = Math.Min(player.x, Width - player.w);
         }
@@ -121,13 +127,16 @@ namespace Phase
             UpdateGrounded(Solid());
         }
 
-        public PhaseController(IEnumerable<Block> blocks, double spawnX, double spawnY, IEnumerable<Spike> spikes = null, IEnumerable<Laser> lasers = null, IEnumerable<Crystal> crystals = null, int width = 320, int height = 180)
+        public PhaseController(IEnumerable<Block> blocks, double spawnX, double spawnY, IEnumerable<Spike> spikes = null, IEnumerable<Laser> lasers = null, IEnumerable<Crystal> crystals = null, int width = 320, int height = 180, IEnumerable<Platform> platforms = null)
         {
             if (width < 320 || width % 8 != 0 || height < 180 || (height % 8 != 0 && height != 180))
                 throw new ArgumentOutOfRangeException(nameof(width), "Room size must be at least 320x180 in 8px steps.");
             RoomWidth = Width = width; Height = height;
-            this.blocks = blocks.ToList(); this.spawnX = spawnX; this.spawnY = spawnY;
-            this.spikes = spikes?.ToList() ?? new List<Spike>();
+            this.platforms = platforms?.ToList() ?? new List<Platform>();
+            // Platforms follow the terrain so terrain keeps its indices.
+            this.blocks = blocks.Concat(this.platforms).ToList(); this.spawnX = spawnX; this.spawnY = spawnY;
+            spikedBlocks = Enumerable.Range(0, this.blocks.Count).Where(i => this.blocks[i].spiked).ToArray();
+            this.spikes = (spikes ?? Array.Empty<Spike>()).Concat(this.platforms.SelectMany(p => p.attached)).ToList();
             this.lasers = lasers?.ToList() ?? new List<Laser>();
             this.crystals = crystals?.ToList() ?? new List<Crystal>();
             Reset();
@@ -138,6 +147,7 @@ namespace Phase
             player = new Player(Math.Min(spawnX, Width - 8), spawnY);
             airJumpCollected = airJumpRequested = false;
             foreach (var crystal in crystals) crystal.collected = false;
+            foreach (var platform in platforms) platform.Restart();
             flash = .08;
         }
         public static bool Overlap(Block a, Block b, double x = 0, double y = 0) =>
@@ -176,10 +186,22 @@ namespace Phase
             var p = player; from = from ?? p;
             foreach (var spike in spikes)
             {
-                if (!spike.ActiveInPhase(phase)) continue;
+                if (!spike.ActiveInPhase(phase) || Shielded(spike)) continue;
                 if (HitsSweep(spike.Hitbox, from)) { Kill(); return true; }
             }
+            foreach (int i in spikedBlocks)
+                if (Lethal(i) && HitsSweep(Reach(blocks[i]), from)) { Kill(); return true; }
             return false;
+        }
+        // A spike-covered block hurts on contact, so its reach is one half pixel past each face.
+        public static Block Reach(Block b) => new Block(b.x - .5, b.y - .5, b.w + 1, b.h + 1);
+        bool Lethal(int i) => blocks[i].ActiveInPhase(phase) && !blocked.Contains(i);
+        // The block index of the n-th platform; platforms follow the terrain.
+        public int PlatformIndex(int n) => blocks.Count - platforms.Count + n;
+        bool Shielded(Spike spike)
+        {
+            int n = spike.owner == null ? -1 : platforms.IndexOf(spike.owner);
+            return n >= 0 && blocked.Contains(PlatformIndex(n));
         }
         bool HitsSweep(Block b, Block from)
         {
@@ -218,7 +240,8 @@ namespace Phase
             }
         }
         // A spot overlapping an active spike strip or laser beam, without killing.
-        bool Hazardous(Block at) => spikes.Any(s => s.ActiveInPhase(phase) && Overlap(at, s.Hitbox)) ||
+        bool Hazardous(Block at) => spikes.Any(s => s.ActiveInPhase(phase) && !Shielded(s) && Overlap(at, s.Hitbox)) ||
+            spikedBlocks.Any(i => Lethal(i) && Overlap(at, Reach(blocks[i]))) ||
             lasers.Any(l => l.ActiveInPhase(phase) && Overlap(at, l.Beam(Solid(), Width, Height)));
         bool CheckInteractions(Block from = null)
         {
@@ -257,7 +280,34 @@ namespace Phase
             else p.vx += input.x * 40;
             p.vy = p.varSpeed = -105; p.varTime = .2;
             p.grounded = false; p.coyote = p.buffer = 0; p.slide = 0;
-            jumps++; Shift(); Burst(p.x + 4, p.y + 11, -1, 4);
+            jumps++; foreach (var platform in platforms) platform.queued++;
+            Shift(); Burst(p.x + 4, p.y + 11, -1, 4);
+        }
+        // Platforms slide one pixel at a time. A solid one carries a rider and pushes the player; a player it cannot push
+        // (against a wall) is not crushed: they pass through each other until the player is clear.
+        bool MovePlatforms(double dt)
+        {
+            for (int n = 0; n < platforms.Count; n++)
+            {
+                var (dx, dy) = platforms[n].Advance(dt);
+                for (int step = 0; step < Math.Abs(dx) + Math.Abs(dy); step++)
+                    if (Nudge(platforms[n], PlatformIndex(n), step < Math.Abs(dx) ? Math.Sign(dx) : 0, step < Math.Abs(dx) ? 0 : Math.Sign(dy))) return true;
+            }
+            return false;
+        }
+        bool Nudge(Platform platform, int index, int sx, int sy)
+        {
+            var p = player;
+            bool solid = platform.ActiveInPhase(phase) && !blocked.Contains(index);
+            bool rides = solid && p.vy >= 0 && Overlap(p, platform, 0, 1) && p.y + p.h <= platform.y;
+            platform.Move(sx, sy);
+            if (solid && (rides || Overlap(p, platform)))
+            {
+                var others = Solid().Where(b => b != platform).ToList();
+                if (WithinSides(p.x + sx, p.w) && p.y + sy >= 0 && p.y + p.h + sy <= Height && !Collides(p, others, sx, sy)) { p.x += sx; p.y += sy; }
+                else if (Overlap(p, platform)) blocked.Add(index);
+            }
+            return CheckInteractions();
         }
         public void Step(Controls input, double dt = Dt)
         {
@@ -271,6 +321,7 @@ namespace Phase
             if (p.buffer <= 0) airJumpRequested = false;
             if (input.jump && p.airJump > 0) airJumpRequested = true;
             blocked.RemoveWhere(i => !Overlap(player, blocks[i]));
+            if (MovePlatforms(dt)) return;
             var solids = Solid(); int contact = WallAt(p, solids, input.x != 0 ? input.x : p.facing);
             p.wall = contact; UpdateGrounded(solids); CollectCrystals();
             int move = p.wallLock > 0 ? p.forceX : input.x;
