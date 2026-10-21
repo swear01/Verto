@@ -217,6 +217,9 @@ namespace Phase
                 Burst(crystal.x + 4, crystal.y + 4, crystal.Mask == 7 ? -1 : phase);
             }
         }
+        // A spot overlapping an active spike strip or laser beam, without killing.
+        bool Hazardous(Block at) => spikes.Any(s => s.ActiveInPhase(phase) && Overlap(at, s.Hitbox)) ||
+            lasers.Any(l => l.ActiveInPhase(phase) && Overlap(at, l.Beam(Solid(), Width, Height)));
         bool CheckInteractions(Block from = null)
         {
             if (CheckHazards(from)) return true;
@@ -300,6 +303,10 @@ namespace Phase
             {
                 var before = new Block(p.x,p.y,p.w,p.h);
                 solids = Solid(); int vx = Math.Sign(moveX); p.x += vx;
+                // Pressing into a ledge whose top is at most 4px above the feet steps up onto it when that spot is clear.
+                if (move == vx && Collides(p, solids))
+                    for (int lift = 1; lift <= 4; lift++)
+                        if (p.y - lift >= 0 && !Collides(p, solids, 0, -lift) && !Hazardous(new Block(p.x, p.y - lift, p.w, p.h))) { p.y -= lift; break; }
                 foreach (var b in solids) if (Overlap(p, b))
                 {
                     p.remX = 0; p.x = vx > 0 ? b.x - p.w : b.x + b.w;

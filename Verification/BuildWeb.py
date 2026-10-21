@@ -69,7 +69,7 @@ def main():
     save("recompile", recompile())
     command("run_script", "--", "--file", "Verification/BackgroundEditor.cs", "--entry", "BackgroundEditor.Run")
     for mode, test_filter, expected in [
-        ("editor", "ControllerTests", 15), ("editor", "LaserTests", 6),
+        ("editor", "ControllerTests", 16), ("editor", "LaserTests", 6),
         ("editor", "CrystalTests", 8),
         ("editor", "PixelTests", 12), ("editor", "GridGeometryTests", 3),
         ("editor", "CustomMapTests", 6), ("editor", "KeyBindingTests", 3), ("editor", "ScrollRoomTests", 6),

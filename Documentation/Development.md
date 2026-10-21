@@ -53,7 +53,7 @@ To recreate the sandbox, call its existing builder through the connected Editor:
 edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 15 controller cases, 6 laser cases, 8 crystal cases, 12 pixel cases,
+starting the next test run. There are 16 controller cases, 6 laser cases, 8 crystal cases, 12 pixel cases,
 3 Grid authoring cases, 6 custom-map validation cases, 6 scrolling-room cases and 3 key-binding cases
 (validation, PlayerPrefs persistence, key caps) in Edit Mode. The 21 Play Mode cases cover a big-room camera
 following a keyboard run, bindings, pause/release gating, room persistence, crystal triggers, imported maps, the
@@ -124,7 +124,8 @@ occupied cells. Demo JSON changes still require rebuilding the generated scenes.
 authoring; run it through Pipeline with the other Editor tests.
 
 The controller uses native pixels, Y down, a 60 Hz accumulator, 8×11 collision
-and X then Y pixel stepping. Terrain transforms use Unity X/Y as
+and X then Y pixel stepping. Moving into a ledge while pressing toward it steps the player up onto it
+when its top is at most 4px above the feet and the raised spot is clear of active solids, spikes and beams. Terrain transforms use Unity X/Y as
 pixel coordinates with Y negated; spawn uses screen coordinates.
 `PhaseSandbox.rightScene` links to `PhaseRoom2`; its `leftScene` returns to the
 sandbox. Crossing an assigned horizontal edge loads that scene asynchronously,

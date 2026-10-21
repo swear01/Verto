@@ -162,6 +162,35 @@ public class ControllerTests
         }
     }
     [Test]
+    public void PressingIntoALedgeStepsUpWithinFourPixelsOntoAClearActiveSpot()
+    {
+        // The player touches the left face of a 40px ledge whose top is y=100, with its feet `below` pixels lower.
+        PhaseController Ledge(double below, int mask = 7, Spike spike = null, Block ceiling = null)
+        {
+            var blocks = new List<Block> { new Block(100,100,40,40,phaseMask:mask) }; if (ceiling != null) blocks.Add(ceiling);
+            var s = new PhaseController(blocks,40,40,spikes:spike == null ? null : new[] { spike });
+            var p = s.player; p.x = 92; p.y = 100 + below - p.h; p.vx = 90; p.vy = 0; p.grounded = false; p.coyote = 0;
+            return s;
+        }
+        foreach (int below in new[] { 1, 4 })
+        {
+            var s = Ledge(below); Ticks(s,3,new Controls { x=1 });
+            Assert.That(s.player.x,Is.GreaterThan(92),$"{below}px below steps up");
+            Assert.That(s.player.y+s.player.h,Is.EqualTo(100),"the feet rest on the ledge top");
+            Assert.That(s.deaths,Is.Zero);
+        }
+        var deep = Ledge(5); Ticks(deep,2,new Controls { x=1 });
+        Assert.That(deep.player.x+deep.player.w,Is.EqualTo(100),"5px below stays against the wall");
+        var drift = Ledge(3); Ticks(drift,2);
+        Assert.That(drift.player.x+drift.player.w,Is.EqualTo(100),"momentum without pressing toward the ledge does not step up");
+        var inactive = Ledge(3,mask:2); Ticks(inactive,2,new Controls { x=1 });
+        Assert.That(inactive.player.y+inactive.player.h,Is.GreaterThanOrEqualTo(103),"a ledge of another color is not stepped onto");
+        var spiked = Ledge(3,spike:new Spike(100,92,8,SpikeDirection.Up)); Ticks(spiked,2,new Controls { x=1 });
+        Assert.That((spiked.player.x+spiked.player.w,spiked.deaths),Is.EqualTo((100d,0)),"a spike at the raised spot blocks the step-up");
+        var capped = Ledge(3,ceiling:new Block(88,82,16,8)); Ticks(capped,2,new Controls { x=1 });
+        Assert.That(capped.player.x+capped.player.w,Is.EqualTo(100),"a block over the raised spot blocks the step-up");
+    }
+    [Test]
     public void FastLandingKicksUpNeutralDustOnlyOnce()
     {
         foreach (double speed in new[] { 60.0, 160.0 })
