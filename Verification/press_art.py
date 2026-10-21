@@ -2,7 +2,8 @@
 
 Everything is pixel art drawn at native size and enlarged without smoothing. The motif is the
 game's color shift: red, blue and green letterforms (three overlapping V's on the icon, echoes
-behind the wordmark), on the game's night-sky palette. Run from the repository root: python3 Verification/press_art.py
+behind the wordmark), on the game's night-sky palette.
+Run from the repository root: python3 Verification/press_art.py
 """
 import re
 from PIL import Image
