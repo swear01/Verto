@@ -65,8 +65,8 @@ def main():
     save("splash", splash)
     if splash["show"] or splash["logo"]:
         raise RuntimeError("Unity splash screen and logo must be disabled")
-    command("eval", "--", "UnityEditor.WebGL.UserBuildSettings.codeOptimization = UnityEditor.WebGL.WasmCodeOptimization.DiskSize;")
-    size = command("eval", "--", "var w = UnityEditor.Build.NamedBuildTarget.WebGL; return new { strip = UnityEditor.PlayerSettings.GetManagedStrippingLevel(w).ToString(), il2cpp = UnityEditor.PlayerSettings.GetIl2CppCodeGeneration(w).ToString(), compression = UnityEditor.PlayerSettings.WebGL.compressionFormat.ToString(), fallback = UnityEditor.PlayerSettings.WebGL.decompressionFallback, optimization = UnityEditor.WebGL.UserBuildSettings.codeOptimization.ToString() };")["result"]
+    command("eval", "UnityEditor.WebGL.UserBuildSettings.codeOptimization = UnityEditor.WebGL.WasmCodeOptimization.DiskSize;")
+    size = command("eval", "var w = UnityEditor.Build.NamedBuildTarget.WebGL; return new { strip = UnityEditor.PlayerSettings.GetManagedStrippingLevel(w).ToString(), il2cpp = UnityEditor.PlayerSettings.GetIl2CppCodeGeneration(w).ToString(), compression = UnityEditor.PlayerSettings.WebGL.compressionFormat.ToString(), fallback = UnityEditor.PlayerSettings.WebGL.decompressionFallback, optimization = UnityEditor.WebGL.UserBuildSettings.codeOptimization.ToString() };")["result"]
     save("size", size)
     expected = {"strip": "High", "il2cpp": "OptimizeSize", "compression": "Brotli", "fallback": True, "optimization": "DiskSize"}
     if size != expected:
