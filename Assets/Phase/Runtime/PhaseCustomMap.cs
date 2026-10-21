@@ -9,7 +9,7 @@ namespace Phase
     public static class PhaseCustomMap
     {
         // The smallest room is one 320×176 screen; a larger room scrolls. MaxCells bounds the largest.
-        public const int Width = 320, Height = 176, MaxWidth = 1280, MaxHeight = 720, MaxRoomHeight = 880, MaxCells = MaxWidth / 8 * (MaxHeight / 8), MaxJsonLength = 2000000, MaxNumber = 1000000;
+        public const int Width = 320, Height = 176, MaxWidth = 1280, MaxHeight = 720, MaxCells = MaxWidth / 8 * (MaxHeight / 8), MaxJsonLength = 2000000, MaxNumber = 1000000;
         // The map file format: maps without a version are v1. Saving always writes the latest.
         public const int Version = 3;
         public const string Format = "verto-map", Generator = "Verto 0.3";
@@ -43,14 +43,6 @@ namespace Phase
             }
             catch (JsonException error) { throw new ArgumentException("地圖JSON格式無效。", error); }
             catch (OverflowException error) { throw new ArgumentException("地圖數值超出範圍。", error); }
-        }
-        // The single-room editor opens only maps with one room.
-        public static PhaseDemoRoom ParseRoom(string json, bool validate = true)
-        {
-            var world = Parse(json, validate);
-            if (world.rooms.Length != 1) throw new ArgumentException("編輯器一次只能開啟單一房間的地圖。");
-            world.rooms[0].name = world.name;
-            return world.rooms[0];
         }
         // The version 1 file: rectangles of terrain, spikes with a length in pixels, and cell positions in pixels.
         static PhaseDemoRoom ReadV1(JObject data)
@@ -155,15 +147,6 @@ namespace Phase
             if (world.rooms.Count(r => r.goal != null) > 1) throw new ArgumentException("地圖最多只能有一個終點。");
             foreach (var room in world.rooms) CheckRoom(room);
         }
-        // One free-sized room, as the editor draws it.
-        public static void Validate(PhaseDemoRoom room)
-        {
-            if (room == null) throw new ArgumentException("地圖至少需要一格地形。");
-            int w = room.GridWidth, h = room.GridHeight;
-            if (w < Width || w > MaxWidth || h < Height || h > MaxRoomHeight || w % 8 != 0 || h % 8 != 0)
-                throw new ArgumentException($"地圖大小必須是8的倍數：寬{Width}–{MaxWidth}、高{Height}–{MaxRoomHeight}。");
-            CheckRoom(room);
-        }
         static void CheckRoom(PhaseDemoRoom room)
         {
             if (room.blocks == null || room.blocks.Length == 0)
@@ -236,9 +219,6 @@ namespace Phase
             if (world?.rooms == null || world.rooms.Length == 0) throw new ArgumentException("地圖至少需要一個房間。");
             return World(world.name, world.rooms.Select(RoomData)).ToString(Formatting.Indented);
         }
-        public static PhaseWorld ToWorld(PhaseDemoRoom room) => Parse(ToJson(room), false);
-        // A free-sized editor room is saved as a one-room world: padded to whole screens, content at the bottom, extra columns on the right.
-        public static string ToJson(PhaseDemoRoom room) => UpgradeV2(ToV2(room)).ToString(Formatting.Indented);
         static JArray Cell(double x, double y) => new JArray((int)x / 8, (int)y / 8);
         static JObject World(string name, IEnumerable<JObject> rooms) => new JObject {
             ["format"] = Format, ["version"] = Version, ["generator"] = Generator, ["name"] = name, ["rooms"] = new JArray(rooms)

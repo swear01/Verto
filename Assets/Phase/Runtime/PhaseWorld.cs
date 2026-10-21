@@ -48,10 +48,16 @@ namespace Phase
         public int slideX, slideY;
         public bool Won => Controller.won;
 
-        public PhaseWorldPlay(PhaseWorld world, int? start = null)
+        // Starts in `start` (the first room by default); with `near`, a point in that room's pixels, at the spawn nearest to it.
+        public PhaseWorldPlay(PhaseWorld world, int? start = null, (double x, double y)? near = null)
         {
             this.world = world; controllers = new PhaseController[world.rooms.Length];
             Room = start ?? world.Start; controllers[Room] = world.Create(Room);
+            if (near is var (x, y))
+            {
+                var spawn = world.rooms[Room].Spawns.OrderBy(s => Math.Pow(s.x - x, 2) + Math.Pow(s.y - y, 2)).First();
+                controllers[Room].spawnX = spawn.x; controllers[Room].spawnY = spawn.y; controllers[Room].Reset();
+            }
         }
 
         // Advances one step; false while paused. A pending jump stays with the caller until a step runs.
