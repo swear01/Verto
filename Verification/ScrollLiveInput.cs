@@ -9,17 +9,13 @@ using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.SceneManagement;
 
 // Drives Assets/Scenes/Drafts/ScrollTest.unity one stage per call so the Game View can be captured at each camera stop:
-// 1 run, 2 reach the wall, 3-5 climb onto steps A, B and C. Every frame checks that the view stays inside the room.
+// 1 run, 2 reach the wall. Every frame checks that the view stays inside the room.
 public static class ScrollLiveInput
 {
     static readonly (string name, Key[] keys, Func<PhaseController, bool> done)[] Stages = {
         ("run", new[] { Key.RightArrow }, null),
         ("wall", new[] { Key.RightArrow }, c => c.player.x == 552 && c.player.grounded),
-        ("step-a", new[] { Key.RightArrow, Key.UpArrow, Key.C }, c => Feet(c, 248)),
-        ("step-b", new[] { Key.RightArrow, Key.UpArrow, Key.C }, c => Feet(c, 152)),
-        ("step-c", new[] { Key.RightArrow, Key.UpArrow, Key.C }, c => Feet(c, 56)),
     };
-    static bool Feet(PhaseController c, double y) => c.player.grounded && c.player.y + c.player.h == y;
 
     public static async Task<string> Run()
     {
@@ -27,7 +23,7 @@ public static class ScrollLiveInput
         if (!Application.isPlaying || sandbox == null || SceneManager.GetActiveScene().name != "ScrollTest")
             throw new InvalidOperationException("Open Assets/Scenes/Drafts/ScrollTest.unity in Play mode.");
         var c = sandbox.Controller; var p = c.player;
-        int stage = p.x < 100 ? 0 : p.y + p.h == 344 ? (p.x < 552 ? 1 : 2) : Feet(c, 248) ? 3 : Feet(c, 152) ? 4 : -1;
+        int stage = p.x < 100 ? 0 : p.y + p.h == 344 && p.x < 552 ? 1 : -1;
         if (stage < 0) throw new InvalidOperationException($"Route finished or lost: x={p.x}, feet={p.y + p.h}");
         var (name, keys, done) = Stages[stage];
         bool background = Application.runInBackground;
