@@ -9,13 +9,13 @@ namespace Phase
     public static class PhaseCustomMap
     {
         // The smallest room is one 320×176 screen; a larger room scrolls. MaxCells bounds the largest.
-        public const int Width = 320, Height = 176, MaxWidth = 1280, MaxHeight = 720, MaxCells = MaxWidth / 8 * (MaxHeight / 8), MaxJsonLength = 2000000, MaxNumber = 1000000;
+        public const int Width = 320, Height = 176, MaxWidth = 1280, MaxHeight = 720, MaxRoomHeight = 880, MaxCells = MaxWidth / 8 * (MaxHeight / 8), MaxJsonLength = 2000000, MaxNumber = 1000000;
         // The map file format: maps without a version are v1. Saving always writes the latest.
         public const int Version = 3;
         public const string Format = "verto-map", Generator = "Verto 0.3";
         static readonly string[] Directions = { "up", "down", "left", "right" };
         // Upgrades[n] turns a version n+1 file into version n+2.
-        static readonly Func<JObject, JObject>[] Upgrades = { data => ToV2(ReadV1(data)), UpgradeV2 };
+        static readonly Func<JObject, JObject>[] Upgrades = { data => ToV2(ReadV1(data)), d => UpgradeV2(d, true) };
         // A draft may be unfinished, so it loads without the playability checks.
         public static PhaseWorld Parse(string json, bool validate = true)
         {
@@ -307,13 +307,13 @@ namespace Phase
             return (new JArray(rows.Select(r => new string(r))), objects);
         }
         // Version 2 to 3: one room at the origin, rounded up to whole screens with the content at the bottom; the spawn becomes an object.
-        static JObject UpgradeV2(JObject data)
+        static JObject UpgradeV2(JObject data, bool legacy)
         {
             CheckFields(data, new[] { "format", "version", "generator", "name", "size", "spawn", "terrain", "objects" });
             if (data["name"] != null && data["name"].Type != JTokenType.Null && (data["name"].Type != JTokenType.String || data["name"].Value<string>().Length > 64))
                 throw new ArgumentException("地圖名稱最多64字元。");
             var size = Pair(data["size"], "size");
-            if (size.x < Width / 8 || size.x > MaxWidth / 8 || size.y < Height / 8 || size.y > MaxHeight / 8)
+            if (size.x < Width / 8 || size.x > MaxWidth / 8 || size.y < Height / 8 || size.y > (legacy ? MaxHeight : MaxRoomHeight) / 8)
                 throw new ArgumentException($"地圖大小必須介於{Width / 8}×{Height / 8}與{MaxWidth / 8}×{MaxHeight / 8}格。");
             var spawn = Pair(data["spawn"], "spawn");
             if (!(data["terrain"] is JArray terrain) || terrain.Count > size.y || terrain.Any(r => r.Type != JTokenType.String || r.Value<string>().Length > size.x))

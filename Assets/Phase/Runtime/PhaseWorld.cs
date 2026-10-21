@@ -79,9 +79,11 @@ namespace Phase
             slideX = cx < 0 ? -1 : cx >= from.Width ? 1 : 0;
             slideY = slideX != 0 ? 0 : cy < 0 ? -1 : 1;
             to.EnterRoom(from, -n.x, -n.y);
-            // The respawn is the spawn nearest the entry point, with the phase the player arrived in.
-            var spawn = world.rooms[next].Spawns.OrderBy(s => Math.Pow(s.x - to.player.x, 2) + Math.Pow(s.y - to.player.y, 2)).First();
-            to.spawnX = spawn.x; to.spawnY = spawn.y; to.respawnPhase = to.phase;
+            // The respawn is the spawn nearest the entry point that is safe in the entry phase; with none, the nearest one in phase 0.
+            var spawns = world.rooms[next].Spawns.OrderBy(s => Math.Pow(s.x - to.player.x, 2) + Math.Pow(s.y - to.player.y, 2)).ToList();
+            var safe = spawns.Cast<(double x, double y)?>().FirstOrDefault(s => to.SafeSpawn(s.Value.x, s.Value.y, to.phase));
+            var spawn = safe ?? spawns[0];
+            to.spawnX = spawn.x; to.spawnY = spawn.y; to.respawnPhase = safe != null ? to.phase : 0;
             Room = next; pause = Pause;
         }
     }
