@@ -53,8 +53,9 @@ To recreate the sandbox, call its existing builder through the connected Editor:
 edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 16 controller cases, 6 laser cases, 8 crystal cases, 13 pixel cases, 7 platform cases,
-3 Grid authoring cases, 9 custom-map cases (validation, version migration, newer-version refusal, round trips), 6 scrolling-room cases and 3 key-binding cases
+starting the next test run. There are 16 controller cases, 6 laser cases, 8 crystal cases, 14 pixel cases, 12 platform cases,
+4 Grid authoring cases, 10 custom-map cases (validation, version migration, newer-version refusal, round trips), 6 scrolling-room cases, 14 world cases
+(map format v3, room changes, open top, respawns, goal, camera) and 3 key-binding cases
 (validation, PlayerPrefs persistence, key caps) in Edit Mode. The 22 Play Mode cases cover a big-room camera
 following a keyboard run, bindings, pause/release gating, room persistence, crystal triggers, imported maps, the
 title/editor flow, the editor's fixed tool panel under mouse input, large editor rooms, the pause menu with key
@@ -132,8 +133,8 @@ sandbox. Crossing an assigned horizontal edge loads that scene asynchronously,
 places the player at the opposite edge at the same height, and carries color,
 velocity, jump state and counters. Empty links keep the side closed. Both
 scenes must be in Build Settings and in the Web build's explicit scene list.
-Deaths respawn in the current room. The room top clamps the player and death is below room height+14
-(194 for the default room); the immutable reference fixtures stay unchanged and there is no player text.
+Deaths respawn in the current room. The room top is open air and death is below room height+14
+(194 for the default room) unless the player's center is in a neighboring room of a world; the immutable reference fixtures stay unchanged and there is no player text.
 The game binds three actions: left (←/A), right (→/D) and jump (Z/Space); there is no crouch or fast fall.
 Up and down are not actions: ↑/↓ move through menus and the editor cursor and cannot be bound.
 Each action has two independent key slots; logical `Shift` activates both physical
@@ -144,6 +145,14 @@ Enter, Backspace and common punctuation), rejects duplicate physical keys and ac
 with no key, then applies the entire map atomically. Settings save the map to
 PlayerPrefs `phase.keys.v1` as comma-separated names; startup loads it and falls back
 to the defaults when it is missing or invalid.
+
+## Worlds
+
+Custom maps are worlds of connected rooms (map format v3). `PhaseWorld` holds the rooms, `PhaseWorldPlay` keeps one live
+`PhaseController` for the current room and moves play between rooms in place; both are plain C# compiled into the controller
+tests. See [Rooms](Rooms.md) for the rules and the file format.
+In PhaseSandbox Play, `Verification/WorldLiveInput.cs` (entry `WorldLiveInput.Run`, script `--timeout_ms 120000`) loads a four-room world, walks
+across both seams into the goal, reloads it and jumps up into the room above with the virtual keyboard, saving frames to `TestResults/World/`.
 
 ## Scrolling room demo
 
@@ -203,10 +212,10 @@ in-game editor choose their own room size, 320×176 by default (see below).
 On an axis the room does not exceed, the view behaves as below.
 The view always contains at least the original 320x180 native-pixel play area.
 At wider aspects, height stays180 and width grows; at taller aspects, width
-stays320 and height grows around the vertically centered180-pixel play area.
-Stone fills the area above the native top boundary; terrain touching the last
+stays320 and height grows; a room shorter than the view sits at the bottom of it with sky above,
+and a narrower room is centered. Terrain touching the last
 complete 8px row (bottom176) extends below. Gaps and voids remain open, with a
-short fade to black between native Y180 and the existing Y194 death boundary, followed by quiet receding quarry terraces. This extension is visual padding. Each built-in demo also has a visible, solid 8px ceiling at Y0; custom maps use their authored terrain.
+short fade to black between native Y180 and the existing Y194 death boundary, followed by quiet receding quarry terraces. This extension is visual padding. Each built-in demo also has a visible, solid 8px ceiling at Y0; custom maps use their authored terrain, and a custom map's room has an open top.
 Both axes fill the viewport without stretching native pixels. The in-game editor alone widens its view further to fit
 its tool panel beside or below the 320×176 grid, keeping the screen's aspect.
 Terrain ending at the right room edge and room bounds expand above320pixels. Resizing preserves

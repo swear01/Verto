@@ -34,7 +34,7 @@ pixels/second over 1.2 seconds, as in
 Touch controls are not provided.
 The canvas fills the entire viewport and always shows at least the original
 320x180 native-pixel play area. Wide views extend horizontally; tall views keep
-320pixels across and center the original180-pixel play area. Built-in rooms have a visible, solid 8px ceiling; stone fills above the top boundary;
+320pixels across; a room shorter than the view sits at its bottom with sky above. Built-in rooms have a visible, solid 8px ceiling;
 stone touching the last complete grid row continues below. Gaps fade into dark void
 from Y180 to the existing Y194 death limit, rather than suggesting more playable space. Point/pixelated sampling preserves
 square pixels without cropping the room to enlarge the player. Wide rooms extend

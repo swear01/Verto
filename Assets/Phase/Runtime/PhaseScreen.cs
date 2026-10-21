@@ -163,9 +163,9 @@ namespace Phase
             if (leaving) { PhaseSandbox.MapResult(false, PhaseSandbox.Busy); return; }
             try
             {
-                var room = PhaseCustomMap.Parse(json);
+                var map = PhaseCustomMap.Parse(json);
                 gameObject.SetActive(false);
-                PhaseSandbox.CreateCustom(room, pixelCamera, pixelMaterial);
+                PhaseSandbox.CreateCustom(map, pixelCamera, pixelMaterial);
                 PhaseSandbox.Pause("false");
                 Destroy(gameObject);
                 PhaseSandbox.MapResult(true);

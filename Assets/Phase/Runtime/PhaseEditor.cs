@@ -88,7 +88,7 @@ namespace Phase
             // The draft is the map file's own JSON, so older files migrate the same way; drafts written before it hold one tool/mask pair per cell.
             if (saved.StartsWith("{"))
             {
-                try { Fill(PhaseCustomMap.Parse(saved, false)); return; }
+                try { Fill(PhaseCustomMap.ParseRoom(saved, false)); return; }
                 catch (ArgumentException) { }
             }
             var parts = saved.Split(new[] { ';' }, 2);
@@ -588,7 +588,7 @@ namespace Phase
         public void ImportDraft(string json)
         {
             PhaseDemoRoom room;
-            try { room = PhaseCustomMap.Parse(json); }
+            try { room = PhaseCustomMap.ParseRoom(json); }
             catch (ArgumentException) { flash = .4f; Refresh(); return; }
             Fill(room);
             Cursor = new Vector2Int(Math.Min(Cursor.x, cols - 1), Math.Min(Cursor.y, rows - 1));
@@ -599,14 +599,14 @@ namespace Phase
             var room = Room();
             try { PhaseCustomMap.Validate(room); }
             catch (ArgumentException error) { Refuse(error); return false; }
-            Play(room); return true;
+            Play(PhaseCustomMap.ToWorld(room)); return true;
         }
-        void Play(PhaseDemoRoom room)
+        void Play(PhaseWorld world)
         {
             CancelPlacing();
             if (dirty) Save();
             surface.enabled = false;
-            try { Playtest = PhaseSandbox.CreateCustom(room, pixelCamera, pixelMaterial, transform); }
+            try { Playtest = PhaseSandbox.CreateCustom(world, pixelCamera, pixelMaterial, transform); }
             catch { surface.enabled = true; throw; }
         }
         public void StopPlaytest()
@@ -621,8 +621,8 @@ namespace Phase
             if (leaving) { PhaseSandbox.MapResult(false, PhaseSandbox.Busy); return; }
             try
             {
-                var room = PhaseCustomMap.Parse(json);
-                StopPlaytest(); Play(room);
+                var map = PhaseCustomMap.Parse(json);
+                StopPlaytest(); Play(map);
                 PhaseSandbox.Pause("false");
                 PhaseSandbox.MapResult(true);
             }

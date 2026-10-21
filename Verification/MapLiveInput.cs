@@ -56,7 +56,6 @@ public static class MapLiveInput
             var sandbox=UnityEngine.Object.FindAnyObjectByType<PhaseSandbox>();
             Require(original==null&&sandbox!=null&&sandbox.Controller!=old,"Map root was not replaced.");
             Require(UnityEngine.Object.FindObjectsByType<PhaseSandbox>().Length==1,"Map import left multiple players.");
-            Require(sandbox.GetComponent<Grid>().cellSize==new Vector3(8,8,1),"Map grid is not 8px.");
             var s=sandbox.Controller;int frame=Time.frameCount;double time=s.time;
             Directory.CreateDirectory("TestResults/CustomMap");await Frames(30);Capture(sandbox,"start");
             double start=s.player.x;

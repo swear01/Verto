@@ -42,23 +42,18 @@ public class MapBridgeTests : InputTestFixture
         var sandbox=Object.FindAnyObjectByType<PhaseSandbox>();
         Assert.That(original==null,Is.True);Assert.That(sandbox.gameObject.name,Is.EqualTo("PHASE"));
         Assert.That(Object.FindObjectsByType<PhaseSandbox>(FindObjectsSortMode.None).Length,Is.EqualTo(1));
-        Assert.That(sandbox.GetComponent<Grid>().cellSize,Is.EqualTo(new Vector3(8,8,1)));
         Assert.That(sandbox.Frame.filterMode,Is.EqualTo(FilterMode.Point));
         Assert.That(sandbox.Controller.blocks.Count,Is.EqualTo(40),"a version 1 floor imports as one block per cell");Assert.That(sandbox.Controller.spikes.Count,Is.EqualTo(1));
         Assert.That(sandbox.Controller.exitLeft||sandbox.Controller.exitRight,Is.False);
-        var previousGrid = sandbox.GetComponent<PhaseGrid>();
-        var previousCollider = sandbox.GetComponentInChildren<PhaseTerrain>().GetComponent<BoxCollider2D>();
-        Assert.That(previousGrid, Is.Not.Null); Assert.That(previousCollider, Is.Not.Null);
+        var previous = sandbox.gameObject;
         map.lasers=new[]{new DemoLaser{x=160,y=160,direction=LaserDirection.Up,phaseMask=7}};
         map.crystals=new[]{new DemoCrystal{x=80,y=80,phaseMask=2}};
         sandbox.LoadCustomMap(PhaseCustomMap.ToJson(map));
         Assert.That(PhaseSandbox.LastMapError, Is.Empty, PhaseSandbox.LastMapError); yield return null;
         sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
-        Assert.That(previousGrid == null && previousCollider == null, Is.True, "reimport disposes the previous grid and collider cache");
-        Assert.That(sandbox.GetComponent<PhaseGrid>(), Is.Not.Null);
+        Assert.That(previous == null, Is.True, "reimport disposes the previous map");
         Assert.That(sandbox.Controller.blocks.Count, Is.EqualTo(40));
         Assert.That((sandbox.Controller.lasers.Count, sandbox.Controller.crystals.Count), Is.EqualTo((1, 1)));
-        Assert.That(sandbox.GetComponentInChildren<PhaseCrystal>().GetComponent<BoxCollider2D>(), Is.Not.Null);
         var keyboard=InputSystem.AddDevice<Keyboard>();
         try
         {

@@ -17,6 +17,10 @@ namespace Phase
         // Native pixels; larger rooms scroll to follow the player.
         public Vector2Int roomSize = new Vector2Int(320, 180);
         public PhaseController Controller { get; private set; }
+        // A world plays in place: one live controller for the current room, no scene loads.
+        PhaseWorld world;
+        PhaseWorldPlay play;
+        public PhaseWorldPlay World => play;
         public Texture2D Frame => pixels?.Texture;
         PhasePixels pixels;
         readonly PhaseCamera view = new PhaseCamera();
@@ -107,9 +111,10 @@ namespace Phase
         void Awake()
         {
             LinkLevel();
-            bool arriving = traveler != null && gameObject.scene.name == arrivalScene;
+            bool arriving = world == null && traveler != null && gameObject.scene.name == arrivalScene;
             var size = arriving && travelFrame != null ? travelSize : ViewSize(Screen.width, Screen.height);
-            Controller = Build(spawn, size.x);
+            if (world != null) { play = new PhaseWorldPlay(world); Controller = play.Controller; }
+            else Controller = Build(spawn, size.x);
             if (arriving)
             {
                 if (checkpointOnEntry)
@@ -170,8 +175,9 @@ namespace Phase
             var size = ViewSize(Screen.width, Screen.height);
             if (size.x != pixels.Width || size.y != pixels.Height)
             {
-                Controller.ResizeRoom(size.x);
+                if (play == null) Controller.ResizeRoom(size.x);
                 departingFrame = arrivingFrame = null;
+                if (play != null) play.pause = 0;
                 pixels.SetView(size.x, size.y, 0);
                 Look(true); Render(); UpdateSurface();
             }
@@ -233,6 +239,16 @@ namespace Phase
                 jumpQueued = false; accumulator = 0; Render(); return;
             }
             if (Menu != null) { TickPause(k); return; }
+            if (departingFrame != null && play != null)
+            {
+                // The pause is simulation time, so a jump pressed during it waits in the buffer.
+                jumpQueued |= Pressed(k, 2, true);
+                accumulator += Time.deltaTime;
+                while (accumulator >= PhaseController.Dt && play.pause > 0) { play.Step(default); accumulator -= PhaseController.Dt; }
+                pixels.Slide(departingFrame, arrivingFrame, 1 - Math.Pow(play.pause / PhaseWorldPlay.Pause, 3), play.slideX != 0 ? play.slideX : -play.slideY, play.slideX == 0);
+                if (play.pause <= 0) departingFrame = arrivingFrame = null;
+                return;
+            }
             if (departingFrame != null)
             {
                 jumpQueued = false; accumulator = 0;
@@ -245,7 +261,8 @@ namespace Phase
             if (Won)
             {
                 int chosen = VictoryMenu.Tick(k, Mouse.current, new Vector2Int(pixels.Width, pixels.Height), VictoryTop, out bool changed);
-                if (chosen == 0) SelectDemoRoom("1");
+                if (chosen == 0 && play != null) { play = new PhaseWorldPlay(world); Controller = play.Controller; Won = false; Look(true); Render(); }
+                else if (chosen == 0) SelectDemoRoom("1");
                 else if (chosen == 1) { LevelSelect = new PhaseLevels(); Render(); }
                 else if (changed) Render();
                 return;
@@ -256,12 +273,26 @@ namespace Phase
             while (accumulator >= PhaseController.Dt)
             {
                 input.jump = jumpQueued;
-                Controller.Step(input); jumpQueued = false;
-                view.Follow(Controller, pixels.Width, pixels.Height);
+                var previous = Controller;
+                if (play != null) play.Step(input); else Controller.Step(input);
+                jumpQueued = false;
                 accumulator -= PhaseController.Dt;
+                if (play != null && play.Controller != previous) { Cross(previous); break; }
+                view.Follow(Controller, pixels.Width, pixels.Height);
+                if (play != null && play.Won) { Win(); break; }
                 if (Controller.ExitDirection != 0) { Travel(Controller.ExitDirection); break; }
             }
-            if (!Won) { Look(); pixels.Draw(Controller); }
+            if (!Won && departingFrame == null) { Look(); pixels.Draw(Controller); }
+        }
+        // Slides from the room just left to the one entered: the old view without the player, then the new room at its camera.
+        void Cross(PhaseController previous)
+        {
+            Look(); pixels.Draw(previous, false); departingFrame = Frame.GetPixels32();
+            Controller = play.Controller;
+            Look(true);
+            pixels.Draw(Controller); arrivingFrame = Frame.GetPixels32();
+            pixels.Slide(departingFrame, arrivingFrame, 0, play.slideX != 0 ? play.slideX : -play.slideY, play.slideX == 0);
+            transitionElapsed = -1;
         }
         void TickPause(Keyboard k)
         {

@@ -60,7 +60,7 @@ namespace Phase
     }
 
     // View origin in room pixels. An axis larger than the view eases toward the player and stays inside the room;
-    // an axis the view covers keeps the fixed layout: X at 0, Y centred with stone above and void below.
+    // an axis the view covers keeps the fixed layout: a narrow room is centred, a short room sits at the bottom with sky above.
     public sealed class PhaseCamera
     {
         public static readonly double Ease = 1 - Math.Pow(.01, PhaseController.Dt);
@@ -68,7 +68,7 @@ namespace Phase
         public int X => (int)Math.Floor(x + .5);
         public int Y => (int)Math.Floor(y + .5);
         public static double Clamp(double origin, int room, int view, bool vertical) =>
-            room <= view ? (vertical ? (room - view) / 2 : 0) : Math.Max(0, Math.Min(room - view, origin));
+            room <= view ? (vertical ? room - view : (room - view) / 2) : Math.Max(0, Math.Min(room - view, origin));
         public void Follow(PhaseController c, int viewWidth, int viewHeight, bool snap = false)
         {
             var p = c.player;
@@ -78,6 +78,9 @@ namespace Phase
             y = Clamp(snap ? ty : y + (ty - y) * Ease, c.Height, viewHeight, true);
         }
     }
+
+    // A room that touches this one, as a rectangle in this room's pixels; the player's center inside it moves play there.
+    public struct Neighbor { public int room; public double x, y, w, h; }
 
     public struct Particle { public double x, y, vx, vy, life; public int phase; }
 
@@ -93,7 +96,13 @@ namespace Phase
         readonly int[] spikedBlocks;
         public readonly HashSet<int> blocked = new HashSet<int>();
         public readonly List<Particle> particles = new List<Particle>();
-        public readonly double spawnX, spawnY;
+        public double spawnX, spawnY;
+        public readonly List<Neighbor> neighbors = new List<Neighbor>();
+        // The goal is active in every color; touching it sets won.
+        public Block goal;
+        public bool won;
+        // The phase the player returns with after a death.
+        public int respawnPhase;
         readonly Random random = new Random(1);
         bool airJumpCollected, airJumpRequested;
         public Player player;
@@ -104,7 +113,16 @@ namespace Phase
         public readonly int RoomWidth = 320, Height = 180;
         public int Width { get; private set; } = 320;
         public int ExitDirection => respawn > 0 ? 0 : exitLeft && player.x < 0 ? -1 : exitRight && player.x + player.w > Width ? 1 : 0;
-        bool WithinSides(double x, double w) => (exitLeft || x >= 0) && (exitRight || x + w <= Width);
+        // A side with a neighbor at the player's height is open; otherwise it is an invisible wall.
+        bool WithinSides(double x, double w) => (exitLeft || x >= 0 || OpenAt(-1)) && (exitRight || x + w <= Width || OpenAt(Width));
+        public int NeighborAt(double x, double y)
+        {
+            foreach (var n in neighbors) if (x >= n.x && x < n.x + n.w && y >= n.y && y < n.y + n.h) return n.room;
+            return -1;
+        }
+        bool OpenAt(double x) => neighbors.Count > 0 && NeighborAt(x, player.y + player.h / 2) >= 0;
+        // The neighbor room the player's center has entered, or -1.
+        public int ExitRoom => respawn > 0 ? -1 : NeighborAt(player.x + player.w / 2, player.y + player.h / 2);
 
         public void ResizeRoom(int width)
         {
@@ -129,8 +147,8 @@ namespace Phase
 
         public PhaseController(IEnumerable<Block> blocks, double spawnX, double spawnY, IEnumerable<Spike> spikes = null, IEnumerable<Laser> lasers = null, IEnumerable<Crystal> crystals = null, int width = 320, int height = 180, IEnumerable<Platform> platforms = null)
         {
-            if (width < 320 || width % 8 != 0 || height < 180 || (height % 8 != 0 && height != 180))
-                throw new ArgumentOutOfRangeException(nameof(width), "Room size must be at least 320x180 in 8px steps.");
+            if (width < 320 || width % 8 != 0 || height < 176 || (height % 8 != 0 && height != 180))
+                throw new ArgumentOutOfRangeException(nameof(width), "Room size must be at least 320x176 in 8px steps.");
             RoomWidth = Width = width; Height = height;
             this.platforms = platforms?.ToList() ?? new List<Platform>();
             // Platforms follow the terrain so terrain keeps its indices.
@@ -141,9 +159,22 @@ namespace Phase
             this.crystals = crystals?.ToList() ?? new List<Crystal>();
             Reset();
         }
+        // Takes over the player from a neighboring room; (dx, dy) moves its position into this room's pixels. The room starts fresh:
+        // platforms and crystals reset, and a solid the player arrives inside waits until they leave it.
+        public void EnterRoom(PhaseController previous, double dx, double dy)
+        {
+            player = previous.player; player.x += dx; player.y += dy;
+            phase = previous.phase; time = previous.time; jumps = previous.jumps; deaths = previous.deaths; flash = previous.flash;
+            airJumpRequested = previous.airJumpRequested; airJumpCollected = false; respawn = 0;
+            blocked.Clear(); particles.Clear();
+            foreach (var crystal in crystals) crystal.collected = false;
+            foreach (var platform in platforms) platform.Restart();
+            for (int i = 0; i < blocks.Count; i++) if (blocks[i].ActiveInPhase(phase) && Overlap(player, blocks[i])) blocked.Add(i);
+            UpdateGrounded(Solid());
+        }
         public void Reset()
         {
-            phase = 0; respawn = 0; blocked.Clear();
+            phase = respawnPhase; respawn = 0; blocked.Clear();
             player = new Player(Math.Min(spawnX, Width - 8), spawnY);
             airJumpCollected = airJumpRequested = false;
             foreach (var crystal in crystals) crystal.collected = false;
@@ -304,7 +335,7 @@ namespace Phase
             if (solid && (rides || Overlap(p, platform)))
             {
                 var others = Solid().Where(b => b != platform).ToList();
-                if (WithinSides(p.x + sx, p.w) && p.y + sy >= 0 && p.y + p.h + sy <= Height && !Collides(p, others, sx, sy)) { p.x += sx; p.y += sy; }
+                if (WithinSides(p.x + sx, p.w) && p.y + p.h + sy <= Height && !Collides(p, others, sx, sy)) { p.x += sx; p.y += sy; }
                 else if (Overlap(p, platform)) blocked.Add(index);
             }
             return CheckInteractions();
@@ -357,15 +388,15 @@ namespace Phase
                 // Pressing into a ledge whose top is at most 4px above the feet steps up onto it when that spot is clear.
                 if (move == vx && Collides(p, solids))
                     for (int lift = 1; lift <= 4; lift++)
-                        if (p.y - lift >= 0 && !Collides(p, solids, 0, -lift) && !Hazardous(new Block(p.x, p.y - lift, p.w, p.h))) { p.y -= lift; break; }
+                        if (!Collides(p, solids, 0, -lift) && !Hazardous(new Block(p.x, p.y - lift, p.w, p.h))) { p.y -= lift; break; }
                 foreach (var b in solids) if (Overlap(p, b))
                 {
                     p.remX = 0; p.x = vx > 0 ? b.x - p.w : b.x + b.w;
                     if (p.retention <= 0) { p.retained = p.vx; p.retention = .06; }
                     p.vx = 0; hitX = true;
                 }
-                if (!exitLeft) p.x = Math.Max(0, p.x);
-                if (!exitRight) p.x = Math.Min(Width - p.w, p.x);
+                if (!exitLeft && p.x < 0 && !OpenAt(-1)) p.x = 0;
+                if (!exitRight && p.x + p.w > Width && !OpenAt(Width)) p.x = Width - p.w;
                 if (CheckInteractions(before)) return;
             }
             p.remY += p.vy * dt; int moveY = PixelRound(p.remY); p.remY -= moveY;
@@ -398,9 +429,11 @@ namespace Phase
                 }
                 if (CheckInteractions(before)) return;
             }
-            if (p.y < 0) { p.y = 0; p.vy = Math.Max(0, p.vy); p.varTime = p.remY = 0; }
+            if (!exitLeft && p.x < 0 && !OpenAt(-1)) p.x = 0;
+            if (!exitRight && p.x + p.w > Width && !OpenAt(Width)) p.x = Width - p.w;
             solids = Solid(); UpdateGrounded(solids); p.wall = WallAt(p, solids, input.x != 0 ? input.x : p.facing);
-            if (p.y > Height + 14) Kill();
+            if (goal != null && Overlap(p, goal)) won = true;
+            if (p.y > Height + 14 && ExitRoom < 0) Kill();
             if (respawn <= 0) CollectCrystals();
         }
     }

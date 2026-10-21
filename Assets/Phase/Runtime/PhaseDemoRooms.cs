@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Phase
@@ -15,6 +16,10 @@ namespace Phase
         public string name;
         public Block[] blocks;
         public double spawnX, spawnY;
+        // A world room sits at a screen position (may be negative); more spawns and one goal are optional.
+        public int atX, atY;
+        public DemoPoint[] extraSpawns;
+        public DemoPoint goal;
         public DemoSpike[] spikes;
         public DemoLaser[] lasers;
         public DemoCrystal[] crystals;
@@ -23,8 +28,11 @@ namespace Phase
         public int width, height;
         public int GridWidth => width != 0 ? width : 320;
         public int GridHeight => height != 0 ? height : 176;
-        // A one-screen grid sits in the 320×180 view; a taller one is its own height.
-        public int RoomHeight => Math.Max(180, GridHeight);
+        // A room without a stated height is the 320×180 view; a stated one is its own height.
+        public int RoomHeight => height != 0 ? height : 180;
+        // Every spawn, leftmost first.
+        public List<(double x, double y)> Spawns => new[] { (spawnX, spawnY) }.Concat(extraSpawns?.Select(p => (p.x, p.y)) ?? Array.Empty<(double, double)>())
+            .OrderBy(p => p.Item1).ThenBy(p => p.Item2).ToList();
 
         public Spike[] CreateSpikes() => spikes?.Select(s => new Spike(s.x,s.y,s.length,s.direction,s.phaseMask)).ToArray() ?? Array.Empty<Spike>();
         public Laser[] CreateLasers() => lasers?.Select(l => new Laser(l.x,l.y,l.direction,l.phaseMask)).ToArray() ?? Array.Empty<Laser>();
@@ -37,9 +45,16 @@ namespace Phase
             foreach (var spike in CreateSpikes()) { Cell(spike.x); Cell(spike.y); }
             foreach (var laser in CreateLasers()) { Cell(laser.x); Cell(laser.y); }
             foreach (var crystal in CreateCrystals()) { Cell(crystal.x); Cell(crystal.y); }
-            return new PhaseController(blocks.Select(b => new Block(b.x,b.y,b.w,b.h,b.phase,b.phaseMask) { spiked = b.spiked }), spawnX, spawnY,
-                spikes: CreateSpikes(), lasers: CreateLasers(), crystals: CreateCrystals(), width: GridWidth, height: RoomHeight, platforms: CreatePlatforms());
+            var start = Spawns[0];
+            return new PhaseController(blocks.Select(b => new Block(b.x,b.y,b.w,b.h,b.phase,b.phaseMask) { spiked = b.spiked }), start.x, start.y,
+                spikes: CreateSpikes(), lasers: CreateLasers(), crystals: CreateCrystals(), width: GridWidth, height: RoomHeight, platforms: CreatePlatforms())
+                { goal = goal == null ? null : new Block(goal.x, goal.y, 8, 8) };
         }
+    }
+    [Serializable]
+    public sealed class DemoPoint
+    {
+        public double x, y;
     }
     [Serializable]
     public sealed class DemoSpike
