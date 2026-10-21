@@ -1,7 +1,6 @@
 # Web preview
 
-[Play online](https://swear01.github.io/Verto/): the latest `main` that passed CI;
-see [Online play](#online-play).
+[Play online](https://verto.5334601.xyz/), published by hand; see [Online play](#online-play).
 
 Unity **6000.4.7f1**, Web Build Support and Unity CLI are required. Open the GUI
 Editor as described in [Development](Development.md), then run:
@@ -103,22 +102,23 @@ the warning.
 
 ## Online play
 
-`Web build and preview` publishes the playable build to GitHub Pages after
-`Controller tests` pass on a push to `main`, or on manual dispatch from `main`.
-It runs on a self-hosted macOS ARM64 runner labelled `gamejam1-unity`, in a
-logged-in desktop session with a licensed Unity 6000.4.7f1, Web Build Support,
-Python 3 and Unity CLI at `~/.unity/bin/unity`; while the runner is offline,
-builds wait in the queue. The job opens a GUI Editor on the runner's checkout,
-whose `Library` survives between runs, and runs `BuildWeb.py` (Editor and Play
-Mode tests, then the Web build). `WebLoadSmoke.cjs` then starts level1 in
-headless Chromium, walks right and requires a clean console. Only a passing
-build is deployed; `web-verification` holds the reports. Pass a URL to check the
-live site: `node Verification/WebLoadSmoke.cjs https://swear01.github.io/Verto/`.
-`DemoWebSmoke.cjs` still replays the jam's routes and does not run in CI.
+<https://verto.5334601.xyz/> is the Cloudflare Pages project `verto`, uploaded
+by hand from a local build; merging to `main` does not update it. After building
+and verifying as above, publish and check the live site:
+
+```sh
+npx wrangler pages deploy Builds/Web --project-name verto --branch main
+node Verification/WebLoadSmoke.cjs https://verto.5334601.xyz/
+```
+
+Run `npx wrangler login` once per machine first. Pages caps each file at 25 MiB;
+`Build/Web.wasm.unityweb` is the largest. `WebLoadSmoke.cjs` takes a build folder
+or a URL, starts level1 from the title in headless Chromium, walks right and
+requires a clean console.
 
 References: [Unity Web deployment](https://docs.unity3d.com/6000.4/Documentation/Manual/webgl-deploying.html),
-[runner registration](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners),
-[Pages publishing](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
+[Pages direct upload](https://developers.cloudflare.com/pages/get-started/direct-upload/),
+[Pages limits](https://developers.cloudflare.com/pages/platform/limits/).
 
 Rendering reference: [Unity Web canvas sizing](https://docs.unity.com/en-us/engine/6000.0/manual/platform-specific/webgl/develop/canvas-size).
 The template keeps automatic sizing disabled and sets the backing store to the display size
