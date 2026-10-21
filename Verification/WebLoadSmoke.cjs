@@ -11,14 +11,13 @@ const root = remote ? null : path.resolve(process.argv[2] || 'Builds/Web');
 const reports = path.resolve(__dirname, '../TestResults/Web');
 fs.mkdirSync(reports, { recursive: true });
 if (!remote) assert(fs.existsSync(path.join(root, 'index.html')), 'Web output is missing');
-const server = http.createServer((request, response) => {
+const server = remote ? null : http.createServer((request, response) => {
   let file;
-  try { file = path.resolve(root, '.' + decodeURIComponent(new URL(request.url, 'http://localhost').pathname)); }
-  catch { response.writeHead(400).end(); return; }
-  if (file === root) file = path.join(root, 'index.html');
-  if (!file.startsWith(root + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
-    response.writeHead(404).end(); return;
-  }
+  try {
+    file = path.resolve(root, '.' + decodeURIComponent(new URL(request.url, 'http://localhost').pathname));
+    if (file === root) file = path.join(root, 'index.html');
+    if (!file.startsWith(root + path.sep) || !fs.statSync(file).isFile()) throw new Error('not a served file');
+  } catch { response.writeHead(404).end(); return; }
   const mime = { '.html': 'text/html', '.js': 'application/javascript', '.wasm': 'application/wasm' };
   response.setHeader('Content-Type', mime[path.extname(file)] || 'application/octet-stream');
   fs.createReadStream(file).on('error', () => response.destroy()).pipe(response);
@@ -67,6 +66,7 @@ const meanX = (from, without) => { const xs = [...from].filter(([i]) => !without
     await page.waitForTimeout(300);
     const shot = await canvas.screenshot(), walked = cloakPixels(shot);
     fs.writeFileSync(path.join(reports, 'load-smoke.png'), shot);
+    assert(walked.size, 'Level1 still shows the player after the walk');
     result.moved = meanX(walked, start) - meanX(start, walked);
     assert(result.moved > 8, `Holding right moves the player (moved ${result.moved}px)`);
     assert.deepEqual(result.errors, [], 'Console errors');
