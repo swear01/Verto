@@ -53,9 +53,9 @@ To recreate the sandbox, call its existing builder through the connected Editor:
 edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 16 controller cases, 6 laser cases, 8 crystal cases, 12 pixel cases,
-3 Grid authoring cases, 6 custom-map validation cases, 6 scrolling-room cases and 3 key-binding cases
-(validation, PlayerPrefs persistence, key caps) in Edit Mode. The 21 Play Mode cases cover a big-room camera
+starting the next test run. There are 16 controller cases, 6 laser cases, 8 crystal cases, 13 pixel cases, 7 platform cases,
+3 Grid authoring cases, 9 custom-map cases (validation, version migration, newer-version refusal, round trips), 6 scrolling-room cases and 3 key-binding cases
+(validation, PlayerPrefs persistence, key caps) in Edit Mode. The 22 Play Mode cases cover a big-room camera
 following a keyboard run, bindings, pause/release gating, room persistence, crystal triggers, imported maps, the
 title/editor flow, the editor's fixed tool panel under mouse input, large editor rooms, the pause menu with key
 settings, the fullscreen switch, and level select from the title, pause and victory screens.
@@ -213,6 +213,23 @@ Terrain ending at the right room edge and room bounds expand above320pixels. Res
 controller state and rebuilds the pixel surface/cache; resizing during a slide
 completes its handoff, including a height-only resize.
 
+## Jump platforms and spike cover
+
+`Platform` (a `Block`) is a 1-cell-thick, odd-length body centred on a pivot cell; the controller appends platforms to
+`blocks` after the terrain, so terrain keeps its indices, and their attached `Spike` rows join `spikes`. Every jump
+(including wall and crystal jumps) queues one step on each platform; a step slides to the next pivot (the previous one when
+`reverse`) in `Platform.SlideTime` (0.3 s), and a jump during a slide waits its turn. The controller moves platforms a pixel
+at a time before the player acts: a solid platform carries a rider and pushes the player; a player that cannot be pushed
+is not crushed, the platform joins `blocked` and the two pass through until clear. `Reset` returns platforms to their first pivot.
+`Block.spiked` makes any block lethal on contact (half a pixel past each face) while it is solid and not in `blocked`;
+it still blocks lasers in its own color. `PhaseJumpPlatform` authors a platform (`pivots` are cell offsets from the
+first; the transform is the body's top-left at the first pivot; `spikes` picks the sides) and `PhaseTerrain.spiked` covers terrain.
+Place the `JumpPlatform` prefab with **PHASE > Add > Jump platform**. Platforms are drawn over the cached terrain each frame.
+`Verification/PlatformScene.cs` (entry `PlatformScene.Run`) builds `Assets/Temp/PhaseJumpPlatformProbe.unity`; in Play,
+`Verification/PlatformLiveInput.cs` (entry `PlatformLiveInput.Run`) taps jump with a virtual keyboard while Wick stands
+on the platform, checks that it steps and carries him, and saves captures to `TestResults/Platform/`.
+See [the jump platform spec](JumpPlatformSpec.md).
+
 ## Phase masks and spikes
 
 `Block(..., phase: -1, phaseMask: 0)` keeps the existing legacy phase behavior.
@@ -249,11 +266,11 @@ jump activation/death and respawn.
 
 The active `PHASE` object accepts `SelectDemoRoom("1".."15")` and
 `LoadCustomMap(json)`. Scene selection uses `PhaseSandbox.Levels` (Demo1, Demo1.1, Demo2–8, Crystal1–3, Demo12–14), which also defines both horizontal links.
-Custom maps use the `PhaseDemoRoom` fields `name`, `blocks`, `spikes`, `spawnX`,
-`spawnY` and the optional arrays `lasers` and `crystals`; blocks require
-explicit `phaseMask`1–7. Spike direction is Up0/Down1/Left2/Right3; length is native pixels.
-A crystal is a jump crystal `{x,y,phaseMask}`; an older map's `kind` must be 0, and dash crystals (`kind` 1),
-`platforms` and `gears` are rejected.
+Custom maps are version 2 JSON (`format` `verto-map`, `version`, `generator`, `name`, `size` and `spawn` in cells, `terrain` rows
+of `.`, `1`–`7` and spike-covered `A`–`G`, and typed `objects`: spike, laser, crystal, platform; see
+[the spec](JumpPlatformSpec.md)). Files without a version are v1 (`blocks`, `spikes`, `lasers`, `crystals`, `spawnX`, `spawnY` in
+pixels, explicit `phaseMask`1–7, numeric directions Up0/Down1/Left2/Right3, an older crystal's `kind` must be 0) and migrate on load;
+a newer version is refused with a message to update. `PhaseCustomMap.Version` is the latest; add one entry to `Upgrades` per bump.
 
 Custom geometry occupies non-overlapping8px cells within the room, at most one object per cell. A room is
 320×176 unless the optional `width` and `height` (native pixels, multiples of 8, 320–1280 and 176–720) say
@@ -269,12 +286,10 @@ Web completion dispatches `window` event `phase-map-result` with
 loading; custom-map success waits for the new root's controller and pixel surface.
 Invalid input preserves the current map and produces a failure callback without
 logging a gameplay error. `PhaseSandbox.LastMapError` exposes the last failure
-message for native verification and clears on success. `PhaseCustomMap.ToJson` writes the
-five base fields plus each optional array only when it is used, and `width`/`height` only for a room that is not
-320×176, so older maps load unchanged and a one-screen export is byte-identical to before.
+message for native verification and clears on success. `PhaseCustomMap.ToJson` always writes the latest version.
 The runtime uses the installed Newtonsoft.Json parser with a strict schema, rejecting
 unknown/duplicate fields and non-numeric coordinates before constructing the room; it
-preserves absent arrays as null. Parsing and controller validation run in the six `CustomMapTests`;
+preserves absent object arrays as null. Parsing, migration and controller validation run in the nine `CustomMapTests`;
 `MapBridgeTests` adds one Play Mode import/keyboard/respawn/scene-selection case.
 
 For live verification, enter a demo in Play mode and run
@@ -367,13 +382,13 @@ standalone players keep Unity's own setting and Web starts windowed. Web applies
 request within that key press or click. The Editor's Game view ignores `Screen.fullScreen`,
 so tests and `KeysLiveInput` swap `PhaseKeys.IsFullScreen`/`SetFullScreen`.
 The editor paints the custom-map grid (40×22 cells by default, up to 160×90; terrain, spikes and lasers in four
-directions, jump crystals, spawn, erase; seven masks) and renders it with the game's own pixels in the starting
+directions, jump crystals, jump platforms, spike cover, spawn, erase; seven masks) and renders it with the game's own pixels in the starting
 red phase. The editor widens its own view (same aspect as the screen) so a fixed panel with one 2× icon per object type sits right
 of the grid, or below it when that leaves the grid larger (tall screens); the panel never moves and never covers a
 cell. Hovering a slot highlights it, a click picks it, and the selected tool and color are framed. Mouse: left paints,
 right erases; a stroke paints only if it starts on the grid, so a drag from the panel never paints.
 Keyboard: the left/right bindings and ↑/↓ move the cursor, jump paints, C erases, X cycles the
-tool type, R/E (or the mouse wheel) turn spikes and lasers clockwise/counter-clockwise, 1–7 pick the mask, Enter playtests, Escape returns to the title.
+tool type, R/E (or the mouse wheel) turn spikes and lasers clockwise/counter-clockwise, F flips the platform under the cursor, Escape or right-click cancels a platform being placed, 1–7 pick the mask, Enter playtests, Escape returns to the title.
 The last four panel slots size the room: arrows with an edge bar pull the right or bottom edge in or push it out by
 eight cells (never below 40×22 or past 160×90). Shrinking refuses with the red flash when a cell or the spawn
 would be cut off, so it never deletes anything. The 40×22 cells you see are a window onto the room, so the
@@ -388,11 +403,9 @@ map flashes a red border instead of starting; when Wick's start overlaps terrain
 Wick's start box and the flag slot also blink red. The playtest runs a `PhaseSandbox`
 child named `Playtest`; Escape destroys it and returns to the unchanged draft. A Web
 `LoadCustomMap` sent in the editor scene plays that map the same way. The draft
-autosaves to PlayerPrefs `phase.editor.v1` as one tool/mask pair per cell
-(tool codes 1 terrain, 2–5 spikes, 7–10 lasers, 11 crystal). Older drafts load with their dash crystals
-(code 12) left empty and any appended platform/gear JSON dropped. A larger room adds its columns
-and rows after the spawn cell (`3,19,80,30;…`); a 40×22 draft keeps the old `3,19;…` header, so drafts from before room sizes still load.
-Import and export carry `width`/`height`, and a playtest runs the whole room with the scrolling camera.
+autosaves to PlayerPrefs `phase.editor.v1` as the map file's own JSON, loaded through the same migration without the playability checks. Drafts saved before the
+format change (one tool/mask pair per cell, `3,19;…`, dash crystals left empty) still load.
+Import and export carry the room size, and a playtest runs the whole room with the scrolling camera.
 The two tray icons after the colors import (arrow out of the tray) and export (arrow into the tray) custom-map JSON.
 On Web, export calls `PhaseExportMap` and the page downloads `verto-custom-map.json`;
 import calls `PhaseImportMap`, the page opens a file picker and sends the text to

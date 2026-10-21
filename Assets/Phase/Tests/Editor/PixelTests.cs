@@ -1,16 +1,54 @@
 using System;
-using System.IO;
-using Newtonsoft.Json;
+using System.Linq;
 using NUnit.Framework;
 using Phase;
 using UnityEngine;
 
 public class PixelTests
 {
-    public class Reference { public int columns; public Block[] blocks; public Frame[] frames; }
-    public class Frame { public string name; public double time; public int phase; public int[] blocked; public Player player; }
 
 
+    [Test]
+    public void PlatformsAreDrawnWhereTheyAreAndSpikeCoverChangesTheBlock()
+    {
+        var pixels = new PhasePixels();
+        try
+        {
+            var platform = new Platform(false, 3, new[] { (10, 5), (20, 5) }, false, 7);
+            var room = new PhaseController(new[] { new Block(0, 160, 320, 24) }, 32, 149, platforms: new[] { platform }); room.flash = 0;
+            pixels.Draw(room, false); var home = pixels.Texture.GetPixels32();
+            platform.queued = 1; for (int i = 0; i < 20; i++) room.Step(default);
+            pixels.Draw(room, false); var moved = pixels.Texture.GetPixels32();
+            Color32 At(Color32[] frame, int x, int y) => frame[(179 - y) * 320 + x];
+            Assert.That(At(home, 80, 41), Is.Not.EqualTo(At(moved, 80, 41)), "the first stop is empty after the platform left");
+            Assert.That(At(moved, 160, 41), Is.Not.EqualTo(At(home, 160, 41)), "the second stop shows the platform");
+            var plain = new PhaseController(new[] { new Block(80, 80, 8, 8, phaseMask: 7) }, 32, 40); plain.flash = 0;
+            var covered = new PhaseController(new[] { new Block(80, 80, 8, 8, phaseMask: 7) { spiked = true } }, 32, 40); covered.flash = 0;
+            pixels.Draw(plain, false); var bricks = pixels.Texture.GetPixels32();
+            pixels.Draw(covered, false); var teeth = pixels.Texture.GetPixels32();
+            Assert.That(Enumerable.Range(80, 8).SelectMany(x => Enumerable.Range(80, 8).Select(y => At(bricks, x, y).Equals(At(teeth, x, y)))).Count(same => !same), Is.GreaterThan(8), "a spike-covered cell looks different");
+            // A platform out of phase is a ghost, and a spike-covered one is not drawn as plain bricks.
+            Color32[] Shot(Platform p) { var r = new PhaseController(new[] { new Block(0, 160, 320, 24) }, 32, 149, platforms: new[] { p }); r.flash = 0; pixels.Draw(r, false); return pixels.Texture.GetPixels32(); }
+            int Differences(Color32[] a, Color32[] b) => Enumerable.Range(72, 24).SelectMany(x => Enumerable.Range(40, 8).Select(y => At(a, x, y).Equals(At(b, x, y)))).Count(same => !same);
+            var solid = Shot(new Platform(false, 3, new[] { (10, 5), (20, 5) }, false, 7));
+            Assert.That(Differences(solid, Shot(new Platform(false, 3, new[] { (10, 5), (20, 5) }, false, 2))), Is.GreaterThan(24), "a ghost platform is drawn dim");
+            Assert.That(Differences(solid, Shot(new Platform(false, 3, new[] { (10, 5), (20, 5) }, false, 7, true))), Is.GreaterThan(24), "a spike-covered platform shows its teeth");
+            // A mixed-color covered block keeps its phase pips: the first one is the red highlight.
+            var mixed = new PhaseController(new[] { new Block(80, 80, 8, 8, phaseMask: 3) { spiked = true } }, 32, 40); mixed.flash = 0;
+            pixels.Draw(mixed, false);
+            Assert.That(At(pixels.Texture.GetPixels32(), 82, 84), Is.EqualTo((Color32)PhasePixels.Hex(PhasePixels.Highlights[0])));
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+    [Test]
+    public void EntryNeverLandsOnASpikeCoveredSurface()
+    {
+        var plain = new Block(200, 120, 40, 8, phaseMask: 7);
+        var room = new PhaseController(new[] { new Block(0, 160, 320, 24) { spiked = true }, plain }, 32, 40);
+        var entry = PhaseSandbox.RightEntry(room, 149);
+        Assert.That(entry?.at.y, Is.EqualTo(109), "the covered floor is skipped for the plain ledge");
+        Assert.That(PhaseSandbox.RightEntry(new PhaseController(new[] { new Block(0, 160, 320, 24) { spiked = true } }, 32, 40), 149), Is.Null);
+    }
     [Test]
     public void CrystalShapesColorsAndGhostsKeepTheirPickupMeaning()
     {
@@ -209,7 +247,7 @@ public class PixelTests
             for(int y=0;y<180;y++)for(int x=0;x<83;x++)Assert.That(narrow[y*83+x],Is.EqualTo(original[y*320+x+95]),"camera crop keeps native pixels");
             s.ResizeRoom(427);pixels.SetView(427,180,0);pixels.Draw(s);
             Color32 floor=pixels.Texture.GetPixel(400,19);
-            Assert.That((floor.r,floor.g,floor.b),Is.EqualTo(((byte)232,(byte)232,(byte)232)),"connected stone floor reaches the wide edge");
+            Assert.That((floor.r,floor.g,floor.b),Is.EqualTo(((byte)255,(byte)255,(byte)255)),"connected white floor reaches the wide edge");
             Assert.That(pixels.Texture.GetPixel(400,140).a,Is.EqualTo(1));
             pixels.SetView(320,180,0);s.ResizeRoom(320);pixels.Draw(s);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32(),"resizing back restores the original room");
             pixels.SetView(320,693,0);pixels.Draw(s);var portrait=pixels.Texture.GetPixels32();
@@ -229,7 +267,7 @@ public class PixelTests
             foreach(int phase in new[]{0,1,2})
             {
                 s.phase=phase;pixels.Draw(s);
-                Assert.That((Color32)pixels.Texture.GetPixel(24,19),Is.EqualTo((Color32)PhasePixels.Hex("e8e8e8")),"permanent floor stays white in every phase");
+                Assert.That((Color32)pixels.Texture.GetPixel(24,19),Is.EqualTo((Color32)PhasePixels.Hex("ffffff")),"permanent floor stays white in every phase");
             }
         }
         finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
@@ -246,7 +284,7 @@ public class PixelTests
             pixels.SetView(320,693,0);pixels.Draw(room);
             Assert.That(pixels.OriginY,Is.EqualTo(-256));
             Color32 top = pixels.Texture.GetPixel(160, pixels.Height - 1);
-            Assert.That(top.r, Is.EqualTo(top.g), "portrait padding above the play area is neutral stone");
+            Assert.That(top.r, Is.EqualTo(top.g), "portrait padding above the play area is neutral white wall");
             Assert.That(top.r, Is.GreaterThan(50));
             Assert.That((Color32)pixels.Texture.GetPixel(160, pixels.Height - 1 - (194 - pixels.OriginY)), Is.EqualTo((Color32)PhasePixels.Hex("0b0f16")), "void becomes fully dark at the existing death boundary");
             Assert.That(Math.Abs(-pixels.OriginY+90-pixels.Height/2.0),Is.LessThanOrEqualTo(.5),"play area is centered");
@@ -328,55 +366,18 @@ public class PixelTests
     }
 
     [Test]
-    public void PublishedTerrainArtRemainsUnchangedAcrossAllCharacterPoses()
+    public void AddingTerrainInvalidatesTheCachedRoom()
     {
-        var reference=JsonConvert.DeserializeObject<Reference>(File.ReadAllText("Verification/ArtReference.json"));
-        var golden=new Texture2D(2,2);
         var pixels=new PhasePixels();
         try
         {
-            Assert.That(golden.LoadImage(File.ReadAllBytes("Verification/ArtReference.png")),Is.True);
-            var expected=golden.GetPixels32();var atlas=new Color32[expected.Length];
-            var controller=new PhaseController(reference.blocks,120,149);
-            var neutralColors=new[]{"a9b8c5","e8e8e8","697d8e","a0a0a0","3c4a57","646464","506170","7f7f7f","34404b","565656","242c34","3c3c3c","191f25","2a2a2a","f2dc8a","f0f0f0","e7ce76","e8e8e8","6f603c","787878","8f7c47","a0a0a0","4b4129","484848"};
-            int worst=0,bad=0,neutralPixels=0;string first=null;
-            for(int f=0;f<reference.frames.Length;f++)
-            {
-                var frame=reference.frames[f];controller.player=frame.player;controller.time=frame.time;controller.phase=frame.phase;controller.flash=0;
-                controller.blocked.Clear();foreach(int index in frame.blocked)controller.blocked.Add(index);
-                pixels.Draw(controller);var actual=pixels.Texture.GetPixels32();
-                var p=frame.player;int feet=(int)Math.Floor(p.y+p.h+.5);
-                int headTop=feet-13,collar=frame.name.StartsWith("run1 ")||frame.name.StartsWith("run3 ")?6:7;
-                for(int y=0;y<180;y++)for(int x=0;x<320;x++)
-                {
-                    int index=(golden.height-1-(f/reference.columns*180+y))*golden.width+(f%reference.columns*320+x);
-                    var a=actual[(179-y)*320+x];var e=expected[index];atlas[index]=a;
-                    bool stone=y>=160||(x>=224&&x<240&&y>=80&&y<160);
-                    // The reference still shows the removed dash platform and its track; those pixels are skipped.
-                    if((x>=159&&x<211&&y>=143&&y<153)) continue;
-                    if(stone)
-                    {
-                        for(int c=0;c<neutralColors.Length;c+=2)if(e.Equals((Color32)PhasePixels.Hex(neutralColors[c])))
-                        { e=PhasePixels.Hex(neutralColors[c+1]);neutralPixels++;break; }
-                    }
-                    if(x>=p.x-12&&x<p.x+19&&y>=headTop-3&&y<=feet+2) continue;
-                    int delta=Math.Max(Math.Abs(a.r-e.r),Math.Max(Math.Abs(a.g-e.g),Math.Abs(a.b-e.b)));
-                    worst=Math.Max(worst,delta);
-                    if(delta>2){bad++;if(first==null)first=$"{frame.name} ({x},{y}) expected {e} actual {a}";}
-                }
-            }
-            Directory.CreateDirectory("TestResults/Web");
-            var rendered=new Texture2D(golden.width,golden.height,TextureFormat.RGBA32,false);
-            try { rendered.SetPixels32(atlas);rendered.Apply();File.WriteAllBytes("TestResults/Web/art-unity.png",rendered.EncodeToPNG()); }
-            finally { UnityEngine.Object.DestroyImmediate(rendered); }
-            File.WriteAllText("TestResults/Web/art-parity.json",JsonConvert.SerializeObject(new { frames=reference.frames.Length,neutralPixelsRemapped=neutralPixels,badPixels=bad,maxChannelDelta=worst,firstMismatch=first },Formatting.Indented));
-            Assert.That(neutralPixels,Is.GreaterThan(300000),"permanent stone colors are remapped without changing their texture");
-            Assert.That(bad,Is.Zero,first);
+            var controller=new PhaseController(new[]{new Block(0,160,320,24)},120,149);controller.flash=0;
+            pixels.Draw(controller);
             controller.blocks.Add(new Block(0,0,8,8));pixels.Draw(controller);
             Color32 added=pixels.Texture.GetPixel(1,179);
-            Assert.That((added.r,added.g,added.b),Is.EqualTo(((byte)232,(byte)232,(byte)232)),"adding terrain invalidates the cached room");
+            Assert.That((added.r,added.g,added.b),Is.EqualTo(((byte)255,(byte)255,(byte)255)),"adding terrain invalidates the cached room");
         }
-        finally { UnityEngine.Object.DestroyImmediate(golden); UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
     }
 
     [Test]

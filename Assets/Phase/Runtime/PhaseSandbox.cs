@@ -62,7 +62,8 @@ namespace Phase
             var controller = new PhaseController(GetComponentsInChildren<PhaseTerrain>().Select(t => t.CreateBlock()), at.x, at.y,
                 spikes: GetComponentsInChildren<PhaseSpike>().Select(t => t.CreateSpike()),
                 lasers: GetComponentsInChildren<PhaseLaser>().Select(t => t.CreateLaser()),
-                crystals: GetComponentsInChildren<PhaseCrystal>().Select(t => t.CreateCrystal()), width: roomSize.x, height: roomSize.y);
+                crystals: GetComponentsInChildren<PhaseCrystal>().Select(t => t.CreateCrystal()), width: roomSize.x, height: roomSize.y,
+                platforms: GetComponentsInChildren<PhaseJumpPlatform>().Select(t => t.CreatePlatform()));
             controller.exitLeft = !string.IsNullOrEmpty(leftScene);
             controller.exitRight = !string.IsNullOrEmpty(rightScene) || level == Levels.Length - 1;
             controller.ResizeRoom(width);
@@ -80,7 +81,8 @@ namespace Phase
                     {
                         c.phase = phase;
                         var blockers = c.Solid().Concat(c.spikes.Where(s => s.ActiveInPhase(phase)).Select(s => s.Hitbox))
-                            .Concat(c.lasers.Where(l => l.ActiveInPhase(phase)).Select(c.LaserBeam)).ToList();
+                            .Concat(c.lasers.Where(l => l.ActiveInPhase(phase)).Select(c.LaserBeam))
+                            .Concat(c.blocks.Where((b, i) => b.spiked && b.ActiveInPhase(phase) && !c.blocked.Contains(i)).Select(PhaseController.Reach)).ToList();
                         var spots = c.blocks.Where((b, i) => b.ActiveInPhase(phase) && !c.blocked.Contains(i) && b.x <= x && b.x + b.w >= x + 8 && b.y >= 11)
                             .Select(b => new Block(x, b.y - 11, 8, 11)).Where(p => !blockers.Any(o => PhaseController.Overlap(p, o)))
                             .OrderBy(p => Math.Abs(p.y - preferY)).ToList();
@@ -254,7 +256,9 @@ namespace Phase
             while (accumulator >= PhaseController.Dt)
             {
                 input.jump = jumpQueued;
+                var was = (Controller.jumps, Controller.deaths, Controller.player.grounded, Controller.player.airJump);
                 Controller.Step(input); jumpQueued = false;
+                PhaseAudio.Step(Controller, was);
                 view.Follow(Controller, pixels.Width, pixels.Height);
                 accumulator -= PhaseController.Dt;
                 if (Controller.ExitDirection != 0) { Travel(Controller.ExitDirection); break; }
