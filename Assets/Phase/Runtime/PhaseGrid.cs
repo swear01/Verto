@@ -53,7 +53,7 @@ namespace Phase
                     controller.crystals[i].ActiveInPhase(controller.phase) && !controller.crystals[i].collected);
             for (int i = 0; i < platforms.Length; i++)
                 Sync(platforms[i].GetComponent<BoxCollider2D>(), controller.platforms[i],
-                    controller.platforms[i].ActiveInPhase(controller.phase) && !controller.blocked.Contains(controller.blocks.Count - controller.platforms.Count + i));
+                    controller.platforms[i].ActiveInPhase(controller.phase) && !controller.blocked.Contains(controller.PlatformIndex(i)));
             Physics2D.SyncTransforms();
         }
         static void Sync(BoxCollider2D shape, Block block, bool active = true)

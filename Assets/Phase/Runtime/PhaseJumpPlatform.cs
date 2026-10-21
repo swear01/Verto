@@ -20,6 +20,7 @@ namespace Phase
         Vector2Int Size => vertical ? new Vector2Int(8, length * 8) : new Vector2Int(length * 8, 8);
         public Platform CreatePlatform()
         {
+            Sanitize();
             var box = PhaseGrid.CreateBox(this, transform.position, Size, mask: phaseMask);
             int x = (int)box.x / 8 + (vertical ? 0 : length / 2), y = (int)box.y / 8 + (vertical ? length / 2 : 0);
             var sides = new List<SpikeDirection>();
@@ -29,16 +30,19 @@ namespace Phase
             if ((spikes & PlatformSides.Right) != 0) sides.Add(SpikeDirection.Right);
             return new Platform(vertical, length, pivots.Select(p => (x + p.x, y + p.y)), reverse, phaseMask, spiked, sides);
         }
-        void OnValidate()
+        void OnValidate() => Sanitize();
+        // An odd length, a color, at least two stops and the first at zero; the path itself is free.
+        void Sanitize()
         {
             length = Mathf.Max(1, length | 1);
-            if (pivots == null || pivots.Length < 2) pivots = new[] { Vector2Int.zero, new Vector2Int(8, 0) };
+            if (phaseMask < 1) phaseMask = 7;
+            if (pivots == null || pivots.Length < 2) pivots = new[] { Vector2Int.zero, vertical ? new Vector2Int(0, -1) : new Vector2Int(1, 0) };
             pivots[0] = Vector2Int.zero;
         }
         void OnDrawGizmos()
         {
             if (pivots == null || pivots.Length == 0) return;
-            Gizmos.color = PhasePixels.SurfaceColor(phaseMask);
+            Gizmos.color = PhasePixels.SurfaceColor(phaseMask == 0 ? 7 : phaseMask);
             for (int i = 0; i < pivots.Length; i++)
             {
                 var next = pivots[(i + 1) % pivots.Length];

@@ -167,4 +167,58 @@ public class PlatformTests
         var p = new PhaseController(new[] { new Block(0, 160, 320, 24) }, 40, 133, platforms: new[] { spiked });
         Run(p, 6); Assert.That(p.deaths, Is.EqualTo(1), "landing on it kills");
     }
+
+    [Test]
+    public void VerticalPlatformsPutTheirSpikeRowsOnTheRightSidesAndReverseCarriesThemAlong()
+    {
+        var tall = new Platform(true, 3, new[] { (5, 10), (5, 6) }, false, 7, false,
+            new[] { SpikeDirection.Up, SpikeDirection.Down, SpikeDirection.Left, SpikeDirection.Right });
+        Assert.That((tall.x, tall.y, tall.w, tall.h), Is.EqualTo((40d, 72d, 8d, 24d)));
+        Assert.That(tall.attached.Select(s => (s.direction, s.x, s.y, s.w, s.h)), Is.EquivalentTo(new[] {
+            (SpikeDirection.Up, 40d, 64d, 8d, 8d), (SpikeDirection.Down, 40d, 96d, 8d, 8d),
+            (SpikeDirection.Left, 32d, 72d, 8d, 24d), (SpikeDirection.Right, 48d, 72d, 8d, 24d) }), "left and right rows span the length, up and down one cell");
+        var back = new Platform(true, 3, new[] { (5, 10), (5, 6), (9, 6) }, true, 7, false, new[] { SpikeDirection.Up });
+        var c = new PhaseController(new[] { new Block(0, 160, 320, 24) }, 200, 149, platforms: new[] { back });
+        back.queued = 1; Run(c, 20);
+        Assert.That((back.pivot, back.x, back.y), Is.EqualTo((2, 72d, 40d)), "reverse visits the last pivot first");
+        Assert.That((back.attached[0].x, back.attached[0].y), Is.EqualTo((72d, 32d)), "the row moved with it");
+    }
+
+    [Test]
+    public void APlatformPassingThroughThePlayerKeepsItsSpikesHarmless()
+    {
+        var platform = new Platform(false, 3, new[] { (10, 5), (20, 5) }, false, 7, false, new[] { SpikeDirection.Up });
+        var c = Room(platform);
+        var row = platform.attached[0]; c.player.x = row.x + 8; c.player.y = row.y + 5 - 6; c.player.vy = 0;
+        c.blocked.Add(c.PlatformIndex(0));
+        Assert.That(c.CheckHazards(), Is.False, "no spike of a platform in pass-through hurts");
+        c.blocked.Clear();
+        Assert.That(c.CheckHazards(), Is.True, "and they hurt again once it is solid to Wick");
+    }
+
+    [Test]
+    public void APushNeverCarriesThePlayerOutThroughTheRoomBottom()
+    {
+        double Fall(bool withPlatform)
+        {
+            var platform = new Platform(false, 1, new[] { (6, 20), (6, 24) });
+            var c = withPlatform ? new PhaseController(Array.Empty<Block>(), 48, 169, platforms: new[] { platform }) : new PhaseController(Array.Empty<Block>(), 48, 169);
+            platform.queued = 1; bool passed = false;
+            for (int i = 0; i < 12; i++) { c.Step(None); passed |= withPlatform && c.blocked.Contains(c.PlatformIndex(0)); }
+            Assert.That(c.deaths, Is.Zero);
+            if (withPlatform) Assert.That(passed, Is.True, "it passes through instead");
+            return c.player.y;
+        }
+        Assert.That(Fall(true), Is.EqualTo(Fall(false)), "the platform did not move Wick");
+    }
+
+    [Test]
+    public void GrowingARoomDoesNotStretchAPlatformAgainstTheRightEdge()
+    {
+        var platform = new Platform(false, 3, new[] { (38, 5), (30, 5) });
+        var c = Room(platform);
+        Assert.That(platform.x + platform.w, Is.EqualTo(320));
+        c.ResizeRoom(400);
+        Assert.That((platform.w, c.blocks[0].w), Is.EqualTo((24d, 400d)), "the floor grows, the platform keeps its size");
+    }
 }

@@ -9,7 +9,7 @@ namespace Phase
     public static class PhaseCustomMap
     {
         // The smallest room is one 320×176 screen; a larger room scrolls. MaxCells bounds the largest.
-        public const int Width = 320, Height = 176, MaxWidth = 1280, MaxHeight = 720, MaxCells = MaxWidth / 8 * (MaxHeight / 8), MaxJsonLength = 2000000;
+        public const int Width = 320, Height = 176, MaxWidth = 1280, MaxHeight = 720, MaxCells = MaxWidth / 8 * (MaxHeight / 8), MaxJsonLength = 2000000, MaxNumber = 1000000;
         // The map file format: maps without a version are v1. Saving always writes the latest.
         public const int Version = 2;
         public const string Format = "verto-map", Generator = "Verto 0.2";
@@ -32,7 +32,11 @@ namespace Phase
                     if (version < 1) throw new ArgumentException("地圖版本無效。");
                 }
                 if (version > Version) throw new ArgumentException($"這份地圖由較新的Verto製作（地圖格式第{version}版，本遊戲支援到第{Version}版），請先更新遊戲。");
-                for (; version < Version; version++) data = Upgrades[version - 1](data);
+                for (; version < Version; version++)
+                {
+                    if (version > Upgrades.Length) throw new ArgumentException($"找不到地圖格式第{version}版的升級方式。");
+                    data = Upgrades[version - 1](data);
+                }
                 var room = FromData(data);
                 if (validate) Validate(room);
                 return room;
@@ -121,6 +125,8 @@ namespace Phase
             double number = value.Value<double>();
             if (double.IsNaN(number) || double.IsInfinity(number) || number % 1 != 0)
                 throw new ArgumentException("地圖欄位必須是有限整數：" + field);
+            // Far beyond any room, so later cell and pixel arithmetic cannot wrap.
+            if (Math.Abs(number) > MaxNumber) throw new ArgumentException("地圖數值超出範圍：" + field);
             return number;
         }
         public static void Validate(PhaseDemoRoom room)
@@ -144,25 +150,19 @@ namespace Phase
                 AddCells(block.x, block.y, block.w, block.h, occupied);
                 if (block.ActiveInPhase(0) && PhaseController.Overlap(player, block))
                     throw new ArgumentException("出生點與紅色模式的實體地形重疊。");
-                if (block.spiked && block.ActiveInPhase(0) && PhaseController.Overlap(player, Reach(block)))
+                if (block.spiked && block.ActiveInPhase(0) && PhaseController.Overlap(player, PhaseController.Reach(block)))
                     throw new ArgumentException("出生點碰到紅色模式的尖刺覆蓋地形。");
             }
             foreach (var item in room.platforms ?? Array.Empty<DemoPlatform>())
             {
-                if (item == null || item.pivots == null || item.spikes == null || item.pivots.Length < 2 || item.length < 1 || item.length % 2 == 0 || item.phaseMask < 1 || item.phaseMask > 7 ||
-                    item.spikes.Any(d => (int)d < 0 || (int)d > 3))
-                    throw new ArgumentException("平台的長度、路徑、方向或顏色無效。");
-                var platform = item.Create();
-                // The path may cross other objects, but every stop keeps the body inside the room.
-                for (int i = 0; i < platform.pivots.Length; i++)
-                { var at = platform.OriginAt(i); InsideRoom(at.x, at.y, platform.w, platform.h, w, h); }
+                var platform = CheckPlatform(item, w, h);
                 AddCells(platform.x, platform.y, platform.w, platform.h, occupied);
                 foreach (var teeth in platform.attached)
                 {
                     AddCells(teeth.x, teeth.y, teeth.w, teeth.h, occupied);
                     if (teeth.ActiveInPhase(0) && PhaseController.Overlap(player, teeth.Hitbox)) throw new ArgumentException("出生點與紅色模式的尖刺重疊。");
                 }
-                if (platform.ActiveInPhase(0) && PhaseController.Overlap(player, platform.spiked ? Reach(platform) : platform))
+                if (platform.ActiveInPhase(0) && PhaseController.Overlap(player, platform.spiked ? PhaseController.Reach(platform) : platform))
                     throw new ArgumentException("出生點與紅色模式的平台重疊。");
             }
             foreach (var spike in room.spikes ?? Array.Empty<DemoSpike>())
@@ -235,7 +235,7 @@ namespace Phase
             }
             foreach (var platform in room.platforms ?? Array.Empty<DemoPlatform>())
             {
-                if (platform == null || platform.pivots == null || platform.spikes == null) throw new ArgumentException("平台的長度、路徑、方向或顏色無效。");
+                CheckPlatform(platform, room.GridWidth, room.GridHeight);
                 objects.Add(new JObject {
                     ["type"] = "platform", ["orientation"] = platform.vertical ? "vertical" : "horizontal", ["length"] = platform.length,
                     ["pivots"] = new JArray(platform.pivots.Select(p => new JArray(p.x, p.y))), ["reverse"] = platform.reverse, ["mask"] = platform.phaseMask,
@@ -334,7 +334,18 @@ namespace Phase
             if (obj[field].Type != JTokenType.Boolean) throw new ArgumentException("地圖欄位必須是布林值：" + field);
             return obj[field].Value<bool>();
         }
-        static Block Reach(Block b) => new Block(b.x - .5, b.y - .5, b.w + 1, b.h + 1);
+        // A platform that can be built: odd length, two or more pivots, valid color and sides. The path may cross other
+        // objects, but every stop keeps the body inside the room.
+        public static Platform CheckPlatform(DemoPlatform item, int roomWidth, int roomHeight)
+        {
+            if (item == null || item.pivots == null || item.spikes == null || item.pivots.Length < 2 || item.length < 1 || item.length % 2 == 0 || item.phaseMask < 1 || item.phaseMask > 7 ||
+                item.spikes.Any(d => (int)d < 0 || (int)d > 3))
+                throw new ArgumentException("平台的長度、路徑、方向或顏色無效。");
+            var platform = item.Create();
+            for (int i = 0; i < platform.pivots.Length; i++)
+            { var at = platform.OriginAt(i); InsideRoom(at.x, at.y, platform.w, platform.h, roomWidth, roomHeight); }
+            return platform;
+        }
         static bool Aligned(double value) => !double.IsNaN(value) && !double.IsInfinity(value) && value % 8 == 0;
         static void InsideRoom(double x, double y, double width, double height, int roomWidth, int roomHeight)
         {

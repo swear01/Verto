@@ -50,6 +50,8 @@ namespace Phase
         bool draftVertical, coverOn;
         int draftLength;
         public bool Placing => draft.Count > 0;
+        // 0 until the second click gives the platform being placed its length.
+        public int DraftLength => draftLength;
         public int Tool { get; private set; } = Terrain;
         // The spike/laser direction index (Up, Down, Left, Right), kept across type changes.
         public int Facing { get; private set; }
@@ -130,6 +132,7 @@ namespace Phase
             foreach (var spike in room.CreateSpikes()) Put(spike.x, spike.y, spike.w, spike.h, 2 + (int)spike.direction, spike.Mask);
             foreach (var laser in room.lasers ?? Array.Empty<DemoLaser>()) Put(laser.x, laser.y, 8, 8, LaserTool + (int)laser.direction, laser.phaseMask);
             foreach (var crystal in room.crystals ?? Array.Empty<DemoCrystal>()) Put(crystal.x, crystal.y, 8, 8, CrystalTool, crystal.phaseMask);
+            foreach (var platform in room.platforms ?? Array.Empty<DemoPlatform>()) PhaseCustomMap.CheckPlatform(platform, room.GridWidth, room.GridHeight);
             platforms.AddRange(room.platforms ?? Array.Empty<DemoPlatform>());
             SpawnCell = new Vector2Int(Math.Max(0, Math.Min(cols - 1, (int)room.spawnX / 8)), Math.Max(0, Math.Min(rows - 2, (int)room.spawnY / 8)));
         }
@@ -174,15 +177,29 @@ namespace Phase
         void CancelPlacing() { draft.Clear(); draftLength = 0; }
         static bool Covers(Block b, Vector2Int cell) => cell.x * 8 >= b.x && cell.x * 8 < b.x + b.w && cell.y * 8 >= b.y && cell.y * 8 < b.y + b.h;
         // The platform whose body, or attached spike row (side), occupies the cell at its first pivot.
-        (DemoPlatform platform, SpikeDirection? side) PlatformAt(Vector2Int cell)
+        // With anyStop every stop of the path counts, so each drawn stop can be edited; otherwise only the first, where the platform sits.
+        (DemoPlatform platform, SpikeDirection? side) PlatformAt(Vector2Int cell, bool anyStop = false)
         {
             foreach (var platform in platforms)
             {
-                var body = platform.Create();
-                if (Covers(body, cell)) return (platform, null);
-                foreach (var teeth in body.attached) if (Covers(teeth, cell)) return (platform, teeth.direction);
+                var body = platform.Create(); var home = body.OriginAt(0);
+                for (int i = 0; i < (anyStop ? body.pivots.Length : 1); i++)
+                {
+                    var at = body.OriginAt(i); var local = new Vector2Int(cell.x - (int)(at.x - home.x) / 8, cell.y - (int)(at.y - home.y) / 8);
+                    if (Covers(body, local)) return (platform, null);
+                    foreach (var teeth in body.attached) if (Covers(teeth, local)) return (platform, teeth.direction);
+                }
             }
             return (null, null);
+        }
+        // A new spike row needs every cell of its row inside the room and empty of terrain, objects and other platforms.
+        bool RowFree(DemoPlatform platform, SpikeDirection face)
+        {
+            var row = new Platform(platform.vertical, platform.length, platform.pivots, platform.reverse, platform.phaseMask, false, new[] { face }).attached[0];
+            for (int y = (int)row.y / 8; y < (row.y + row.h) / 8; y++)
+                for (int x = (int)row.x / 8; x < (row.x + row.w) / 8; x++)
+                    if (x < 0 || y < 0 || x >= cols || y >= rows || tools[y * cols + x] != Erase || PlatformAt(new Vector2Int(x, y)).platform != null) return false;
+            return true;
         }
         static bool Fits(DemoPlatform platform, int columns, int rowCount)
         {
@@ -209,7 +226,10 @@ namespace Phase
             var made = new DemoPlatform { vertical = draftVertical, length = draftLength, phaseMask = Mask, pivots = draft.Select(c => (c.x, c.y)).ToArray() };
             var body = made.Create();
             bool free = Fits(made, cols, rows) && Enumerable.Range(0, (int)(body.w * body.h / 64)).All(n =>
-                tools[((int)body.y / 8 + (draftVertical ? n : 0)) * cols + (int)body.x / 8 + (draftVertical ? 0 : n)] == Erase);
+            {
+                var at = new Vector2Int((int)body.x / 8 + (draftVertical ? 0 : n), (int)body.y / 8 + (draftVertical ? n : 0));
+                return tools[at.y * cols + at.x] == Erase && PlatformAt(at).platform == null;
+            });
             if (!free) { flash = .4f; return true; }
             platforms.Add(made); CancelPlacing(); return Edited();
         }
@@ -217,8 +237,14 @@ namespace Phase
         // A stroke keeps the direction its first cell chose.
         bool Cover(Vector2Int cell, bool press)
         {
-            var (platform, side) = PlatformAt(cell);
-            if (platform != null) { if (side != null || !press) return false; platform.spiked = !platform.spiked; return Edited(); }
+            var (platform, side) = PlatformAt(cell, true);
+            if (platform != null)
+            {
+                if (side != null) return false;
+                if (press) coverOn = !platform.spiked;
+                if (platform.spiked == coverOn) return false;
+                platform.spiked = coverOn; return Edited();
+            }
             int i = cell.y * cols + cell.x;
             if (tools[i] != Erase && tools[i] != Terrain && tools[i] != Covered) return false;
             if (press) coverOn = tools[i] != Covered;
@@ -237,20 +263,24 @@ namespace Phase
             }
             if (tool == PlatformTool) return press && PlaceStep(cell);
             if (tool == CoverTool) return Cover(cell, press);
-            var (platform, side) = PlatformAt(cell);
-            if (platform != null)
+            var (platform, side) = PlatformAt(cell, true);
+            // Erasing takes the platform, or the spike row under the cursor; the spike tool flips the row on the face it points to.
+            if (platform != null && tool == Erase)
             {
-                // Erasing takes the platform, or the spike row under the cursor; the spike tool flips the row on the face it points to.
-                if (tool == Erase)
-                {
-                    if (side is SpikeDirection row) platform.spikes = platform.spikes.Where(d => d != row).ToArray(); else platforms.Remove(platform);
-                    return Edited();
-                }
-                if (KindOf(tool) != SpikeTool || side != null || !press) return false;
-                var face = (SpikeDirection)(tool - SpikeTool);
-                platform.spikes = platform.spikes.Contains(face) ? platform.spikes.Where(d => d != face).ToArray() : platform.spikes.Append(face).ToArray();
+                if (side is SpikeDirection row) platform.spikes = platform.spikes.Where(d => d != row).ToArray(); else platforms.Remove(platform);
                 return Edited();
             }
+            if (platform != null && side == null && KindOf(tool) == SpikeTool)
+            {
+                if (!press) return false;
+                var face = (SpikeDirection)(tool - SpikeTool);
+                if (platform.spikes.Contains(face)) platform.spikes = platform.spikes.Where(d => d != face).ToArray();
+                else if (RowFree(platform, face)) platform.spikes = platform.spikes.Append(face).ToArray();
+                else { flash = .4f; return true; }
+                return Edited();
+            }
+            // Where a platform starts, the cell is taken.
+            if (PlatformAt(cell).platform != null) return false;
             int i = cell.y * cols + cell.x; byte color = (byte)(tool == Erase ? 0 : Mask);
             if (tools[i] == tool && colors[i] == color) return false;
             tools[i] = (byte)tool; colors[i] = color; return Edited();
@@ -466,7 +496,7 @@ namespace Phase
                 if (k.rKey.wasPressedThisFrame) changed |= Rotate(1);
                 if (k.eKey.wasPressedThisFrame) changed |= Rotate(-1);
                 bool turning = k.rKey.isPressed || k.eKey.isPressed || k.xKey.isPressed || k.fKey.isPressed;
-                if (k.fKey.wasPressedThisFrame && PlatformAt(Cursor).platform is DemoPlatform loop) { loop.reverse = !loop.reverse; changed |= Edited(); }
+                if (k.fKey.wasPressedThisFrame && PlatformAt(Cursor, true).platform is DemoPlatform loop) { loop.reverse = !loop.reverse; changed |= Edited(); }
                 if (k.xKey.wasPressedThisFrame) { Select(kinds[(Array.IndexOf(kinds, KindOf(Tool)) + 1) % kinds.Length]); changed = true; }
                 var input = turning ? default : PhaseSandbox.ReadControls(k);
                 // Up and down are not bindable, so the cursor takes them from the arrow keys.

@@ -102,7 +102,7 @@ namespace Phase
                     var body = tile.AddComponent<PhaseJumpPlatform>(); body.vertical = item.vertical; body.length = item.length;
                     body.pivots = item.pivots.Select(p => new Vector2Int(p.x - item.pivots[0].x, p.y - item.pivots[0].y)).ToArray();
                     body.reverse = item.reverse; body.spiked = item.spiked; body.phaseMask = item.phaseMask;
-                    foreach (var side in item.spikes) body.spikes |= (PlatformSides)(1 << (int)side);
+                    foreach (var side in item.spikes ?? Array.Empty<SpikeDirection>()) body.spikes |= (PlatformSides)(1 << (int)side);
                 }
                 var sandbox = root.AddComponent<PhaseSandbox>(); sandbox.custom = true;
                 sandbox.pixelCamera = camera; sandbox.pixelMaterial = material;

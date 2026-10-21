@@ -36,7 +36,7 @@ namespace Phase
         {
             var at = OriginAt(0); bool across = side == SpikeDirection.Up || side == SpikeDirection.Down;
             return new Spike(side == SpikeDirection.Left ? at.x - 8 : side == SpikeDirection.Right ? at.x + w : at.x,
-                side == SpikeDirection.Up ? at.y - 8 : side == SpikeDirection.Down ? at.y + h : at.y, across ? w : h, side, Mask);
+                side == SpikeDirection.Up ? at.y - 8 : side == SpikeDirection.Down ? at.y + h : at.y, across ? w : h, side, Mask) { owner = this };
         }
         public (double x, double y) OriginAt(int i)
         {
@@ -60,7 +60,7 @@ namespace Phase
         {
             if (target < 0)
             {
-                if (queued == 0) return (0, 0);
+                if (queued <= 0) return (0, 0);
                 queued--; target = Next; elapsed = 0;
             }
             elapsed += dt;

@@ -14,7 +14,9 @@ public static class PlatformScene
         var scene = EditorSceneManager.OpenScene("Assets/Scenes/PhaseSandbox.unity");
         var root = UnityEngine.Object.FindAnyObjectByType<PhaseSandbox>().transform;
         var go = PhaseMechanismPrefabs.Instantiate("JumpPlatform", root, new Vector3(112, -152));
-        go.GetComponent<PhaseJumpPlatform>().pivots = new[] { Vector2Int.zero, new Vector2Int(0, -2) };
+        var platform = go.GetComponent<PhaseJumpPlatform>();
+        platform.pivots = new[] { Vector2Int.zero, new Vector2Int(0, -2) };
+        PrefabUtility.RecordPrefabInstancePropertyModifications(platform);
         const string path = "Assets/Temp/PhaseJumpPlatformProbe.unity";
         Directory.CreateDirectory("Assets/Temp");
         if (!EditorSceneManager.SaveScene(scene, path)) throw new IOException("Could not save the probe scene.");

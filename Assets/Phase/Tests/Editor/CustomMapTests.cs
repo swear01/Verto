@@ -242,4 +242,29 @@ public class CustomMapTests
         map.platforms=new[]{map.platforms[0],new DemoPlatform{length=1,pivots=new[]{(10,12),(10,5)},spikes=new SpikeDirection[0]}};
         Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Validate(map),"two platforms may not share a starting cell");
     }
+    [Test]
+    public void VerticalPlatformsRoundTripAndMalformedPlatformsAndHugeNumbersAreRefused()
+    {
+        var map=Simple();
+        map.platforms=new[]{new DemoPlatform{vertical=true,length=3,pivots=new[]{(5,10),(5,6)},spikes=new[]{SpikeDirection.Left}}};
+        PhaseCustomMap.Validate(map);string json=PhaseCustomMap.ToJson(map);
+        Assert.That((string)JObject.Parse(json)["objects"].Single(o=>(string)o["type"]=="platform")["orientation"],Is.EqualTo("vertical"));
+        var parsed=PhaseCustomMap.Parse(json);
+        Assert.That(PhaseCustomMap.ToJson(parsed),Is.EqualTo(json));
+        Assert.That((parsed.platforms[0].vertical,parsed.CreateController().platforms[0].h),Is.EqualTo((true,24d)));
+        foreach(var mutate in new Action<DemoPlatform>[]{
+            p=>p.pivots=null,p=>p.pivots=new[]{(5,10)},p=>p.length=2,p=>p.length=0,p=>p.phaseMask=0,p=>p.phaseMask=8,
+            p=>p.spikes=new[]{(SpikeDirection)9},p=>p.spikes=null,p=>p.pivots=new[]{(5,10),(5,-3)},p=>p.pivots=new[]{(5,10),(500,6)}})
+        {
+            var bad=Simple();bad.platforms=new[]{new DemoPlatform{vertical=true,length=3,pivots=new[]{(5,10),(5,6)},spikes=new SpikeDirection[0]}};
+            mutate(bad.platforms[0]);
+            Assert.Throws<ArgumentException>(()=>PhaseCustomMap.ToJson(bad),"writing checks like validating");
+            Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Validate(bad));
+        }
+        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.ToJson(new PhaseDemoRoom{blocks=Simple().blocks,platforms=new DemoPlatform[]{null}}));
+        var huge=JObject.Parse(json);huge["spawn"]=new JArray(1e18,19);
+        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(huge.ToString()),"a huge number cannot wrap past the room checks");
+        var old=V1(Simple());old["spawnX"]=1e18;
+        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(old.ToString()));
+    }
 }

@@ -27,6 +27,8 @@ namespace Phase
     public sealed class Spike : Block
     {
         public SpikeDirection direction;
+        // The platform an attached row belongs to; it stops hurting while that platform passes through the player.
+        [NonSerialized] public Platform owner;
         public Spike(double x, double y, double length, SpikeDirection direction, int phaseMask = 7)
             : base(x,y,direction == SpikeDirection.Up || direction == SpikeDirection.Down ? length : 8,
                 direction == SpikeDirection.Up || direction == SpikeDirection.Down ? 8 : length,phaseMask:phaseMask)
@@ -184,7 +186,7 @@ namespace Phase
             var p = player; from = from ?? p;
             foreach (var spike in spikes)
             {
-                if (!spike.ActiveInPhase(phase)) continue;
+                if (!spike.ActiveInPhase(phase) || Shielded(spike)) continue;
                 if (HitsSweep(spike.Hitbox, from)) { Kill(); return true; }
             }
             foreach (int i in spikedBlocks)
@@ -192,8 +194,11 @@ namespace Phase
             return false;
         }
         // A spike-covered block hurts on contact, so its reach is one half pixel past each face.
-        static Block Reach(Block b) => new Block(b.x - .5, b.y - .5, b.w + 1, b.h + 1);
+        public static Block Reach(Block b) => new Block(b.x - .5, b.y - .5, b.w + 1, b.h + 1);
         bool Lethal(int i) => blocks[i].ActiveInPhase(phase) && !blocked.Contains(i);
+        // The block index of the n-th platform; platforms follow the terrain.
+        public int PlatformIndex(int n) => blocks.Count - platforms.Count + n;
+        bool Shielded(Spike spike) => spike.owner != null && blocked.Contains(PlatformIndex(platforms.IndexOf(spike.owner)));
         bool HitsSweep(Block b, Block from)
         {
             if (b.w <= 0 || b.h <= 0) return false;
@@ -231,7 +236,7 @@ namespace Phase
             }
         }
         // A spot overlapping an active spike strip or laser beam, without killing.
-        bool Hazardous(Block at) => spikes.Any(s => s.ActiveInPhase(phase) && Overlap(at, s.Hitbox)) ||
+        bool Hazardous(Block at) => spikes.Any(s => s.ActiveInPhase(phase) && !Shielded(s) && Overlap(at, s.Hitbox)) ||
             spikedBlocks.Any(i => Lethal(i) && Overlap(at, Reach(blocks[i]))) ||
             lasers.Any(l => l.ActiveInPhase(phase) && Overlap(at, l.Beam(Solid(), Width, Height)));
         bool CheckInteractions(Block from = null)
@@ -282,7 +287,7 @@ namespace Phase
             {
                 var (dx, dy) = platforms[n].Advance(dt);
                 for (int step = 0; step < Math.Abs(dx) + Math.Abs(dy); step++)
-                    if (Nudge(platforms[n], blocks.Count - platforms.Count + n, step < Math.Abs(dx) ? Math.Sign(dx) : 0, step < Math.Abs(dx) ? 0 : Math.Sign(dy))) return true;
+                    if (Nudge(platforms[n], PlatformIndex(n), step < Math.Abs(dx) ? Math.Sign(dx) : 0, step < Math.Abs(dx) ? 0 : Math.Sign(dy))) return true;
             }
             return false;
         }
@@ -295,7 +300,7 @@ namespace Phase
             if (solid && (rides || Overlap(p, platform)))
             {
                 var others = Solid().Where(b => b != platform).ToList();
-                if (WithinSides(p.x + sx, p.w) && p.y + sy >= 0 && !Collides(p, others, sx, sy)) { p.x += sx; p.y += sy; }
+                if (WithinSides(p.x + sx, p.w) && p.y + sy >= 0 && p.y + p.h + sy <= Height && !Collides(p, others, sx, sy)) { p.x += sx; p.y += sy; }
                 else if (Overlap(p, platform)) blocked.Add(index);
             }
             return CheckInteractions();

@@ -172,7 +172,7 @@ namespace Phase
         // Platforms move, so they are painted over the cached terrain each frame.
         void Platforms(PhaseController s)
         {
-            for (int i = s.blocks.Count - s.platforms.Count; i < s.blocks.Count; i++) PaintBlock(s, i);
+            for (int i = 0; i < s.blocks.Count; i++) if (s.blocks[i] is Platform) PaintBlock(s, i);
         }
         void PaintBlock(PhaseController s, int i)
         {
@@ -187,7 +187,9 @@ namespace Phase
                 bool Neighbor(int dx, int dy) => b is Platform ? X + dx * 8 >= b.x && X + dx * 8 < b.x + b.w && Y + dy * 8 >= b.y && Y + dy * 8 < b.y + b.h
                     : cells.TryGetValue((X + dx * 8, Y + dy * 8), out var kind) && kind == b.Mask;
                 bool u = Neighbor(0,-1), d = Neighbor(0,1), l = Neighbor(-1,0), r = Neighbor(1,0);
-                if (b.spiked && active) { Rect(X, Y, 8, 8, Mix(body, Color("000000"), .5)); Blit(Covered(b.Mask, true), X - 1, Y - 1); continue; }
+                if (b.spiked && active) { Rect(X, Y, 8, 8, Mix(body, Color("000000"), .5)); Blit(Covered(b.Mask, true), X - 1, Y - 1);
+                    if (Mixed(b.Mask) && (((X-(int)b.x+Y-(int)b.y)>>3)&1)==0) Pips(X,Y,b.Mask,1);
+                    continue; }
                 if (!active)
                 {
                     Rect(X, Y, 8, 8, body, deferred ? .3 : .12);
