@@ -568,15 +568,15 @@ function levelTile(width, height, index) {
     assert(resumed.x>afterFullscreen.x+12,'Leaving fullscreen keeps native movement without another canvas click');
     console.log('Passed fullscreen and resumed input; checking in-game editor files');
     // Mirrors PhaseEditor.ViewFor/PanelIn/SlotIn: 18px slots in a fixed panel right of the 320x176 grid, or below it on
-    // tall screens. Slots 0-8 are object types, 9-15 colors, then import, export, play and back. Returns page coordinates.
+    // tall screens. Slots 0-8 are object types, 9-15 colors, then import, export, play, back and the four size arrows. Returns page coordinates.
     async function editorPoint(frame) {
       const box=await canvas.boundingBox(),fit=(w,h)=>[Math.max(w,Math.floor(h*box.width/box.height+.5)),Math.max(h,Math.ceil(w*box.height/box.width))];
       const side=fit(400,180),below=fit(320,280),[vw,vh]=side[0]<=below[0]?side:below,top=-Math.trunc((180-vh)/2);
       const [x,y]=frame(vw>=400,top);return [box.x+(x+.5)*box.width/vw,box.y+(y+.5)*box.height/vh];
     }
     const editorSlot=slot=>editorPoint((side,top)=>{
-      const group=slot<9?0:slot<16?1:2,i=slot-[0,9,16][group];
-      const [x,y]=side?[324+i%4*18,top+28+([0,3,5][group]+Math.floor(i/4))*18+group*6]:[58+(group===2?(7+i)*18+6:i*18),top+184+(group?24:0)];
+      const group=slot<9?0:slot<16?1:slot<20?2:3,i=slot-[0,9,16,20][group];
+      const [x,y]=side?[324+i%4*18,top+16+([0,3,5,6][group]+Math.floor(i/4))*18+group*6]:[19+([0,0,7,11][group]+i)*18+Math.max(0,group-1)*6,top+184+(group?24:0)];
       return [x+9,y+9];
     });
     const editorCell=(cx,cy)=>editorPoint((side,top)=>[cx*8+4,top+cy*8+4]);
