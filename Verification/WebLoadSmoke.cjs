@@ -7,7 +7,7 @@ const http = require('node:http');
 const path = require('node:path');
 
 const remote = /^https?:/.test(process.argv[2] || '') ? process.argv[2] : null;
-const root = path.resolve(process.argv[2] || 'Builds/Web');
+const root = remote ? null : path.resolve(process.argv[2] || 'Builds/Web');
 const reports = path.resolve(__dirname, '../TestResults/Web');
 fs.mkdirSync(reports, { recursive: true });
 if (!remote) assert(fs.existsSync(path.join(root, 'index.html')), 'Web output is missing');
@@ -38,7 +38,7 @@ const meanX = (from, without) => { const xs = [...from].filter(([i]) => !without
   let browser;
   const result = { errors: [], warnings: [], failedRequests: [] };
   try {
-    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    if (!remote) await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     browser = await chromium.launch({ channel: 'chromium', headless: true });
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
     page.on('console', message => {
@@ -50,9 +50,16 @@ const meanX = (from, without) => { const xs = [...from].filter(([i]) => !without
     await page.goto(remote || `http://127.0.0.1:${server.address().port}/`);
     await page.locator('#loading').waitFor({ state: 'hidden', timeout: 120000 });
     const canvas = page.locator('#unity-canvas');
-    await canvas.focus(); await page.waitForTimeout(1000);
-    // Jump on the title starts level1.
-    await page.keyboard.press('Space'); await page.waitForTimeout(2000);
+    await canvas.focus();
+    // The title's selected icon shares the cloak colors, so wait for the level-load result. Enter confirms whatever jump is bound to.
+    await page.evaluate(() => { window.__levelStarted = false; addEventListener('phase-map-result', () => window.__levelStarted = true, { once: true }); });
+    // A press right after a screen opens is ignored until keys are released; retry only after a full wait.
+    for (let attempt = 0; attempt < 3 && !await page.evaluate(() => window.__levelStarted); attempt++) {
+      await page.keyboard.press('Enter', { delay: 80 });
+      for (let n = 0; n < 30 && !await page.evaluate(() => window.__levelStarted); n++) await page.waitForTimeout(100);
+    }
+    assert(await page.evaluate(() => window.__levelStarted), 'The title starts level1');
+    await page.waitForTimeout(1000);
     const start = cloakPixels(await canvas.screenshot());
     assert(start.size, 'Level1 shows the player');
     // A short walk stays on the spawn ledge.
@@ -67,12 +74,13 @@ const meanX = (from, without) => { const xs = [...from].filter(([i]) => !without
     assert.deepEqual(result.warnings.filter(m => !/INVALID_ENUM: bindTexture|Framebuffer is incomplete: No attachments and default size is zero/.test(m)), [], 'Unexpected console warnings');
     result.passed = true;
   } catch (error) {
+    result.passed = false;
     result.failure = String(error.stack || error);
     process.exitCode = 1;
   } finally {
     fs.writeFileSync(path.join(reports, 'load-smoke.json'), JSON.stringify(result, null, 2));
     console.log(JSON.stringify(result));
     await browser?.close();
-    server.close();
+    if (!remote) await new Promise(resolve => server.close(resolve));
   }
 })();
