@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -45,11 +44,11 @@ namespace Phase
             if (transitioning) { MapResult(false, Busy); return; }
             try
             {
-                var room = PhaseCustomMap.Parse(json);
+                var map = PhaseCustomMap.Parse(json);
                 if (pixelCamera.transform.IsChildOf(transform)) pixelCamera.transform.SetParent(null,true);
                 jumpQueued = false; accumulator = 0;
                 gameObject.SetActive(false);
-                CreateCustom(room, pixelCamera, pixelMaterial);
+                CreateCustom(map, pixelCamera, pixelMaterial);
                 controlsOpen = false; releaseControls = true;
                 Destroy(gameObject);
                 MapResult(true);
@@ -60,55 +59,15 @@ namespace Phase
                 MapResult(false,error.Message);
             }
         }
-        // A parented room is an editor playtest; it is renamed so the "PHASE" bridge object stays unique.
-        internal static PhaseSandbox CreateCustom(PhaseDemoRoom room, Camera camera, Material material, Transform parent = null)
+        // A parented world is an editor playtest; it is renamed so the "PHASE" bridge object stays unique.
+        internal static PhaseSandbox CreateCustom(PhaseWorld world, Camera camera, Material material, Transform parent = null)
         {
             var root = new GameObject(parent == null ? "PHASE" : "Playtest"); root.SetActive(false);
             try
             {
                 root.transform.SetParent(parent,false);
-                var grid = root.AddComponent<Grid>(); grid.cellSize = new Vector3(8,8,1);
-                root.AddComponent<PhaseGrid>();
-                foreach (var block in room.blocks)
-                {
-                    var tile = new GameObject("Terrain"); tile.transform.SetParent(root.transform,false);
-                    tile.transform.localPosition = new Vector3((float)block.x,-(float)block.y,0);
-                    var terrain = tile.AddComponent<PhaseTerrain>(); terrain.size = new Vector2Int((int)block.w,(int)block.h);
-                    terrain.phase = block.phase; terrain.phaseMask = block.phaseMask; terrain.spiked = block.spiked;
-                }
-                foreach (var spike in room.spikes ?? Array.Empty<DemoSpike>())
-                {
-                    var tile = new GameObject("Phase spikes"); tile.transform.SetParent(root.transform,false);
-                    tile.transform.localPosition = new Vector3((float)spike.x,-(float)spike.y,0);
-                    var hazard = tile.AddComponent<PhaseSpike>(); hazard.length = (int)spike.length / 8;
-                    hazard.direction = spike.direction; hazard.phaseMask = spike.phaseMask;
-                }
-                foreach (var laser in room.lasers ?? Array.Empty<DemoLaser>())
-                {
-                    var tile = new GameObject("Phase laser"); tile.transform.SetParent(root.transform,false);
-                    tile.transform.localPosition = new Vector3((float)laser.x,-(float)laser.y,0);
-                    var emitter = tile.AddComponent<PhaseLaser>(); emitter.direction = laser.direction; emitter.phaseMask = laser.phaseMask;
-                }
-                foreach (var crystal in room.crystals ?? Array.Empty<DemoCrystal>())
-                {
-                    var tile = new GameObject("Phase crystal"); tile.transform.SetParent(root.transform,false);
-                    tile.transform.localPosition = new Vector3((float)crystal.x,-(float)crystal.y,0);
-                    var pickup = tile.AddComponent<PhaseCrystal>(); pickup.phaseMask = crystal.phaseMask;
-                }
-                foreach (var item in room.platforms ?? Array.Empty<DemoPlatform>())
-                {
-                    var platform = item.Create(); var tile = new GameObject("Phase platform"); tile.transform.SetParent(root.transform,false);
-                    tile.transform.localPosition = new Vector3((float)platform.x,-(float)platform.y,0);
-                    var body = tile.AddComponent<PhaseJumpPlatform>(); body.vertical = item.vertical; body.length = item.length;
-                    body.pivots = item.pivots.Select(p => new Vector2Int(p.x - item.pivots[0].x, p.y - item.pivots[0].y)).ToArray();
-                    body.reverse = item.reverse; body.spiked = item.spiked; body.phaseMask = item.phaseMask;
-                    foreach (var side in item.spikes ?? Array.Empty<SpikeDirection>()) body.spikes |= (PlatformSides)(1 << (int)side);
-                }
-                var sandbox = root.AddComponent<PhaseSandbox>(); sandbox.custom = true;
+                var sandbox = root.AddComponent<PhaseSandbox>(); sandbox.custom = true; sandbox.world = world;
                 sandbox.pixelCamera = camera; sandbox.pixelMaterial = material;
-                sandbox.spawn = new Vector2Int((int)room.spawnX,(int)room.spawnY);
-                sandbox.checkpointOnEntry = true;
-                sandbox.roomSize = new Vector2Int(room.GridWidth,room.RoomHeight);
                 ClearTravel();
                 root.SetActive(true);
                 if (sandbox.Controller == null || sandbox.Frame == null) throw new InvalidOperationException("自訂地圖載入失敗。");

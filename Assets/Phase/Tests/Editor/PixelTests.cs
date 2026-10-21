@@ -251,7 +251,7 @@ public class PixelTests
             Assert.That(pixels.Texture.GetPixel(400,140).a,Is.EqualTo(1));
             pixels.SetView(320,180,0);s.ResizeRoom(320);pixels.Draw(s);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32(),"resizing back restores the original room");
             pixels.SetView(320,693,0);pixels.Draw(s);var portrait=pixels.Texture.GetPixels32();
-            for(int y=20;y<180;y++)for(int x=0;x<320;x++)Assert.That(portrait[(y+257)*320+x],Is.EqualTo(original[y*320+x]),"portrait retains playable pixels above the extended floor");
+            for(int y=0;y<180;y++)for(int x=0;x<320;x++)Assert.That(portrait[y*320+x],Is.EqualTo(original[y*320+x]),"portrait keeps the room's pixels at the bottom");
             foreach(var pixel in portrait)Assert.That(pixel.a,Is.EqualTo(255),"extended sky is opaque");
             Assert.That(PhaseSandbox.ViewSize(390,844),Is.EqualTo(new Vector2Int(320,693)));
             Assert.That(PhaseSandbox.ViewSize(2560,1080),Is.EqualTo(new Vector2Int(427,180)));
@@ -274,7 +274,7 @@ public class PixelTests
     }
 
     [Test]
-    public void TallViewCentersPlayAreaAndMarksBothBoundaries()
+    public void ARoomShorterThanTheViewSitsAtTheBottomWithSkyAbove()
     {
         var pixels=new PhasePixels();
         var blocks=new[]{new Block(0,160,112,24),new Block(208,160,112,24),new Block(128,96,64,8)};
@@ -282,30 +282,25 @@ public class PixelTests
         try
         {
             pixels.SetView(320,693,0);pixels.Draw(room);
-            Assert.That(pixels.OriginY,Is.EqualTo(-256));
-            Color32 top = pixels.Texture.GetPixel(160, pixels.Height - 1);
-            Assert.That(top.r, Is.EqualTo(top.g), "portrait padding above the play area is neutral white wall");
-            Assert.That(top.r, Is.GreaterThan(50));
-            Assert.That((Color32)pixels.Texture.GetPixel(160, pixels.Height - 1 - (194 - pixels.OriginY)), Is.EqualTo((Color32)PhasePixels.Hex("0b0f16")), "void becomes fully dark at the existing death boundary");
-            Assert.That(Math.Abs(-pixels.OriginY+90-pixels.Height/2.0),Is.LessThanOrEqualTo(.5),"play area is centered");
-            var stone=pixels.Texture.GetPixel(32,40);var gap=pixels.Texture.GetPixel(160,40);
-            Assert.That(stone,Is.Not.EqualTo(gap),"bottom stone extends while the gap remains void");
-            Assert.That(blocks[0].h,Is.EqualTo(24),"visual extension must not enlarge collision terrain");
-            var voidRoom=new PhaseController(new[]{new Block(128,96,64,8)},32,64);voidRoom.flash=0;
-            pixels.Draw(voidRoom);
-            int terraces=0;
-            for(int y=0;y<pixels.Height-1-(194-pixels.OriginY);y++)foreach(int x in new[]{32,160})
-            {
-                Color32 depth=pixels.Texture.GetPixel(x,y);
-                Assert.That(Math.Max(depth.r,Math.Max(depth.g,depth.b)),Is.LessThan(48),"bottom void and floating terrain stay quiet dark depths");
-                if(!depth.Equals((Color32)PhasePixels.Hex("0b0f16")))terraces++;
-            }
-            Assert.That(terraces,Is.GreaterThan(0),"void depths show receding quarry terraces");
-            var gridFloor = new PhaseController(new[] { new Block(0,168,320,8) },32,157); gridFloor.flash=0;
-            pixels.Draw(gridFloor);
-            Assert.That(pixels.Texture.GetPixel(32,40), Is.Not.EqualTo(gap), "the last complete 8px grid row extends as stone");
+            Assert.That(pixels.OriginY,Is.EqualTo(-513),"the room is bottom-aligned");
+            Assert.That((Color32)pixels.Texture.GetPixel(160, pixels.Height - 1), Is.EqualTo((Color32)PhasePixels.Hex("0b0420")), "open sky above the room");
+            var stone=pixels.Texture.GetPixel(32,10);var gap=pixels.Texture.GetPixel(160,10);
+            Assert.That(stone,Is.Not.EqualTo(gap),"terrain stays at the bottom while the gap remains open");
+            Assert.That(blocks[0].h,Is.EqualTo(24),"the view must not enlarge collision terrain");
             pixels.SetView(320,180,0);pixels.Draw(room);Assert.That(pixels.OriginY,Is.Zero);
-            pixels.SetView(320,693,0);pixels.Draw(room);Assert.That(pixels.Texture.GetPixel(32,40),Is.EqualTo(stone),"resize rebuilds extended terrain");
+            pixels.SetView(320,693,0);pixels.Draw(room);Assert.That(pixels.Texture.GetPixel(32,10),Is.EqualTo(stone),"resize rebuilds the terrain");
+
+            var screen=new PhaseController(new[]{new Block(0,168,320,8,phaseMask:7)},32,149,height:176);screen.flash=0;
+            pixels.SetView(320,180,0);pixels.Draw(screen);
+            Assert.That(pixels.OriginY,Is.EqualTo(-4),"a one-screen room leaves 4 px of sky above its frame");
+            Assert.That((Color32)pixels.Texture.GetPixel(160,179),Is.EqualTo((Color32)PhasePixels.Hex("0b0420")));
+            Assert.That((Color32)pixels.Texture.GetPixel(24,7),Is.EqualTo((Color32)PhasePixels.Hex("ffffff")), "the floor sits at the bottom of the view");
+
+            var narrow=new PhaseController(new[]{new Block(0,168,320,8,phaseMask:7)},32,149,height:176);narrow.flash=0;
+            pixels.SetView(427,180,0);pixels.Draw(narrow);
+            Assert.That(pixels.OriginX,Is.EqualTo(-53),"a narrow room is centred");
+            Assert.That((Color32)pixels.Texture.GetPixel(0,7),Is.Not.EqualTo((Color32)PhasePixels.Hex("ffffff")), "the backdrop shows beside the room");
+            Assert.That((Color32)pixels.Texture.GetPixel(60,7),Is.EqualTo((Color32)PhasePixels.Hex("ffffff")), "and the room's own floor starts at its left edge");
         }
         finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
     }

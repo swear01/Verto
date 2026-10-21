@@ -118,7 +118,7 @@ public static class BigRoomLiveInput
             editor.ImportDraft("{\"name\":\"x\",\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phaseMask\":2}],\"spawnX\":40,\"spawnY\":152}");
             Require((editor.RoomColumns, editor.RoomRows) == (40, 22), "An old one-screen file did not shrink the room.");
             await Click(PhaseEditor.ImportSlot);
-            Require((editor.RoomColumns, editor.RoomRows, PhaseCustomMap.ToJson(editor.Room())) == (80, 38, draft), "The import slot did not restore the large room from the clipboard.");
+            Require((editor.RoomColumns, editor.RoomRows, PhaseCustomMap.ToJson(editor.Room())) == (80, 44, draft), "The import slot did not restore the large room, padded to whole screens, from the clipboard.");
             Capture(editor, "06-reimported");
 
             // Playtest: the whole room runs with the scrolling camera.

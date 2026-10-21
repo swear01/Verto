@@ -17,11 +17,13 @@
     <Compile Include="../Assets/Phase/Tests/Editor/CrystalTests.cs" />
     <Compile Include="../Assets/Phase/Tests/Editor/LaserTests.cs" />
     <Compile Include="../Assets/Phase/Runtime/PhaseDemoRooms.cs" />
+    <Compile Include="../Assets/Phase/Runtime/PhaseWorld.cs" />
     <Compile Include="../Assets/Phase/Runtime/PhaseCustomMap.cs" />
     <Compile Include="../Assets/Phase/Tests/Editor/ControllerTests.cs" />
     <Compile Include="../Assets/Phase/Tests/Editor/CustomMapTests.cs" />
     <Compile Include="../Assets/Phase/Tests/Editor/PlatformTests.cs" />
     <Compile Include="../Assets/Phase/Tests/Editor/ScrollRoomTests.cs" />
+    <Compile Include="../Assets/Phase/Tests/Editor/WorldTests.cs" />
     <None Include="../Assets/Phase/CrystalRooms.json" Link="Assets/Phase/CrystalRooms.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../Assets/Phase/DemoRooms.json" Link="Assets/Phase/DemoRooms.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../Assets/Phase/Tests/Fixtures/*.json"

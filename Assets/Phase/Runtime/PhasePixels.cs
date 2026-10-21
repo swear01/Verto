@@ -27,7 +27,7 @@ namespace Phase
         // Current drawing target in room pixels: the view, or the room canvas while static art is cached.
         int left, top, cols, rows, roomHeight = 180;
         int BottomY => top + rows;
-        (int width, int height, int top, int room) canvas;
+        (int width, int height, int top, int left, int room) canvas;
         readonly Dictionary<(string, int, int), Bitmap> sprites = new Dictionary<(string, int, int), Bitmap>();
         readonly Dictionary<(int, int), int> cells = new Dictionary<(int, int), int>();
         readonly Dictionary<string, Color32[]> terrain = new Dictionary<string, Color32[]>();
@@ -49,7 +49,7 @@ namespace Phase
         public void Scroll(int x, int y) { OriginX = x; OriginY = y; Target(false); }
         void Target(bool room)
         {
-            if (room) { left = 0; top = canvas.top; cols = canvas.width; rows = canvas.height; buffer = new Color32[cols * rows]; }
+            if (room) { left = canvas.left; top = canvas.top; cols = canvas.width; rows = canvas.height; buffer = new Color32[cols * rows]; }
             else { left = OriginX; top = OriginY; cols = Width; rows = Height; buffer = view; }
         }
         public static Color Hex(string hex) { ColorUtility.TryParseHtmlString("#" + hex, out var c); return c; }
@@ -79,11 +79,9 @@ namespace Phase
         void Background()
         {
             if (backdrop != null) { Array.Copy(backdrop, buffer, buffer.Length); return; }
-            // Neon night: a taller room keeps the skyline at its bottom and adds open sky above.
+            // Neon night: a taller room keeps the skyline at its bottom and adds open sky above; a shorter one sits at the bottom of the view.
             var bands = new[] { "0b0420", "110628", "180932", "200b3c", "2a0d46" }; int g = roomHeight - 180;
-            // Space above the room is white wall, the same surface as white platforms.
-            Rect(left, top, cols, -top, Wall);
-            if (top < 0) Rect(left, -1, cols, 1, WallEdge);
+            Rect(left, top, cols, Math.Min(0, g) - top, bands[0]);
             Rect(left, 180 + g, cols, BottomY - 180 - g, "07021a");
             Rect(left, 0, cols, g, bands[0]);
             for (int y = 0; y < g; y += 60) for (int x = left / 18 * 18; x < left + cols; x += 18)
@@ -139,9 +137,9 @@ namespace Phase
         void Terrain(PhaseController s)
         {
             int width = Math.Max(s.Width, Width), height = Math.Max(s.Height, Height);
-            var room = (width, height, s.Height < Height ? (s.Height - Height) / 2 : 0, s.Width);
+            var room = (width, height, s.Height < Height ? s.Height - Height : 0, s.Width < Width ? (s.Width - Width) / 2 : 0, s.Width);
             if (room != canvas) { canvas = room; roomHeight = s.Height; terrainBlocks = null; backdrop = null; terrain.Clear(); }
-            OriginX = (int)PhaseCamera.Clamp(OriginX, width, Width, false);
+            OriginX = (int)PhaseCamera.Clamp(OriginX, s.Width, Width, false);
             OriginY = (int)PhaseCamera.Clamp(OriginY, s.Height, Height, true);
             if (terrainBlocks != s.blocks || terrainBlockCount != s.blocks.Count)
             {
@@ -161,7 +159,7 @@ namespace Phase
             }
             Target(false);
             for (int y = 0; y < Height; y++)
-                Array.Copy(cached, (canvas.height - 1 - (OriginY + y - canvas.top)) * canvas.width + OriginX, view, (Height - 1 - y) * Width, Width);
+                Array.Copy(cached, (canvas.height - 1 - (OriginY + y - canvas.top)) * canvas.width + OriginX - canvas.left, view, (Height - 1 - y) * Width, Width);
         }
         Color32[] PaintTerrain(PhaseController s)
         {
@@ -336,6 +334,15 @@ namespace Phase
                 }
             }
         }
+        // The goal is a flag, lit in every color.
+        static readonly string[] GoalRows = { "sYYYY...", "sYYYYY..", "sYYYY...", "sYY.....", "s.......", "s.......", "s.......", "bbb....." };
+        Bitmap goalTile;
+        void Goal(PhaseController s)
+        {
+            if (s.goal == null) return;
+            goalTile = goalTile ?? Paint(GoalRows, new Dictionary<char,Color32> { ['s'] = Color("e8e8e8"), ['Y'] = Color(Highlights[4]), ['b'] = Color("a0a0a0") }, outline: true);
+            Blit(goalTile, (int)s.goal.x - 1, (int)s.goal.y - 1);
+        }
         sealed class Bitmap { public int width, height; public Color32[] pixels; }
         static Bitmap Paint(string[] rows, Dictionary<char,Color32> palette, bool flip = false, bool outline = false)
         {
@@ -439,6 +446,7 @@ namespace Phase
             Platforms(s);
             Spikes(s);
             Crystals(s);
+            Goal(s);
             Lasers(s);
             if (playerVisible && s.respawn <= 0) DrawPlayer(s.player, s.time, s.phase);
             if (playerVisible && s.respawn > 0 && s.respawn < .12)
@@ -456,8 +464,20 @@ namespace Phase
             VoidBoundary(s);
             Texture.SetPixels32(view); Texture.Apply(false);
         }
-        public void Slide(Color32[] from, Color32[] to, double progress, int direction)
+        // The view moves one way: horizontal, or vertical when the rows run bottom-up, so direction 1 moves up.
+        public void Slide(Color32[] from, Color32[] to, double progress, int direction, bool vertical = false)
         {
+            if (vertical)
+            {
+                int rise = Round(Height * Math.Max(0, Math.Min(1, progress))) * direction;
+                for (int y = 0; y < Height; y++)
+                {
+                    int row = y + rise; bool old = row >= 0 && row < Height;
+                    Array.Copy(old ? from : to, (old ? row : row - direction * Height) * Width, view, y * Width, Width);
+                }
+                Texture.SetPixels32(view); Texture.Apply(false);
+                return;
+            }
             int shift = Round(Width * Math.Max(0, Math.Min(1, progress))) * direction;
             for (int y = 0; y < Height; y++) for (int x = 0; x < Width; x++)
             {
