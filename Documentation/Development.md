@@ -348,7 +348,7 @@ their Build Settings entries with `unity command eval 'PhaseSandboxBuilder.Creat
 Each has a `PHASE` root (`PhaseScreen`) answering the same Web bridge messages as
 `PhaseSandbox`; any key held when a screen opens is ignored until released.
 
-The title draws the PHASE banner and four icons: left/right (arrows or movement keys)
+The title draws the Verto banner and four icons: left/right (arrows or movement keys)
 chooses, jump or Enter confirms (or click an icon). Play loads level1, the grid opens
 level select, the pencil opens the editor and the gear opens settings.
 Escape in a level (not an editor playtest) pauses play like the Web dialog gate, with
@@ -407,7 +407,7 @@ autosaves to PlayerPrefs `phase.editor.v1` as the map file's own JSON, loaded th
 format change (one tool/mask pair per cell, `3,19;…`, dash crystals left empty) still load.
 Import and export carry the room size, and a playtest runs the whole room with the scrolling camera.
 The two tray icons after the colors import (arrow out of the tray) and export (arrow into the tray) custom-map JSON.
-On Web, export calls `PhaseExportMap` and the page downloads `phase-custom-map.json`;
+On Web, export calls `PhaseExportMap` and the page downloads `verto-custom-map.json`;
 import calls `PhaseImportMap`, the page opens a file picker and sends the text to
 `PHASE.ImportDraft`. In the Unity Editor and other players both use the clipboard.
 Export validates first; an invalid map or file flashes the red border and keeps the draft.
@@ -463,7 +463,7 @@ The manually edited `PhaseDemo1.1` is separate from these builders.
 
 `python3 Verification/press_art.py` draws all press art as pixel art and enlarges it without
 smoothing. The motif is the phase shift: a light letterform trailed by red, blue and green
-echoes on the game's night-sky palette; the PHASE lettering is read from `PhaseTitle.cs`.
+echoes on the game's night-sky palette; the Verto lettering is read from `PhaseTitle.cs`.
 It writes the itch.io cover `Documentation/press/cover.png` (960×480: 2:1 for itch link cards, logo inside the centre 1.25:1 grid crop), the link preview
-`social.png` (1280×640), the icon `icon.png` (256×256, a "P" mark on a dark tile), the default
+`social.png` (1280×640), the icon `icon.png` (256×256, a "V" mark on a dark tile), the default
 Player icon `Assets/Phase/Art/AppIcon.png` and the Web favicon.

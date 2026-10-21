@@ -70,7 +70,7 @@ function dashCharge(buffer, player) {
     await page.goto(url);
     const canvas = page.locator('#unity-canvas');
     await page.locator('#loading').waitFor({ state: 'hidden', timeout: 120000 });
-    assert.equal(await page.title(), 'PHASE');
+    assert.equal(await page.title(), 'Verto');
     assert.equal(await page.locator('body').innerText(), '');
     await canvas.click();
     const capture = async name => character(await canvas.screenshot({ path: path.join(reports, `${name}.png`) }));

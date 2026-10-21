@@ -1,6 +1,6 @@
 # Verto
 
-![PHASE](Documentation/press/social.png)
+![Verto](Documentation/press/social.png)
 
 Verto is the next version of PHASE, the GDRC jam game. [Play the jam version on itch.io](https://swear01.itch.io/phase).
 

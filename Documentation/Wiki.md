@@ -1,4 +1,4 @@
-# PHASE 中文 Wiki
+# Verto 中文 Wiki
 
 Wiki 網頁在 [`wiki/index.html`](wiki/index.html)，介紹遊戲背景、操作、角色狀態、物件機制、十一個房間、遊戲內地圖編輯器及 Unity 關卡製作。所有核心內容皆可離線閱讀，不需要安裝前端套件。
 

@@ -1,5 +1,5 @@
 ---
-name: PHASE
+name: Verto
 description: 霓虹夜城中的三色相位平台
 colors:
   ink: "#0b0f16"
@@ -34,7 +34,7 @@ colors:
   neon-pink: "#ff3ea5"
   neon-grid: "#8a2be2"
 ---
-# PHASE 美術
+# Verto 美術
 
 ## Overview
 
