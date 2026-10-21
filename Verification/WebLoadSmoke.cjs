@@ -10,7 +10,6 @@ const remote = /^https?:/.test(process.argv[2] || '') ? process.argv[2] : null;
 const root = remote ? null : path.resolve(process.argv[2] || 'Builds/Web');
 const reports = path.resolve(__dirname, '../TestResults/Web');
 fs.mkdirSync(reports, { recursive: true });
-if (!remote) assert(fs.existsSync(path.join(root, 'index.html')), 'Web output is missing');
 const server = remote ? null : http.createServer((request, response) => {
   let file;
   try {
@@ -37,6 +36,7 @@ const centroidX = pixels => [...pixels.values()].reduce((a, b) => a + b) / pixel
   let browser;
   const result = { errors: [], warnings: [], failedRequests: [] };
   try {
+    if (!remote) assert(fs.existsSync(path.join(root, 'index.html')), 'Web output is missing');
     if (!remote) await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
     browser = await chromium.launch({ channel: 'chromium', headless: true });
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
@@ -48,6 +48,8 @@ const centroidX = pixels => [...pixels.values()].reduce((a, b) => a + b) / pixel
     page.on('requestfailed', request => result.failedRequests.push(`${request.url()} ${request.failure()?.errorText}`));
     await page.goto(remote || `http://127.0.0.1:${server.address().port}/`);
     await page.locator('#loading').waitFor({ state: 'hidden', timeout: 120000 });
+    // The template hides #loading on failure too and shows the reason in #error.
+    assert.equal(await page.locator('#error').isVisible(), false, `The Web build failed to load: ${await page.locator('#error').textContent()}`);
     const canvas = page.locator('#unity-canvas');
     await canvas.focus();
     // The title's selected icon shares the cloak colors, so wait for the level-load result. Enter confirms whatever jump is bound to.
