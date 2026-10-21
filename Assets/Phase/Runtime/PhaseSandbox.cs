@@ -274,8 +274,10 @@ namespace Phase
             {
                 input.jump = jumpQueued;
                 var previous = Controller;
+                var was = (Controller.jumps, Controller.deaths, Controller.player.grounded, Controller.player.airJump);
                 if (play != null) play.Step(input); else Controller.Step(input);
                 jumpQueued = false;
+                PhaseAudio.Step(play?.Controller ?? Controller, was);
                 accumulator -= PhaseController.Dt;
                 if (play != null && play.Controller != previous) { Cross(previous); break; }
                 view.Follow(Controller, pixels.Width, pixels.Height);

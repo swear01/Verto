@@ -16,7 +16,7 @@ namespace Phase
             if (mask < 1 || mask > 7) throw new ArgumentOutOfRangeException(nameof(mask));
             return Hex(Highlights[surfaceIndices[mask]]);
         }
-        const string Ink = "0b0f16";
+        const string Ink = "0b0f16", Glow = "4fe8ff", Wall = "f0f0f0", WallEdge = "bdbdbd";
         static readonly Dictionary<string, Color32> colors = new Dictionary<string, Color32>();
         Color32[] view = new Color32[320 * 180], buffer;
         public int Width => Texture.width;
@@ -79,52 +79,54 @@ namespace Phase
         void Background()
         {
             if (backdrop != null) { Array.Copy(backdrop, buffer, buffer.Length); return; }
-            // A taller room keeps the skyline at its bottom and adds open sky above; a shorter one sits at the bottom of the view.
-            var bands = new[] { "0a1018", "0c131d", "0e1520", "101a26", "121e2b" }; int g = roomHeight - 180;
+            // Neon night: a taller room keeps the skyline at its bottom and adds open sky above; a shorter one sits at the bottom of the view.
+            var bands = new[] { "0b0420", "110628", "180932", "200b3c", "2a0d46" }; int g = roomHeight - 180;
             Rect(left, top, cols, Math.Min(0, g) - top, bands[0]);
-            Rect(left, 180 + g, cols, BottomY - 180 - g, "0b111a");
+            Rect(left, 180 + g, cols, BottomY - 180 - g, "07021a");
             Rect(left, 0, cols, g, bands[0]);
             for (int y = 0; y < g; y += 60) for (int x = left / 18 * 18; x < left + cols; x += 18)
-                Rect(x, y + 6 + (int)(Hash(x, y + 2) % 50), 1, 1, Hash(x, y + 3) % 3 != 0 ? "2a394c" : "3c4e64");
+                Rect(x, y + 6 + (int)(Hash(x, y + 2) % 50), 1, 1, Hash(x, y + 3) % 3 != 0 ? "3a2466" : "6a3fa0");
             for (int i = 0; i < bands.Length; i++)
             {
                 Rect(left, i * 36 + g, cols, 36, bands[i]);
                 if (i > 0) for (int y = i * 36 - 2 + g; y < i * 36 + g; y++) for (int x = left / 2 * 2 + (y & 1); x < left + cols; x += 2) Rect(x, y, 1, 1, bands[i]);
             }
-            for (int y = -11; y <= 11; y++) for (int x = -11; x <= 11; x++)
+            // Striped synth sun sinking behind the skyline.
+            for (int y = -22; y <= 22; y++) for (int x = -22; x <= 22; x++)
             {
-                if (x * x + y * y > 110) continue;
-                Rect(262 + x, 34 + g + y, 1, 1, (x + 4) * (x + 4) + (y + 3) * (y + 3) <= 86 ? "162131" : x * x + y * y > 86 ? "24344a" : "1d2b3d");
+                int d = x * x + y * y; if (d > 484) continue;
+                int row = y + 22; if (y > 0 && (row % 6) < (y / 6 + 1)) continue;
+                Rect(232 + x, 92 + g + y, 1, 1, Mix(Color("ffd36e"), Color("ff2f8f"), (y + 22) / 44.0), d > 420 ? .55 : 1);
             }
             var stars = new[] { (18,14),(47,30),(71,9),(103,22),(131,41),(150,12),(178,27),(204,8),(221,44),(240,17),(292,12),(307,46),(86,52),(12,58),(164,60),(283,66) };
             for (int i = 0; i < stars.Length; i++)
             {
                 var (x,y) = stars[i]; y += g;
-                if (i % 5 == 2) { Rect(x - 1, y, 3, 1, "26364a"); Rect(x, y - 1, 1, 3, "26364a"); Rect(x, y, 1, 1, "4a5d74"); }
-                else Rect(x, y, 1, 1, i % 3 != 0 ? "2a394c" : "3c4e64");
+                if (i % 5 == 2) { Rect(x - 1, y, 3, 1, "4a2a7a"); Rect(x, y - 1, 1, 3, "4a2a7a"); Rect(x, y, 1, 1, "c9a4ff"); }
+                else Rect(x, y, 1, 1, i % 3 != 0 ? "3a2466" : "7a5ab8");
             }
             for (int x = 320; x < left + cols; x += 18)
-                Rect(x, 12 + g + (int)(Hash(x, 0) % 50), 1, 1, "2a394c");
+                Rect(x, 12 + g + (int)(Hash(x, 0) % 50), 1, 1, "3a2466");
+            // Far skyline: dark towers with a cyan rim and scattered lit windows.
+            for (int x = left / 6 * 6; x < left + cols; x += 6)
+            {
+                uint h = Hash(x / 12, 7); int y = 96 + g + (int)(h % 28) - (h % 9 == 0 ? 14 : 0);
+                Rect(x, y, 6, 180 + g - y, "14082c"); Rect(x, y, 6, 1, "2fd2ff", .55);
+                for (int wy = y + 3; wy < Hill(x) - 2; wy += 4) for (int wx = x + 1; wx < x + 5; wx += 2)
+                    if (Hash(wx, wy) % 9 == 0) Rect(wx, wy, 1, 1, Hash(wx, wy + 1) % 2 == 0 ? "ff4fb4" : "4fe8ff", .7);
+            }
+            // Near skyline: magenta-edged blocks in front of the towers.
             for (int x = left / 4 * 4; x < left + cols; x += 4)
             {
-                int y = 2 * Round((104 + 9 * Math.Sin(x * .021) + 6 * Math.Sin(x * .057 + 1.3) + 3 * Math.Sin(x * .13 + .4)) / 2) + g;
-                Rect(x, y, 4, 180 + g - y, "152131"); Rect(x, y, 4, 1, "1b293b");
+                int y = 2 * Round((118 + 7 * Math.Sin(x * .021) + 5 * Math.Sin(x * .057 + 1.3) + 3 * Math.Sin(x * .13 + .4)) / 2) + g;
+                Rect(x, y, 4, 180 + g - y, "0f0524"); Rect(x, y, 4, 1, "ff3ea5", .6);
             }
-            foreach (var pillar in new[] { (26,6,30,1),(44,6,30,1),(96,5,18,0),(150,6,40,1),(204,5,14,0),(246,6,26,1),(264,6,26,1),(300,5,20,0) })
-            {
-                var (x,w,h,cap) = pillar; int top = Hill(x + 3) - h;
-                Rect(x, top, w, h + 4, "0f1722");
-                if (cap != 0) { Rect(x - 1, top, w + 2, 2, "0f1722"); Rect(x - 1, top, w + 2, 1, "162030"); }
-                else { Rect(x + 1, top - 2, 2, 2, "0f1722"); Rect(x, top, 1, 1, "162030"); }
-            }
-            Rect(26, Hill(29) - 30, 24, 3, "0f1722"); Rect(26, Hill(29) - 30, 24, 1, "162030");
-            Rect(246, Hill(249) - 26, 26, 3, "0f1722"); Rect(246, Hill(249) - 26, 26, 1, "162030");
-            for (int x = 340; x < left + cols; x += 48)
-            {
-                int top = Hill(x + 3) - 18 - (int)(Hash(x, 1) % 20);
-                Rect(x, top, 6, 160 + g - top, "0f1722"); Rect(x - 1, top, 8, 1, "162030");
-            }
-            for (int x = left / 2 * 2; x < left + cols; x += 2) { int y = Hill(x); Rect(x, y, 2, 180 + g - y, "0b111a"); Rect(x, y, 2, 1, "111a26"); }
+            // Ground horizon with a receding neon grid.
+            for (int x = left / 2 * 2; x < left + cols; x += 2) { int y = Hill(x); Rect(x, y, 2, 180 + g - y, "09021c"); Rect(x, y, 2, 1, "ff3ea5"); }
+            int horizon = Hill(160) + 2;
+            for (int i = 0, y = horizon; y < 180 + g; i++, y += 2 + i * 2) Rect(left, y, cols, 1, "8a2be2", .5);
+            for (int x = left / 16 * 16 - 320; x < left + cols + 320; x += 16)
+                for (int y = horizon; y < 180 + g; y++) Rect(x + Round((x - 160) * (y - horizon) / 40.0), y, 1, 1, "8a2be2", .45);
             backdrop = (Color32[])buffer.Clone();
         }
         int Hill(int x) => Round(146 + 5 * Math.Sin(x * .031 + 2) + 3 * Math.Sin(x * .09)) + roomHeight - 180;
@@ -173,9 +175,9 @@ namespace Phase
         {
             var b = s.blocks[i]; int color = surfaceIndices[b.Mask];
             Color32 cap = Color(Highlights[color]), rim = Color(Edges[color]), body = Color(Fills[color]);
-            Color32 lift = Mix(body, rim, .45), dim = Mix(body, Color("000000"), .14), seam = Mix(body, Color("000000"), .4), deep = Mix(body, Color("000000"), .58);
+            Color32 deep = Mix(body, Color("000000"), .58);
             bool active = b.ActiveInPhase(s.phase) && !s.blocked.Contains(i), deferred = s.blocked.Contains(i);
-            // A moving platform keeps its brick pattern relative to itself.
+            // A moving platform keeps its pattern relative to itself.
             bool isPlatform = b is Platform;
             int ox = isPlatform ? (int)b.x : 0, oy = isPlatform ? (int)b.y : 0;
             for (int Y = (int)b.y; Y < (isPlatform ? b.y + b.h : RenderBottom(b)); Y += 8) for (int X = (int)b.x; X < b.x + b.w; X += 8)
@@ -202,27 +204,15 @@ namespace Phase
                     if (Mixed(b.Mask) && (((X-(int)b.x+Y-(int)b.y)>>3)&1)==0) Pips(X,Y,b.Mask,.6);
                     continue;
                 }
-                for (int y = 0; y < 8; y++)
-                {
-                    int course = (Y - oy + y) >> 2, row = (Y - oy + y) & 3;
-                    if (row == 3) { Rect(X, Y + y, 8, 1, seam); continue; }
-                    for (int x = 0; x < 8; x++)
-                    {
-                        int wx = X - ox + x + (course & 1) * 4, brick = wx >> 3, along = wx & 7;
-                        bool joint = along == 7 && Hash(brick, course * 7 + 3) % 3 != 0;
-                        Rect(X + x, Y + y, 1, 1, joint ? seam : row == 0 && along < 2 ? lift : Hash(brick, course) % 5 == 0 ? dim : body);
-                    }
-                }
-                int top = u ? 0 : 2;
-                if (!u) { Rect(X, Y, 8, 1, cap); Rect(X, Y + 1, 8, 1, rim); }
-                if (!d) Rect(X, Y + 7, 8, 1, deep);
-                if (!l) { Rect(X, Y + top, 1, 8 - top, rim); if (!d) Rect(X, Y + 7, 1, 1, seam); }
-                if (!r) { Rect(X + 7, Y + top, 1, 8 - top, seam); if (!d) Rect(X + 7, Y + 7, 1, 1, deep); }
-                if (!u && !l) Rect(X, Y, 1, 1, rim);
-                if (!u && !r) { Rect(X + 7, Y, 1, 1, rim); Rect(X + 7, Y + 1, 1, 1, lift); }
-                if (u && l && !Neighbor(-1,-1)) Rect(X, Y, 1, 1, seam);
-                if (u && r && !Neighbor(1,-1)) Rect(X + 7, Y, 1, 1, seam);
-                if (u && d && l && r && Hash(X - ox,Y - oy) % 11 == 0) { Rect(X + 2, Y + 1, 1, 1, seam); Rect(X + 3, Y + 2, 1, 1, seam); Rect(X + 3, Y + 4, 1, 1, deep); }
+                // White is always solid: a plain bright slab. Phase colours are dark glass with a neon rim.
+                bool white = color == 3;
+                Color32 fill = white ? Color(Wall) : deep, glow = white ? Color("ffffff") : cap, side = white ? Color(WallEdge) : rim;
+                Rect(X, Y, 8, 8, fill);
+                if (!white && Hash(X - ox, Y - oy) % 7 == 0) Rect(X + 2 + (int)(Hash(Y - oy, X - ox) % 4), Y + 3, 1, 1, rim, .5);
+                if (!u) { Rect(X, Y, 8, 1, glow); if (!white) Rect(X, Y + 1, 8, 1, rim, .5); }
+                if (!d) Rect(X, Y + 7, 8, 1, side);
+                if (!l) Rect(X, Y + (u ? 0 : 1), 1, u ? 8 : 7, white ? side : glow);
+                if (!r) Rect(X + 7, Y + (u ? 0 : 1), 1, u ? 8 : 7, white ? side : glow);
                 if (Mixed(b.Mask) && (((X-(int)b.x+Y-(int)b.y)>>3)&1)==0) Pips(X,Y,b.Mask,1);
             }
         }
@@ -362,7 +352,7 @@ namespace Phase
             for (int y = -1; y < h; y++) for (int x = -1; x <= w; x++)
             {
                 Color32 c = At(x,y);
-                if (c.a == 0 && outline && (At(x-1,y).a != 0 || At(x+1,y).a != 0 || At(x,y-1).a != 0 || At(x,y+1).a != 0)) c = Color(Ink);
+                if (c.a == 0 && outline && (At(x-1,y).a != 0 || At(x+1,y).a != 0 || At(x,y-1).a != 0 || At(x,y+1).a != 0)) c = Color(Glow);
                 image.pixels[(y + 1) * image.width + x + 1] = c;
             }
             return image;
@@ -382,12 +372,12 @@ namespace Phase
             ["jump"] = new[] { "..........","ccc.......",".dcccccc..",".dccccccc.",".dccfffff.",".dcfeefee.",".dcfeefee.","..kkkkk...","ddccccccdd",".dccccccc.",".ssssssss.","..bb.BB...","..b...B..." },
             ["fall"] = new[] { "...cc.....","...cc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcfeefee.",".dcfeefee.","d.kkkkk..d","ddccccccdd",".dccccccc.","ssssssssss","..bb..BB..","..b....B.." },
         };
-        static readonly string[] Scarf = { "ffb24d","d5732b" };
+        static readonly string[] Scarf = { "ff3ea5","b81f78" };
         Bitmap Sprite(string pose, int facing, int phase)
         {
             var key = (pose, facing, phase);
             if (sprites.TryGetValue(key, out var image)) return image;
-            var palette = new Dictionary<char,Color32> { ['c']=Color("eadfc5"),['d']=Color("b3a386"),['s']=Color("7d6e5c"),['f']=Color("1a1f2c"),['b']=Color("453c59"),['B']=Color("2c263b"),['e']=Color(Highlights[phase]),['k']=Color(Scarf[0]),['h']=Color(Scarf[0]),['H']=Color(Scarf[1]) };
+            var palette = new Dictionary<char,Color32> { ['c']=Color("3b2a78"),['d']=Color("261a52"),['s']=Color("ff3ea5"),['f']=Color("0a0618"),['b']=Color("4a3a92"),['B']=Color("2c2160"),['e']=Color(Highlights[phase]),['k']=Color(Scarf[0]),['h']=Color(Scarf[0]),['H']=Color(Scarf[1]) };
             var rows = (string[])Frames[pose].Clone();
             for (int y = 0; y < rows.Length && !rows[y].Contains("k"); y++) rows[y] = rows[y].Replace('c','h').Replace('d','H');
             return sprites[key] = Paint(rows, palette, facing < 0, true);
@@ -440,13 +430,13 @@ namespace Phase
                 if (stone) continue;
                 for (int y = floor; y < Math.Min(floor + 14, BottomY); y++) Rect(x, y, 1, 1, Ink, (y - floor) / 14.0);
                 Rect(x, floor + 14, 1, 16, Ink);
-                // Quiet quarry terraces step down and darken below the death line; purely visual.
+                // Quiet neon terraces step down and darken below the death line; purely visual.
                 for (int i = 0, edge = floor + 24; edge < BottomY; i++, edge += 26)
                 {
                     double k = Math.Max(.1, .4 - i * .06);
                     int top = edge + (int)(Hash((int)Math.Floor((x - i * 11) / 20.0), i) % 3) * 3;
-                    Rect(x, top, 1, edge + 32 - top, Mix(Color(Ink), Color("121e2b"), k));
-                    Rect(x, top, 1, 1, Mix(Color(Ink), Color("2a394c"), k));
+                    Rect(x, top, 1, edge + 32 - top, Mix(Color(Ink), Color("1a0a3d"), k));
+                    Rect(x, top, 1, 1, Mix(Color(Ink), Color("2a1050"), k));
                 }
             }
         }
