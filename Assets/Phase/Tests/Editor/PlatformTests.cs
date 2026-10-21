@@ -77,6 +77,17 @@ public class PlatformTests
     }
 
     [Test]
+    public void ARiderCarriedThroughACrystalInOneStepCollectsIt()
+    {
+        var platform = new Platform(false, 3, new[] { (6, 18), (14, 18) }, false, 7);
+        var crystal = new Crystal(72, 136);
+        var c = new PhaseController(Array.Empty<Block>(), 40, 133, crystals: new[] { crystal }, platforms: new[] { platform });
+        Run(c, 5); c.player.airJump = 0;
+        platform.queued = 1; c.Step(None, Platform.SlideTime);
+        Assert.That((c.player.x, crystal.collected, c.player.airJump), Is.EqualTo((104d, true, 1)), "the whole slide passes the crystal in one step");
+    }
+
+    [Test]
     public void ACrushedPlayerPassesThroughInsteadOfDying()
     {
         // A wall stands right beside Wick, so the platform sliding into his side cannot push him.

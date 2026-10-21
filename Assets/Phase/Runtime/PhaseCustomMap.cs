@@ -174,7 +174,8 @@ namespace Phase
                 if (hazard.ActiveInPhase(0) && PhaseController.Overlap(player, hazard.Hitbox))
                     throw new ArgumentException("出生點與紅色模式的尖刺重疊。");
             }
-            var solids = room.blocks.Where(b => b.ActiveInPhase(0)).ToArray();
+            var solids = room.blocks.Concat<Block>((room.platforms ?? Array.Empty<DemoPlatform>()).Select(p => p.Create()))
+                .Where(b => b.ActiveInPhase(0)).ToArray();
             foreach (var laser in room.lasers ?? Array.Empty<DemoLaser>())
             {
                 if (laser == null || (int)laser.direction < 0 || (int)laser.direction > 3 || laser.phaseMask < 1 || laser.phaseMask > 7)

@@ -92,6 +92,10 @@ public class CustomMapTests
     [Test]
     public void UnsafeSpawnUnsupportedMechanismsAndInvalidMasksAreRejected()
     {
+        var shielded=Simple();shielded.lasers=new[]{new DemoLaser{x=0,y=152,direction=LaserDirection.Right,phaseMask=7}};
+        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Validate(shielded),"the beam reaches the spawn");
+        shielded.platforms=new[]{new DemoPlatform{pivots=new[]{(2,19),(2,15)}}};
+        Assert.DoesNotThrow(()=>PhaseCustomMap.Validate(shielded),"a platform that starts active shields the spawn");
         foreach(var mutate in new Action<PhaseDemoRoom>[] {
             m=>m.spawnX=double.NaN,m=>m.spawnY=double.NegativeInfinity,m=>m.spawnX=320,
             m=>m.spawnY=168,m=>m.spawnY=151,

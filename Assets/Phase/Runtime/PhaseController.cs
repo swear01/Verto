@@ -298,7 +298,7 @@ namespace Phase
                 if (WithinSides(p.x + sx, p.w) && p.y + sy >= 0 && !Collides(p, others, sx, sy)) { p.x += sx; p.y += sy; }
                 else if (Overlap(p, platform)) blocked.Add(index);
             }
-            return CheckHazards();
+            return CheckInteractions();
         }
         public void Step(Controls input, double dt = Dt)
         {
