@@ -294,13 +294,13 @@ public class PixelTests
             pixels.SetView(320,180,0);pixels.Draw(screen);
             Assert.That(pixels.OriginY,Is.EqualTo(-4),"a one-screen room leaves 4 px of sky above its frame");
             Assert.That((Color32)pixels.Texture.GetPixel(160,179),Is.EqualTo((Color32)PhasePixels.Hex("0b0420")));
-            Assert.That((Color32)pixels.Texture.GetPixel(24,7),Is.EqualTo((Color32)PhasePixels.Hex("e8e8e8")), "the floor sits at the bottom of the view");
+            Assert.That((Color32)pixels.Texture.GetPixel(24,7),Is.EqualTo((Color32)PhasePixels.Hex("ffffff")), "the floor sits at the bottom of the view");
 
             var narrow=new PhaseController(new[]{new Block(0,168,320,8,phaseMask:7)},32,149,height:176);narrow.flash=0;
             pixels.SetView(427,180,0);pixels.Draw(narrow);
             Assert.That(pixels.OriginX,Is.EqualTo(-53),"a narrow room is centred");
-            Assert.That((Color32)pixels.Texture.GetPixel(0,7),Is.Not.EqualTo((Color32)PhasePixels.Hex("e8e8e8")), "the backdrop shows beside the room");
-            Assert.That((Color32)pixels.Texture.GetPixel(60,7),Is.EqualTo((Color32)PhasePixels.Hex("e8e8e8")), "and the room's own floor starts at its left edge");
+            Assert.That((Color32)pixels.Texture.GetPixel(0,7),Is.Not.EqualTo((Color32)PhasePixels.Hex("ffffff")), "the backdrop shows beside the room");
+            Assert.That((Color32)pixels.Texture.GetPixel(60,7),Is.EqualTo((Color32)PhasePixels.Hex("ffffff")), "and the room's own floor starts at its left edge");
         }
         finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
     }
