@@ -6,7 +6,7 @@ Verto is the next version of PHASE, the GDRC jam game. [Play the jam version on 
 
 [中文 Wiki：背景、操作、物件與關卡製作](Documentation/Wiki.md)。
 
-[Play the Web preview](https://phase-gamejam1-20261016.swear01.chatgpt.site).
+[Play the Web preview](https://verto.5334601.xyz/).
 
 Unity **6000.4.7f1**. Open `Assets/Scenes/PhaseTitle.unity` and press Play: the title's
 icons start the [eight-room demo](Documentation/Demo.md), pick any level, open the level
