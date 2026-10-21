@@ -74,7 +74,7 @@ namespace Phase
                     var tile = new GameObject("Terrain"); tile.transform.SetParent(root.transform,false);
                     tile.transform.localPosition = new Vector3((float)block.x,-(float)block.y,0);
                     var terrain = tile.AddComponent<PhaseTerrain>(); terrain.size = new Vector2Int((int)block.w,(int)block.h);
-                    terrain.phase = block.phase; terrain.phaseMask = block.phaseMask;
+                    terrain.phase = block.phase; terrain.phaseMask = block.phaseMask; terrain.spiked = block.spiked;
                 }
                 foreach (var spike in room.spikes ?? Array.Empty<DemoSpike>())
                 {
@@ -94,6 +94,15 @@ namespace Phase
                     var tile = new GameObject("Phase crystal"); tile.transform.SetParent(root.transform,false);
                     tile.transform.localPosition = new Vector3((float)crystal.x,-(float)crystal.y,0);
                     var pickup = tile.AddComponent<PhaseCrystal>(); pickup.phaseMask = crystal.phaseMask;
+                }
+                foreach (var item in room.platforms ?? Array.Empty<DemoPlatform>())
+                {
+                    var platform = item.Create(); var tile = new GameObject("Phase platform"); tile.transform.SetParent(root.transform,false);
+                    tile.transform.localPosition = new Vector3((float)platform.x,-(float)platform.y,0);
+                    var body = tile.AddComponent<PhaseJumpPlatform>(); body.vertical = item.vertical; body.length = item.length;
+                    body.pivots = item.pivots.Select(p => new Vector2Int(p.x - item.pivots[0].x, p.y - item.pivots[0].y)).ToArray();
+                    body.reverse = item.reverse; body.spiked = item.spiked; body.phaseMask = item.phaseMask;
+                    foreach (var side in item.spikes) body.spikes |= (PlatformSides)(1 << (int)side);
                 }
                 var sandbox = root.AddComponent<PhaseSandbox>(); sandbox.custom = true;
                 sandbox.pixelCamera = camera; sandbox.pixelMaterial = material;

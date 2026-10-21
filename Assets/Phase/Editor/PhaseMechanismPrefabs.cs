@@ -25,6 +25,9 @@ public static class PhaseMechanismPrefabs
     [MenuItem("PHASE/Add/Jump crystal")]
     static void JumpCrystal() => Add("JumpCrystal");
 
+    [MenuItem("PHASE/Add/Jump platform")]
+    static void JumpPlatform() => Add("JumpPlatform");
+
     static void Add(string name)
     {
         var root = Object.FindAnyObjectByType<PhaseSandbox>();
@@ -42,5 +45,6 @@ public static class PhaseMechanismPrefabs
     [MenuItem("PHASE/Add/Laser", true)]
     [MenuItem("PHASE/Add/Spikes", true)]
     [MenuItem("PHASE/Add/Jump crystal", true)]
+    [MenuItem("PHASE/Add/Jump platform", true)]
     static bool CanAdd() => !EditorApplication.isPlaying && Object.FindAnyObjectByType<PhaseSandbox>() != null;
 }

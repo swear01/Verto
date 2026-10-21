@@ -9,6 +9,7 @@ namespace Phase
         PhaseSandbox sandbox;
         PhaseTerrain[] terrain;
         PhaseCrystal[] crystals;
+        PhaseJumpPlatform[] platforms;
         public static Vector3 Snap(Component owner, Vector3 position)
         {
             var grid = owner.GetComponentInParent<Grid>();
@@ -40,6 +41,7 @@ namespace Phase
             sandbox = GetComponent<PhaseSandbox>();
             terrain = GetComponentsInChildren<PhaseTerrain>();
             crystals = GetComponentsInChildren<PhaseCrystal>();
+            platforms = GetComponentsInChildren<PhaseJumpPlatform>();
         }
         void LateUpdate()
         {
@@ -49,6 +51,9 @@ namespace Phase
             for (int i = 0; i < crystals.Length; i++)
                 Sync(crystals[i].GetComponent<BoxCollider2D>(), controller.crystals[i],
                     controller.crystals[i].ActiveInPhase(controller.phase) && !controller.crystals[i].collected);
+            for (int i = 0; i < platforms.Length; i++)
+                Sync(platforms[i].GetComponent<BoxCollider2D>(), controller.platforms[i],
+                    controller.platforms[i].ActiveInPhase(controller.phase) && !controller.blocked.Contains(controller.blocks.Count - controller.platforms.Count + i));
             Physics2D.SyncTransforms();
         }
         static void Sync(BoxCollider2D shape, Block block, bool active = true)

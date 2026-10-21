@@ -62,7 +62,8 @@ namespace Phase
             var controller = new PhaseController(GetComponentsInChildren<PhaseTerrain>().Select(t => t.CreateBlock()), at.x, at.y,
                 spikes: GetComponentsInChildren<PhaseSpike>().Select(t => t.CreateSpike()),
                 lasers: GetComponentsInChildren<PhaseLaser>().Select(t => t.CreateLaser()),
-                crystals: GetComponentsInChildren<PhaseCrystal>().Select(t => t.CreateCrystal()), width: roomSize.x, height: roomSize.y);
+                crystals: GetComponentsInChildren<PhaseCrystal>().Select(t => t.CreateCrystal()), width: roomSize.x, height: roomSize.y,
+                platforms: GetComponentsInChildren<PhaseJumpPlatform>().Select(t => t.CreatePlatform()));
             controller.exitLeft = !string.IsNullOrEmpty(leftScene);
             controller.exitRight = !string.IsNullOrEmpty(rightScene) || level == Levels.Length - 1;
             controller.ResizeRoom(width);

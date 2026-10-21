@@ -123,6 +123,63 @@ public class MenuTests : InputTestFixture
     }
 
     [UnityTest]
+    public IEnumerator EditorPlacesJumpPlatformsSpikeRowsAndCover()
+    {
+        string saved = PlayerPrefs.HasKey(PhaseEditor.DraftKey) ? PlayerPrefs.GetString(PhaseEditor.DraftKey) : null;
+        PlayerPrefs.DeleteKey(PhaseEditor.DraftKey);
+        try
+        {
+            yield return OpenTitle();
+            yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
+            yield return WaitFor(PhaseEditor.Scene);
+            var editor = Object.FindAnyObjectByType<PhaseEditor>();
+            IEnumerator Cycle(int taps) { for (int i = 0; i < taps; i++) yield return Tap(Key.X); }
+            IEnumerator Move(Key key, int cells) { for (int i = 0; i < cells; i++) yield return Tap(key); }
+            // Platform: first pivot, a body end one cell away (length 3), a second pivot, then the first again closes the loop.
+            yield return Cycle(4);
+            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.PlatformTool));
+            yield return Tap(Key.Z); yield return Move(Key.RightArrow, 1);
+            Assert.That(editor.Placing, Is.True);
+            yield return Tap(Key.Z); yield return Move(Key.RightArrow, 4); yield return Tap(Key.Z);
+            Assert.That(editor.Placing, Is.True, "the loop stays open until the first pivot is clicked again");
+            yield return Move(Key.LeftArrow, 5); yield return Tap(Key.Z);
+            Assert.That(editor.Placing, Is.False);
+            var platform = editor.Room().platforms.Single();
+            Assert.That((platform.vertical, platform.length, platform.reverse), Is.EqualTo((false, 3, false)));
+            Assert.That(platform.pivots, Is.EqualTo(new[] { (8, 18), (13, 18) }));
+            yield return Tap(Key.F);
+            Assert.That(editor.Room().platforms.Single().reverse, Is.True, "F flips the direction under the cursor");
+            // The spike tool on the platform toggles the row on the face it points to; the cover tool covers it, or the terrain under it.
+            yield return Cycle(5); yield return Tap(Key.Z);
+            Assert.That(editor.Room().platforms.Single().spikes, Is.EqualTo(new[] { SpikeDirection.Up }));
+            Assert.That(editor.Room().spikes, Is.Empty, "the row belongs to the platform, not to a cell");
+            yield return Cycle(4); Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.CoverTool));
+            yield return Tap(Key.Z);
+            Assert.That(editor.Room().platforms.Single().spiked, Is.True);
+            yield return Move(Key.DownArrow, 3); yield return Tap(Key.Z);
+            Assert.That(editor.Room().blocks.Count(b => b.spiked && b.x == 64 && b.y == 168), Is.EqualTo(1), "covering terrain keeps its color");
+            yield return Tap(Key.Z);
+            Assert.That(editor.Room().blocks.Count(b => b.spiked), Is.Zero, "a second click uncovers it");
+            // Escape cancels a platform in progress instead of leaving the editor.
+            yield return Cycle(7); yield return Tap(Key.Z);
+            Assert.That(editor.Placing, Is.True);
+            yield return Tap(Key.Escape);
+            Assert.That((editor.Placing, SceneManager.GetActiveScene().name), Is.EqualTo((false, PhaseEditor.Scene)));
+            yield return Tap(Key.Enter);
+            var sandbox = editor.Playtest;
+            Assert.That(sandbox, Is.Not.Null);
+            Assert.That((sandbox.Controller.platforms.Count, sandbox.Controller.platforms[0].attached.Length, sandbox.Controller.platforms[0].spiked), Is.EqualTo((1, 1, true)));
+            Assert.That(sandbox.GetComponentInChildren<PhaseJumpPlatform>(), Is.Not.Null, "the playtest builds the platform component");
+            LogAssert.NoUnexpectedReceived();
+        }
+        finally
+        {
+            if (saved == null) PlayerPrefs.DeleteKey(PhaseEditor.DraftKey); else PlayerPrefs.SetString(PhaseEditor.DraftKey, saved);
+            PlayerPrefs.Save();
+        }
+    }
+
+    [UnityTest]
     public IEnumerator EditorTurnsSpikesAndLasersWithRAndE()
     {
         string saved = PlayerPrefs.HasKey(PhaseEditor.DraftKey) ? PlayerPrefs.GetString(PhaseEditor.DraftKey) : null;
@@ -229,7 +286,7 @@ public class MenuTests : InputTestFixture
                 if (slot < PhaseEditor.MaskSlot) tools.Add(editor.Tool); else masks.Add(editor.Mask);
                 still = Panel();
             }
-            Assert.That(tools, Is.EqualTo(tools.Distinct()).And.EquivalentTo(new[] { 0, 1, 2, 6, 7, 11 }), "each type slot picks its own tool");
+            Assert.That(tools, Is.EqualTo(tools.Distinct()).And.EquivalentTo(new[] { 0, 1, 2, 6, 7, 11, 13, 14 }), "each type slot picks its own tool");
             Assert.That(masks, Is.EqualTo(masks.Distinct()).And.EquivalentTo(Enumerable.Range(1, 7)), "each color slot picks its own color");
             Assert.That(PhaseCustomMap.ToJson(editor.Room()), Is.EqualTo(draft), "panel clicks never paint");
 
@@ -352,9 +409,9 @@ public class MenuTests : InputTestFixture
             Assert.That(editor.ExportDraft(), Is.True);
             string exported = GUIUtility.systemCopyBuffer, draft = PhaseCustomMap.ToJson(editor.Room());
             Assert.That(exported, Is.EqualTo(draft));
-            Assert.That(exported, Does.Contain("\"width\": 576").And.Contain("\"height\": 240"));
+            Assert.That(exported, Does.Contain("\"version\": 2")); Assert.That((PhaseCustomMap.Parse(exported).GridWidth, PhaseCustomMap.Parse(exported).GridHeight), Is.EqualTo((576, 240)));
             editor.ImportDraft("{\"name\":\"x\",\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phaseMask\":2}],\"spawnX\":40,\"spawnY\":152}");
-            Assert.That((editor.RoomColumns, editor.RoomRows, editor.Scroll), Is.EqualTo((40, 22, Vector2Int.zero)), "an old file is one screen");
+            Assert.That((editor.RoomColumns, editor.RoomRows, editor.Scroll), Is.EqualTo((40, 22, Vector2Int.zero)), "a version 1 file is one screen");
             editor.ImportDraft(exported);
             Assert.That((editor.RoomColumns, editor.RoomRows, PhaseCustomMap.ToJson(editor.Room())), Is.EqualTo((72, 30, draft)), "export then import restores the room");
 

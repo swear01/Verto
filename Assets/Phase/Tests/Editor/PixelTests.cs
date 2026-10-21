@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json;
 using NUnit.Framework;
 using Phase;
@@ -11,6 +12,28 @@ public class PixelTests
     public class Frame { public string name; public double time; public int phase; public int[] blocked; public Player player; }
 
 
+    [Test]
+    public void PlatformsAreDrawnWhereTheyAreAndSpikeCoverChangesTheBlock()
+    {
+        var pixels = new PhasePixels();
+        try
+        {
+            var platform = new Platform(false, 3, new[] { (10, 5), (20, 5) }, false, 7);
+            var room = new PhaseController(Array.Empty<Block>(), 32, 149, platforms: new[] { platform }); room.flash = 0;
+            pixels.Draw(room, false); var home = pixels.Texture.GetPixels32();
+            platform.queued = 1; for (int i = 0; i < 20; i++) room.Step(default);
+            pixels.Draw(room, false); var moved = pixels.Texture.GetPixels32();
+            Color32 At(Color32[] frame, int x, int y) => frame[(179 - y) * 320 + x];
+            Assert.That(At(home, 80, 41), Is.Not.EqualTo(At(moved, 80, 41)), "the first stop is empty after the platform left");
+            Assert.That(At(moved, 160, 41), Is.Not.EqualTo(At(home, 160, 41)), "the second stop shows the platform");
+            var plain = new PhaseController(new[] { new Block(80, 80, 8, 8, phaseMask: 7) }, 32, 40); plain.flash = 0;
+            var covered = new PhaseController(new[] { new Block(80, 80, 8, 8, phaseMask: 7) { spiked = true } }, 32, 40); covered.flash = 0;
+            pixels.Draw(plain, false); var bricks = pixels.Texture.GetPixels32();
+            pixels.Draw(covered, false); var teeth = pixels.Texture.GetPixels32();
+            Assert.That(Enumerable.Range(80, 8).SelectMany(x => Enumerable.Range(80, 8).Select(y => At(bricks, x, y).Equals(At(teeth, x, y)))).Count(same => !same), Is.GreaterThan(8), "a spike-covered cell looks different");
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
     [Test]
     public void CrystalShapesColorsAndGhostsKeepTheirPickupMeaning()
     {
