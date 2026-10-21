@@ -24,9 +24,10 @@ public static class PlatformLiveInput
         bool background = Application.runInBackground; var focus = InputSystem.settings.backgroundBehavior;
         var editorInput = InputSystem.settings.editorInputBehaviorInPlayMode; Keyboard keyboard = null; float captureDelta = Time.captureDeltaTime;
         // Other Editors of this project share PlayerPrefs, so the check uses the default keys in memory only.
-        var bindings = PhaseSandbox.Slots.ToArray(); PhaseSandbox.ApplyControls(PhaseSandbox.DefaultSlots);
+        var bindings = PhaseSandbox.Slots.ToArray();
         try
         {
+            PhaseSandbox.ApplyControls(PhaseSandbox.DefaultSlots);
             Application.runInBackground = true; Time.captureDeltaTime = (float)PhaseController.Dt;
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
             InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;

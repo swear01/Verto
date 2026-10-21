@@ -440,7 +440,7 @@ public class MenuTests : InputTestFixture
             Assert.That(editor.ExportDraft(), Is.True);
             string exported = GUIUtility.systemCopyBuffer, draft = PhaseCustomMap.ToJson(editor.Room());
             Assert.That(exported, Is.EqualTo(draft));
-            Assert.That(exported, Does.Contain("\"version\": 2")); Assert.That((PhaseCustomMap.Parse(exported).GridWidth, PhaseCustomMap.Parse(exported).GridHeight), Is.EqualTo((576, 240)));
+            Assert.That(exported, Does.Contain("\"version\": 2")); var reread = PhaseCustomMap.Parse(exported); Assert.That((reread.GridWidth, reread.GridHeight), Is.EqualTo((576, 240)));
             editor.ImportDraft("{\"name\":\"x\",\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phaseMask\":2}],\"spawnX\":40,\"spawnY\":152}");
             Assert.That((editor.RoomColumns, editor.RoomRows, editor.Scroll), Is.EqualTo((40, 22, Vector2Int.zero)), "a version 1 file is one screen");
             editor.ImportDraft(exported);

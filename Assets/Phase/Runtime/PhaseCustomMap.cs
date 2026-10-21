@@ -335,7 +335,7 @@ namespace Phase
             return obj[field].Value<bool>();
         }
         // A platform that can be built: odd length, two or more pivots, valid color and sides. The path may cross other
-        // objects, but every stop keeps the body inside the room.
+        // objects, but every stop keeps the body and its spike rows inside the room.
         public static Platform CheckPlatform(DemoPlatform item, int roomWidth, int roomHeight)
         {
             if (item == null || item.pivots == null || item.spikes == null || item.pivots.Length < 2 || item.length < 1 || item.length % 2 == 0 || item.phaseMask < 1 || item.phaseMask > 7 ||
@@ -343,7 +343,11 @@ namespace Phase
                 throw new ArgumentException("平台的長度、路徑、方向或顏色無效。");
             var platform = item.Create();
             for (int i = 0; i < platform.pivots.Length; i++)
-            { var at = platform.OriginAt(i); InsideRoom(at.x, at.y, platform.w, platform.h, roomWidth, roomHeight); }
+            {
+                var at = platform.OriginAt(i); var home = platform.OriginAt(0);
+                InsideRoom(at.x, at.y, platform.w, platform.h, roomWidth, roomHeight);
+                foreach (var teeth in platform.attached) InsideRoom(teeth.x + at.x - home.x, teeth.y + at.y - home.y, teeth.w, teeth.h, roomWidth, roomHeight);
+            }
             return platform;
         }
         static bool Aligned(double value) => !double.IsNaN(value) && !double.IsInfinity(value) && value % 8 == 0;

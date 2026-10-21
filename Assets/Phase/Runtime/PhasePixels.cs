@@ -151,7 +151,9 @@ namespace Phase
                 terrainBlocks = s.blocks; terrainBlockCount = s.blocks.Count; cells.Clear(); terrain.Clear();
                 foreach (var b in s.blocks) if (!(b is Platform)) for (int y = (int)b.y; y < RenderBottom(b); y += 8) for (int x = (int)b.x; x < b.x + b.w; x += 8) cells[(x,y)] = b.Mask;
             }
-            var blocked = new List<int>(s.blocked.Where(i => !(s.blocks[i] is Platform))); blocked.Sort();
+            var blocked = new List<int>();
+            foreach (int i in s.blocked) if (!(s.blocks[i] is Platform)) blocked.Add(i);
+            blocked.Sort();
             string key = s.phase + "|" + string.Join(",", blocked);
             if (!terrain.TryGetValue(key, out var cached))
             {
@@ -181,10 +183,11 @@ namespace Phase
             Color32 lift = Mix(body, rim, .45), dim = Mix(body, Color("000000"), .14), seam = Mix(body, Color("000000"), .4), deep = Mix(body, Color("000000"), .58);
             bool active = b.ActiveInPhase(s.phase) && !s.blocked.Contains(i), deferred = s.blocked.Contains(i);
             // A moving platform keeps its brick pattern relative to itself.
-            int ox = b is Platform ? (int)b.x : 0, oy = b is Platform ? (int)b.y : 0;
-            for (int Y = (int)b.y; Y < (b is Platform ? b.y + b.h : RenderBottom(b)); Y += 8) for (int X = (int)b.x; X < b.x + b.w; X += 8)
+            bool isPlatform = b is Platform;
+            int ox = isPlatform ? (int)b.x : 0, oy = isPlatform ? (int)b.y : 0;
+            for (int Y = (int)b.y; Y < (isPlatform ? b.y + b.h : RenderBottom(b)); Y += 8) for (int X = (int)b.x; X < b.x + b.w; X += 8)
             {
-                bool Neighbor(int dx, int dy) => b is Platform ? X + dx * 8 >= b.x && X + dx * 8 < b.x + b.w && Y + dy * 8 >= b.y && Y + dy * 8 < b.y + b.h
+                bool Neighbor(int dx, int dy) => isPlatform ? X + dx * 8 >= b.x && X + dx * 8 < b.x + b.w && Y + dy * 8 >= b.y && Y + dy * 8 < b.y + b.h
                     : cells.TryGetValue((X + dx * 8, Y + dy * 8), out var kind) && kind == b.Mask;
                 bool u = Neighbor(0,-1), d = Neighbor(0,1), l = Neighbor(-1,0), r = Neighbor(1,0);
                 if (b.spiked && active) { Rect(X, Y, 8, 8, Mix(body, Color("000000"), .5)); Blit(Covered(b.Mask, true), X - 1, Y - 1);
@@ -429,7 +432,7 @@ namespace Phase
                 for (int i = 0; i < s.blocks.Count && !stone; i++)
                 {
                     var b = s.blocks[i];
-                    stone = b.ActiveInPhase(s.phase) && !s.blocked.Contains(i) &&
+                    stone = !(b is Platform) && b.ActiveInPhase(s.phase) && !s.blocked.Contains(i) &&
                         b.y < floor && b.y + b.h >= floor - 4 && x >= b.x && x < b.x + b.w;
                 }
                 if (stone) continue;

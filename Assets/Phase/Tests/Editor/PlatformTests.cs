@@ -194,6 +194,10 @@ public class PlatformTests
         Assert.That(c.CheckHazards(), Is.False, "no spike of a platform in pass-through hurts");
         c.blocked.Clear();
         Assert.That(c.CheckHazards(), Is.True, "and they hurt again once it is solid to Wick");
+        var stray = new Spike(row.x, row.y, 24, SpikeDirection.Up) { owner = Mover() };
+        var lone = new PhaseController(Array.Empty<Block>(), 32, 40, spikes: new[] { stray });
+        lone.player.x = stray.x + 8; lone.player.y = stray.y + 5 - 6;
+        Assert.That(lone.CheckHazards(), Is.True, "a row whose platform is not in this room still hurts, without an index error");
     }
 
     [Test]

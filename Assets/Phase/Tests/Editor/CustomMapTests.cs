@@ -262,6 +262,10 @@ public class CustomMapTests
             Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Validate(bad));
         }
         Assert.Throws<ArgumentException>(()=>PhaseCustomMap.ToJson(new PhaseDemoRoom{blocks=Simple().blocks,platforms=new DemoPlatform[]{null}}));
+        var rows=Simple();rows.platforms=new[]{new DemoPlatform{length=3,pivots=new[]{(5,10),(5,0)},spikes=new[]{SpikeDirection.Up}}};
+        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Validate(rows),"the spike row would leave the room at the second stop");
+        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.ToJson(rows));
+        rows.platforms[0].pivots=new[]{(5,10),(5,1)};PhaseCustomMap.Validate(rows);
         var huge=JObject.Parse(json);huge["spawn"]=new JArray(1e18,19);
         Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(huge.ToString()),"a huge number cannot wrap past the room checks");
         var old=V1(Simple());old["spawnX"]=1e18;

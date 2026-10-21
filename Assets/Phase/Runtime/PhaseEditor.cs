@@ -143,8 +143,10 @@ namespace Phase
         }
         void Save()
         {
-            PlayerPrefs.SetString(DraftKey, PhaseCustomMap.ToJson(Room()));
-            PlayerPrefs.Save(); dirty = false;
+            // A draft that cannot be written keeps the previous one rather than failing every frame.
+            try { PlayerPrefs.SetString(DraftKey, PhaseCustomMap.ToJson(Room())); PlayerPrefs.Save(); }
+            catch (ArgumentException) { }
+            dirty = false;
         }
         // The map as authored; a nonzero down shifts everything below the room's top, which the scrolling preview uses.
         public PhaseDemoRoom Room(int down = 0)
@@ -199,14 +201,21 @@ namespace Phase
             for (int y = (int)row.y / 8; y < (row.y + row.h) / 8; y++)
                 for (int x = (int)row.x / 8; x < (row.x + row.w) / 8; x++)
                     if (x < 0 || y < 0 || x >= cols || y >= rows || tools[y * cols + x] != Erase || PlatformAt(new Vector2Int(x, y)).platform != null) return false;
+            // The row travels with the platform, so it must stay inside the room at every stop.
+            var body = platform.Create(); var home = body.OriginAt(0);
+            for (int i = 1; i < body.pivots.Length; i++)
+            {
+                var at = body.OriginAt(i);
+                double left = row.x + at.x - home.x, top = row.y + at.y - home.y;
+                if (left < 0 || top < 0 || left + row.w > cols * 8 || top + row.h > rows * 8) return false;
+            }
             return true;
         }
+        // Every stop's body and spike rows inside the room: the same rule a map file is held to.
         static bool Fits(DemoPlatform platform, int columns, int rowCount)
         {
-            var body = platform.Create();
-            for (int i = 0; i < body.pivots.Length; i++)
-            { var at = body.OriginAt(i); if (at.x < 0 || at.y < 0 || at.x + body.w > columns * 8 || at.y + body.h > rowCount * 8) return false; }
-            return body.attached.All(t => t.x >= 0 && t.y >= 0 && t.x + t.w <= columns * 8 && t.y + t.h <= rowCount * 8);
+            try { PhaseCustomMap.CheckPlatform(platform, columns * 8, rowCount * 8); return true; }
+            catch (ArgumentException) { return false; }
         }
         // Clicks place a platform: the first pivot, a body end on its row or column that sets the length, more pivots, then the first again.
         bool PlaceStep(Vector2Int cell)

@@ -22,7 +22,7 @@ namespace Phase
         {
             Sanitize();
             var box = PhaseGrid.CreateBox(this, transform.position, Size, mask: phaseMask);
-            int x = (int)box.x / 8 + (vertical ? 0 : length / 2), y = (int)box.y / 8 + (vertical ? length / 2 : 0);
+            int x = (int)Math.Round(box.x) / 8 + (vertical ? 0 : length / 2), y = (int)Math.Round(box.y) / 8 + (vertical ? length / 2 : 0);
             var sides = new List<SpikeDirection>();
             if ((spikes & PlatformSides.Up) != 0) sides.Add(SpikeDirection.Up);
             if ((spikes & PlatformSides.Down) != 0) sides.Add(SpikeDirection.Down);
@@ -35,7 +35,7 @@ namespace Phase
         void Sanitize()
         {
             length = Mathf.Max(1, length | 1);
-            if (phaseMask < 1) phaseMask = 7;
+            phaseMask = phaseMask < 1 ? 7 : Mathf.Min(phaseMask, 7);
             if (pivots == null || pivots.Length < 2) pivots = new[] { Vector2Int.zero, vertical ? new Vector2Int(0, -1) : new Vector2Int(1, 0) };
             pivots[0] = Vector2Int.zero;
         }

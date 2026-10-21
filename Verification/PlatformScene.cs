@@ -19,7 +19,9 @@ public static class PlatformScene
         PrefabUtility.RecordPrefabInstancePropertyModifications(platform);
         const string path = "Assets/Temp/PhaseJumpPlatformProbe.unity";
         Directory.CreateDirectory("Assets/Temp");
-        if (!EditorSceneManager.SaveScene(scene, path)) throw new IOException("Could not save the probe scene.");
+        if (!EditorSceneManager.SaveScene(scene, path, true)) throw new IOException("Could not save the probe scene.");
+        // The shared sandbox scene stays untouched: drop the edited copy from the Editor.
+        EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         return path;
     }
 }

@@ -198,7 +198,11 @@ namespace Phase
         bool Lethal(int i) => blocks[i].ActiveInPhase(phase) && !blocked.Contains(i);
         // The block index of the n-th platform; platforms follow the terrain.
         public int PlatformIndex(int n) => blocks.Count - platforms.Count + n;
-        bool Shielded(Spike spike) => spike.owner != null && blocked.Contains(PlatformIndex(platforms.IndexOf(spike.owner)));
+        bool Shielded(Spike spike)
+        {
+            int n = spike.owner == null ? -1 : platforms.IndexOf(spike.owner);
+            return n >= 0 && blocked.Contains(PlatformIndex(n));
+        }
         bool HitsSweep(Block b, Block from)
         {
             if (b.w <= 0 || b.h <= 0) return false;
