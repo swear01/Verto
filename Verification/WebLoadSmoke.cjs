@@ -23,7 +23,7 @@ const server = remote ? null : http.createServer((request, response) => {
   fs.createReadStream(file).on('error', () => response.destroy()).pipe(response);
 });
 
-// Pixels in the bone-white cloak colors DemoWebSmoke tracks; static UI in those colors cancels out between frames.
+// Pixels in the bone-white cloak colors DemoWebSmoke tracks; Verto's levels draw no UI in those colors.
 const cloak = Array.from({length:9},(_,i)=>[234,223,197].map((v,k)=>Math.round(v+([255,91,94][k]-v)*i/8)));
 function cloakPixels(buffer) {
   const image = PNG.sync.read(buffer), pixels = new Map();
@@ -31,7 +31,7 @@ function cloakPixels(buffer) {
     if (image.data[i] >= 232 && cloak.some(rgb => rgb.every((v, k) => Math.abs(image.data[i + k] - v) < 4))) pixels.set(i / 4, (i / 4) % image.width);
   return pixels;
 }
-const meanX = (from, without) => { const xs = [...from].filter(([i]) => !without.has(i)).map(([, x]) => x); return xs.length ? xs.reduce((a, b) => a + b) / xs.length : NaN; };
+const centroidX = pixels => [...pixels.values()].reduce((a, b) => a + b) / pixels.size;
 
 (async () => {
   let browser;
@@ -67,11 +67,11 @@ const meanX = (from, without) => { const xs = [...from].filter(([i]) => !without
     const shot = await canvas.screenshot(), walked = cloakPixels(shot);
     fs.writeFileSync(path.join(reports, 'load-smoke.png'), shot);
     assert(walked.size, 'Level1 still shows the player after the walk');
-    result.moved = meanX(walked, start) - meanX(start, walked);
+    result.moved = centroidX(walked) - centroidX(start);
     assert(result.moved > 8, `Holding right moves the player (moved ${result.moved}px)`);
     assert.deepEqual(result.errors, [], 'Console errors');
     assert.deepEqual(result.failedRequests, [], 'Failed requests');
-    assert.deepEqual(result.warnings.filter(m => !/INVALID_ENUM: bindTexture|Framebuffer is incomplete: No attachments and default size is zero/.test(m)), [], 'Unexpected console warnings');
+    assert.deepEqual(result.warnings, [], 'Console warnings');
     result.passed = true;
   } catch (error) {
     result.passed = false;
