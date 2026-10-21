@@ -93,8 +93,12 @@ right before the linked crystal-room exit.
 For an isolated diagnostic, append `--room=1`, `--room=5` or `--room=8` to the
 local verifier command; a calibration report is not a complete release check.
 
-The custom `Phase` template uses gzip with Unity's decompression fallback, so a
-static host does not need custom `Content-Encoding` headers. The 2D renderer has
+The custom `Phase` template uses Brotli with Unity's decompression fallback, so a
+static host does not need custom `Content-Encoding` headers. The build uses High
+managed stripping, IL2CPP OptimizeSize and Web code optimization `DiskSize`, keeping
+each file well under Cloudflare Pages' 25 MiB limit. The code optimization lives in
+the Editor's local build settings, so `BuildWeb.py` sets it and refuses to build if
+any of these differ (`TestResults/Web/size.json`). The 2D renderer has
 post-processing disabled. A scoped WebGL guard returns no MSAA samples for the
 six SNORM formats that Unity 6000.4 queries incorrectly in Chromium; ordinary
 queries and warnings remain intact. Revisit it after an engine/browser fix.
