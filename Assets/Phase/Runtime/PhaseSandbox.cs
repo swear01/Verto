@@ -256,7 +256,9 @@ namespace Phase
             while (accumulator >= PhaseController.Dt)
             {
                 input.jump = jumpQueued;
+                var was = (Controller.jumps, Controller.deaths, Controller.player.grounded, Controller.player.airJump);
                 Controller.Step(input); jumpQueued = false;
+                PhaseAudio.Step(Controller, was);
                 view.Follow(Controller, pixels.Width, pixels.Height);
                 accumulator -= PhaseController.Dt;
                 if (Controller.ExitDirection != 0) { Travel(Controller.ExitDirection); break; }
