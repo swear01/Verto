@@ -152,6 +152,21 @@ public class WorldTests
     }
 
     [Test]
+    public void TheRespawnSkipsASpawnUnderALaserOfTheEntryPhase()
+    {
+        var b = Room(1, 0); b.extraSpawns = new[] { new DemoPoint { x = 280, y = 152 } };
+        b.lasers = new[] { new DemoLaser { x = 24, y = 40, direction = LaserDirection.Down, phaseMask = 2 } };
+        var play = new PhaseWorldPlay(World(Room(0, 0), b), 0);
+        var c = play.Controller; c.phase = 1; c.player.x = 310; c.player.y = 157;
+        Cross(play, Right);
+        Assert.That((play.Controller.spawnX, play.Controller.respawnPhase), Is.EqualTo((280d, 1)), "the nearest spawn is under the blue laser");
+        var red = new PhaseWorldPlay(World(Room(0, 0), b), 0);
+        red.Controller.phase = 0; red.Controller.player.x = 310; red.Controller.player.y = 157;
+        Cross(red, Right);
+        Assert.That((red.Controller.spawnX, red.Controller.respawnPhase), Is.EqualTo((24d, 0)), "the blue laser is off in red");
+    }
+
+    [Test]
     public void TheRespawnIsTheNearestSpawnWithTheEntryPhase()
     {
         var b = Room(1, 0); b.extraSpawns = new[] { new DemoPoint { x = 280, y = 152 } };

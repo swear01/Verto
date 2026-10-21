@@ -138,6 +138,16 @@ public class CustomMapTests
         Assert.That(controller.crystals[0].collected,Is.True,"the spawn crystal is collected at once");Assert.That(controller.deaths,Is.Zero);
     }
     [Test]
+    public void PaddedTallRoomsSaveReopenAndPlaytest()
+    {
+        var map=Simple();map.height=720;map.blocks=new[]{new Block(0,712,320,8,phaseMask:7)};map.spikes=null;map.spawnY=696;
+        PhaseCustomMap.Validate(map);
+        string json=PhaseCustomMap.ToJson(map);var parsed=PhaseCustomMap.ParseRoom(json);
+        Assert.That(parsed.GridHeight,Is.EqualTo(880),"padded to five screens");
+        Assert.That(PhaseCustomMap.ToJson(parsed),Is.EqualTo(json),"saving the reopened room works");
+        Assert.That(PhaseCustomMap.ToWorld(parsed).rooms[0].GridHeight,Is.EqualTo(880),"the playtest world builds");
+    }
+    [Test]
     public void LargeRoomsRoundTripTheirSizeAndBoundObjectsByIt()
     {
         var map=Simple();

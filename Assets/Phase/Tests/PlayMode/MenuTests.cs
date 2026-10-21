@@ -84,6 +84,12 @@ public class MenuTests : InputTestFixture
             Assert.That(exported, Is.EqualTo(draft));
             editor.ImportDraft("{");
             Assert.That(PhaseCustomMap.ToJson(editor.Room()), Is.EqualTo(draft), "an invalid file leaves the draft unchanged");
+            var goalMap = PhaseCustomMap.ParseRoom(draft); goalMap.goal = new DemoPoint { x = 0, y = 0 };
+            editor.ImportDraft(PhaseCustomMap.ToJson(goalMap));
+            Assert.That(PhaseCustomMap.ToJson(editor.Room()), Is.EqualTo(draft), "a map with a goal is refused, not stripped");
+            goalMap.goal = null; goalMap.extraSpawns = new[] { new DemoPoint { x = 8, y = 8 } };
+            editor.ImportDraft(PhaseCustomMap.ToJson(goalMap));
+            Assert.That(PhaseCustomMap.ToJson(editor.Room()), Is.EqualTo(draft), "a map with extra spawns is refused, not stripped");
             editor.ImportDraft("{\"name\":\"x\",\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phaseMask\":2}],\"spawnX\":40,\"spawnY\":152}");
             Assert.That((editor.Room().blocks.Length, editor.Room().blocks[0].phaseMask, editor.SpawnCell), Is.EqualTo((PhaseEditor.Columns, 2, new Vector2Int(5, 19))), "wide blocks import as cells");
             editor.ImportDraft(exported);

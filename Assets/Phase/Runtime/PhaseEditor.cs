@@ -590,6 +590,7 @@ namespace Phase
             PhaseDemoRoom room;
             try { room = PhaseCustomMap.ParseRoom(json); }
             catch (ArgumentException) { flash = .4f; Refresh(); return; }
+            if (room.goal != null || room.extraSpawns != null) { flash = .4f; Refresh(); return; }
             Fill(room);
             Cursor = new Vector2Int(Math.Min(Cursor.x, cols - 1), Math.Min(Cursor.y, rows - 1));
             Save(); Refresh();

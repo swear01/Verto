@@ -181,6 +181,16 @@ namespace Phase
             foreach (var platform in platforms) platform.Restart();
             flash = .08;
         }
+        // Whether a player spawned at (x, y) in the given phase touches no active solid, spike, spiked block or laser beam.
+        public bool SafeSpawn(double x, double y, int ph)
+        {
+            var p = new Player(Math.Min(x, Width - 8), y);
+            var solids = blocks.Where(b => b.ActiveInPhase(ph)).ToList();
+            return !solids.Any(b => Overlap(p, b))
+                && !spikes.Any(s => s.ActiveInPhase(ph) && Overlap(p, s.Hitbox))
+                && !spikedBlocks.Any(i => blocks[i].ActiveInPhase(ph) && Overlap(p, Reach(blocks[i])))
+                && !lasers.Any(l => l.ActiveInPhase(ph) && Overlap(p, l.Beam(solids, Width, Height)));
+        }
         public static bool Overlap(Block a, Block b, double x = 0, double y = 0) =>
             a.x + x < b.x + b.w && a.x + a.w + x > b.x && a.y + y < b.y + b.h && a.y + a.h + y > b.y;
         public List<Block> Solid() => blocks.Where((b, i) => b.ActiveInPhase(phase) && !blocked.Contains(i)).ToList();
