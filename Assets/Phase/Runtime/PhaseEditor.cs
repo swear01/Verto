@@ -13,7 +13,7 @@ namespace Phase
         public const string Scene = "PhaseEditor", DraftKey = "phase.editor.v1";
         // One screen of cells is the grid window and the smallest room; a larger room scrolls under the same window.
         // The keyboard cursor scrolls to stay inside it; the cells the view shows just past it edit the same way.
-        public const int Columns = 40, Rows = 22, MaxColumns = PhaseCustomMap.MaxWidth / 8, MaxRows = PhaseCustomMap.MaxHeight / 8, SizeStep = 8;
+        public const int Columns = 40, Rows = 22, MaxColumns = PhaseCustomMap.MaxWidth / 8, MaxRows = PhaseCustomMap.MaxRoomHeight / 8, SizeStep = 8;
         // Cell tools: 0 empty, 1 terrain, 2–5 Up/Down/Left/Right spikes, 7–10 Up/Down/Left/Right lasers, 11 jump crystal, 12 spike-covered terrain.
         // Spawn only moves the player start; PlatformTool and CoverTool store nothing in a cell (platforms are kept apart, CoverTool
         // paints or toggles cell 12 and platform covers). The panel holds one slot per type; R/E or the wheel turns spikes and lasers.
