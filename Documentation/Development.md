@@ -193,9 +193,8 @@ CI runs on every pull request (including stacked PRs into feature branches) and 
 to `main`. It uploads TRX test results and runs `WebPageBrowser.cjs` in headless
 Chromium against a mock Unity bridge; that covers page events, not native loading.
 Unity scene, keyboard and rendering checks remain live CLI/Pipeline checks;
-they are not covered by this hosted controller job. The separate
-[Web build and preview](Web.md) workflow runs them through a licensed GUI runner
-and deploys only after browser verification. It requires owner setup before use.
+they are not covered by this hosted controller job. The Web build is made and
+published by hand; see [Online play](Web.md#online-play).
 
 `PhaseSandbox.roomSize` sets the room in native pixels: default and minimum 320×180, width
 in 8px steps and height 180 or a multiple of 8. The Scene view draws it as a white gizmo from the
