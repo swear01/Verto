@@ -17,14 +17,14 @@ namespace Phase
             try
             {
                 var data = JObject.Parse(json, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error });
-                CheckFields(data, new[] { "name", "width", "height", "blocks", "spikes", "lasers", "crystals", "platforms", "gears", "spawnX", "spawnY" });
+                CheckFields(data, new[] { "name", "width", "height", "blocks", "spikes", "lasers", "crystals", "spawnX", "spawnY" });
                 CheckNumbers(data, "spawnX", "spawnY");
                 if (data["name"] != null && (data["name"].Type != JTokenType.String || data["name"].Value<string>().Length > 64))
                     throw new ArgumentException("地圖名稱最多64字元。");
-                if (!(data["blocks"] is JArray blocks) || new[] { "spikes", "lasers", "crystals", "platforms", "gears" }.Any(f => data[f] != null && !(data[f] is JArray)))
-                    throw new ArgumentException("地形、尖刺、雷射、水晶、平台與齒輪必須是陣列。");
+                if (!(data["blocks"] is JArray blocks) || new[] { "spikes", "lasers", "crystals" }.Any(f => data[f] != null && !(data[f] is JArray)))
+                    throw new ArgumentException("地形、尖刺、雷射與水晶必須是陣列。");
                 JArray spikes = data["spikes"] as JArray, lasers = data["lasers"] as JArray, crystals = data["crystals"] as JArray;
-                if (blocks.Count + (spikes?.Count ?? 0) + (lasers?.Count ?? 0) + (crystals?.Count ?? 0) + ((data["platforms"] as JArray)?.Count ?? 0) + ((data["gears"] as JArray)?.Count ?? 0) > MaxCells)
+                if (blocks.Count + (spikes?.Count ?? 0) + (lasers?.Count ?? 0) + (crystals?.Count ?? 0) > MaxCells)
                     throw new ArgumentException("地圖格數過多。");
                 foreach (var item in blocks)
                 {
@@ -49,7 +49,9 @@ namespace Phase
                 {
                     var crystal = item as JObject;
                     CheckFields(crystal, new[] { "x", "y", "kind", "phaseMask" });
-                    CheckNumbers(crystal, "x", "y", "kind", "phaseMask");
+                    CheckNumbers(crystal, "x", "y", "phaseMask");
+                    // Older maps tag each crystal with a kind; only the jump crystal (0) remains.
+                    if (crystal["kind"] != null && Number(crystal["kind"], "kind") != 0) throw new ArgumentException("只支援跳躍水晶。");
                 }
                 var room = new PhaseDemoRoom {
                     name=data["name"]?.Value<string>(),width=Size(data,"width",Width,MaxWidth),height=Size(data,"height",Height,MaxHeight),spawnX=data["spawnX"].Value<double>(),spawnY=data["spawnY"].Value<double>(),
@@ -63,10 +65,9 @@ namespace Phase
                         x=l["x"].Value<double>(),y=l["y"].Value<double>(),direction=(LaserDirection)l["direction"].Value<int>(),phaseMask=l["phaseMask"].Value<int>()
                     }).ToArray(),
                     crystals=crystals?.Select(c=>new DemoCrystal {
-                        x=c["x"].Value<double>(),y=c["y"].Value<double>(),kind=(CrystalKind)c["kind"].Value<int>(),phaseMask=c["phaseMask"].Value<int>()
+                        x=c["x"].Value<double>(),y=c["y"].Value<double>(),phaseMask=c["phaseMask"].Value<int>()
                     }).ToArray()
                 };
-                ReadMechanisms(data, room);
                 Validate(room); return room;
             }
             catch (JsonException error) { throw new ArgumentException("地圖JSON格式無效。", error); }
@@ -79,67 +80,6 @@ namespace Phase
             double size = Number(data[field], field);
             if (size < min || size > max || size % 8 != 0) throw new ArgumentException($"地圖{field}必須是8的倍數，介於{min}與{max}。");
             return (int)size;
-        }
-        // Platforms and gears also persist in the editor draft, which may not be a valid map yet.
-        internal static void ReadMechanisms(JObject data, PhaseDemoRoom room)
-        {
-            if (new[] { "platforms", "gears" }.Any(f => data[f] != null && !(data[f] is JArray)))
-                throw new ArgumentException("平台與齒輪必須是陣列。");
-            room.platforms = (data["platforms"] as JArray)?.Select(item =>
-            {
-                var platform = item as JObject;
-                CheckFields(platform, new[] { "w", "h", "nodeX", "nodeY", "returns", "phaseMask" });
-                CheckNumbers(platform, "w", "h");
-                CheckMask(platform);
-                if (platform["returns"] != null && platform["returns"].Type != JTokenType.Boolean) throw new ArgumentException("平台returns必須是布林值。");
-                return new DemoPlatform { w = platform["w"].Value<double>(), h = platform["h"].Value<double>(),
-                    nodeX = Numbers(platform["nodeX"], "nodeX"), nodeY = Numbers(platform["nodeY"], "nodeY"), returns = platform["returns"]?.Value<bool>() ?? false,
-                    phaseMask = platform["phaseMask"]?.Value<int>() ?? 0 };
-            }).ToArray();
-            room.gears = (data["gears"] as JArray)?.Select(item =>
-            {
-                var gear = item as JObject;
-                CheckFields(gear, new[] { "wall", "platform", "top", "endX", "phaseMask" });
-                CheckNumbers(gear, "top", "endX");
-                CheckMask(gear);
-                Block Box(JToken token)
-                {
-                    var box = token as JObject;
-                    CheckFields(box, new[] { "x", "y", "w", "h" });
-                    CheckNumbers(box, "x", "y", "w", "h");
-                    return new Block(box["x"].Value<double>(), box["y"].Value<double>(), box["w"].Value<double>(), box["h"].Value<double>());
-                }
-                return new DemoGear { wall = Box(gear["wall"]), platform = Box(gear["platform"]), top = gear["top"].Value<double>(), endX = gear["endX"].Value<double>(),
-                    phaseMask = gear["phaseMask"]?.Value<int>() ?? 0 };
-            }).ToArray();
-        }
-        internal static PhaseDemoRoom ReadMechanisms(string json)
-        {
-            try { var room = new PhaseDemoRoom(); ReadMechanisms(JObject.Parse(json), room); return room; }
-            catch (JsonException error) { throw new ArgumentException("地圖JSON格式無效。", error); }
-            catch (OverflowException error) { throw new ArgumentException("地圖數值超出範圍。", error); }
-        }
-        internal static string MechanismJson(PhaseDemoRoom room) => WriteMechanisms(room, new JObject()).ToString(Formatting.None);
-        static JObject WriteMechanisms(PhaseDemoRoom room, JObject data)
-        {
-            JObject Box(Block b) => new JObject { ["x"] = (int)b.x, ["y"] = (int)b.y, ["w"] = (int)b.w, ["h"] = (int)b.h };
-            // An absent phaseMask keeps the mechanism always solid.
-            JObject Colored(JObject item, int mask) { if (mask != 0) item["phaseMask"] = mask; return item; }
-            if (room.platforms?.Length > 0) data["platforms"] = new JArray(room.platforms.Select(p => Colored(new JObject {
-                ["w"] = (int)p.w, ["h"] = (int)p.h, ["nodeX"] = new JArray(p.nodeX.Select(x => (int)x)), ["nodeY"] = new JArray(p.nodeY.Select(y => (int)y)), ["returns"] = p.returns }, p.phaseMask)));
-            if (room.gears?.Length > 0) data["gears"] = new JArray(room.gears.Select(g => Colored(new JObject {
-                ["wall"] = Box(g.wall), ["platform"] = Box(g.platform), ["top"] = (int)g.top, ["endX"] = (int)g.endX }, g.phaseMask)));
-            return data;
-        }
-        static void CheckMask(JObject item)
-        {
-            if (item?["phaseMask"] != null && (Number(item["phaseMask"], "phaseMask") < 1 || item["phaseMask"].Value<double>() > 7))
-                throw new ArgumentException("平台與齒輪顏色必須是1–7。");
-        }
-        static double[] Numbers(JToken token, string field)
-        {
-            if (!(token is JArray values)) throw new ArgumentException("地圖欄位必須是數值陣列：" + field);
-            return values.Select(value => Number(value, field)).ToArray();
         }
         static void CheckFields(JObject data, string[] allowed)
         {
@@ -167,14 +107,9 @@ namespace Phase
             int w = room.GridWidth, h = room.GridHeight;
             if (w < Width || w > MaxWidth || h < Height || h > MaxHeight || w % 8 != 0 || h % 8 != 0)
                 throw new ArgumentException($"地圖大小必須是8的倍數：寬{Width}–{MaxWidth}、高{Height}–{MaxHeight}。");
-            if (room.blocks.Length + (room.spikes?.Length ?? 0) + (room.lasers?.Length ?? 0) + (room.crystals?.Length ?? 0) + (room.platforms?.Length ?? 0) + (room.gears?.Length ?? 0) > w / 8 * (h / 8))
+            if (room.blocks.Length + (room.spikes?.Length ?? 0) + (room.lasers?.Length ?? 0) + (room.crystals?.Length ?? 0) > w / 8 * (h / 8))
                 throw new ArgumentException($"地圖超過{w / 8 * (h / 8)}格。");
-            void Inside(double x, double y, double width, double height) => InsideRoom(x, y, width, height, w, h);
             void AddCells(double x, double y, double width, double height, HashSet<(int,int)> cells) => AddCellsIn(x, y, width, height, cells, w, h);
-            if ((room.nodeX?.Length ?? 0) != 0 || (room.nodeY?.Length ?? 0) != 0 || room.hasGear ||
-                room.gearWall != null || room.gearPlatform != null || room.gearTop != 0 || room.gearEndX != 0 || room.returns ||
-                double.IsNaN(room.moverW) || double.IsInfinity(room.moverW) || double.IsNaN(room.moverH) || double.IsInfinity(room.moverH))
-                throw new ArgumentException("自訂地圖的平台與齒輪必須使用platforms與gears陣列。");
             if (!Aligned(room.spawnX) || !Aligned(room.spawnY) || room.spawnX < 0 || room.spawnX > w - 8 || room.spawnY < 0 || room.spawnY > h - 16)
                 throw new ArgumentException("出生點必須位於格線內。");
             var occupied = new HashSet<(int,int)>();
@@ -208,35 +143,12 @@ namespace Phase
             }
             foreach (var crystal in room.crystals ?? Array.Empty<DemoCrystal>())
             {
-                if (crystal == null || (int)crystal.kind < 0 || (int)crystal.kind > 1 || crystal.phaseMask < 1 || crystal.phaseMask > 7)
-                    throw new ArgumentException("水晶種類或顏色無效。");
+                if (crystal == null || crystal.phaseMask < 1 || crystal.phaseMask > 7)
+                    throw new ArgumentException("水晶顏色無效。");
                 AddCells(crystal.x, crystal.y, 8, 8, occupied);
             }
-            // Mechanisms occupy cells at their start; every stop and the gear's travel limits stay inside the map.
-            foreach (var platform in room.platforms ?? Array.Empty<DemoPlatform>())
-            {
-                MovingPlatform mover;
-                if (platform != null && (platform.phaseMask < 0 || platform.phaseMask > 7)) throw new ArgumentException("平台顏色無效。");
-                try { mover = platform?.Create() ?? throw new ArgumentException(); }
-                catch (ArgumentException) { throw new ArgumentException("平台路線無效。"); }
-                for (int i = 1; i < platform.nodeX.Length; i++) Inside(platform.nodeX[i], platform.nodeY[i], platform.w, platform.h);
-                AddCells(mover.x, mover.y, mover.w, mover.h, occupied);
-                if (PhaseController.Overlap(player, mover)) throw new ArgumentException("出生點與平台重疊。");
-            }
-            foreach (var gear in room.gears ?? Array.Empty<DemoGear>())
-            {
-                ClimbGear drive;
-                if (gear != null && (gear.phaseMask < 0 || gear.phaseMask > 7)) throw new ArgumentException("齒輪顏色無效。");
-                try { drive = gear?.Create() ?? throw new ArgumentException(); }
-                catch (ArgumentException) { throw new ArgumentException("齒輪行程無效。"); }
-                AddCells(drive.wall.x, drive.wall.y, drive.wall.w, drive.wall.h, occupied);
-                AddCells(drive.platform.x, drive.platform.y, drive.platform.w, drive.platform.h, occupied);
-                Inside(drive.wall.x, drive.top, drive.wall.w, drive.wall.h);
-                Inside(drive.endX, drive.platform.y, drive.platform.w, drive.platform.h);
-                if (PhaseController.Overlap(player, drive.wall) || PhaseController.Overlap(player, drive.platform)) throw new ArgumentException("出生點與齒輪重疊。");
-            }
         }
-        // The exported custom-map JSON; lasers, crystals, platforms and gears appear only when used.
+        // The exported custom-map JSON; lasers and crystals appear only when used.
         public static string ToJson(PhaseDemoRoom room)
         {
             var data = new JObject { ["name"] = room.name };
@@ -245,8 +157,7 @@ namespace Phase
             data["blocks"] = new JArray(room.blocks.Select(b => new JObject { ["x"] = (int)b.x, ["y"] = (int)b.y, ["w"] = (int)b.w, ["h"] = (int)b.h, ["phase"] = b.phase, ["phaseMask"] = b.phaseMask }));
             data["spikes"] = new JArray((room.spikes ?? Array.Empty<DemoSpike>()).Select(s => new JObject { ["x"] = (int)s.x, ["y"] = (int)s.y, ["length"] = (int)s.length, ["direction"] = (int)s.direction, ["phaseMask"] = s.phaseMask }));
             if (room.lasers?.Length > 0) data["lasers"] = new JArray(room.lasers.Select(l => new JObject { ["x"] = (int)l.x, ["y"] = (int)l.y, ["direction"] = (int)l.direction, ["phaseMask"] = l.phaseMask }));
-            if (room.crystals?.Length > 0) data["crystals"] = new JArray(room.crystals.Select(c => new JObject { ["x"] = (int)c.x, ["y"] = (int)c.y, ["kind"] = (int)c.kind, ["phaseMask"] = c.phaseMask }));
-            WriteMechanisms(room, data);
+            if (room.crystals?.Length > 0) data["crystals"] = new JArray(room.crystals.Select(c => new JObject { ["x"] = (int)c.x, ["y"] = (int)c.y, ["phaseMask"] = c.phaseMask }));
             data["spawnX"] = (int)room.spawnX; data["spawnY"] = (int)room.spawnY;
             return data.ToString(Formatting.Indented);
         }

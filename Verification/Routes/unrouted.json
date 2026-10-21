@@ -1,4 +1,0 @@
-{
-  "reason": "classmate-verified: the classmates playtested their own level, so it needs no recorded route (a route file may stay but does not gate tests)",
-  "levels": ["PhaseDemo1.1", "PhaseDemo12", "PhaseDemo13", "PhaseDemo14"]
-}

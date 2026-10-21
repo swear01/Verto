@@ -23,7 +23,7 @@ namespace Phase
         Sprite sprite;
         SpriteRenderer surface;
         double accumulator;
-        bool jumpQueued, dashQueued, transitioning;
+        bool jumpQueued, transitioning;
         public const float TransitionDuration = .18f;
         public bool InTransition => transitioning || departingFrame != null;
         public bool Won { get; private set; }
@@ -41,8 +41,8 @@ namespace Phase
         static Vector2Int travelSize;
         static string arrivalScene;
         static int arrivalDirection;
-        // Two slots per action in left/right/up/down/jump/dash/grab order; "" leaves a slot empty and Shift means both Shift keys.
-        public static readonly string[] DefaultSlots = { "LeftArrow", "A", "RightArrow", "D", "UpArrow", "W", "DownArrow", "S", "Z", "Space", "X", "", "C", "Shift" };
+        // Two slots per action in left/right/up/down/jump order; "" leaves a slot empty and Shift means both Shift keys.
+        public static readonly string[] DefaultSlots = { "LeftArrow", "A", "RightArrow", "D", "UpArrow", "W", "DownArrow", "S", "Z", "Space" };
         public const string ControlsKey = "phase.keys.v1";
         public static IReadOnlyList<string> Slots => slots;
         static string[] slots;
@@ -60,7 +60,6 @@ namespace Phase
         PhaseController Build(Vector2Int at, int width)
         {
             var controller = new PhaseController(GetComponentsInChildren<PhaseTerrain>().Select(t => t.CreateBlock()), at.x, at.y,
-                GetComponentsInChildren<PhaseMovingPlatform>().Select(m => m.CreatePlatform()), gears: GetComponentsInChildren<PhaseClimbGear>().Select(g => g.CreateGear()),
                 spikes: GetComponentsInChildren<PhaseSpike>().Select(t => t.CreateSpike()),
                 lasers: GetComponentsInChildren<PhaseLaser>().Select(t => t.CreateLaser()),
                 crystals: GetComponentsInChildren<PhaseCrystal>().Select(t => t.CreateCrystal()), width: roomSize.x, height: roomSize.y);
@@ -120,8 +119,7 @@ namespace Phase
                         Controller.player.x = entry.at.x; Controller.player.y = entry.at.y;
                         Controller.phase = entry.phase; Controller.player.facing = -1;
                     }
-                    Controller.time = traveler.time; Controller.jumps = traveler.jumps;
-                    Controller.dashes = traveler.dashes; Controller.deaths = traveler.deaths;
+                    Controller.time = traveler.time; Controller.jumps = traveler.jumps; Controller.deaths = traveler.deaths;
                 }
                 else Controller.EnterFrom(traveler, arrivalDirection);
                 if (travelFrame?.Length == size.x * size.y) departingFrame = travelFrame;
@@ -216,7 +214,7 @@ namespace Phase
         }
         void Win()
         {
-            Won = true; jumpQueued = dashQueued = false; accumulator = 0;
+            Won = true; jumpQueued = false; accumulator = 0;
             ReleaseInput(); Render();
         }
         void Update()
@@ -224,18 +222,18 @@ namespace Phase
             if (transitioning) return;
             ResizeCamera();
             var k = Keyboard.current;
-            if (InputPaused(k)) { jumpQueued = dashQueued = false; accumulator = 0; return; }
+            if (InputPaused(k)) { jumpQueued = false; accumulator = 0; return; }
             // Escape pauses play; an editor playtest leaves Escape to the editor.
             if (Keys != null || LevelSelect != null) { TickScreen(k); return; }
             if (Menu == null && k != null && k.escapeKey.wasPressedThisFrame && transform.parent == null)
             {
                 Menu = new PhaseMenu(PhaseMenu.PlayIcon, PhaseMenu.LevelsIcon, PhaseMenu.SettingsIcon, PhaseMenu.HomeIcon);
-                jumpQueued = dashQueued = false; accumulator = 0; Render(); return;
+                jumpQueued = false; accumulator = 0; Render(); return;
             }
             if (Menu != null) { TickPause(k); return; }
             if (departingFrame != null)
             {
-                jumpQueued = dashQueued = false; accumulator = 0;
+                jumpQueued = false; accumulator = 0;
                 transitionElapsed = transitionElapsed < 0 ? 0 : transitionElapsed + Time.unscaledDeltaTime;
                 float t = Mathf.Clamp01(transitionElapsed / TransitionDuration);
                 pixels.Slide(departingFrame, arrivingFrame, 1 - Math.Pow(1 - t, 3), transitionDirection);
@@ -252,12 +250,11 @@ namespace Phase
             }
             var input = ReadControls(k);
             jumpQueued |= Pressed(k, 4, true);
-            dashQueued |= Pressed(k, 5, true);
             accumulator += Time.deltaTime;
             while (accumulator >= PhaseController.Dt)
             {
-                input.jump = jumpQueued; input.dash = dashQueued;
-                Controller.Step(input); jumpQueued = dashQueued = false;
+                input.jump = jumpQueued;
+                Controller.Step(input); jumpQueued = false;
                 view.Follow(Controller, pixels.Width, pixels.Height);
                 accumulator -= PhaseController.Dt;
                 if (Controller.ExitDirection != 0) { Travel(Controller.ExitDirection); break; }
@@ -266,7 +263,7 @@ namespace Phase
         }
         void TickPause(Keyboard k)
         {
-            jumpQueued = dashQueued = false; accumulator = 0;
+            jumpQueued = false; accumulator = 0;
             if (k != null && k.escapeKey.wasPressedThisFrame) { Resume(); return; }
             switch (Menu.Tick(k, Mouse.current, View, MenuMiddle, out _, Menu.Fit(View)))
             {
@@ -280,7 +277,7 @@ namespace Phase
         // Key settings and level select open from the pause menu or victory; Escape returns there.
         void TickScreen(Keyboard k)
         {
-            jumpQueued = dashQueued = false; accumulator = 0;
+            jumpQueued = false; accumulator = 0;
             if (Keys != null) { if (Keys.Tick(k)) Keys = null; }
             else
             {
@@ -309,14 +306,14 @@ namespace Phase
             SceneManager.LoadSceneAsync(destination);
         }
         void OnApplicationFocus(bool focused)
-        { if (!focused) jumpQueued = dashQueued = false; }
+        { if (!focused) jumpQueued = false; }
         public static Controls ReadControls(Keyboard k)
         {
             if (k == null) return default;
             return new Controls {
                 x = (Pressed(k, 1) ? 1 : 0) - (Pressed(k, 0) ? 1 : 0),
                 y = (Pressed(k, 3) ? 1 : 0) - (Pressed(k, 2) ? 1 : 0),
-                jumpHeld = Pressed(k, 4), dashHeld = Pressed(k, 5), grab = Pressed(k, 6)
+                jumpHeld = Pressed(k, 4)
             };
         }
         internal static bool Pressed(Keyboard k, int action, bool edge = false) => k != null && keys[action].Any(key => edge ? k[key].wasPressedThisFrame : k[key].isPressed);

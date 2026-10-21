@@ -66,8 +66,8 @@ public class MenuTests : InputTestFixture
             yield return Tap(Key.X);
             Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.LaserTool));
             yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
-            yield return Tap(Key.X); yield return Tap(Key.X);
-            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.CrystalTool + 1));
+            yield return Tap(Key.X);
+            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.CrystalTool));
             yield return Tap(Key.Digit5); yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
             var room = editor.Room();
             Assert.That(room.blocks.Any(b => b.x == 72 && b.y == 144 && b.phaseMask == 1), Is.True, "jump paints red terrain");
@@ -76,7 +76,7 @@ public class MenuTests : InputTestFixture
             var laser = room.lasers.Single();
             Assert.That((laser.x, laser.y, laser.direction, laser.phaseMask), Is.EqualTo((88.0, 144.0, LaserDirection.Up, 1)));
             var crystal = room.crystals.Single();
-            Assert.That((crystal.x, crystal.y, crystal.kind, crystal.phaseMask), Is.EqualTo((96.0, 144.0, CrystalKind.Dash, 5)));
+            Assert.That((crystal.x, crystal.y, crystal.phaseMask), Is.EqualTo((96.0, 144.0, 5)));
 
             // Outside Web the import/export icons use the clipboard.
             Assert.That(editor.ExportDraft(), Is.True);
@@ -202,10 +202,10 @@ public class MenuTests : InputTestFixture
             Color[] Panel() => texture.GetPixels(panel.x, view.y - panel.yMax, panel.width, panel.height);
             Vector2Int Cell(int x, int y) => new Vector2Int(x * 8 + 4, y * 8 + 4 - (180 - view.y) / 2);
 
-            // With the gear's tall preview, the pointer sweeps the top and bottom rows: the cursor follows and the panel's pixels never change.
-            var gear = Center(PhaseEditor.SlotIn(view, 6));
-            yield return Point(view, gear, MouseButton.Left); yield return Point(view, gear);
-            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.GearTool));
+            // The pointer sweeps the top and bottom rows: the cursor follows and the panel's pixels never change.
+            var laserSlot = Center(PhaseEditor.SlotIn(view, 2));
+            yield return Point(view, laserSlot, MouseButton.Left); yield return Point(view, laserSlot);
+            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.LaserTool));
             yield return Point(view, Cell(5, 0));
             var still = Panel();
             foreach (var cell in new[] { new Vector2Int(30, 0), new Vector2Int(39, 0), new Vector2Int(30, 21), new Vector2Int(0, 21), new Vector2Int(5, 0) })
@@ -229,7 +229,7 @@ public class MenuTests : InputTestFixture
                 if (slot < PhaseEditor.MaskSlot) tools.Add(editor.Tool); else masks.Add(editor.Mask);
                 still = Panel();
             }
-            Assert.That(tools, Is.EqualTo(tools.Distinct()).And.EquivalentTo(new[] { 0, 1, 2, 6, 7, 11, 12, PhaseEditor.PlatformTool, PhaseEditor.GearTool }), "each type slot picks its own tool");
+            Assert.That(tools, Is.EqualTo(tools.Distinct()).And.EquivalentTo(new[] { 0, 1, 2, 6, 7, 11 }), "each type slot picks its own tool");
             Assert.That(masks, Is.EqualTo(masks.Distinct()).And.EquivalentTo(Enumerable.Range(1, 7)), "each color slot picks its own color");
             Assert.That(PhaseCustomMap.ToJson(editor.Room()), Is.EqualTo(draft), "panel clicks never paint");
 
@@ -508,8 +508,8 @@ public class MenuTests : InputTestFixture
     static (bool off, bool on) Knob(PhaseKeys keys)
     {
         var size = PhaseSandbox.ViewSize(Screen.width, Screen.height);
-        int scale = UiZoom.Fit(size, 67, 128).Scale;
-        int ox = (size.x - 67 * scale) / 2, oy = (size.y - 128 * scale) / 2;
+        int scale = UiZoom.Fit(size, 67, 106).Scale;
+        int ox = (size.x - 67 * scale) / 2, oy = (size.y - 106 * scale) / 2;
         var texture = new Texture2D(size.x, size.y);
         try
         {
@@ -520,7 +520,7 @@ public class MenuTests : InputTestFixture
                 int x = ox + pageX * scale + scale / 2, y = oy + pageY * scale + scale / 2;
                 return pixels[(size.y - 1 - y) * size.x + x].Equals(PixelFrame.Light);
             }
-            return (Lit(17 + 19, 96 + 7), Lit(17 + 24, 96 + 7));
+            return (Lit(17 + 19, 74 + 7), Lit(17 + 24, 74 + 7));
         }
         finally { Object.Destroy(texture); }
     }
@@ -571,89 +571,6 @@ public class MenuTests : InputTestFixture
     }
 
     IEnumerator Move(Key key, int count) { for (int i = 0; i < count; i++) yield return Tap(key); }
-    [UnityTest]
-    public IEnumerator EditorDrawsAPlatformLineThenPlaytestsTheDiagonal()
-    {
-        string saved = PlayerPrefs.HasKey(PhaseEditor.DraftKey) ? PlayerPrefs.GetString(PhaseEditor.DraftKey) : null, clipboard = GUIUtility.systemCopyBuffer;
-        PlayerPrefs.DeleteKey(PhaseEditor.DraftKey);
-        try
-        {
-            yield return OpenTitle();
-            yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
-            yield return WaitFor(PhaseEditor.Scene);
-            var editor = Object.FindAnyObjectByType<PhaseEditor>();
-            yield return Move(Key.X, 5);
-            Assert.That(editor.Tool, Is.EqualTo(PhaseEditor.PlatformTool));
-            yield return Move(Key.UpArrow, 4);
-            yield return Tap(Key.Z);
-            Assert.That((editor.Anchor, editor.Room().platforms.Length), Is.EqualTo(((Vector2Int?)new Vector2Int(8, 14), 0)), "the first press places only the start");
-            yield return Tap(Key.Escape);
-            Assert.That((editor.Anchor, Object.FindAnyObjectByType<PhaseEditor>()), Is.EqualTo(((Vector2Int?)null, editor)), "escape drops a start that has no line");
-            yield return Tap(Key.Z); yield return Move(Key.RightArrow, 4); yield return Move(Key.UpArrow, 1); yield return Tap(Key.Z);
-            var platform = editor.Room().platforms.Single();
-            Assert.That((string.Join(",", platform.nodeX.Concat(platform.nodeY)), platform.w, platform.h, platform.returns, editor.Anchor),
-                Is.EqualTo(("64,96,112,104", 24.0, 8.0, false, (Vector2Int?)new Vector2Int(8, 14))), "the next press keeps both axes");
-            yield return Move(Key.RightArrow, 3); yield return Move(Key.DownArrow, 2); yield return Tap(Key.Z);
-            platform = editor.Room().platforms.Single();
-            Assert.That(string.Join(",", platform.nodeX.Concat(platform.nodeY)), Is.EqualTo("64,96,120,112,104,120"), "another press extends the same line");
-            yield return Tap(Key.C);
-            Assert.That((editor.Anchor, editor.Room().platforms.Single().nodeX.Length), Is.EqualTo(((Vector2Int?)null, 3)), "grab ends the line");
-
-            yield return Move(Key.RightArrow, 5); yield return Move(Key.UpArrow, 3);
-            yield return Tap(Key.Z); yield return Tap(Key.C);
-            Assert.That((editor.Anchor, editor.Room().platforms.Length), Is.EqualTo(((Vector2Int?)null, 1)), "grab drops a new start");
-            yield return Tap(Key.Z); yield return Move(Key.RightArrow, 4); yield return Move(Key.DownArrow, 2); yield return Tap(Key.Z);
-            platform = editor.Room().platforms.Last();
-            Assert.That((string.Join(",", platform.nodeX.Concat(platform.nodeY)), platform.returns), Is.EqualTo(("160,192,96,112", false)));
-
-            yield return Tap(Key.X);
-            Assert.That((editor.Tool, editor.Anchor), Is.EqualTo((PhaseEditor.GearTool, (Vector2Int?)null)));
-            yield return Tap(Key.Z); yield return Move(Key.RightArrow, 4); yield return Move(Key.DownArrow, 2); yield return Tap(Key.Z);
-            var gear = editor.Room().gears.Single();
-            Assert.That((gear.wall.x, gear.wall.y, gear.wall.w, gear.wall.h, gear.top, gear.platform.x, gear.platform.y, gear.platform.w, gear.platform.h, gear.endX),
-                Is.EqualTo((192.0, 112.0, 8.0, 56.0, 96.0, 208.0, 128.0, 56.0, 8.0, 224.0)));
-
-            yield return Move(Key.LeftArrow, 19); yield return Move(Key.UpArrow, 2);
-            Assert.That(editor.Cursor, Is.EqualTo(new Vector2Int(9, 14)));
-            yield return Move(Key.X, 3); yield return Tap(Key.Z);
-            Assert.That((editor.Tool, editor.Room().blocks.Length), Is.EqualTo((PhaseEditor.Terrain, PhaseEditor.Columns)), "terrain never paints over a platform");
-            yield return Tap(Key.C);
-            Assert.That(editor.Room().platforms.Length, Is.EqualTo(1), "erase removes the platform under the cursor");
-
-            Assert.That(editor.ExportDraft(), Is.True);
-            string exported = GUIUtility.systemCopyBuffer;
-            Assert.That(exported, Is.EqualTo(PhaseCustomMap.ToJson(editor.Room())));
-            editor.ImportDraft("{\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phaseMask\":7}],\"spawnX\":24,\"spawnY\":152}");
-            Assert.That((editor.Room().platforms.Length, editor.Room().gears.Length), Is.EqualTo((0, 0)), "older maps import without mechanisms");
-            editor.ImportDraft(exported);
-            Assert.That(PhaseCustomMap.ToJson(editor.Room()), Is.EqualTo(exported));
-
-            yield return Tap(Key.Enter);
-            var sandbox = editor.Playtest;
-            Assert.That((sandbox.Controller.movers.Length, sandbox.Controller.gears.Length), Is.EqualTo((1, 1)));
-            Assert.That((sandbox.Controller.movers[0].x, sandbox.Controller.movers[0].y, sandbox.Controller.gears[0].wall.x, sandbox.Controller.gears[0].platform.y),
-                Is.EqualTo((160.0, 96.0, 192.0, 128.0)), "playtest mechanisms start at their authored cells");
-            int frame = Time.frameCount; double time = sandbox.Controller.time, x = sandbox.Controller.movers[0].x, y = sandbox.Controller.movers[0].y;
-            yield return Tap(Key.X);
-            yield return new WaitForSeconds(.45f);
-            Assert.That(Time.frameCount, Is.GreaterThan(frame));
-            Assert.That(sandbox.Controller.time, Is.GreaterThan(time));
-            Assert.That(sandbox.Controller.movers[0].x, Is.GreaterThan(x), "the dash moves the platform along x");
-            Assert.That(sandbox.Controller.movers[0].y, Is.GreaterThan(y), "the same dash moves the platform along y");
-            yield return Tap(Key.Escape);
-            yield return Tap(Key.Escape);
-            yield return WaitFor(PhaseTitle.Scene);
-            yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Z);
-            yield return WaitFor(PhaseEditor.Scene);
-            Assert.That(PhaseCustomMap.ToJson(Object.FindAnyObjectByType<PhaseEditor>().Room()), Is.EqualTo(exported), "platforms and gears survive in the draft");
-            LogAssert.NoUnexpectedReceived();
-        }
-        finally
-        {
-            if (saved == null) PlayerPrefs.DeleteKey(PhaseEditor.DraftKey); else PlayerPrefs.SetString(PhaseEditor.DraftKey, saved);
-            PlayerPrefs.Save(); GUIUtility.systemCopyBuffer = clipboard;
-        }
-    }
 
     static Vector2 ScreenPoint(Vector2Int size, int index)
     {

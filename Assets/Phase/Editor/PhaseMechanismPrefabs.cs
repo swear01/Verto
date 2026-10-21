@@ -17,12 +17,6 @@ public static class PhaseMechanismPrefabs
         return instance;
     }
 
-    [MenuItem("PHASE/Add/Dash platform horizontal")]
-    static void Horizontal() => Add("DashPlatformHorizontal");
-    [MenuItem("PHASE/Add/Dash platform vertical")]
-    static void Vertical() => Add("DashPlatformVertical");
-    [MenuItem("PHASE/Add/Climb gear")]
-    static void Gear() => Add("ClimbGear");
     [MenuItem("PHASE/Add/Laser")]
     static void Laser() => Add("Laser");
     [MenuItem("PHASE/Add/Spikes")]
@@ -30,8 +24,6 @@ public static class PhaseMechanismPrefabs
 
     [MenuItem("PHASE/Add/Jump crystal")]
     static void JumpCrystal() => Add("JumpCrystal");
-    [MenuItem("PHASE/Add/Dash crystal")]
-    static void DashCrystal() => Add("DashCrystal");
 
     static void Add(string name)
     {
@@ -47,12 +39,8 @@ public static class PhaseMechanismPrefabs
     public static Vector3 AddPoint(PhaseSandbox root, Vector3 pivot) =>
         new Vector3(Mathf.Clamp(pivot.x, 0, root.roomSize.x - 64), Mathf.Clamp(pivot.y, 64 - root.roomSize.y, 0));
 
-    [MenuItem("PHASE/Add/Dash platform horizontal", true)]
-    [MenuItem("PHASE/Add/Dash platform vertical", true)]
-    [MenuItem("PHASE/Add/Climb gear", true)]
     [MenuItem("PHASE/Add/Laser", true)]
     [MenuItem("PHASE/Add/Spikes", true)]
     [MenuItem("PHASE/Add/Jump crystal", true)]
-    [MenuItem("PHASE/Add/Dash crystal", true)]
     static bool CanAdd() => !EditorApplication.isPlaying && Object.FindAnyObjectByType<PhaseSandbox>() != null;
 }

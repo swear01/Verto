@@ -17,23 +17,22 @@ public class SandboxTests : InputTestFixture
         yield return SceneManager.LoadSceneAsync("PhaseSandbox");
         var sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
         var k = InputSystem.AddDevice<Keyboard>();
-        var defaults = new[] { "LeftArrow", "A", "RightArrow", "D", "UpArrow", "W", "DownArrow", "S", "Z", "Space", "X", "", "C", "Shift" };
-        var custom = new[] { "LeftArrow", "A", "L", "D", "UpArrow", "W", "DownArrow", "S", "J", "Space", "K", "", "H", "Shift" };
+        var defaults = new[] { "LeftArrow", "A", "RightArrow", "D", "UpArrow", "W", "DownArrow", "S", "Z", "Space" };
+        var custom = new[] { "LeftArrow", "A", "L", "D", "UpArrow", "W", "DownArrow", "S", "J", "Shift" };
         try
         {
             PhaseSandbox.ApplyControls(custom);
-            InputSystem.QueueStateEvent(k, new KeyboardState(Key.RightArrow, Key.Z, Key.X, Key.C));
+            InputSystem.QueueStateEvent(k, new KeyboardState(Key.RightArrow, Key.Z, Key.Space));
             yield return null;
             var input = PhaseSandbox.ReadControls(k);
-            Assert.That((input.x, input.jumpHeld, input.dashHeld, input.grab), Is.EqualTo((0, false, false, false)));
+            Assert.That((input.x, input.jumpHeld), Is.EqualTo((0, false)));
             sandbox.SetControlsOpen("true");
-            InputSystem.QueueStateEvent(k, new KeyboardState(Key.D, Key.Space)); yield return null;
-            input = PhaseSandbox.ReadControls(k);
-            Assert.That((input.x, input.jumpHeld), Is.EqualTo((1, true)), "secondary slots retain their defaults");
+            InputSystem.QueueStateEvent(k, new KeyboardState(Key.D)); yield return null;
+            Assert.That(PhaseSandbox.ReadControls(k).x, Is.EqualTo(1), "secondary slots retain their defaults");
             foreach (var shift in new[] { Key.LeftShift, Key.RightShift })
             {
                 InputSystem.QueueStateEvent(k, new KeyboardState(shift)); yield return null;
-                Assert.That(PhaseSandbox.ReadControls(k).grab, Is.True, shift.ToString());
+                Assert.That(PhaseSandbox.ReadControls(k).jumpHeld, Is.True, shift.ToString());
             }
             custom[3] = "P";
             PhaseSandbox.ApplyControls(custom);
@@ -56,15 +55,11 @@ public class SandboxTests : InputTestFixture
             InputSystem.QueueStateEvent(k, new KeyboardState(Key.J));
             yield return new WaitForSeconds(.05f);
             Assert.That(sandbox.Controller.jumps, Is.EqualTo(1));
-            InputSystem.QueueStateEvent(k, new KeyboardState(Key.K, Key.UpArrow, Key.H));
-            yield return new WaitForSeconds(.1f);
-            Assert.That(sandbox.Controller.dashes, Is.EqualTo(1));
-            Assert.That(PhaseSandbox.ReadControls(k).grab, Is.True);
             PhaseSandbox.ApplyControls(null); PhaseSandbox.ApplyControls(new string[3]);
             int invalidCase = 0;
             foreach (var invalid in new System.Action<string[]>[] {
                 a => a[8] = "L", a => a[2] = "Escape", a => a[2] = a[3] = "",
-                a => a[3] = "L", a => a[11] = "LeftShift", a => a[2] = "Delete", a => a[2] = "1"
+                a => a[3] = "L", a => a[9] = "LeftShift", a => a[2] = "Delete", a => a[2] = "1"
             })
             {
                 var candidate = (string[])custom.Clone(); invalid(candidate); PhaseSandbox.ApplyControls(candidate);
@@ -113,9 +108,6 @@ public class SandboxTests : InputTestFixture
             InputSystem.QueueStateEvent(k,new KeyboardState(Key.Z));
             yield return new WaitForSeconds(.05f);
             Assert.That(sandbox.Controller.phase,Is.EqualTo(1));Assert.That(sandbox.Controller.jumps,Is.EqualTo(1));
-            InputSystem.QueueStateEvent(k,new KeyboardState(Key.X,Key.UpArrow));
-            yield return new WaitForSeconds(.2f);
-            Assert.That(sandbox.Controller.dashes,Is.EqualTo(1));Assert.That(sandbox.Controller.phase,Is.EqualTo(1));
             yield return new WaitForFixedUpdate(); CheckNativeShapes(sandbox);
             sandbox.Controller.ResizeRoom(view.x + 8); yield return new WaitForFixedUpdate(); CheckNativeShapes(sandbox);
             sandbox.Controller.ResizeRoom(view.x); yield return new WaitForFixedUpdate(); CheckNativeShapes(sandbox);
@@ -150,16 +142,6 @@ public class SandboxTests : InputTestFixture
                 }
                 finally { Object.Destroy(rendered); }
             }
-            yield return SceneManager.LoadSceneAsync("PhaseDemo3");
-            sandbox=Object.FindAnyObjectByType<PhaseSandbox>();
-            InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow));
-            yield return new WaitForSeconds(25f / 60);
-            InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow,Key.UpArrow,Key.C));
-            yield return new WaitForSeconds(40f / 60);
-            InputSystem.QueueStateEvent(k,new KeyboardState());
-            yield return new WaitForFixedUpdate();
-            Assert.That(sandbox.Controller.gears[0].Lift,Is.GreaterThan(0)); CheckNativeShapes(sandbox);
-            sandbox.Controller.Reset(); yield return new WaitForFixedUpdate(); CheckNativeShapes(sandbox);
         }
         finally { InputSystem.RemoveDevice(k); }
     }
@@ -175,7 +157,7 @@ public class SandboxTests : InputTestFixture
             InputSystem.QueueStateEvent(k,new KeyboardState(Key.LeftArrow));
             yield return new WaitForSeconds(.1f);
             Assert.That(SceneManager.GetActiveScene().name,Is.EqualTo("PhaseSandbox"));Assert.That(sandbox.Controller.player.x,Is.Zero);
-            var p=sandbox.Controller.player;p.x=sandbox.Controller.Width-9;p.y=100;p.vx=90;p.vy=-30;p.dash=0;p.stamina=63;
+            var p=sandbox.Controller.player;p.x=sandbox.Controller.Width-9;p.y=100;p.vx=90;p.vy=-30;
             sandbox.Controller.phase=2;
             InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow));
             double deadline=Time.realtimeSinceStartupAsDouble+5;
@@ -184,7 +166,7 @@ public class SandboxTests : InputTestFixture
             InputSystem.QueueStateEvent(k,new KeyboardState());
             sandbox=Object.FindAnyObjectByType<PhaseSandbox>();
             Assert.That(sandbox.Controller.player,Is.SameAs(p));Assert.That(sandbox.Controller.phase,Is.EqualTo(2));
-            Assert.That(p.x,Is.LessThan(32));Assert.That(p.y,Is.LessThan(110));Assert.That(p.dash,Is.Zero);Assert.That(p.stamina,Is.EqualTo(63));
+            Assert.That(p.x,Is.LessThan(32));Assert.That(p.y,Is.LessThan(110));
             Assert.That(sandbox.InTransition, Is.True);
             double frozen = sandbox.Controller.time;
             var start = sandbox.Frame.GetPixels32();
@@ -212,7 +194,7 @@ public class SandboxTests : InputTestFixture
             Assert.That(SceneManager.GetActiveScene().name,Is.EqualTo("PhaseRoom2"));
             Assert.That(sandbox.Controller.deaths,Is.EqualTo(1));Assert.That(sandbox.Controller.player.x,Is.EqualTo(sandbox.spawn.x));
             yield return new WaitForFixedUpdate(); CheckNativeShapes(sandbox);
-            p=sandbox.Controller.player;p.x=1;p.y=100;p.vx=-90;p.vy=-30;p.dash=0;
+            p=sandbox.Controller.player;p.x=1;p.y=100;p.vx=-90;p.vy=-30;
             sandbox.Controller.phase=1;
             InputSystem.QueueStateEvent(k,new KeyboardState(Key.LeftArrow));
             deadline=Time.realtimeSinceStartupAsDouble+5;
@@ -221,7 +203,7 @@ public class SandboxTests : InputTestFixture
             InputSystem.QueueStateEvent(k,new KeyboardState());
             sandbox=Object.FindAnyObjectByType<PhaseSandbox>();
             Assert.That(sandbox.Controller.player,Is.SameAs(p));Assert.That(p.x,Is.GreaterThan(280));
-            Assert.That(sandbox.Controller.phase,Is.EqualTo(1));Assert.That(p.dash,Is.Zero);Assert.That(sandbox.Controller.deaths,Is.EqualTo(1));
+            Assert.That(sandbox.Controller.phase,Is.EqualTo(1));Assert.That(sandbox.Controller.deaths,Is.EqualTo(1));
             Assert.That(Object.FindObjectsByType<PhaseSandbox>(FindObjectsSortMode.None).Length,Is.EqualTo(1));
             LogAssert.NoUnexpectedReceived();
         }
@@ -229,70 +211,6 @@ public class SandboxTests : InputTestFixture
     }
 
     #if UNITY_EDITOR
-    [UnityTest]
-    public IEnumerator MultipleAuthoredPlatformsReceiveKeyboardDashAndSyncTheirColliders()
-    {
-        yield return SceneManager.LoadSceneAsync("PhaseSandbox");
-        var original=Object.FindAnyObjectByType<PhaseSandbox>();
-        var root=new GameObject("Multi-platform probe");root.SetActive(false);
-        var cameraParent=original.pixelCamera.transform.parent;
-        root.AddComponent<Grid>().cellSize=new Vector3(8,8,1);root.AddComponent<PhaseGrid>();
-        foreach(var route in new[]{new[]{new Vector2Int(80,144),new Vector2Int(80,80)},
-            new[]{new Vector2Int(216,112),new Vector2Int(272,112)}})
-        {
-            var asset=UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Phase/Prefabs/"+
-                (route[0].x==80?"DashPlatformVertical":"DashPlatformHorizontal")+".prefab");
-            Assert.That(asset,Is.Not.Null);
-            var anchor=(GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(asset,root.transform);
-            anchor.transform.position=new Vector3(route[0].x,-route[0].y);
-            var platform=anchor.GetComponentInChildren<PhaseMovingPlatform>();platform.nodes=new[]{Vector2Int.zero,route[1]-route[0]};
-            platform.size=route[0].x==80?new Vector2Int(80,8):new Vector2Int(32,8);
-            platform.returns=route[0].x==80;
-        }
-        var sandbox=root.AddComponent<PhaseSandbox>();sandbox.pixelCamera=original.pixelCamera;
-        sandbox.pixelMaterial=original.pixelMaterial;sandbox.spawn=new Vector2Int(96,133);
-        if(original.pixelCamera.transform.IsChildOf(original.transform))original.pixelCamera.transform.SetParent(null,true);
-        var k=InputSystem.AddDevice<Keyboard>();
-        var background=Application.runInBackground;var capture=Time.captureDeltaTime;
-        var focus=InputSystem.settings.backgroundBehavior;var editorInput=InputSystem.settings.editorInputBehaviorInPlayMode;
-        try
-        {
-            Application.runInBackground=true;Time.captureDeltaTime=1f/60;
-            InputSystem.settings.backgroundBehavior=InputSettings.BackgroundBehavior.IgnoreFocus;
-            InputSystem.settings.editorInputBehaviorInPlayMode=InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
-            original.gameObject.SetActive(false);root.SetActive(true);sandbox.SetControlsOpen("false");
-            InputSystem.QueueStateEvent(k,new KeyboardState());yield return null;yield return null;
-            Assert.That(sandbox.Controller.movers.Length,Is.EqualTo(2));
-            int frame=Time.frameCount;double time=sandbox.Controller.time;
-            Directory.CreateDirectory("TestResults/MultiPlatforms");
-            File.WriteAllBytes("TestResults/MultiPlatforms/start.png",sandbox.Frame.EncodeToPNG());
-            InputSystem.QueueStateEvent(k,new KeyboardState(Key.X,Key.RightArrow));yield return new WaitForSeconds(.1f);
-            InputSystem.QueueStateEvent(k,new KeyboardState());
-            double deadline=Time.realtimeSinceStartupAsDouble+10;
-            while((sandbox.Controller.movers[0].y!=80||sandbox.Controller.movers[1].x!=272)&&Time.realtimeSinceStartupAsDouble<deadline)yield return null;
-            Assert.That(Time.frameCount,Is.GreaterThan(frame));Assert.That(sandbox.Controller.time,Is.GreaterThan(time));
-            Assert.That(sandbox.Controller.dashes,Is.EqualTo(1));
-            Assert.That(sandbox.Controller.movers[0].y,Is.EqualTo(80));
-            Assert.That(sandbox.Controller.movers[1].x,Is.EqualTo(272));
-            Assert.That(sandbox.Controller.player.y+sandbox.Controller.player.h,Is.EqualTo(80).Within(.01));
-            yield return new WaitForFixedUpdate();CheckNativeShapes(sandbox);
-            File.WriteAllBytes("TestResults/MultiPlatforms/forward.png",sandbox.Frame.EncodeToPNG());
-            yield return new WaitForSeconds(1.6f);yield return new WaitForFixedUpdate();
-            Assert.That(sandbox.Controller.movers[0].y,Is.EqualTo(144));
-            Assert.That(sandbox.Controller.player.y+sandbox.Controller.player.h,Is.EqualTo(144).Within(.01));
-            Assert.That(sandbox.Controller.deaths,Is.Zero);CheckNativeShapes(sandbox);
-            File.WriteAllBytes("TestResults/MultiPlatforms/returned.png",sandbox.Frame.EncodeToPNG());
-            LogAssert.NoUnexpectedReceived();
-        }
-        finally
-        {
-            InputSystem.RemoveDevice(k);InputSystem.settings.backgroundBehavior=focus;
-            InputSystem.settings.editorInputBehaviorInPlayMode=editorInput;
-            Application.runInBackground=background;Time.captureDeltaTime=capture;
-            if(original!=null){original.pixelCamera.transform.SetParent(cameraParent,true);original.gameObject.SetActive(true);}
-            Object.Destroy(root);
-        }
-    }
 
     #endif
 
@@ -376,8 +294,6 @@ public class SandboxTests : InputTestFixture
         finally { if (sandbox != null) sandbox.SetControlsOpen("false"); }
     }
 
-    [System.Serializable] sealed class RouteStep { public int frames,x,y; public bool jump,dash,grab; }
-    [System.Serializable] sealed class RouteSteps { public RouteStep[] steps; }
 
     static IEnumerator WaitForScene(string name)
     {
@@ -534,20 +450,8 @@ public class SandboxTests : InputTestFixture
                 Time.captureDeltaTime = (float)PhaseController.Dt;
                 InputSystem.QueueStateEvent(k,new KeyboardState()); yield return null;
                 sandbox.Controller.Reset();
-                // A level without a required route still checks the victory by walking off the authored edge landing.
-                bool unrouted = PhaseRoute.UnroutedReason(last) != null;
-                if (unrouted) yield return ExitRight(sandbox);
-                var route = unrouted ? new RouteStep[0] : JsonUtility.FromJson<RouteSteps>("{\"steps\":" + File.ReadAllText("Verification/Routes/" + last + ".json") + "}").steps;
-                foreach (var step in route)
-                {
-                    var keys = new System.Collections.Generic.List<Key>();
-                    if (step.x != 0) keys.Add(step.x < 0 ? Key.LeftArrow : Key.RightArrow);
-                    if (step.y != 0) keys.Add(step.y < 0 ? Key.UpArrow : Key.DownArrow);
-                    if (step.jump) keys.Add(Key.Z); if (step.dash) keys.Add(Key.X); if (step.grab) keys.Add(Key.C);
-                    InputSystem.QueueStateEvent(k,new KeyboardState(keys.ToArray()));
-                    for (int n = 0; n < step.frames && !sandbox.Won; n++) yield return null;
-                    if (sandbox.Won) break;
-                }
+                // Levels are being redesigned without recorded routes, so the victory is checked by walking off the authored edge landing.
+                yield return ExitRight(sandbox);
                 InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow));
                 double until = Time.realtimeSinceStartupAsDouble + 5;
                 while (!sandbox.Won && sandbox.Controller.deaths == deaths && Time.realtimeSinceStartupAsDouble < until) yield return null;
@@ -588,15 +492,6 @@ public class SandboxTests : InputTestFixture
         var s = sandbox.Controller; var terrain = sandbox.GetComponentsInChildren<PhaseTerrain>();
         for (int i = 0; i < terrain.Length; i++)
             Match(terrain[i].GetComponent<BoxCollider2D>(),s.blocks[i],s.blocks[i].ActiveInPhase(s.phase)&&!s.blocked.Contains(i));
-        var movers = sandbox.GetComponentsInChildren<PhaseMovingPlatform>();
-        Assert.That(movers.Length, Is.EqualTo(s.movers.Length));
-        for (int i = 0; i < movers.Length; i++) Match(movers[i].GetComponent<BoxCollider2D>(),s.movers[i]);
-        var gears = sandbox.GetComponentsInChildren<PhaseClimbGear>();
-        for (int i = 0; i < gears.Length; i++)
-        {
-            Match(gears[i].GetComponent<BoxCollider2D>(),s.gears[i].wall);
-            Match(gears[i].transform.Find("Platform collider").GetComponent<BoxCollider2D>(),s.gears[i].platform);
-        }
         var crystals = sandbox.GetComponentsInChildren<PhaseCrystal>();
         for (int i = 0; i < crystals.Length; i++)
             Match(crystals[i].GetComponent<BoxCollider2D>(),s.crystals[i],s.crystals[i].ActiveInPhase(s.phase)&&!s.crystals[i].collected);

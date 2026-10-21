@@ -60,9 +60,6 @@ EditorBuildSettings:
     path: Assets/Scenes/PhaseRoom2.unity
     guid: 9e7ab6430bfe1458bbbbe970c46512ff
   - enabled: 1
-    path: Assets/Scenes/PhaseGearDemo.unity
-    guid: 22550b901f29f47648fcfc4c805533c1
-  - enabled: 1
     path: Assets/Scenes/PhaseEditor.unity
     guid: 832d4064dc535487cb068d10e7ca7238
   m_configObjects:

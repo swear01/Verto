@@ -18,14 +18,14 @@ public class KeyBindingTests
         if (saved == null) PlayerPrefs.DeleteKey(PhaseSandbox.ControlsKey); else PlayerPrefs.SetString(PhaseSandbox.ControlsKey, saved);
         PlayerPrefs.Save();
     }
-    static string[] Custom() => new[] { "LeftArrow", "A", "L", "D", "UpArrow", "W", "DownArrow", "S", "J", "Space", "K", "", "H", "Shift" };
+    static string[] Custom() => new[] { "LeftArrow", "A", "L", "D", "UpArrow", "W", "DownArrow", "S", "J", "Shift" };
 
     [Test]
     public void InvalidMapsAreRejectedAtomically()
     {
         Assert.That(PhaseSandbox.ApplyControls(Custom()), Is.True);
         foreach (var invalid in new Action<string[]>[] {
-            a => a[8] = "L", a => a[2] = "Escape", a => a[2] = a[3] = "", a => a[3] = "L", a => a[11] = "LeftShift",
+            a => a[8] = "L", a => a[2] = "Escape", a => a[2] = a[3] = "", a => a[3] = "L", a => a[9] = "LeftShift",
             a => a[2] = "Delete", a => a[2] = "1", a => a[2] = "Tab", a => a[2] = "LeftCtrl", a => a[2] = "F1", a => a[2] = null
         })
         {
@@ -34,7 +34,7 @@ public class KeyBindingTests
             Assert.That(PhaseSandbox.Slots, Is.EqualTo(Custom()), "a rejected map leaves the previous one");
         }
         Assert.That(PhaseSandbox.ApplyControls(null), Is.False);
-        Assert.That(PhaseSandbox.ApplyControls(Custom().Take(13).ToArray()), Is.False);
+        Assert.That(PhaseSandbox.ApplyControls(Custom().Take(9).ToArray()), Is.False);
     }
 
     [Test]
@@ -63,10 +63,10 @@ public class KeyBindingTests
         {
             var names = PhaseKeys.Labels.Keys.ToArray();
             Assert.That(names, Does.Contain("Shift").And.Contain("Space").And.Contain("Digit0").And.Contain("Z").And.Contain("LeftArrow"));
-            for (int i = 0; i < names.Length; i += 7)
+            for (int i = 0; i < names.Length; i += 5)
             {
-                var slots = Enumerable.Range(0, 14).Select(s => s % 2 == 0 && i + s / 2 < names.Length ? names[i + s / 2] : "").ToArray();
-                for (int s = 0; s < 14; s += 2) if (slots[s] == "") slots[s + 1] = PhaseSandbox.DefaultSlots.First(d => d != "" && !slots.Contains(d));
+                var slots = Enumerable.Range(0, 10).Select(s => s % 2 == 0 && i + s / 2 < names.Length ? names[i + s / 2] : "").ToArray();
+                for (int s = 0; s < 10; s += 2) if (slots[s] == "") slots[s + 1] = PhaseSandbox.DefaultSlots.First(d => d != "" && !slots.Contains(d));
                 Assert.That(PhaseSandbox.ApplyControls(slots), Is.True, string.Join(",", slots));
                 var frame = new PixelFrame(texture);
                 Assert.DoesNotThrow(() => new PhaseKeys().Draw(frame));

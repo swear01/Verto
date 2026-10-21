@@ -5,16 +5,6 @@ using Phase;
 public class LaserTests
 {
     [Test]
-    public void SecondaryMovingPlatformShieldsUsingItsCurrentPosition()
-    {
-        var down=new Laser(224,8,LaserDirection.Down);
-        var s=new PhaseController(Array.Empty<Block>(),224,100,new[]{
-            new MovingPlatform(new[]{new[]{32.0,80},new[]{64.0,80}},24,8),
-            new MovingPlatform(new[]{new[]{216.0,80},new[]{264.0,80}},32,8)},lasers:new[]{down});
-        Assert.That(s.CheckHazards(),Is.False);
-        s.movers[1].x=264;Assert.That(s.CheckHazards(),Is.True);
-    }
-    [Test]
     public void EveryColorAndDirectionUsesItsPhaseMask()
     {
         foreach (LaserDirection direction in Enum.GetValues(typeof(LaserDirection)))
@@ -64,25 +54,6 @@ public class LaserTests
         Assert.That(s.CheckHazards(), Is.True);
     }
 
-    [Test]
-    public void MovingPlatformsAndBothGearPartsShieldAndExposeImmediately()
-    {
-        var laser = new Laser(144,168,LaserDirection.Up);
-        var gear = new ClimbGear(new Block(72,104,8,56),80,new Block(88,80,48,8),112);
-        var s = new PhaseController(Array.Empty<Block>(),144,69,gears:new[]{gear},lasers:new[]{laser});
-        Assert.That(s.CheckHazards(),Is.True,"uncovered upward beam"); s.Reset();
-        s.gears[0].platform.x=112;
-        Assert.That(s.LaserBeam(laser).y,Is.EqualTo(88)); Assert.That(s.CheckHazards(),Is.False,"platform shields its rider");
-        s.gears[0].platform.x=88; s.Step(default); Assert.That(s.deaths,Is.EqualTo(2),"stationary player dies when cover leaves");
-        var side = new Laser(120,120,LaserDirection.Left);
-        s = new PhaseController(Array.Empty<Block>(),48,120,gears:new[]{gear},lasers:new[]{side});
-        Assert.That(s.LaserBeam(side).x,Is.EqualTo(80)); Assert.That(s.CheckHazards(),Is.False,"gear wall also blocks");
-        var mover = new MovingPlatform(new[]{new double[]{80,80},new double[]{120,80}},24,8);
-        var down = new Laser(88,8,LaserDirection.Down);
-        s = new PhaseController(Array.Empty<Block>(),88,100,new[]{mover},lasers:new[]{down});
-        Assert.That(s.LaserBeam(down).h,Is.EqualTo(64)); Assert.That(s.CheckHazards(),Is.False);
-        s.movers[0].x=120; Assert.That(s.CheckHazards(),Is.True,"dash platform's current position controls cover");
-    }
 
     [Test]
     public void SweepsCatchFastCrossingsAndIgnoreTangency()
@@ -106,20 +77,10 @@ public class LaserTests
         s.Step(new Controls{jump=true,jumpHeld=true});
         Assert.That(s.phase,Is.EqualTo(1)); Assert.That(s.deaths,Is.EqualTo(1)); Assert.That(s.respawn,Is.GreaterThan(0));
         for(int i=0;i<20;i++)s.Step(default);
-        Assert.That(s.phase,Is.Zero); Assert.That(s.respawn,Is.Zero); Assert.That(s.player.dash,Is.EqualTo(1));
+        Assert.That(s.phase,Is.Zero); Assert.That(s.respawn,Is.Zero);
         Assert.That(s.lasers.Count,Is.EqualTo(1));
     }
 
-    [Test]
-    public void GearClimbingCannotCarryThroughALaser()
-    {
-        var s=new PhaseController(new[]{new Block(0,160,320,24)},32,149,
-            gears:new[]{new ClimbGear(new Block(72,88,8,72),64,new Block(88,104,48,8),112)},
-            lasers:new[]{new Laser(0,132,LaserDirection.Right)});
-        var p=s.player;p.x=64;p.y=146;p.grounded=false;p.climbing=true;p.facing=1;p.climbWait=0;
-        for(int i=0;i<12 && s.deaths==0;i++)s.Step(new Controls{x=1,y=-1,grab=true});
-        Assert.That(s.deaths,Is.EqualTo(1));
-    }
 
     [Test]
     public void BeamGeometryHasNoTimeCycle()
