@@ -414,23 +414,23 @@ public class MenuTests : InputTestFixture
             yield return Tap(Key.Enter);
             var keys = sandbox.Keys;
             Assert.That(keys, Is.Not.Null, "the gear opens settings");
-            for (int i = 0; i < 4; i++) yield return Tap(Key.DownArrow);
+            for (int i = 0; i < 2; i++) yield return Tap(Key.DownArrow);
             yield return Tap(Key.Enter);
             Assert.That(keys.Capturing, Is.True);
             yield return Tap(Key.J);
-            Assert.That((keys.Capturing, PhaseSandbox.Slots[8]), Is.EqualTo((false, "J")), "the next key binds the jump slot");
-            Assert.That(PlayerPrefs.GetString(PhaseSandbox.ControlsKey).Split(',')[8], Is.EqualTo("J"), "bindings persist");
+            Assert.That((keys.Capturing, PhaseSandbox.Slots[4]), Is.EqualTo((false, "J")), "the next key binds the jump slot");
+            Assert.That(PlayerPrefs.GetString(PhaseSandbox.ControlsKey).Split(',')[4], Is.EqualTo("J"), "bindings persist");
             yield return Tap(Key.RightArrow); yield return Tap(Key.Enter); yield return Tap(Key.J);
-            Assert.That((keys.Flashing, PhaseSandbox.Slots[9]), Is.EqualTo((true, "Space")), "a duplicate key flashes and is not applied");
+            Assert.That((keys.Flashing, PhaseSandbox.Slots[5]), Is.EqualTo((true, "Space")), "a duplicate key flashes and is not applied");
             yield return Tap(Key.Enter); yield return Tap(Key.F1);
-            Assert.That((keys.Flashing, PhaseSandbox.Slots[9]), Is.EqualTo((true, "Space")), "an unsupported key is not applied");
+            Assert.That((keys.Flashing, PhaseSandbox.Slots[5]), Is.EqualTo((true, "Space")), "an unsupported key is not applied");
             yield return Tap(Key.Enter); yield return Tap(Key.Escape);
-            Assert.That((keys.Capturing, sandbox.Keys, PhaseSandbox.Slots[9]), Is.EqualTo((false, keys, "Space")), "Escape cancels a capture");
+            Assert.That((keys.Capturing, sandbox.Keys, PhaseSandbox.Slots[5]), Is.EqualTo((false, keys, "Space")), "Escape cancels a capture");
             yield return Tap(Key.Backspace);
-            Assert.That(PhaseSandbox.Slots[9], Is.Empty, "Backspace clears a slot");
+            Assert.That(PhaseSandbox.Slots[5], Is.Empty, "Backspace clears a slot");
             yield return new WaitForSeconds(.5f);
             yield return Tap(Key.LeftArrow); yield return Tap(Key.Backspace);
-            Assert.That((keys.Flashing, PhaseSandbox.Slots[8]), Is.EqualTo((true, "J")), "the last key of an action stays");
+            Assert.That((keys.Flashing, PhaseSandbox.Slots[4]), Is.EqualTo((true, "J")), "the last key of an action stays");
             yield return Tap(Key.Escape);
             Assert.That((sandbox.Keys, sandbox.Menu != null), Is.EqualTo(((PhaseKeys)null, true)), "Escape returns to the pause menu");
             yield return Tap(Key.Escape);
@@ -508,8 +508,8 @@ public class MenuTests : InputTestFixture
     static (bool off, bool on) Knob(PhaseKeys keys)
     {
         var size = PhaseSandbox.ViewSize(Screen.width, Screen.height);
-        int scale = UiZoom.Fit(size, 67, 106).Scale;
-        int ox = (size.x - 67 * scale) / 2, oy = (size.y - 106 * scale) / 2;
+        int scale = UiZoom.Fit(size, 67, 84).Scale;
+        int ox = (size.x - 67 * scale) / 2, oy = (size.y - 84 * scale) / 2;
         var texture = new Texture2D(size.x, size.y);
         try
         {
@@ -520,7 +520,7 @@ public class MenuTests : InputTestFixture
                 int x = ox + pageX * scale + scale / 2, y = oy + pageY * scale + scale / 2;
                 return pixels[(size.y - 1 - y) * size.x + x].Equals(PixelFrame.Light);
             }
-            return (Lit(17 + 19, 74 + 7), Lit(17 + 24, 74 + 7));
+            return (Lit(17 + 19, 52 + 7), Lit(17 + 24, 52 + 7));
         }
         finally { Object.Destroy(texture); }
     }
@@ -624,9 +624,9 @@ public class MenuTests : InputTestFixture
         yield return Click(mouse, ScreenPoint(size, 3));
         var keys = title.Keys;
         Assert.That(keys, Is.Not.Null, "clicking the gear opens settings");
-        var cap = PhaseKeys.Area(size, 4, 1).center;
+        var cap = PhaseKeys.Area(size, 2, 1).center;
         yield return Click(mouse, new Vector2(cap.x / size.x * Screen.width, (1f - cap.y / size.y) * Screen.height));
-        Assert.That((keys.Capturing, keys.Row, keys.Column), Is.EqualTo((true, 4, 1)), "clicking a key cap captures that slot");
+        Assert.That((keys.Capturing, keys.Row, keys.Column), Is.EqualTo((true, 2, 1)), "clicking a key cap captures that slot");
         LogAssert.NoUnexpectedReceived();
     }
 }

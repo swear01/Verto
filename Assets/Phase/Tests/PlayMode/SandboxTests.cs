@@ -17,8 +17,8 @@ public class SandboxTests : InputTestFixture
         yield return SceneManager.LoadSceneAsync("PhaseSandbox");
         var sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
         var k = InputSystem.AddDevice<Keyboard>();
-        var defaults = new[] { "LeftArrow", "A", "RightArrow", "D", "UpArrow", "W", "DownArrow", "S", "Z", "Space" };
-        var custom = new[] { "LeftArrow", "A", "L", "D", "UpArrow", "W", "DownArrow", "S", "J", "Shift" };
+        var defaults = new[] { "LeftArrow", "A", "RightArrow", "D", "Z", "Space" };
+        var custom = new[] { "LeftArrow", "A", "L", "D", "J", "Shift" };
         try
         {
             PhaseSandbox.ApplyControls(custom);
@@ -58,8 +58,8 @@ public class SandboxTests : InputTestFixture
             PhaseSandbox.ApplyControls(null); PhaseSandbox.ApplyControls(new string[3]);
             int invalidCase = 0;
             foreach (var invalid in new System.Action<string[]>[] {
-                a => a[8] = "L", a => a[2] = "Escape", a => a[2] = a[3] = "",
-                a => a[3] = "L", a => a[9] = "LeftShift", a => a[2] = "Delete", a => a[2] = "1"
+                a => a[4] = "L", a => a[2] = "Escape", a => a[2] = a[3] = "",
+                a => a[3] = "L", a => a[5] = "LeftShift", a => a[2] = "Delete", a => a[2] = "1"
             })
             {
                 var candidate = (string[])custom.Clone(); invalid(candidate); PhaseSandbox.ApplyControls(candidate);
@@ -94,12 +94,12 @@ public class SandboxTests : InputTestFixture
         var k=InputSystem.AddDevice<Keyboard>();
         try
         {
-            foreach(var move in new[] { (key:Key.W,x:0,y:-1), (key:Key.A,x:-1,y:0), (key:Key.S,x:0,y:1), (key:Key.D,x:1,y:0) })
+            foreach(var move in new[] { (key:Key.A,x:-1), (key:Key.D,x:1), (key:Key.W,x:0), (key:Key.S,x:0) })
             {
                 InputSystem.QueueStateEvent(k,new KeyboardState(move.key));
                 yield return null;
                 var controls=PhaseSandbox.ReadControls(k);
-                Assert.That((controls.x,controls.y),Is.EqualTo((move.x,move.y)),move.key.ToString());
+                Assert.That(controls.x,Is.EqualTo(move.x),move.key.ToString());
             }
             double before=sandbox.Controller.player.x;
             InputSystem.QueueStateEvent(k,new KeyboardState(Key.RightArrow));

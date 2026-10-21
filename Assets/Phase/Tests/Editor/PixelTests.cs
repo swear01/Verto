@@ -346,7 +346,7 @@ public class PixelTests
                 controller.blocked.Clear();foreach(int index in frame.blocked)controller.blocked.Add(index);
                 pixels.Draw(controller);var actual=pixels.Texture.GetPixels32();
                 var p=frame.player;int feet=(int)Math.Floor(p.y+p.h+.5);
-                int headTop=feet-(p.ducking?8:13),collar=p.ducking?5:frame.name.StartsWith("run1 ")||frame.name.StartsWith("run3 ")?6:7;
+                int headTop=feet-13,collar=frame.name.StartsWith("run1 ")||frame.name.StartsWith("run3 ")?6:7;
                 for(int y=0;y<180;y++)for(int x=0;x<320;x++)
                 {
                     int index=(golden.height-1-(f/reference.columns*180+y))*golden.width+(f%reference.columns*320+x);

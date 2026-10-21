@@ -8,7 +8,7 @@ using Phase;
 public class ControllerTests
 {
     [Serializable] public class XY { public double x, y; }
-    [Serializable] public class Initial { public XY pos, speed; public bool on_ground; public bool facing = true; public double max_fall = 160; }
+    [Serializable] public class Initial { public XY pos, speed; public bool on_ground; public bool facing = true; }
     [Serializable] public class Solid { public double x, y, width, height; }
     [Serializable] public class Input { public bool up, down, left, right, jump; }
     [Serializable] public class Expected { public double x, y, vx, vy; }
@@ -26,11 +26,11 @@ public class ControllerTests
             foreach (var b in c.solids ?? new[] { c.floor }) for (int phase = 0; phase < 3; phase++) blocks.Add(new Block(b.x, b.y, b.width, b.height, phase));
             var init = c.initial; var s = new PhaseController(blocks, init.pos.x - 4, init.pos.y - 11);
             var p = s.player; p.vx = init.speed.x; p.vy = init.speed.y; p.grounded = init.on_ground;
-            p.coyote = p.grounded ? .1 : 0; p.facing = init.facing ? 1 : -1; p.maxFall = init.max_fall;
+            p.coyote = p.grounded ? .1 : 0; p.facing = init.facing ? 1 : -1;
             var previous = new Input();
             for (int i = 0; i < c.inputs.Length; i++)
             {
-                var a = c.inputs[i]; s.Step(new Controls { x = name == "movement" ? 1 : (a.right ? 1 : 0) - (a.left ? 1 : 0), y = (a.down ? 1 : 0) - (a.up ? 1 : 0), jump = a.jump && !previous.jump, jumpHeld = a.jump }, f.dt);
+                var a = c.inputs[i]; s.Step(new Controls { x = name == "movement" ? 1 : (a.right ? 1 : 0) - (a.left ? 1 : 0), jump = a.jump && !previous.jump, jumpHeld = a.jump }, f.dt);
                 previous = a; var e = c.expected[i];
                 string frame = c.name + " frame " + (i + 1);
                 Assert.That(p.x + 4, Is.EqualTo(e.x), frame + " x"); Assert.That(p.y + p.h, Is.EqualTo(e.y), frame + " y");

@@ -18,7 +18,7 @@ node Verification/DemoWebSmoke.cjs Builds/Web
 python3 -m http.server 8765 --bind 127.0.0.1 --directory Builds/Web
 ```
 
-Open <http://127.0.0.1:8765/>. Click the canvas for keyboard focus: arrows/WASD
+Open <http://127.0.0.1:8765/>. Click the canvas for keyboard focus: ←/→ or A/D
 move and Space/Z jumps. Cross each room’s right
 edge to continue through the fifteen rooms. Each arrival resets the phase to red
 while preserving run statistics. Room changes use a

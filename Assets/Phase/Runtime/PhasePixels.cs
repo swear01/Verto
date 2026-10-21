@@ -350,7 +350,6 @@ namespace Phase
             ["run3"] = new[] { "...dcc....","..dccccc..","..dcccccc.","..dccfffff","..dcfeefee","..dcfeefee","...kkkkk..",".dccccccd.",".dcccccdc.",".ssssssss.",".BBBbb....",".BB.bb....","....bb...." },
             ["jump"] = new[] { "..........","ccc.......",".dcccccc..",".dccccccc.",".dccfffff.",".dcfeefee.",".dcfeefee.","..kkkkk...","ddccccccdd",".dccccccc.",".ssssssss.","..bb.BB...","..b...B..." },
             ["fall"] = new[] { "...cc.....","...cc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcfeefee.",".dcfeefee.","d.kkkkk..d","ddccccccdd",".dccccccc.","ssssssssss","..bb..BB..","..b....B.." },
-            ["duck"] = new[] { "..........","..cc......",".dcccccc..",".dccfffff.",".dcfeefee.","..kkkkkk..","sdcccccccs",".bbssssbb." },
         };
         static readonly string[] Scarf = { "ffb24d","d5732b" };
         Bitmap Sprite(string pose, int facing, int phase)
@@ -364,7 +363,6 @@ namespace Phase
         }
         static string Pose(Player p, double t)
         {
-            if (p.ducking) return "duck";
             if (!p.grounded) return p.vy < 0 ? "jump" : "fall";
             if (Math.Abs(p.vx) > 7) return "run" + (int)Math.Floor(t * 12) % 4;
             return t % 3.4 < .14 ? "blink" : "idle";
@@ -375,7 +373,7 @@ namespace Phase
             int x = Round(p.x), feet = Round(p.y + p.h);
             int ky = Array.FindIndex(rows, r => r.Contains("k")), kx = rows[ky].IndexOf('k'), facing = p.facing, length = 5;
             int ax = facing > 0 ? x + kx - 1 : x + 8 - kx, ay = feet - rows.Length + ky;
-            bool still = name == "duck" || (p.grounded && Math.Abs(p.vx) <= 7);
+            bool still = p.grounded && Math.Abs(p.vx) <= 7;
             var segments = new (int x, int y, int h)[length];
             for (int i = 1; i <= length; i++)
             {
@@ -389,7 +387,7 @@ namespace Phase
             Blit(Sprite(name, facing, phase), x - 2, feet - rows.Length - 1);
             if (p.airJump > 0)
             {
-                int cx = x + 3, cy = feet - (name == "duck" ? 2 : 5);
+                int cx = x + 3, cy = feet - 5;
                 Rect(cx-1, cy-1, 3, 3, Ink);
                 Rect(cx, cy-1, 1, 1, "e8e8e8"); Rect(cx-1, cy, 1, 1, "e8e8e8");
                 Rect(cx+1, cy, 1, 1, "e8e8e8"); Rect(cx, cy+1, 1, 1, "e8e8e8");

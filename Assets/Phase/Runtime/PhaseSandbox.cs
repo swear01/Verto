@@ -41,8 +41,8 @@ namespace Phase
         static Vector2Int travelSize;
         static string arrivalScene;
         static int arrivalDirection;
-        // Two slots per action in left/right/up/down/jump order; "" leaves a slot empty and Shift means both Shift keys.
-        public static readonly string[] DefaultSlots = { "LeftArrow", "A", "RightArrow", "D", "UpArrow", "W", "DownArrow", "S", "Z", "Space" };
+        // Two slots per action in left/right/jump order; "" leaves a slot empty and Shift means both Shift keys.
+        public static readonly string[] DefaultSlots = { "LeftArrow", "A", "RightArrow", "D", "Z", "Space" };
         public const string ControlsKey = "phase.keys.v1";
         public static IReadOnlyList<string> Slots => slots;
         static string[] slots;
@@ -249,7 +249,7 @@ namespace Phase
                 return;
             }
             var input = ReadControls(k);
-            jumpQueued |= Pressed(k, 4, true);
+            jumpQueued |= Pressed(k, 2, true);
             accumulator += Time.deltaTime;
             while (accumulator >= PhaseController.Dt)
             {
@@ -312,8 +312,7 @@ namespace Phase
             if (k == null) return default;
             return new Controls {
                 x = (Pressed(k, 1) ? 1 : 0) - (Pressed(k, 0) ? 1 : 0),
-                y = (Pressed(k, 3) ? 1 : 0) - (Pressed(k, 2) ? 1 : 0),
-                jumpHeld = Pressed(k, 4)
+                jumpHeld = Pressed(k, 2)
             };
         }
         internal static bool Pressed(Keyboard k, int action, bool edge = false) => k != null && keys[action].Any(key => edge ? k[key].wasPressedThisFrame : k[key].isPressed);

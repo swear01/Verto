@@ -8,7 +8,7 @@ namespace Phase
     [Serializable]
     public sealed class PhaseRouteStep
     {
-        public int frames, x, y;
+        public int frames, x;
         public bool jump;
     }
 
@@ -45,7 +45,7 @@ namespace Phase
             foreach (var step in steps)
                 for (int n = 0; n < step.frames; n++)
                 {
-                    yield return new Controls { x = step.x, y = step.y, jump = step.jump && !lastJump, jumpHeld = step.jump };
+                    yield return new Controls { x = step.x, jump = step.jump && !lastJump, jumpHeld = step.jump };
                     lastJump = step.jump;
                 }
         }

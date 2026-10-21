@@ -59,7 +59,7 @@ starting the next test run. There are 15 controller cases, 6 laser cases, 8 crys
 following a keyboard run, bindings, pause/release gating, room persistence, crystal triggers, imported maps, the
 title/editor flow, the editor's fixed tool panel under mouse input, large editor rooms, the pause menu with key
 settings, the fullscreen switch, and level select from the title, pause and victory screens.
-The two reference files preserve 13 movement traces (running, jumps, buffers, coyote time, fast fall, wall
+The two reference files preserve 12 movement traces (running, jumps, buffers, coyote time, falling, wall
 slide and wall jump) recorded before dash and climbing were removed; their expectations are unchanged.
 Production steps at 1/60 s; reference replays use the recorded 0.0166667 s.
 
@@ -124,7 +124,7 @@ occupied cells. Demo JSON changes still require rebuilding the generated scenes.
 authoring; run it through Pipeline with the other Editor tests.
 
 The controller uses native pixels, Y down, a 60 Hz accumulator, 8×11 collision
-(8×6 crouched), and X then Y pixel stepping. Terrain transforms use Unity X/Y as
+and X then Y pixel stepping. Terrain transforms use Unity X/Y as
 pixel coordinates with Y negated; spawn uses screen coordinates.
 `PhaseSandbox.rightScene` links to `PhaseRoom2`; its `leftScene` returns to the
 sandbox. Crossing an assigned horizontal edge loads that scene asynchronously,
@@ -133,11 +133,12 @@ velocity, jump state and counters. Empty links keep the side closed. Both
 scenes must be in Build Settings and in the Web build's explicit scene list.
 Deaths respawn in the current room. The room top clamps the player and death is below room height+14
 (194 for the default room); the immutable reference fixtures stay unchanged and there is no player text.
-Default movement bindings accept arrow keys or WASD; jump is Z or Space.
+The game binds three actions: left (←/A), right (→/D) and jump (Z/Space); there is no crouch or fast fall.
+Up and down are not actions: ↑/↓ move through menus and the editor cursor and cannot be bound.
 Each action has two independent key slots; logical `Shift` activates both physical
-Shift keys. `PhaseSandbox.ApplyControls` takes 10 key names in left/right/up/down/
+Shift keys. `PhaseSandbox.ApplyControls` takes 6 key names in left/right/
 jump order (two adjacent slots per action, "" for an empty slot). It accepts
-only the keys the settings screen can label (letters, digits, arrows, Space, Shift,
+only the keys the settings screen can label (letters, digits, ←/→, Space, Shift,
 Enter, Backspace and common punctuation), rejects duplicate physical keys and actions
 with no key, then applies the entire map atomically. Settings save the map to
 PlayerPrefs `phase.keys.v1` as comma-separated names; startup loads it and falls back
@@ -170,7 +171,7 @@ The older `WebSmoke.cjs` remains a verifier for the original two-sandbox build.
 ## CI
 
 GitHub Actions runs the production controller and its
-tests on .NET 10, including the 13 immutable movement reference traces.
+tests on .NET 10, including the 12 immutable movement reference traces.
 The Unity-only authoring-deserialization case runs through Pipeline.
 The test fixture parser uses Json.NET, already included by Unity Pipeline.
 The hosted runner requires no Unity license or repository secrets.
@@ -354,7 +355,7 @@ goes back. Thumbnails live in `Assets/Phase/Resources/Levels/<Scene>.png`; rebak
 whenever a level scene changes or a level is added, with
 `unity command run_script -- --file Verification/LevelThumbnails.cs --entry LevelThumbnails.Run`.
 A missing thumbnail leaves its frame empty.
-Settings show five action icons (left, right, up, down, jump) with two key caps each, labelled in a tiny pixel font,
+Settings show three action icons (left, right, jump) with two key caps each, labelled in a tiny pixel font,
 then restore, fullscreen and close controls. Arrows and Enter always navigate. Enter,
 jump or a click makes a slot blink and binds the next key; Escape cancels and Backspace
 clears. The circular arrow restores the defaults. A rejected change flashes a red border
@@ -370,7 +371,7 @@ red phase. The editor widens its own view (same aspect as the screen) so a fixed
 of the grid, or below it when that leaves the grid larger (tall screens); the panel never moves and never covers a
 cell. Hovering a slot highlights it, a click picks it, and the selected tool and color are framed. Mouse: left paints,
 right erases; a stroke paints only if it starts on the grid, so a drag from the panel never paints.
-Keyboard: movement keys move the cursor, jump paints, C erases, X cycles the
+Keyboard: the left/right bindings and ↑/↓ move the cursor, jump paints, C erases, X cycles the
 tool type, R/E (or the mouse wheel) turn spikes and lasers clockwise/counter-clockwise, 1–7 pick the mask, Enter playtests, Escape returns to the title.
 The last four panel slots size the room: arrows with an edge bar pull the right or bottom edge in or push it out by
 eight cells (never below 40×22 or past 160×90). Shrinking refuses with the red flash when a cell or the spawn
