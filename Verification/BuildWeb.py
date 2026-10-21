@@ -10,9 +10,6 @@ REPORTS = PROJECT / "TestResults/Web"
 SCENES = ["Assets/Scenes/PhaseTitle.unity", "Assets/Scenes/PhaseDemo1.unity", "Assets/Scenes/PhaseDemo1.1.unity"] + [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(2, 9)] + [f"Assets/Scenes/PhaseCrystal{i}.unity" for i in range(1, 4)] + ["Assets/Scenes/PhaseDemo12.unity", "Assets/Scenes/PhaseDemo13.unity", "Assets/Scenes/PhaseDemo14.unity", "Assets/Scenes/PhaseEditor.unity"]
 
 
-UNROUTED = json.loads((PROJECT / "Verification/Routes/unrouted.json").read_text())["levels"]
-
-
 def command(name, *args):
     completed = subprocess.run(
         ["unity", "command", name, "--project-path", str(PROJECT), "--json", "--timeout", "15", *args],
@@ -72,24 +69,20 @@ def main():
     save("recompile", recompile())
     command("run_script", "--", "--file", "Verification/BackgroundEditor.cs", "--entry", "BackgroundEditor.Run")
     for mode, test_filter, expected in [
-        ("editor", "ControllerTests", 52), ("editor", "LaserTests", 9), ("editor", "DemoRoomTests", 17),
-        ("editor", "CrystalTests", 15), ("editor", "CrystalRoomTests", 26),
-        ("editor", "PixelTests", 21), ("editor", "GridGeometryTests", 7),
-        ("editor", "CustomMapTests", 9), ("editor", "KeyBindingTests", 3), ("editor", "ScrollRoomTests", 6),
-        ("editor", "LevelRouteTests", 15),
-        ("playmode", "SandboxTests", 12), ("playmode", "MapBridgeTests", 1), ("playmode", "MenuTests", 10),
-        ("playmode", "LevelRoutePlayTests", 15),
+        ("editor", "ControllerTests", 15), ("editor", "LaserTests", 6),
+        ("editor", "CrystalTests", 8),
+        ("editor", "PixelTests", 12), ("editor", "GridGeometryTests", 3),
+        ("editor", "CustomMapTests", 6), ("editor", "KeyBindingTests", 3), ("editor", "ScrollRoomTests", 6),
+        ("playmode", "SandboxTests", 11), ("playmode", "MapBridgeTests", 1), ("playmode", "MenuTests", 9),
     ]:
         wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)
         command("run_tests", "--", "--mode", mode, "--filter", test_filter, "--async_tests")
         result = wait("test_status", lambda r: r.get("status") == "completed", 300)
-        save({"ControllerTests": "editor", "DemoRoomTests": "demo", "PixelTests": "pixels", "SandboxTests": "playmode"}.get(test_filter, test_filter), result)
+        save({"ControllerTests": "editor", "PixelTests": "pixels", "SandboxTests": "playmode"}.get(test_filter, test_filter), result)
         summary = result["summary"]
-        # Route suites skip the levels in Routes/unrouted.json; every other case must pass.
-        skipped = len(UNROUTED) if test_filter in ("LevelRouteTests", "LevelRoutePlayTests") else 0
-        if summary.get("total") != expected or summary.get("passed") != expected - skipped or summary.get("skipped", 0) != skipped:
+        if summary.get("total") != expected or summary.get("passed") != expected:
             raise RuntimeError(f"{mode}: expected {expected} passing tests, got {summary}")
-        print(f"{test_filter}: {expected - skipped} passed" + (f", {skipped} classmate-verified" if skipped else ""), flush=True)
+        print(f"{test_filter}: {expected} passed", flush=True)
     wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)
     for scene in SCENES:
         if not (PROJECT / scene).is_file():

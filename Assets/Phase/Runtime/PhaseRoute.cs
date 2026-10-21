@@ -9,7 +9,7 @@ namespace Phase
     public sealed class PhaseRouteStep
     {
         public int frames, x, y;
-        public bool jump, dash, grab;
+        public bool jump;
     }
 
     [Serializable]
@@ -38,16 +38,15 @@ namespace Phase
         public static PhaseRouteStep[] Parse(string json) => JsonUtility.FromJson<Steps>("{\"steps\":" + json + "}").steps;
         public static PhaseBypass[] ParseBypasses(string json) => JsonUtility.FromJson<Bypasses>("{\"routes\":" + json + "}").routes;
 
-        // Keyboard semantics: jump and dash fire on the first frame their key is held.
+        // Keyboard semantics: jump fires on the first frame its key is held.
         public static IEnumerable<Controls> Inputs(IEnumerable<PhaseRouteStep> steps)
         {
-            bool lastJump = false, lastDash = false;
+            bool lastJump = false;
             foreach (var step in steps)
                 for (int n = 0; n < step.frames; n++)
                 {
-                    yield return new Controls { x = step.x, y = step.y, grab = step.grab,
-                        jump = step.jump && !lastJump, jumpHeld = step.jump, dash = step.dash && !lastDash, dashHeld = step.dash };
-                    lastJump = step.jump; lastDash = step.dash;
+                    yield return new Controls { x = step.x, y = step.y, jump = step.jump && !lastJump, jumpHeld = step.jump };
+                    lastJump = step.jump;
                 }
         }
 

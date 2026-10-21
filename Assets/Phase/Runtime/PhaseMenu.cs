@@ -139,11 +139,11 @@ namespace Phase
         }
     }
 
-    // Settings: seven action rows with two key slots each, restore defaults, the fullscreen switch and close.
+    // Settings: five action rows (left, right, up, down, jump) with two key slots each, restore defaults, the fullscreen switch and close.
     // Arrows move; Enter, jump or a click captures the next key or uses the control; Backspace clears; Escape cancels or closes.
     public sealed class PhaseKeys
     {
-        public const int RestoreRow = 7, FullScreenRow = 8, BackRow = 9;
+        public const int RestoreRow = 5, FullScreenRow = 6, BackRow = 7;
         static readonly string[] fullScreenIcon = { "###.....###", "###.....###", "#.........#", "...........", "...........", "...........", "...........", "...........", "#.........#", "###.....###", "###.....###" };
         // Unity applies Screen.fullScreen natively and, within the confirming key or click, on Web; the Editor ignores it, so tests swap these.
         public static System.Func<bool> IsFullScreen = () => Screen.fullScreen;
@@ -152,9 +152,7 @@ namespace Phase
             arrowDown = { "...#...", "...#...", "...#...", "#..#..#", ".#.#.#.", "..###..", "...#..." };
         static readonly string[][] actionIcons = {
             arrowLeft, arrowLeft.Select(r => new string(r.Reverse().ToArray())).ToArray(), arrowDown.Reverse().ToArray(), arrowDown,
-            new[] { "...#...", "..#.#..", ".#...#.", "...#...", "..#.#..", ".#...#.", "#######" },
-            new[] { "#..#...", ".#..#..", "..#..#.", "...#..#", "..#..#.", ".#..#..", "#..#..." },
-            new[] { ".....##", ".##..##", "#..#.##", "#..####", "#..#.##", ".##..##", ".....##" }
+            new[] { "...#...", "..#.#..", ".#...#.", "...#...", "..#.#..", ".#...#.", "#######" }
         };
         // Bindable key names (Unity Key names, plus Shift for both Shift keys) and their key-cap labels.
         public static readonly Dictionary<string, string> Labels = new Dictionary<string, string> {
@@ -168,7 +166,7 @@ namespace Phase
             for (char c = 'A'; c <= 'Z'; c++) Labels[c.ToString()] = c.ToString();
             for (char c = '0'; c <= '9'; c++) Labels["Digit" + c] = c.ToString();
         }
-        const int CapWidth = 25, Pitch = 11, PageWidth = 67, PageHeight = 128;
+        const int CapWidth = 25, Pitch = 11, PageWidth = 67, PageHeight = 106;
         public int Row { get; private set; }
         public int Column { get; private set; }
         public bool Capturing { get; private set; }
@@ -181,9 +179,9 @@ namespace Phase
         static RectInt Cell(int row, int column) => row switch
         {
             < RestoreRow => new RectInt(13 + column * (CapWidth + 4), row * Pitch, CapWidth, 9),
-            RestoreRow => new RectInt(26, 79, 15, 15),
-            FullScreenRow => new RectInt(17, 96, 32, 15),
-            _ => new RectInt(26, 113, 15, 15)
+            RestoreRow => new RectInt(26, 57, 15, 15),
+            FullScreenRow => new RectInt(17, 74, 32, 15),
+            _ => new RectInt(26, 91, 15, 15)
         };
         // The same in frame pixels.
         public static RectInt Area(Vector2Int frame, int row, int column) => Page(frame).Frame(Cell(row, column));

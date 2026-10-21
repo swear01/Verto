@@ -8,8 +8,6 @@ namespace Phase
         public const int CellSize = 8;
         PhaseSandbox sandbox;
         PhaseTerrain[] terrain;
-        PhaseMovingPlatform[] movers;
-        PhaseClimbGear[] gears;
         PhaseCrystal[] crystals;
         public static Vector3 Snap(Component owner, Vector3 position)
         {
@@ -41,8 +39,6 @@ namespace Phase
         {
             sandbox = GetComponent<PhaseSandbox>();
             terrain = GetComponentsInChildren<PhaseTerrain>();
-            movers = GetComponentsInChildren<PhaseMovingPlatform>();
-            gears = GetComponentsInChildren<PhaseClimbGear>();
             crystals = GetComponentsInChildren<PhaseCrystal>();
         }
         void LateUpdate()
@@ -50,12 +46,6 @@ namespace Phase
             var controller = sandbox.Controller;
             for (int i = 0; i < terrain.Length; i++)
                 Sync(terrain[i].GetComponent<BoxCollider2D>(), controller.blocks[i], controller.blocks[i].ActiveInPhase(controller.phase) && !controller.blocked.Contains(i));
-            for (int i = 0; i < movers.Length; i++) Sync(movers[i].GetComponent<BoxCollider2D>(), controller.movers[i], controller.IsSolid(controller.movers[i]));
-            for (int i = 0; i < gears.Length; i++)
-            {
-                Sync(gears[i].GetComponent<BoxCollider2D>(), controller.gears[i].wall, controller.IsSolid(controller.gears[i].wall));
-                Sync(gears[i].transform.Find("Platform collider").GetComponent<BoxCollider2D>(), controller.gears[i].platform, controller.IsSolid(controller.gears[i].platform));
-            }
             for (int i = 0; i < crystals.Length; i++)
                 Sync(crystals[i].GetComponent<BoxCollider2D>(), controller.crystals[i],
                     controller.crystals[i].ActiveInPhase(controller.phase) && !controller.crystals[i].collected);

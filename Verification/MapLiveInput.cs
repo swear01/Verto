@@ -27,10 +27,9 @@ public static class MapLiveInput
     static void Capture(PhaseSandbox sandbox,string name)
     { File.WriteAllBytes("TestResults/CustomMap/"+name+".png",sandbox.Frame.EncodeToPNG()); }
     static string State(PhaseController s, Keyboard keyboard) => Newtonsoft.Json.JsonConvert.SerializeObject(new {
-        frame=Time.frameCount, time=s.time, phase=s.phase, jumps=s.jumps, dashes=s.dashes, deaths=s.deaths,
-        x=s.player.x, y=s.player.y, vx=s.player.vx, vy=s.player.vy, charge=s.player.dash, grounded=s.player.grounded, freeze=s.freeze, pending=s.player.dashPending, dx=s.player.dx, dy=s.player.dy,
-        inputX=PhaseSandbox.ReadControls(keyboard).x, inputY=PhaseSandbox.ReadControls(keyboard).y,
-        dashHeld=keyboard.xKey.isPressed, dashPressed=keyboard.xKey.wasPressedThisFrame
+        frame=Time.frameCount, time=s.time, phase=s.phase, jumps=s.jumps, deaths=s.deaths,
+        x=s.player.x, y=s.player.y, vx=s.player.vx, vy=s.player.vy, grounded=s.player.grounded,
+        inputX=PhaseSandbox.ReadControls(keyboard).x, inputY=PhaseSandbox.ReadControls(keyboard).y
     },Newtonsoft.Json.Formatting.Indented);
     public static async Task<string> Run()
     {
@@ -66,14 +65,7 @@ public static class MapLiveInput
             InputSystem.QueueStateEvent(keyboard,new KeyboardState(Key.RightArrow,Key.Z));await Frames(8);
             Require(s.jumps==1&&s.phase==1,"Imported map jump did not switch phase once.");Capture(sandbox,"jump");
             InputSystem.QueueStateEvent(keyboard,new KeyboardState());await Frames(50);
-            File.WriteAllText("TestResults/CustomMap/dash-before.json",State(s,keyboard));
-            // Dash aim is sampled after hit-stop; keep Up held through it.
-            InputSystem.QueueStateEvent(keyboard,new KeyboardState(Key.X,Key.UpArrow));await Frames(8);
-            File.WriteAllText("TestResults/CustomMap/dash-held.json",State(s,keyboard));
-            Require(s.dashes==1&&!s.player.dashPending&&s.player.dy==-1&&s.deaths==0,"Upward dash did not launch: "+State(s,keyboard));
-            InputSystem.QueueStateEvent(keyboard,new KeyboardState());await Frames(60);
-            File.WriteAllText("TestResults/CustomMap/dash-after.json",State(s,keyboard));
-            Require(s.dashes==1&&s.phase==1&&s.deaths==0,"Imported map dash changed phase or failed: "+State(s,keyboard));
+            Require(s.phase==1&&s.deaths==0,"Imported map jump landed badly: "+State(s,keyboard));
             InputSystem.QueueStateEvent(keyboard,new KeyboardState(Key.RightArrow));
             for(int i=0;i<100&&s.deaths==0;i++)await Frames(1);
             InputSystem.QueueStateEvent(keyboard,new KeyboardState());
@@ -86,7 +78,7 @@ public static class MapLiveInput
             while(SceneManager.GetActiveScene().name!="PhaseDemo2"&&Time.realtimeSinceStartupAsDouble<deadline)await Task.Delay(16);
             await Frames(2);var next=UnityEngine.Object.FindAnyObjectByType<PhaseSandbox>();
             Require(SceneManager.GetActiveScene().name=="PhaseDemo2"&&next!=null&&next.Frame!=null,"Built-in scene selection failed.");Capture(next,"selected-room");
-            string report=$"passed: invalid import atomic; custom grid map; keyboard move/jump/dash/spike death/respawn; room2 selection; frames={frames}, controllerSeconds={seconds:F3}";
+            string report=$"passed: invalid import atomic; custom grid map; keyboard move/jump/spike death/respawn; room2 selection; frames={frames}, controllerSeconds={seconds:F3}";
             File.WriteAllText("TestResults/CustomMap/live-input.txt",report);return report;
         }
         finally

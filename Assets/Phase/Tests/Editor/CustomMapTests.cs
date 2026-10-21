@@ -23,11 +23,12 @@ public class CustomMapTests
         // Block's computed Mask is not part of the wire schema.
         foreach(JObject block in data["blocks"])block.Remove("Mask");
         string json=data.ToString(Formatting.None);var map=PhaseCustomMap.Parse(json);
-        Assert.That(map.crystals,Is.Null);Assert.That(map.lasers,Is.Null);Assert.That(map.gearWall,Is.Null);Assert.That(map.gearPlatform,Is.Null);Assert.That(map.CreateMover(),Is.Null);
+        Assert.That(map.crystals,Is.Null);Assert.That(map.lasers,Is.Null);
         Assert.That(map.blocks.Length,Is.EqualTo(1));Assert.That(map.spikes.Length,Is.EqualTo(1));
         foreach(var mutate in new Action<JObject>[] {
             d=>d["crystals"]=new JObject(),d=>d["lasers"]=new JArray(new JObject{["x"]=80,["y"]=80,["direction"]=0,["phaseMask"]=7,["length"]=8}),
             d=>d["crystals"]=new JArray(new JObject{["x"]=80,["y"]=80,["kind"]="0",["phaseMask"]=7}),
+            d=>d["crystals"]=new JArray(new JObject{["x"]=80,["y"]=80,["kind"]=1,["phaseMask"]=7}),
             d=>d["gears"]=new JObject(),d=>d["platforms"]=new JArray(new JObject{["w"]=24,["h"]=8,["nodeX"]=new JArray(80,96),["nodeY"]=new JArray(80,"80")}),
             d=>d["platforms"]=new JArray(new JObject{["w"]=24,["h"]=8,["nodeX"]=new JArray(80,96),["nodeY"]=new JArray(80,80),["returns"]="true"}),
             d=>d["gears"]=new JArray(new JObject{["wall"]=new JObject{["x"]=72,["y"]=104,["w"]=8},["platform"]=new JObject(),["top"]=80,["endX"]=112}),
@@ -72,7 +73,7 @@ public class CustomMapTests
             m=>m.spikes[0].length=double.PositiveInfinity,m=>m.spikes[0].length=9,
             m=>m.spikes=new[]{m.spikes[0],m.spikes[0]},m=>m.blocks=new Block[881],
             m=>m.lasers=new[]{new DemoLaser{x=0,y=168,direction=LaserDirection.Up,phaseMask=7}},
-            m=>m.crystals=new[]{new DemoCrystal{x=80,y=160,kind=CrystalKind.Dash,phaseMask=7}},
+            m=>m.crystals=new[]{new DemoCrystal{x=80,y=160,phaseMask=7}},
             m=>m.lasers=new[]{new DemoLaser{x=4,y=8,direction=LaserDirection.Up,phaseMask=7}},
             m=>m.crystals=new DemoCrystal[880]
         }) {
@@ -89,16 +90,12 @@ public class CustomMapTests
             m=>m.spikes=new[]{new DemoSpike{x=24,y=152,length=8,direction=SpikeDirection.Down,phaseMask=1}},
             m=>m.blocks[0].phaseMask=0,m=>m.blocks[0].phaseMask=8,m=>m.blocks[0].phase=3,
             m=>m.spikes[0].phaseMask=0,m=>m.spikes[0].direction=(SpikeDirection)4,
-            m=>m.crystals=new[]{new DemoCrystal{x=80,y=80,kind=(CrystalKind)2,phaseMask=7}},
-            m=>m.crystals=new[]{new DemoCrystal{x=80,y=80,kind=CrystalKind.Jump,phaseMask=0}},
+            m=>m.crystals=new[]{new DemoCrystal{x=80,y=80,phaseMask=0}},
             m=>m.lasers=new[]{new DemoLaser{x=80,y=8,direction=(LaserDirection)4,phaseMask=7}},
             m=>m.lasers=new[]{new DemoLaser{x=80,y=8,direction=LaserDirection.Down,phaseMask=8}},
             m=>m.lasers=new DemoLaser[]{null},m=>m.crystals=new DemoCrystal[]{null},
             m=>m.lasers=new[]{new DemoLaser{x=24,y=0,direction=LaserDirection.Down,phaseMask=1}},
-            m=>m.lasers=new[]{new DemoLaser{x=56,y=160,direction=LaserDirection.Left,phaseMask=5}},
-            m=>m.nodeX=new[]{0.0},m=>m.nodeY=new[]{0.0},m=>m.hasGear=true,
-            m=>m.gearWall=new Block(0,0,8,8),m=>m.gearPlatform=new Block(0,0,8,8),
-            m=>m.gearTop=8,m=>m.gearEndX=8,m=>m.returns=true,m=>m.moverW=double.NaN
+            m=>m.lasers=new[]{new DemoLaser{x=56,y=160,direction=LaserDirection.Left,phaseMask=5}}
         }) {
             var map=Simple();mutate(map);Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Validate(map));
         }
@@ -113,12 +110,14 @@ public class CustomMapTests
             new DemoLaser{x=24,y=0,direction=LaserDirection.Down,phaseMask=1},
             new DemoLaser{x=0,y=152,direction=LaserDirection.Right,phaseMask=2},
             new DemoLaser{x=160,y=160,direction=LaserDirection.Up,phaseMask=7}};
-        map.crystals=new[]{new DemoCrystal{x=24,y=152,kind=CrystalKind.Dash,phaseMask=1},new DemoCrystal{x=96,y=128,kind=CrystalKind.Jump,phaseMask=6}};
+        map.crystals=new[]{new DemoCrystal{x=24,y=152,phaseMask=1},new DemoCrystal{x=96,y=128,phaseMask=6}};
         PhaseCustomMap.Validate(map);
         string json=PhaseCustomMap.ToJson(map);var parsed=PhaseCustomMap.Parse(json);
         Assert.That(PhaseCustomMap.ToJson(parsed),Is.EqualTo(json));
         Assert.That(parsed.lasers.Select(l=>(l.x,l.y,l.direction,l.phaseMask)),Is.EqualTo(map.lasers.Select(l=>(l.x,l.y,l.direction,l.phaseMask))));
-        Assert.That(parsed.crystals.Select(c=>(c.x,c.y,c.kind,c.phaseMask)),Is.EqualTo(map.crystals.Select(c=>(c.x,c.y,c.kind,c.phaseMask))));
+        Assert.That(parsed.crystals.Select(c=>(c.x,c.y,c.phaseMask)),Is.EqualTo(map.crystals.Select(c=>(c.x,c.y,c.phaseMask))));
+        var legacy=JObject.Parse(json);legacy["crystals"][0]["kind"]=0;
+        Assert.That(PhaseCustomMap.ToJson(PhaseCustomMap.Parse(legacy.ToString())),Is.EqualTo(json),"older maps that tag jump crystals with kind 0 still load");
         var controller=parsed.CreateController();
         Assert.That((controller.lasers.Count,controller.crystals.Count),Is.EqualTo((3,2)));
         Assert.That(controller.LaserBeam(controller.lasers[0]).h,Is.EqualTo(72),"terrain stops the beam above the spawn");
@@ -133,8 +132,7 @@ public class CustomMapTests
         Assert.That(map.CreateController().Height,Is.EqualTo(180),"a one-screen room keeps the 320x180 view");
         map.width=640;map.height=360;
         map.blocks=new[]{new Block(0,168,320,8,phaseMask:7),new Block(600,344,40,8,phaseMask:7),new Block(320,0,8,8,phaseMask:2)};
-        map.crystals=new[]{new DemoCrystal{x=624,y=336,kind=CrystalKind.Jump,phaseMask=7}};
-        map.platforms=new[]{new DemoPlatform{nodeX=new double[]{400,400},nodeY=new double[]{304,200},returns=true}};
+        map.crystals=new[]{new DemoCrystal{x=624,y=336,phaseMask=7}};
         PhaseCustomMap.Validate(map);
         string json=PhaseCustomMap.ToJson(map);var data=JObject.Parse(json);
         Assert.That(data.Properties().Select(p=>p.Name).Take(3),Is.EqualTo(new[]{"name","width","height"}));
@@ -151,97 +149,16 @@ public class CustomMapTests
         foreach(var mutate in new Action<PhaseDemoRoom>[] {
             m=>m.width=316,m=>m.width=312,m=>m.width=1288,m=>m.height=168,m=>m.height=728,m=>m.height=-8,
             m=>m.blocks[1].x=608,m=>m.blocks[1].y=360,m=>m.spawnX=640,m=>m.spawnY=352,
-            m=>m.platforms[0].nodeX[1]=640,m=>m.crystals[0].x=640
+            m=>m.crystals[0].x=640
         }) {
             var bad=Simple();bad.width=640;bad.height=360;bad.blocks=map.blocks.Select(b=>new Block(b.x,b.y,b.w,b.h,phaseMask:b.phaseMask)).ToArray();
-            bad.crystals=new[]{new DemoCrystal{x=624,y=336,kind=CrystalKind.Jump,phaseMask=7}};
-            bad.platforms=new[]{new DemoPlatform{nodeX=new double[]{400,400},nodeY=new double[]{304,200},returns=true}};
+            bad.crystals=new[]{new DemoCrystal{x=624,y=336,phaseMask=7}};
             mutate(bad);Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Validate(bad));
         }
         foreach(var size in new JToken[]{316,312,1288,"640",640.5,0})
         {
             var bad=JObject.Parse(json);bad["width"]=size;
             Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(bad.ToString()),size.ToString());
-        }
-    }
-    static DemoGear Gear() => new DemoGear{wall=new Block(72,104,8,56),top=80,platform=new Block(88,160,56,8),endX=112};
-    [Test]
-    public void PlatformsAndGearsRoundTripAndMoveFromTheirOwnCells()
-    {
-        var map=Simple();
-        map.platforms=new[]{
-            new DemoPlatform{nodeX=new double[]{160,160},nodeY=new double[]{120,64},returns=true},
-            new DemoPlatform{w=16,h=8,nodeX=new double[]{208,248,280},nodeY=new double[]{96,80,96}}};
-        map.gears=new[]{Gear()};
-        PhaseCustomMap.Validate(map);
-        string json=PhaseCustomMap.ToJson(map);var parsed=PhaseCustomMap.Parse(json);
-        Assert.That(PhaseCustomMap.ToJson(parsed),Is.EqualTo(json));
-        Assert.That(JObject.Parse(json).Properties().Select(p=>p.Name),Is.EqualTo(new[]{"name","blocks","spikes","platforms","gears","spawnX","spawnY"}));
-        Assert.That(parsed.platforms.Select(p=>(p.w,p.h,p.returns,string.Join(",",p.nodeX),string.Join(",",p.nodeY))),
-            Is.EqualTo(map.platforms.Select(p=>(p.w,p.h,p.returns,string.Join(",",p.nodeX),string.Join(",",p.nodeY)))));
-        Assert.That(parsed.gears.Select(g=>(g.wall.x,g.wall.y,g.wall.w,g.wall.h,g.top,g.platform.x,g.platform.y,g.platform.w,g.platform.h,g.endX)),
-            Is.EqualTo(new[]{(72.0,104.0,8.0,56.0,80.0,88.0,160.0,56.0,8.0,112.0)}));
-        var controller=parsed.CreateController();
-        Assert.That((controller.movers.Length,controller.gears.Length),Is.EqualTo((2,1)));
-        for(int i=0;i<30;i++)controller.Step(new Controls());
-        controller.Step(new Controls{x=1,dash=true,dashHeld=true});
-        for(int i=0;i<10;i++)controller.Step(new Controls());
-        Assert.That(controller.movers[0].y,Is.LessThan(120),"a dash sends the returning platform up its route");
-        Assert.That(controller.movers[1].x,Is.GreaterThan(208),"and the one-way platform to its next stop");
-        Assert.That(parsed.gears[0].wall.y,Is.EqualTo(104),"playing never moves the map's own gear");
-        var legacy=Simple();legacy.nodeX=new double[]{80,120};legacy.nodeY=new double[]{80,80};legacy.platforms=map.platforms;legacy.gears=map.gears;
-        Assert.That(legacy.CreateController().movers.Length,Is.EqualTo(3),"built-in rooms keep their single mover alongside the arrays");
-    }
-    [Test]
-    public void ColoredPlatformsAndGearsRoundTripAndAbsentMasksStaySolid()
-    {
-        var map=Simple();
-        map.platforms=new[]{
-            new DemoPlatform{nodeX=new double[]{160,160},nodeY=new double[]{120,64},returns=true,phaseMask=2},
-            new DemoPlatform{nodeX=new double[]{208,248},nodeY=new double[]{96,96}}};
-        map.gears=new[]{Gear()};map.gears[0].phaseMask=6;
-        string json=PhaseCustomMap.ToJson(map);var data=JObject.Parse(json);
-        Assert.That(data["platforms"].Select(p=>(int?)p["phaseMask"]),Is.EqualTo(new int?[]{2,null}),"an always-solid platform writes no mask");
-        Assert.That((int)data["gears"][0]["phaseMask"],Is.EqualTo(6));
-        var parsed=PhaseCustomMap.Parse(json);Assert.That(PhaseCustomMap.ToJson(parsed),Is.EqualTo(json));
-        var controller=parsed.CreateController();
-        Assert.That(controller.movers.Select(m=>m.Mask),Is.EqualTo(new[]{2,7}));
-        Assert.That((controller.gears[0].wall.Mask,controller.gears[0].platform.Mask),Is.EqualTo((6,6)));
-        Assert.That(controller.Solid().Contains(controller.movers[0]),Is.False);Assert.That(controller.Solid().Contains(controller.movers[1]),Is.True);
-        foreach(var mask in new JToken[]{0,8,-1,1.5,"2"})
-        {
-            var bad=JObject.Parse(json);bad["platforms"][1]["phaseMask"]=mask;
-            Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(bad.ToString()),mask.ToString());
-            bad=JObject.Parse(json);bad["gears"][0]["phaseMask"]=mask;
-            Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(bad.ToString()),mask.ToString());
-        }
-        map.platforms[0].phaseMask=9;Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Validate(map));
-        map.platforms[0].phaseMask=0;map.gears[0].phaseMask=-2;Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Validate(map));
-    }
-    [Test]
-    public void InvalidPlatformsAndGearsAreRejectedBeforePlaying()
-    {
-        DemoPlatform Platform(double x0,double y0,double x1,double y1,bool returns=false)=>new DemoPlatform{nodeX=new[]{x0,x1},nodeY=new[]{y0,y1},returns=returns};
-        foreach(var mutate in new Action<PhaseDemoRoom>[] {
-            m=>m.platforms=new DemoPlatform[]{null},m=>m.gears=new DemoGear[]{null},
-            m=>m.platforms=new[]{Platform(16,152,40,152)},
-            m=>m.platforms=new[]{Platform(160,120,161,120)},
-            m=>m.platforms=new[]{Platform(160,120,304,120)},
-            m=>m.platforms=new[]{Platform(160,120,200,64,returns:true)},
-            m=>m.platforms=new[]{Platform(0,168,40,168)},
-            m=>m.platforms=new[]{Platform(160,120,200,120),Platform(176,120,200,64)},
-            m=>m.platforms=new[]{new DemoPlatform{nodeX=new double[]{160},nodeY=new double[]{120}}},
-            m=>m.platforms=new[]{new DemoPlatform{nodeX=new double[]{160,200},nodeY=new double[]{120}}},
-            m=>m.platforms=new[]{new DemoPlatform{w=20,nodeX=new double[]{160,200},nodeY=new double[]{120,120}}},
-            m=>{m.gears=new[]{Gear()};m.gears[0].endX=120;},
-            m=>{m.gears=new[]{Gear()};m.gears[0].wall=null;},
-            m=>{m.gears=new[]{Gear()};m.gears[0].platform.y=168;},
-            m=>{m.gears=new[]{Gear()};m.gears[0].wall.y=8;m.gears[0].top=-16;},
-            m=>m.gears=new[]{Gear(),Gear()},
-            m=>{m.gears=new[]{Gear()};m.platforms=new[]{Platform(64,104,64,48)};},
-            m=>{m.gears=new[]{Gear()};m.spawnX=88;m.spawnY=152;}
-        }) {
-            var map=Simple();mutate(map);Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Validate(map));
         }
     }
 }

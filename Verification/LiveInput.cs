@@ -33,16 +33,13 @@ public static class LiveInput
             keyboard = InputSystem.AddDevice<Keyboard>("PhaseLiveVerification");
             sandbox.Controller.Reset();
             double start = sandbox.Controller.player.x;
-            int jumps = sandbox.Controller.jumps, dashes = sandbox.Controller.dashes;
+            int jumps = sandbox.Controller.jumps;
             InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.RightArrow));
             yield return new WaitForSeconds(.15f);
             if (!Require(sandbox.Controller.player.x > start, "right arrow moves the player", result)) yield break;
             InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Z));
             yield return new WaitForSeconds(.05f);
             if (!Require(sandbox.Controller.phase == 1 && sandbox.Controller.jumps == jumps + 1, "jump changes phase once", result)) yield break;
-            InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.X, Key.UpArrow));
-            yield return new WaitForSeconds(.2f);
-            if (!Require(sandbox.Controller.dashes == dashes + 1 && sandbox.Controller.phase == 1, "dash keeps phase", result)) yield break;
             result.SetResult("passed");
         }
         finally

@@ -10,32 +10,6 @@ public class PixelTests
     public class Reference { public int columns; public Block[] blocks; public Frame[] frames; }
     public class Frame { public string name; public double time; public int phase; public int[] blocked; public Player player; }
 
-    [Test]
-    public void EveryPlatformIsDrawnAndVerticalMotionKeepsItsHorizontalShape()
-    {
-        var pixels=new PhasePixels();
-        try
-        {
-            var s=new PhaseController(System.Array.Empty<Block>(),32,149,new[]{
-                new MovingPlatform(new[]{new[]{80.0,112},new[]{112.0,112}},32,8),
-                new MovingPlatform(new[]{new[]{216.0,144},new[]{216.0,80}},48,8,true)});
-            s.flash=0;pixels.Draw(s);
-            var cap=(Color32)PhasePixels.Hex("f0f0f0");
-            Assert.That((Color32)pixels.Texture.GetPixel(84,67),Is.EqualTo(cap));
-            Assert.That((Color32)pixels.Texture.GetPixel(220,35),Is.EqualTo(cap));
-            s.movers[1].y=80;pixels.Draw(s);
-            Assert.That((Color32)pixels.Texture.GetPixel(84,67),Is.EqualTo(cap));
-            Assert.That((Color32)pixels.Texture.GetPixel(220,99),Is.EqualTo(cap));
-            Assert.That((Color32)pixels.Texture.GetPixel(260,99),Is.EqualTo(cap),"the second platform stays48px wide");
-            Assert.That((Color32)pixels.Texture.GetPixel(220,35),Is.Not.EqualTo(cap));
-            var empty=new PhaseController(System.Array.Empty<Block>(),32,149);empty.flash=0;
-            var marked=pixels.Texture.GetPixels32();pixels.Draw(empty);var plain=pixels.Texture.GetPixels32();
-            bool Marked(int x,int y)=>!marked[(179-y)*320+x].Equals(plain[(179-y)*320+x]);
-            Assert.That(Marked(127,114)&&!Marked(127,117),Is.True,"horizontal stop extends one pixel before its track");
-            Assert.That(Marked(238,148)&&!Marked(241,148),Is.True,"vertical stop mirrors the horizontal marker");
-        }
-        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
-    }
 
     [Test]
     public void CrystalShapesColorsAndGhostsKeepTheirPickupMeaning()
@@ -47,15 +21,15 @@ public class PixelTests
         {
             var empty = new PhaseController(Array.Empty<Block>(),32,149); empty.flash=0;
             pixels.Draw(empty,false); var background=pixels.Texture.GetPixels32();
-            foreach (CrystalKind kind in Enum.GetValues(typeof(CrystalKind))) for (int mask=1;mask<=7;mask++)
+            for (int mask=1;mask<=7;mask++)
             {
-                var crystal=new Crystal(120,80,kind,mask);
+                var crystal=new Crystal(120,80,mask);
                 var room=new PhaseController(Array.Empty<Block>(),32,149,crystals:new[]{crystal});room.flash=0;
                 for(int phase=0;phase<3;phase++)if(crystal.ActiveInPhase(phase))
                 {
                     room.phase=phase;pixels.Draw(room,false);
                     Assert.That(At(123,80),Is.EqualTo((Color32)PhasePixels.SurfaceColor(mask)),"active rim uses the shared phase palette");
-                    Assert.That(At(120,80),kind==CrystalKind.Jump?Is.EqualTo(background[(179-80)*320+120]):Is.EqualTo((Color32)PhasePixels.SurfaceColor(mask)),"round corners are cut away; dash crystals keep square corners");
+                    Assert.That(At(120,80),Is.EqualTo(background[(179-80)*320+120]),"round corners are cut away");
                 }
                 room.time=2;pixels.Draw(room,false);var active=pixels.Texture.GetPixels32();
                 room.time=5;pixels.Draw(room,false);CollectionAssert.AreEqual(active,pixels.Texture.GetPixels32(),"crystals do not blink or add competing motion");
@@ -68,7 +42,7 @@ public class PixelTests
                 }
                 crystal.collected=true;pixels.Draw(room,false);CollectionAssert.AreEqual(background,pixels.Texture.GetPixels32(),"consumed crystals cannot look available");
             }
-            var covered=new PhaseController(Array.Empty<Block>(),32,149,lasers:new[]{new Laser(8,80,LaserDirection.Right)},crystals:new[]{new Crystal(120,80,CrystalKind.Jump)});covered.flash=0;
+            var covered=new PhaseController(Array.Empty<Block>(),32,149,lasers:new[]{new Laser(8,80,LaserDirection.Right)},crystals:new[]{new Crystal(120,80)});covered.flash=0;
             pixels.Draw(covered,false);
             Assert.That(At(123,83),Is.EqualTo((Color32)PhasePixels.Hex("f6f6f6")),"a pickup never hides a lethal beam crossing it");
         }
@@ -82,9 +56,9 @@ public class PixelTests
         var room=new PhaseController(Array.Empty<Block>(),120,100);room.flash=0;
         try
         {
-            foreach(int facing in new[]{-1,1})foreach(int dash in new[]{0,1})foreach(int phase in new[]{0,1,2})
+            foreach(int facing in new[]{-1,1})foreach(int phase in new[]{0,1,2})
             {
-                room.player.facing=facing;room.player.dash=dash;room.phase=phase;
+                room.player.facing=facing;room.phase=phase;
                 room.player.airJump=0;pixels.Draw(room);var plain=pixels.Texture.GetPixels32();
                 room.player.airJump=1;pixels.Draw(room);var bonus=pixels.Texture.GetPixels32();
                 int changed=0,feet=(int)Math.Floor(room.player.y+room.player.h+.5);
@@ -148,107 +122,12 @@ public class PixelTests
             Assert.That(solid[before],Is.EqualTo(ghost[before]),"beam stays bright before the blocker");
             Assert.That(solid[after],Is.Not.EqualTo(ghost[after]),"ghost terrain no longer truncates the drawn beam");
             s.phase=0;s.time=5;pixels.Draw(s,false);CollectionAssert.AreEqual(solid,pixels.Texture.GetPixels32());
-            var gear=new ClimbGear(new Block(72,104,8,56),80,new Block(88,80,48,8),112);
-            s=new PhaseController(Array.Empty<Block>(),32,149,gears:new[]{gear},lasers:new[]{new Laser(80,8,LaserDirection.Down)});s.flash=0;
-            pixels.Draw(s,false);
-            Assert.That((Color32)pixels.Texture.GetPixel(83,179-120),Is.EqualTo((Color32)PhasePixels.Hex("f6f6f6")),
-                "decorative racks cannot hide a lethal beam that passes beside the solid wall");
         }
         finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
     }
 
-    [Test]
-    public void GearRacksTranslateRigidlyAndStayEngagedAcrossFullTravel()
-    {
-        var s = new PhaseController(Array.Empty<Block>(), 0, 149, gears: new[] {
-            new ClimbGear(new Block(72,104,8,56),80,new Block(88,80,48,8),112)
-        });
-        var gear = s.gears[0]; s.flash = 0;
-        var pixels = new PhasePixels();
-        try
-        {
-            var wallRack = new Color32?[56]; var platformRack = new Color32?[48];
-            for (int lift = 0; lift <= 24; lift++)
-            {
-                gear.wall.y = 104 - lift; gear.platform.x = 88 + lift;
-                pixels.Draw(s); var frame = pixels.Texture.GetPixels32();
-                Color32 At(int x, int y) => frame[(179-y)*320+x];
-                int top = 104 - lift, left = 88 + lift;
-                for (int u = 0; u < 56; u++)
-                {
-                    if (Math.Abs(top+u-110) <= 9) continue;
-                    wallRack[u] ??= At(79, top+u);
-                    Assert.That(At(79, top+u), Is.EqualTo(wallRack[u].Value), $"wall rack translates rigidly at lift {lift}, u {u}");
-                    Assert.That(At(80, top+u), Is.EqualTo((Color32)PhasePixels.Hex("0b0f16")), "wall teeth stay inside the collidable wall");
-                }
-                for (int u = 0; u < 48; u++)
-                {
-                    if (Math.Abs(left+u-119) <= 9) continue;
-                    platformRack[u] ??= At(left+u, 87);
-                    Assert.That(At(left+u, 87), Is.EqualTo(platformRack[u].Value), $"platform rack translates rigidly at lift {lift}, u {u}");
-                }
-                foreach (int x in new[] { left-1, left+48 })
-                    Assert.That(At(x, 87), Is.EqualTo((Color32)PhasePixels.Hex("0b0f16")), "rack never extends beyond the collidable platform");
-                Assert.That(At(119, 94), Is.EqualTo((Color32)PhasePixels.Hex("e8e8e8")), "output pinion stays fixed under the platform rack");
-            }
-            for (int t = 0; t < 8; t++)
-            {
-                var wall = new System.Collections.Generic.HashSet<Color32>(); var platform = new System.Collections.Generic.HashSet<Color32>();
-                for (int u = 0; u < 17; u++) { wall.Add(Column(t, 38 + u)); platform.Add(Row(t, 20 + u)); }
-                CollectionAssert.AreEquivalent(wall, platform, $"wall and platform share one 8px profile at depth {t}");
-                Color32 Column(int depth, int u) => pixels.Texture.GetPixel(79 - depth, 179 - (80 + u));
-                Color32 Row(int depth, int u) => pixels.Texture.GetPixel(112 + u, 179 - (87 - depth));
-            }
-        }
-        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
-    }
 
-    [TestCase(0)] [TestCase(12)] [TestCase(24)]
-    public void GearRackStaysAttachedToThePlatformAcrossTravel(int lift)
-    {
-        var s = new PhaseController(Array.Empty<Block>(), 0, 149, gears: new[] {
-            new ClimbGear(new Block(72,104,8,56),80,new Block(88,80,48,8),112)
-        });
-        var gear = s.gears[0]; gear.wall.y -= lift; gear.platform.x += lift; s.flash = 0;
-        var pixels = new PhasePixels();
-        try
-        {
-            pixels.Draw(s);
-            for (int x = (int)gear.platform.x; x < gear.platform.x + gear.platform.w; x++)
-            {
-                Color32 pixel = pixels.Texture.GetPixel(x, 179 - ((int)gear.platform.y + 5));
-                Assert.That(pixel.r, Is.EqualTo(160), $"rack belongs to the platform body at x {x}");
-            }
-            var first = pixels.Texture.GetPixels32(); s.time += 1; pixels.Draw(s);
-            var second = pixels.Texture.GetPixels32();
-            for (int y = 60; y < 166; y++) for (int x = 70; x < 180; x++)
-                Assert.That(second[(179-y)*320+x], Is.EqualTo(first[(179-y)*320+x]), "stationary gears do not animate on their own");
-        }
-        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
-    }
 
-    [Test]
-    public void ColoredMechanismsUseTerrainColorsWhenActiveAndGhostsOtherwise()
-    {
-        var pixels=new PhasePixels();
-        Color32 At(int x,int y)=>pixels.Texture.GetPixel(x,179-y);
-        try
-        {
-            var s=new PhaseController(Array.Empty<Block>(),32,40,new[]{new MovingPlatform(new[]{new[]{80.0,112},new[]{112.0,112}},32,8,phaseMask:1)},
-                gears:new[]{new ClimbGear(new Block(200,104,8,56,phaseMask:2),80,new Block(216,80,48,8,phaseMask:2),240)});s.flash=0;
-            pixels.Draw(s,false);var red=pixels.Texture.GetPixels32();
-            Assert.That(At(84,112),Is.EqualTo((Color32)PhasePixels.Hex(PhasePixels.Highlights[0])),"an active red platform takes the red terrain cap");
-            var gearOff=At(203,130);
-            s.phase=1;pixels.Draw(s,false);
-            var ghost=At(80,112);
-            Assert.That(ghost,Is.Not.EqualTo(red[(179-112)*320+80]));Assert.That(At(82,112),Is.Not.EqualTo(At(81,112)),"inactive outline is dashed");
-            Assert.That(At(203,130),Is.Not.EqualTo(gearOff),"the blue gear wall switches from ghost to tinted rack");
-            s.phase=0;s.blockedParts.Add(s.movers[0]);pixels.Draw(s,false);
-            Assert.That(At(82,112),Is.EqualTo(At(81,112)),"a deferred platform draws a solid outline");Assert.That(At(80,112),Is.Not.EqualTo(ghost));
-            s.blockedParts.Clear();pixels.Draw(s,false);CollectionAssert.AreEqual(red,pixels.Texture.GetPixels32());
-        }
-        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
-    }
 
     [Test]
     public void MixedInlaysAndDirectionalSpikesMatchTheirMasks()
@@ -285,28 +164,6 @@ public class PixelTests
         finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
     }
 
-    [Test]
-    public void FloorLevelGearKeepsItsRackAndPinionsVisibleAboveTheBridge()
-    {
-        var gear = new ClimbGear(new Block(72,104,8,56),80,new Block(88,160,56,8),112);
-        var room = new PhaseController(Array.Empty<Block>(),32,149,gears:new[]{gear}); room.flash=0;
-        var pixels = new PhasePixels();
-        try
-        {
-            foreach (int lift in new[] { 0,12,24 })
-            {
-                room.gears[0].wall.y = 104-lift; room.gears[0].platform.x = 88+lift;
-                pixels.Draw(room,false);
-                foreach (var center in new[] { (x:86,y:121),(x:99,y:130),(x:105,y:145),(x:119,y:153) })
-                    Assert.That((Color32)pixels.Texture.GetPixel(center.x,179-center.y),Is.EqualTo((Color32)PhasePixels.Hex("e8e8e8")),"fixed pinions remain visible and engaged above the floor-level rack");
-                Assert.That((Color32)pixels.Texture.GetPixel(77,179-(159-lift)), Is.EqualTo((Color32)PhasePixels.Hex("a0a0a0")),"vertical rack spans the full 56px wall");
-                Assert.That((Color32)pixels.Texture.GetPixel(77,179-(160-lift)), Is.Not.EqualTo((Color32)PhasePixels.Hex("a0a0a0")),"vertical rack must not grow when the wall rises");
-                Assert.That((Color32)pixels.Texture.GetPixel(81,179-(157-lift)), Is.Not.EqualTo((Color32)PhasePixels.Hex("a0a0a0")),"no rack overhangs the wall collision");
-                Assert.That((Color32)pixels.Texture.GetPixel(92+lift,179-162), Is.EqualTo((Color32)PhasePixels.Hex("a0a0a0")),"the rack base stays inside the platform rectangle");
-            }
-        }
-        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
-    }
 
     [Test]
     public void RoomSlideKeepsPixelsAndJoinsBothDirections()
@@ -369,13 +226,10 @@ public class PixelTests
             for(int i=0;i<portrait.Length;i++)Assert.That(taller[i],Is.EqualTo(portrait[i]),"height resize keeps sky fixed in world coordinates");
             for(int height=180;height<=1400;height++)Assert.That(PhaseSandbox.ViewSize(320,height),Is.EqualTo(new Vector2Int(320,height)),"native viewport size must not drift on repeat calculation");
             pixels.SetView(320,180,0);pixels.Draw(s);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32(),"portrait resize restores the original art");
-            s.movers=new[]{new MovingPlatform(new[]{new[]{160.0,144},new[]{192.0,144}},32,8,true)};
-            foreach(int phase in new[]{0,1,2})foreach(double x in new[]{160.0,176.0,192.0})
+            foreach(int phase in new[]{0,1,2})
             {
-                s.phase=phase;s.movers[0].x=x;pixels.Draw(s);
+                s.phase=phase;pixels.Draw(s);
                 Assert.That((Color32)pixels.Texture.GetPixel(24,19),Is.EqualTo((Color32)PhasePixels.Hex("e8e8e8")),"permanent floor stays white in every phase");
-                Assert.That((Color32)pixels.Texture.GetPixel((int)x+4,35),Is.EqualTo((Color32)PhasePixels.Hex("f0f0f0")),"moving platform stays white along its path in every phase");
-                Assert.That((Color32)pixels.Texture.GetPixel((int)x+2,33),Is.EqualTo((Color32)PhasePixels.Hex("787878")),"platform retains gray texture");
             }
         }
         finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
@@ -442,70 +296,7 @@ public class PixelTests
         finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
     }
 
-    [Test]
-    public void HoodFollowsDashUseFailedRetryAndLandingRefill()
-    {
-        var s=new PhaseController(new[]{new Block(0,160,320,24)},120,90);s.player.grounded=false;s.flash=0;
-        var pixels=new PhasePixels();
-        void Check(string color)
-        {
-            s.flash=0;pixels.Draw(s);int count=0;Color32 expected=PhasePixels.Hex(color);
-            foreach(var pixel in pixels.Texture.GetPixels32())if(pixel.Equals(expected))count++;
-            Assert.That(count,Is.GreaterThanOrEqualTo(24),"charge must occupy the hood, not only the small scarf");
-        }
-        try
-        {
-            Check("ffb24d");s.Step(new Controls{dash=true});Assert.That(s.player.dash,Is.Zero);Check("b96532");
-            int used=s.dashes;for(int i=0;i<15;i++)s.Step(new Controls());
-            s.Step(new Controls{dash=true});Assert.That(s.dashes,Is.EqualTo(used));Check("b96532");
-            for(int i=0;i<120&&!s.player.grounded;i++)s.Step(new Controls());
-            Assert.That(s.player.grounded,Is.True);Assert.That(s.player.dash,Is.EqualTo(1));Check("ffb24d");
-        }
-        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
-    }
 
-    [Test]
-    public void FatigueWarnsOnHelmetKeepsPhaseEyesAndDashScarfAndNeverTintsTheCloak()
-    {
-        var room=new PhaseController(new[]{new Block(0,160,320,24)},120,100);room.flash=0;
-        var p=room.player;p.climbing=true;p.grounded=false;p.facing=1;
-        var pixels=new PhasePixels();
-        Color32 At(int x,int y) => pixels.Texture.GetPixel(x-pixels.OriginX,pixels.Height-1-y+pixels.OriginY);
-        void Draw(double stamina,double time=0) { p.stamina=stamina;room.time=time;pixels.Draw(room); }
-        try
-        {
-            Draw(110);var original=pixels.Texture.GetPixels32();var healthyHelmet=At(121,100);var cloak=At(121,107);
-            Draw(55);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32());
-            Draw(37.5);var warming=At(121,100);Assert.That(warming.g,Is.LessThan(healthyHelmet.g));
-            Draw(20);Assert.That(At(121,100).g,Is.LessThan(warming.g));Assert.That(At(121,107),Is.EqualTo(cloak),"the cloak never becomes a red skirt");
-            Draw(20,.14);Assert.That(At(121,101).g,Is.LessThan(120));Assert.That(p.y,Is.EqualTo(100),"only the sprite shakes");
-            foreach(int phase in new[]{0,1,2})foreach(int dash in new[]{0,1})
-            {
-                room.phase=phase;p.dash=dash;Draw(110);var full=pixels.Texture.GetPixels32();Draw(20);
-                int eyes=0;Color32 eye=PhasePixels.Hex(PhasePixels.Highlights[phase]);
-                for(int y=98;y<105;y++)for(int x=118;x<132;x++)if(At(x,y).Equals(eye))eyes++;
-                Assert.That(eyes,Is.GreaterThanOrEqualTo(4),"large side-facing eyes keep their mode color during fatigue");
-                for(int y=105;y<=112;y++)for(int x=118;x<132;x++)Assert.That(At(x,y),Is.EqualTo(full[(179-y)*320+x]),"scarf and cloak preserve their independent states");
-                for(int y=0;y<180;y++)for(int x=0;x<320;x++)if(x<118||x>132||y<97||y>113)
-                    Assert.That(At(x,y),Is.EqualTo(full[(179-y)*320+x]),"no detached gauge or terrain recoloring");
-            }
-            room.phase=0;p.dash=1;p.climbing=false;Draw(0);Assert.That(At(121,100).g,Is.LessThan(120));
-            p.grounded=true;Draw(0);Assert.That(At(121,100),Is.EqualTo(healthyHelmet));
-            p.grounded=false;p.climbing=true;p.wallBoost=.2;Draw(15);Assert.That(At(121,100).g,Is.GreaterThan(150),"pending refund avoids a critical warning");p.wallBoost=0;
-            Draw(110);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32());
-            pixels.SetView(320,693,0);Draw(20);Assert.That(At(121,100).g,Is.LessThan(120));
-            pixels.SetView(320,180,0);
-            var reference=JsonConvert.DeserializeObject<Reference>(File.ReadAllText("Verification/ArtReference.json"));
-            foreach(var frame in reference.frames)
-            {
-                room.player=frame.player;room.phase=frame.phase;room.time=frame.time;pixels.Draw(room);
-                int eyes=0;Color32 color=PhasePixels.Hex(PhasePixels.Highlights[frame.phase]);
-                for(int y=(int)frame.player.y-5;y<frame.player.y+frame.player.h;y++)for(int x=(int)frame.player.x-2;x<frame.player.x+11;x++)if(At(x,y).Equals(color))eyes++;
-                Assert.That(eyes,Is.GreaterThanOrEqualTo(frame.name.StartsWith("climb")||frame.name.StartsWith("duck")||frame.name.StartsWith("blink")?4:8),frame.name+" keeps enlarged mode eyes");
-            }
-        }
-        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
-    }
 
     [Test]
     public void RespawnConvergesAtCheckpointWithoutFlashingTheWorld()
@@ -537,7 +328,7 @@ public class PixelTests
     }
 
     [Test]
-    public void PublishedTerrainAndMoverArtRemainUnchangedAcrossAllCharacterPoses()
+    public void PublishedTerrainArtRemainsUnchangedAcrossAllCharacterPoses()
     {
         var reference=JsonConvert.DeserializeObject<Reference>(File.ReadAllText("Verification/ArtReference.json"));
         var golden=new Texture2D(2,2);
@@ -546,32 +337,27 @@ public class PixelTests
         {
             Assert.That(golden.LoadImage(File.ReadAllBytes("Verification/ArtReference.png")),Is.True);
             var expected=golden.GetPixels32();var atlas=new Color32[expected.Length];
-            var controller=new PhaseController(reference.blocks,120,149,new[]{new MovingPlatform(new[] {new[] {160.0,144},new[] {192.0,144}},32,8,true)});
+            var controller=new PhaseController(reference.blocks,120,149);
             var neutralColors=new[]{"a9b8c5","e8e8e8","697d8e","a0a0a0","3c4a57","646464","506170","7f7f7f","34404b","565656","242c34","3c3c3c","191f25","2a2a2a","f2dc8a","f0f0f0","e7ce76","e8e8e8","6f603c","787878","8f7c47","a0a0a0","4b4129","484848"};
-            var tracks=new[]{"484a3f","424b57","454537","3f464f","444334","3e444c","786e46","6c7076","7b734d","6f757d"};
             int worst=0,bad=0,neutralPixels=0;string first=null;
             for(int f=0;f<reference.frames.Length;f++)
             {
                 var frame=reference.frames[f];controller.player=frame.player;controller.time=frame.time;controller.phase=frame.phase;controller.flash=0;
                 controller.blocked.Clear();foreach(int index in frame.blocked)controller.blocked.Add(index);
                 pixels.Draw(controller);var actual=pixels.Texture.GetPixels32();
-                var p=frame.player;int feet=(int)Math.Floor(p.y+p.h+.5)+(p.climbing&&p.stamina<=20&&(int)Math.Floor(frame.time*8)%2!=0?1:0);
+                var p=frame.player;int feet=(int)Math.Floor(p.y+p.h+.5);
                 int headTop=feet-(p.ducking?8:13),collar=p.ducking?5:frame.name.StartsWith("run1 ")||frame.name.StartsWith("run3 ")?6:7;
                 for(int y=0;y<180;y++)for(int x=0;x<320;x++)
                 {
                     int index=(golden.height-1-(f/reference.columns*180+y))*golden.width+(f%reference.columns*320+x);
                     var a=actual[(179-y)*320+x];var e=expected[index];atlas[index]=a;
                     bool stone=y>=160||(x>=224&&x<240&&y>=80&&y<160);
-                    bool mover=x>=160&&x<192&&y>=144&&y<152;
-                    if(stone||mover)
+                    // The reference still shows the removed dash platform and its track; those pixels are skipped.
+                    if((x>=159&&x<211&&y>=143&&y<153)) continue;
+                    if(stone)
                     {
                         for(int c=0;c<neutralColors.Length;c+=2)if(e.Equals((Color32)PhasePixels.Hex(neutralColors[c])))
                         { e=PhasePixels.Hex(neutralColors[c+1]);neutralPixels++;break; }
-                    }
-                    if(x>=192&&x<210&&y>=146&&y<149)
-                    {
-                        for(int c=0;c<tracks.Length;c+=2)if(e.Equals((Color32)PhasePixels.Hex(tracks[c])))
-                        { e=PhasePixels.Hex(tracks[c+1]);neutralPixels++;break; }
                     }
                     if(x>=p.x-12&&x<p.x+19&&y>=headTop-3&&y<=feet+2) continue;
                     int delta=Math.Max(Math.Abs(a.r-e.r),Math.Max(Math.Abs(a.g-e.g),Math.Abs(a.b-e.b)));
@@ -584,7 +370,7 @@ public class PixelTests
             try { rendered.SetPixels32(atlas);rendered.Apply();File.WriteAllBytes("TestResults/Web/art-unity.png",rendered.EncodeToPNG()); }
             finally { UnityEngine.Object.DestroyImmediate(rendered); }
             File.WriteAllText("TestResults/Web/art-parity.json",JsonConvert.SerializeObject(new { frames=reference.frames.Length,neutralPixelsRemapped=neutralPixels,badPixels=bad,maxChannelDelta=worst,firstMismatch=first },Formatting.Indented));
-            Assert.That(neutralPixels,Is.GreaterThan(360000),"permanent stone, mover and track colors are remapped without changing their texture");
+            Assert.That(neutralPixels,Is.GreaterThan(300000),"permanent stone colors are remapped without changing their texture");
             Assert.That(bad,Is.Zero,first);
             controller.blocks.Add(new Block(0,0,8,8));pixels.Draw(controller);
             Color32 added=pixels.Texture.GetPixel(1,179);

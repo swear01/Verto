@@ -8,7 +8,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.SceneManagement;
 
-// Keyboard route: title → editor → paint terrain, laser, crystal, place a platform and a gear; then a virtual mouse sweeps
+// Keyboard route: title → editor → paint terrain, laser and crystal; then a virtual mouse sweeps
 // the grid under the fixed panel, picks a color and tool, paints and erases, and its play slot starts the playtest
 // → export/import → back → title → level 1. Restores the developer's draft and clipboard.
 public static class MenuLiveInput
@@ -71,39 +71,14 @@ public static class MenuLiveInput
             await Tap(keyboard, Key.RightArrow); await Tap(keyboard, Key.Z);
             Require(editor.Room().blocks.Count(b => b.phaseMask == 2) == 2, "Keyboard did not paint two blue cells.");
             await Tap(keyboard, Key.X); await Tap(keyboard, Key.X); await Tap(keyboard, Key.R); await Tap(keyboard, Key.R);
-            Require(editor.Tool == PhaseEditor.LaserTool + 1, "Dash and R did not pick the down laser.");
+            Require(editor.Tool == PhaseEditor.LaserTool + 1, "X and R did not pick the down laser.");
             await Tap(keyboard, Key.Digit2); await Tap(keyboard, Key.UpArrow); await Tap(keyboard, Key.Z);
             await Tap(keyboard, Key.X);
-            Require(editor.Tool == PhaseEditor.CrystalTool, "Dash did not cycle to the jump crystal.");
+            Require(editor.Tool == PhaseEditor.CrystalTool, "X did not cycle to the jump crystal.");
             await Tap(keyboard, Key.Digit1); await Tap(keyboard, Key.RightArrow); await Tap(keyboard, Key.Z);
             var room = editor.Room();
             Require(room.lasers.Length == 1 && room.lasers[0].phaseMask == 1 && room.lasers[0].direction == LaserDirection.Down, "Keyboard did not paint a red down laser.");
-            Require(room.crystals.Length == 1 && room.crystals[0].phaseMask == 7 && room.crystals[0].kind == CrystalKind.Jump, "Keyboard did not paint a white jump crystal.");
-            await Tap(keyboard, Key.X); await Tap(keyboard, Key.X);
-            Require(editor.Tool == PhaseEditor.PlatformTool, "Dash did not cycle to the platform.");
-            for (int i = 0; i < 4; i++) await Tap(keyboard, Key.UpArrow);
-            await Tap(keyboard, Key.Z);
-            for (int i = 0; i < 4; i++) await Tap(keyboard, Key.RightArrow);
-            for (int i = 0; i < 2; i++) await Tap(keyboard, Key.UpArrow);
-            await Tap(keyboard, Key.Z);
-            room = editor.Room();
-            Require(room.platforms.Length == 1 && !room.platforms[0].returns && room.platforms[0].w == 24 && room.platforms[0].h == 8 &&
-                room.platforms[0].nodeX.SequenceEqual(new[] { 80.0, 112.0 }) && room.platforms[0].nodeY.SequenceEqual(new[] { 80.0, 64.0 }),
-                "Keyboard did not draw a diagonal platform from (80,80) to (112,64).");
-            Capture(editor, "editor-platform");
-            for (int i = 0; i < 2; i++) await Tap(keyboard, Key.DownArrow);
-            await Tap(keyboard, Key.X);
-            Require(editor.Tool == PhaseEditor.GearTool, "Dash did not cycle to the gear.");
-            for (int i = 0; i < 6; i++) await Tap(keyboard, Key.RightArrow);
-            await Tap(keyboard, Key.Z);
-            for (int i = 0; i < 5; i++) await Tap(keyboard, Key.RightArrow);
-            for (int i = 0; i < 6; i++) await Tap(keyboard, Key.DownArrow);
-            Require(editor.Anchor == new Vector2Int(20, 10), "Jump did not place the gear wall.");
-            Capture(editor, "editor-gear-end");
-            await Tap(keyboard, Key.Z);
-            room = editor.Room();
-            Require(room.gears.Length == 1 && room.gears[0].wall.x == 160 && room.gears[0].top == 56 && room.gears[0].platform.x == 176 && room.gears[0].platform.y == 128 && room.gears[0].endX == 200,
-                "Keyboard did not place the gear at wall (160,80) with a bridge from 176 to 200 on row 128.");
+            Require(room.crystals.Length == 1 && room.crystals[0].phaseMask == 7, "Keyboard did not paint a white jump crystal.");
             Capture(editor, "editor");
 
             mouse = InputSystem.AddDevice<Mouse>("PhaseMenuVerificationMouse");
@@ -140,17 +115,13 @@ public static class MenuLiveInput
 
             await Point(mouse, view, Slot(PhaseEditor.PlaySlot), MouseButton.Left); await Point(mouse, view, Slot(PhaseEditor.PlaySlot));
             var playtest = editor.Playtest; Require(playtest != null, "The play slot did not start the playtest.");
-            Require(playtest.Controller.lasers.Count == 1 && playtest.Controller.crystals.Count == 1 && playtest.Controller.movers.Length == 1 && playtest.Controller.gears.Length == 1,
-                "Playtest is missing the laser, crystal, platform or gear.");
+            Require(playtest.Controller.lasers.Count == 1 && playtest.Controller.crystals.Count == 1, "Playtest is missing the laser or crystal.");
             int frame = Time.frameCount; double time = playtest.Controller.time, x = playtest.Controller.player.x;
             InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.RightArrow)); await Task.Delay(300);
             InputSystem.QueueStateEvent(keyboard, new KeyboardState()); await Frames(2);
             Require(Time.frameCount > frame && playtest.Controller.time > time && playtest.Controller.player.x > x, "Playtest did not advance with keyboard input.");
-            await Tap(keyboard, Key.X);
-            for (int i = 0; i < 60 && (playtest.Controller.movers[0].x <= 80 || playtest.Controller.movers[0].y >= 80); i++) await Frames(1);
-            Require(playtest.Controller.movers[0].x > 80 && playtest.Controller.movers[0].y < 80, $"Dash did not move the playtest platform along the diagonal (dashes={playtest.Controller.dashes}, x={playtest.Controller.movers[0].x}, y={playtest.Controller.movers[0].y}).");
             File.WriteAllBytes(Reports + "playtest.png", playtest.Frame.EncodeToPNG());
-            string moved = $"frames={Time.frameCount - frame}, controllerSeconds={playtest.Controller.time - time:F3}, dx={playtest.Controller.player.x - x:F0}, platformX={playtest.Controller.movers[0].x:F0}";
+            string moved = $"frames={Time.frameCount - frame}, controllerSeconds={playtest.Controller.time - time:F3}, dx={playtest.Controller.player.x - x:F0}";
 
             await Tap(keyboard, Key.Escape);
             Require(editor.Playtest == null && texture.width == view.x && texture.height == view.y, "Escape did not return to the editor view.");
@@ -162,7 +133,7 @@ public static class MenuLiveInput
             time = level.Controller.time; await Frames(10);
             Require(level.Controller.time > time, "Level1 did not start.");
             File.WriteAllBytes(Reports + "level1.png", level.Frame.EncodeToPNG());
-            string report = $"passed: title→editor ({view.x}x{view.y} view for {Screen.width}x{Screen.height}), keyboard terrain/laser/crystal paint, two-step platform/gear placement, " +
+            string report = $"passed: title→editor ({view.x}x{view.y} view for {Screen.width}x{Screen.height}), keyboard terrain/laser/crystal paint, " +
                 "fixed panel under a top/bottom-row sweep, mouse hover/color/tool/paint/erase, panel drag paints nothing, export/import, play slot → playtest " + moved + ", escape back, title→level1";
             File.WriteAllText(Reports + "live-input.txt", report); return report;
         }

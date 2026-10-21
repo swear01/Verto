@@ -50,7 +50,7 @@ public class MapBridgeTests : InputTestFixture
         var previousCollider = sandbox.GetComponentInChildren<PhaseTerrain>().GetComponent<BoxCollider2D>();
         Assert.That(previousGrid, Is.Not.Null); Assert.That(previousCollider, Is.Not.Null);
         map.lasers=new[]{new DemoLaser{x=160,y=160,direction=LaserDirection.Up,phaseMask=7}};
-        map.crystals=new[]{new DemoCrystal{x=80,y=80,kind=CrystalKind.Dash,phaseMask=2}};
+        map.crystals=new[]{new DemoCrystal{x=80,y=80,phaseMask=2}};
         sandbox.LoadCustomMap(PhaseCustomMap.ToJson(map));
         Assert.That(PhaseSandbox.LastMapError, Is.Empty, PhaseSandbox.LastMapError); yield return null;
         sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
@@ -77,7 +77,7 @@ public class MapBridgeTests : InputTestFixture
             yield return null;var next=Object.FindAnyObjectByType<PhaseSandbox>();
             Assert.That(next.Controller.phase,Is.Zero);Assert.That(next.Frame,Is.Not.Null);
             Assert.That(Object.FindObjectsByType<PhaseSandbox>(FindObjectsSortMode.None).Length,Is.EqualTo(1));
-            foreach (var room in new[] { ("10", "PhaseCrystal1", 1), ("11", "PhaseCrystal2", 2), ("12", "PhaseCrystal3", 2), ("13", "PhaseDemo12", 0) })
+            foreach (var room in new[] { ("10", "PhaseCrystal1", 1), ("11", "PhaseCrystal2", 2), ("12", "PhaseCrystal3", 1), ("13", "PhaseDemo12", 0) })
             {
                 next.SelectDemoRoom(room.Item1); deadline = Time.realtimeSinceStartupAsDouble + 5;
                 while (SceneManager.GetActiveScene().name != room.Item2 && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
@@ -88,15 +88,10 @@ public class MapBridgeTests : InputTestFixture
                 Assert.That(next.GetComponent<PhaseGrid>(), Is.Not.Null);
                 Assert.That(Object.FindObjectsByType<PhaseSandbox>(FindObjectsSortMode.None).Length, Is.EqualTo(1));
             }
-            Assert.That(next.Controller.movers.Length, Is.EqualTo(14));
-            Assert.That(next.Won, Is.False, "selecting the dash-platform room is not a victory");
-            var positions = System.Array.ConvertAll(next.Controller.movers, m => (m.x, m.y));
+            Assert.That(next.Won, Is.False, "selecting a level is not a victory");
             InputSystem.QueueStateEvent(keyboard, new KeyboardState()); yield return null; yield return null;
             InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Z)); yield return new WaitForSeconds(.08f);
             Assert.That(next.Controller.phase, Is.EqualTo(1));
-            InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.RightArrow, Key.X)); yield return new WaitForSeconds(.1f);
-            Assert.That(next.Controller.dashes, Is.EqualTo(1));
-            for (int i = 0; i < positions.Length; i++) Assert.That((next.Controller.movers[i].x, next.Controller.movers[i].y), Is.Not.EqualTo(positions[i]));
             LogAssert.NoUnexpectedReceived();
         }
         finally

@@ -27,7 +27,7 @@ namespace Phase
         int left, top, cols, rows, roomHeight = 180;
         int BottomY => top + rows;
         (int width, int height, int top, int room) canvas;
-        readonly Dictionary<(string, int, int, int, bool, int), Bitmap> sprites = new Dictionary<(string, int, int, int, bool, int), Bitmap>();
+        readonly Dictionary<(string, int, int), Bitmap> sprites = new Dictionary<(string, int, int), Bitmap>();
         readonly Dictionary<(int, int), int> cells = new Dictionary<(int, int), int>();
         readonly Dictionary<string, Color32[]> terrain = new Dictionary<string, Color32[]>();
         List<Block> terrainBlocks;
@@ -293,10 +293,7 @@ namespace Phase
                 else Rect(laser.x+2, laser.y + (laser.direction == LaserDirection.Down ? 6 : 0), 4, 2, edge);
             }
         }
-        static readonly string[][] CrystalRows = {
-            new[] { "..hhhh..", ".hllleh.", "hlllleeh", "hllbbeeh", "hlbbbeeh", "hebbbeeh", ".heeeeh.", "..hhhh.." },
-            new[] { "hhhhhhhh", "hllllleh", "hlllleeh", "hllbbeeh", "hlbbbeeh", "hbbbbeeh", "heeeeeeh", "hhhhhhhh" }
-        };
+        static readonly string[] CrystalRows = { "..hhhh..", ".hllleh.", "hlllleeh", "hllbbeeh", "hlbbbeeh", "hebbbeeh", ".heeeeh.", "..hhhh.." };
         void Crystals(PhaseController s)
         {
             foreach (var crystal in s.crystals)
@@ -305,7 +302,7 @@ namespace Phase
                 int color = surfaceIndices[crystal.Mask]; var highlight = Color(Highlights[color]);
                 var edge = Color(Edges[color]); var body = Color(Fills[color]); var core = Mix(highlight, Color("ffffff"), .6);
                 double alpha = crystal.ActiveInPhase(s.phase) ? 1 : .2;
-                var rows = CrystalRows[crystal.kind == CrystalKind.Jump ? 0 : 1];
+                var rows = CrystalRows;
                 bool Solid(int u, int v) => u >= 0 && u < 8 && v >= 0 && v < 8 && rows[v][u] != '.';
                 for (int y = -1; y <= 8; y++) for (int x = -1; x <= 8; x++)
                 {
@@ -343,135 +340,7 @@ namespace Phase
         {
             for (int py = 0; py < image.height; py++) for (int px = 0; px < image.width; px++) Put(x + px, y + py, image.pixels[py * image.width + px], alpha);
         }
-        static readonly Dictionary<int, Bitmap> moverTiles = new Dictionary<int, Bitmap>();
-        static Bitmap MoverTile(int mask)
-        {
-            if (!moverTiles.TryGetValue(mask, out var tile))
-                moverTiles[mask] = tile = Paint(new[] { "TTTTTTTT","hRbbbbRh","hbbbbbbs","hbhhhhbs","hbhsshbs","hbbbbbbs","hRbbbbRs","ssssssss" },
-                    new Dictionary<char, Color32> { ['T']=Tint("f0f0f0",mask),['R']=Tint("e8e8e8",mask),['b']=Tint("787878",mask),['h']=Tint("a0a0a0",mask),['s']=Tint("484848",mask) });
-            return tile;
-        }
-        // Colored mechanisms map their metal shades onto the terrain palette; mask 7 keeps the neutral art.
-        static Color32 Tint(string hex, int mask)
-        {
-            if (mask == 7) return Color(hex);
-            int c = surfaceIndices[mask];
-            switch (hex)
-            {
-                case "f0f0f0": case "e8e8e8": return Color(Highlights[c]);
-                case "a0a0a0": return Color(Edges[c]);
-                case "787878": return Color(Fills[c]);
-                case "646464": return Mix(Color(Fills[c]), Color(Edges[c]), .5);
-                case "484848": return Mix(Color(Fills[c]), Color("000000"), .4);
-                default: return Color(hex);
-            }
-        }
-        // Inactive mechanisms use the inactive-terrain ghost: faint body and dashed outline, solid while deferred.
-        void Ghost(Block b, bool deferred)
-        {
-            int c = surfaceIndices[b.Mask], x0 = Round(b.x), y0 = Round(b.y), w = Round(b.w), h = Round(b.h);
-            Color32 cap = Color(Highlights[c]), rim = Color(Edges[c]);
-            Rect(x0, y0, w, h, Color(Fills[c]), deferred ? .3 : .12);
-            double alpha = deferred ? .95 : .62;
-            for (int n = 0; n < w; n++) if (deferred || ((x0 + n) & 3) < 2 || n == 0 || n == w - 1)
-            { Rect(x0 + n, y0, 1, 1, cap, alpha); Rect(x0 + n, y0 + h - 1, 1, 1, rim, alpha); }
-            for (int n = 0; n < h; n++) if (deferred || ((y0 + n) & 3) < 2 || n == 0 || n == h - 1)
-            { Rect(x0, y0 + n, 1, 1, rim, alpha); Rect(x0 + w - 1, y0 + n, 1, 1, rim, alpha); }
-            MechanismPips(b, .6);
-        }
-        void MechanismPips(Block b, double alpha)
-        {
-            if (!Mixed(b.Mask)) return;
-            for (int y = Round(b.y); y < b.y + b.h; y += 8) for (int x = Round(b.x); x < b.x + b.w; x += 8)
-                if ((((x - Round(b.x) + y - Round(b.y)) >> 3) & 1) == 0) Pips(x, y, b.Mask, alpha);
-        }
-        void Mover(PhaseController s, MovingPlatform m)
-        {
-            for (int i = 0; i < (m.returns ? 1 : m.nodes.Length); i++)
-            {
-                var a = m.nodes[i]; var b = m.nodes[(i + 1) % m.nodes.Length];
-                double length = Math.Max(Math.Abs(b[0] - a[0]), Math.Abs(b[1] - a[1]));
-                for (int n = 0; n < length; n++) if (n % 4 < 2)
-                {
-                    double x = a[0] + m.w / 2 + (b[0] - a[0]) * n / length, y = a[1] + m.h / 2 + (b[1] - a[1]) * n / length;
-                    if (a[1] == b[1]) Rect(x, y - 1, 1, 2, "c8c8c8", .25);
-                    else if (a[0] == b[0]) Rect(x - 1, y, 2, 1, "c8c8c8", .25);
-                    else Rect(x, y, 1, 1, "c8c8c8", .5);
-                }
-            }
-            bool vertical = true;
-            foreach (var n in m.nodes) vertical &= n[0] == m.nodes[0][0];
-            // Vertical stops mirror the horizontal marker across the track.
-            foreach (var n in m.nodes) Rect(n[0] + m.w / 2 - (vertical ? 2 : 1), vertical ? n[1] + m.h / 2 - 1 : n[1] + 2, 3, 3, "c8c8c8", .5);
-            if (!s.IsSolid(m)) { Ghost(m, s.blockedParts.Contains(m)); return; }
-            Rect(m.x - 1, m.y - 1, m.w + 2, m.h + 2, Ink);
-            var tile = MoverTile(m.Mask);
-            for (double y = m.y; y < m.y + m.h; y += 8) for (double x = m.x; x < m.x + m.w; x += 8) Blit(tile, Round(x) - 1, Round(y) - 1);
-            MechanismPips(m, 1);
-        }
-        void GearWheel(int cx, int cy, double angle)
-        {
-            for (int y = -9; y <= 9; y++) for (int x = -9; x <= 9; x++)
-            {
-                double radius = Math.Sqrt(x * x + y * y), theta = Math.Atan2(y, x) - angle;
-                double edge = Math.Cos(theta * 8) > .35 ? 8.5 : 6.5;
-                if (radius > edge) continue;
-                string color = radius > edge - 1 ? "646464" : "a0a0a0";
-                Put(cx + x, cy + y, Color(color));
-            }
-            Rect(cx - 1, cy - 1, 2, 2, "e8e8e8");
-            Rect(cx + Round(4 * Math.Cos(angle)) - 1, cy + Round(4 * Math.Sin(angle)) - 1, 2, 2, "646464");
-        }
-        static readonly (int x, int y)[] FloorTrain = { (6,-32),(19,-23),(25,-8),(39,0) };
-        static readonly (int x, int y)[] HangingTrain = { (6,16),(14,30),(30,30),(38,16),(39,0) };
-        // Wall and platform share one 8px profile; t=0 is the rack face, teeth fill t0-t1 and stay inside collision.
-        static string Profile(int t, int u, int length, int phase)
-        {
-            bool tooth = ((u - phase) % 6 + 6) % 6 < 3;
-            if (t == 0) return tooth ? "f0f0f0" : "646464";
-            if (t == 1) return tooth ? "a0a0a0" : "484848";
-            if (t == 2) return "a0a0a0";
-            if (t == 3 || u == length - 1) return "484848";
-            if (t == 7 || u == 0) return "a0a0a0";
-            return t == 5 && u % 8 == 4 ? "e8e8e8" : "787878";
-        }
-        void Gear(PhaseController s, ClimbGear gear)
-        {
-            var wall = gear.wall; var platform = gear.platform;
-            int side = platform.y >= gear.bottom + wall.h - 16 ? -1 : 1;
-            int face = Round(wall.x + wall.w), cy = side > 0 ? Round(platform.y + platform.h) + 6 : Round(platform.y) - 7;
-            var train = side > 0 ? HangingTrain : FloorTrain;
-            var angles = new double[train.Length];
-            angles[0] = gear.Lift * Math.PI / 24;
-            for (int i = 1; i < train.Length; i++)
-                angles[i] = -angles[i - 1] + 2 * Math.Atan2(train[i].y - train[i - 1].y, train[i].x - train[i - 1].x) + Math.PI / 8;
-            // Rack phases follow the pinions so every contact shows a tooth in a gap.
-            int inputY = cy + train[0].y, phaseV = inputY - Round(gear.bottom) - 4;
-            double contact = side > 0 ? -Math.PI / 2 : Math.PI / 2, rest = angles[angles.Length - 1] + (train.Length % 2 == 0 ? 1 : -1) * gear.Lift * Math.PI / 24;
-            double nearest = contact - Math.IEEERemainder(contact - rest, Math.PI / 4);
-            int phaseH = Round(face + train[train.Length - 1].x + 24 / Math.PI * Math.Cos(nearest) - gear.startX) - 4;
-            int rail = face - 5, track = side > 0 ? Round(platform.y + platform.h) - 5 : Round(platform.y) + 4;
-            Rect(rail, gear.top, 1, gear.bottom + wall.h - gear.top, "2a2a2a");
-            Rect(rail - 1, gear.top - 1, 3, 1, "484848");
-            double left = Math.Min(gear.startX, gear.endX), right = Math.Max(gear.startX, gear.endX) + platform.w;
-            Rect(left, track, right - left, 1, "2a2a2a");
-            Rect(gear.endX > gear.startX ? right : left - 1, track - 1, 1, 3, "484848");
-            foreach (var block in new[] { wall, platform })
-            {
-                if (!s.IsSolid(block)) { Ghost(block, s.blockedParts.Contains(block)); continue; }
-                Rect(block.x - 1, block.y - 1, block.w + 2, block.h + 2, Ink);
-                bool vertical = block == wall; int bx = Round(block.x), by = Round(block.y);
-                int length = Round(vertical ? block.h : block.w), phase = vertical ? phaseV : phaseH;
-                for (int y = by; y < by + block.h; y++) for (int x = bx; x < bx + block.w; x++)
-                {
-                    int t = vertical ? face - 1 - x : side > 0 ? by + Round(block.h) - 1 - y : y - by;
-                    Rect(x, y, 1, 1, Tint(Profile(t, vertical ? y - by : x - bx, length, phase), block.Mask));
-                }
-                MechanismPips(block, 1);
-            }
-            for (int i = 0; i < train.Length; i++) GearWheel(face + train[i].x, cy + train[i].y, angles[i]);
-        }
-        // The visor shows phase; the helmet warns of fatigue and the scarf retains dash charge.
+        // The visor shows phase.
         static readonly Dictionary<string,string[]> Frames = new Dictionary<string,string[]> {
             ["idle"] = new[] { "..cc......","..dcc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcfeefee.",".dcfeefee.","..kkkkk...",".dccccccc.",".dcccccdc.",".ssssssss.","..bb..bb..","..bb..bb.." },
             ["blink"] = new[] { "..cc......","..dcc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcffffff.",".dcfeefee.","..kkkkk...",".dccccccc.",".dcccccdc.",".ssssssss.","..bb..bb..","..bb..bb.." },
@@ -481,27 +350,20 @@ namespace Phase
             ["run3"] = new[] { "...dcc....","..dccccc..","..dcccccc.","..dccfffff","..dcfeefee","..dcfeefee","...kkkkk..",".dccccccd.",".dcccccdc.",".ssssssss.",".BBBbb....",".BB.bb....","....bb...." },
             ["jump"] = new[] { "..........","ccc.......",".dcccccc..",".dccccccc.",".dccfffff.",".dcfeefee.",".dcfeefee.","..kkkkk...","ddccccccdd",".dccccccc.",".ssssssss.","..bb.BB...","..b...B..." },
             ["fall"] = new[] { "...cc.....","...cc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcfeefee.",".dcfeefee.","d.kkkkk..d","ddccccccdd",".dccccccc.","ssssssssss","..bb..BB..","..b....B.." },
-            ["dash"] = new[] { "..........","ccc.......",".ddccccc..","..dcccccc.","..dccfffff","..dcfeefee","..dcfeefee","...kkkkk..",".dcccccccd","ddccccccc.","ssssss....","bbb...BB..","......BB.." },
-            ["climb0"] = new[] { "..cc....d.","..dcc...d.",".dccccc.d.",".dccccccd.",".dcccfffd.",".dccfeefd.",".dccfeefd.","..kkkkkk..",".dccccccd.",".dcccccdd.",".ssssss...","..bb.bbb..","..bb......" },
-            ["climb1"] = new[] { "..cc......","..dcc.....",".dccccc...",".dccccccd.",".dcccfffd.",".dccfeefd.",".dccfeefd.","..kkkkkkd.",".dccccccd.",".dcccccc..",".ssssss...","..BBB.bb..","......bb.." },
             ["duck"] = new[] { "..........","..cc......",".dcccccc..",".dccfffff.",".dcfeefee.","..kkkkkk..","sdcccccccs",".bbssssbb." },
         };
-        static readonly string[][] Scarf = { new[] { "b96532","763d24" }, new[] { "ffb24d","d5732b" } };
-        Bitmap Sprite(string pose, int facing, int phase, int dash, bool silhouette = false, int tired = 0)
+        static readonly string[] Scarf = { "ffb24d","d5732b" };
+        Bitmap Sprite(string pose, int facing, int phase)
         {
-            var key = (pose, facing, phase, dash, silhouette, tired);
+            var key = (pose, facing, phase);
             if (sprites.TryGetValue(key, out var image)) return image;
-            var palette = new Dictionary<char,Color32> { ['c']=Color("eadfc5"),['d']=Color("b3a386"),['s']=Color("7d6e5c"),['f']=Color("1a1f2c"),['b']=Color("453c59"),['B']=Color("2c263b"),['e']=Color(Highlights[phase]),['k']=Color(Scarf[dash][0]),['h']=Color(Scarf[dash][0]),['H']=Color(Scarf[dash][1]) };
+            var palette = new Dictionary<char,Color32> { ['c']=Color("eadfc5"),['d']=Color("b3a386"),['s']=Color("7d6e5c"),['f']=Color("1a1f2c"),['b']=Color("453c59"),['B']=Color("2c263b"),['e']=Color(Highlights[phase]),['k']=Color(Scarf[0]),['h']=Color(Scarf[0]),['H']=Color(Scarf[1]) };
             var rows = (string[])Frames[pose].Clone();
             for (int y = 0; y < rows.Length && !rows[y].Contains("k"); y++) rows[y] = rows[y].Replace('c','h').Replace('d','H');
-            foreach (char k in "hH") palette[k] = Mix(palette[k], Color("ff5b5e"), tired / 8.0);
-            if (silhouette) foreach (char k in "cdsfbBekhH") palette[k] = Color(Highlights[phase]);
-            return sprites[key] = Paint(rows, palette, facing < 0, !silhouette);
+            return sprites[key] = Paint(rows, palette, facing < 0, true);
         }
         static string Pose(Player p, double t)
         {
-            if (p.climbing) return p.climbMove != 0 && (int)Math.Floor(t * (p.climbMove < 0 ? 8 : 11)) % 2 != 0 ? "climb1" : "climb0";
-            if (p.dashTime > 0) return p.dx != 0 ? "dash" : p.dy < 0 ? "jump" : "fall";
             if (p.ducking) return "duck";
             if (!p.grounded) return p.vy < 0 ? "jump" : "fall";
             if (Math.Abs(p.vx) > 7) return "run" + (int)Math.Floor(t * 12) % 4;
@@ -510,23 +372,21 @@ namespace Phase
         void DrawPlayer(Player p, double t, int phase)
         {
             string name = Pose(p,t); var rows = Frames[name];
-            double fatigue = p.grounded ? 0 : Math.Max(0, Math.Min(1, (55 - p.stamina - (p.wallBoost > 0 ? 27.5 : 0)) / 35));
-            int tired = Round(fatigue * 8 * (.85 + .15 * Math.Pow(Math.Sin(t * Math.PI * 2), 2)));
-            int x = Round(p.x), feet = Round(p.y + p.h) + (fatigue > 0 && (int)Math.Floor(t * (3 + 5 * fatigue)) % 2 != 0 ? 1 : 0);
-            int ky = Array.FindIndex(rows, r => r.Contains("k")), kx = rows[ky].IndexOf('k'), facing = p.facing, dash = p.dash != 0 ? 1 : 0, length = dash != 0 ? 5 : 3;
+            int x = Round(p.x), feet = Round(p.y + p.h);
+            int ky = Array.FindIndex(rows, r => r.Contains("k")), kx = rows[ky].IndexOf('k'), facing = p.facing, length = 5;
             int ax = facing > 0 ? x + kx - 1 : x + 8 - kx, ay = feet - rows.Length + ky;
-            bool still = p.climbing || name == "duck" || (p.grounded && Math.Abs(p.vx) <= 7);
+            bool still = name == "duck" || (p.grounded && Math.Abs(p.vx) <= 7);
             var segments = new (int x, int y, int h)[length];
             for (int i = 1; i <= length; i++)
             {
-                double dy = name == "dash" ? 0 : still ? i * (dash != 0 ? .6 : 1) : i * (dash != 0 ? .15 : .7) + (p.vy > 0 ? -i * .35 : p.vy < 0 ? i * .25 : 0);
-                if (name != "dash") dy += still ? Math.Sin(t * 3 + i) * .3 : Math.Sin(t * 14 - i * 1.2) * .8 * i / length;
-                segments[i - 1] = (p.climbing ? ax - facing * (int)Math.Ceiling(i / 2.0) : ax - facing * i, ay + Round(dy), i <= 2 ? 2 : 1);
+                double dy = still ? i * .6 : i * .15 + (p.vy > 0 ? -i * .35 : p.vy < 0 ? i * .25 : 0);
+                dy += still ? Math.Sin(t * 3 + i) * .3 : Math.Sin(t * 14 - i * 1.2) * .8 * i / length;
+                segments[i - 1] = (ax - facing * i, ay + Round(dy), i <= 2 ? 2 : 1);
             }
             foreach (var q in segments) Rect(q.x, q.y - 1, 1, q.h + 2, Ink);
             var end = segments[length - 1]; Rect(end.x - facing, end.y, 1, end.h, Ink);
-            for (int i = 0; i < length; i++) { var q = segments[i]; Rect(q.x, q.y, 1, q.h, Scarf[dash][i == length - 1 ? 1 : 0]); }
-            Blit(Sprite(name, facing, phase, dash, false, tired), x - 2, feet - rows.Length - 1);
+            for (int i = 0; i < length; i++) { var q = segments[i]; Rect(q.x, q.y, 1, q.h, Scarf[i == length - 1 ? 1 : 0]); }
+            Blit(Sprite(name, facing, phase), x - 2, feet - rows.Length - 1);
             if (p.airJump > 0)
             {
                 int cx = x + 3, cy = feet - (name == "duck" ? 2 : 5);
@@ -564,12 +424,9 @@ namespace Phase
         public void Draw(PhaseController s, bool playerVisible = true)
         {
             Terrain(s);
-            foreach (var gear in s.gears) Gear(s, gear);
             Spikes(s);
-            foreach (var mover in s.movers) Mover(s, mover);
             Crystals(s);
             Lasers(s);
-            foreach (var t in s.trails) Blit(Sprite("dash", s.player.facing, t.phase, 0, true), Round(t.x) - 2, Round(t.y) - 3, t.life * 2);
             if (playerVisible && s.respawn <= 0) DrawPlayer(s.player, s.time, s.phase);
             if (playerVisible && s.respawn > 0 && s.respawn < .12)
             {

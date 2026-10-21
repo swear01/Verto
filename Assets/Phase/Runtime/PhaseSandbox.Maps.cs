@@ -25,7 +25,7 @@ namespace Phase
         public void SelectDemoRoom(string value)
         {
             if (transitioning) { MapResult(false, Busy); return; }
-            try { jumpQueued = dashQueued = false; accumulator = 0; transitioning = true; LoadLevel(value); }
+            try { jumpQueued = false; accumulator = 0; transitioning = true; LoadLevel(value); }
             catch (Exception error) { transitioning = false; MapResult(false, error.Message); }
         }
         // Validation throws before anything changes; success is reported once the scene has loaded.
@@ -47,7 +47,7 @@ namespace Phase
             {
                 var room = PhaseCustomMap.Parse(json);
                 if (pixelCamera.transform.IsChildOf(transform)) pixelCamera.transform.SetParent(null,true);
-                jumpQueued = dashQueued = false; accumulator = 0;
+                jumpQueued = false; accumulator = 0;
                 gameObject.SetActive(false);
                 CreateCustom(room, pixelCamera, pixelMaterial);
                 controlsOpen = false; releaseControls = true;
@@ -93,23 +93,7 @@ namespace Phase
                 {
                     var tile = new GameObject("Phase crystal"); tile.transform.SetParent(root.transform,false);
                     tile.transform.localPosition = new Vector3((float)crystal.x,-(float)crystal.y,0);
-                    var pickup = tile.AddComponent<PhaseCrystal>(); pickup.kind = crystal.kind; pickup.phaseMask = crystal.phaseMask;
-                }
-                // Platform nodes and gear limits are relative to the map root, so they match the map's own coordinates.
-                foreach (var platform in room.platforms ?? Array.Empty<DemoPlatform>())
-                {
-                    var tile = new GameObject("Dash platform"); tile.transform.SetParent(root.transform,false);
-                    var mover = tile.AddComponent<PhaseMovingPlatform>(); mover.size = new Vector2Int((int)platform.w,(int)platform.h);
-                    mover.nodes = platform.nodeX.Select((x,i) => new Vector2Int((int)x,(int)platform.nodeY[i])).ToArray(); mover.returns = platform.returns; mover.phaseMask = platform.phaseMask;
-                    tile.transform.localPosition = new Vector3(mover.nodes[0].x,-mover.nodes[0].y,0);
-                }
-                foreach (var gear in room.gears ?? Array.Empty<DemoGear>())
-                {
-                    var tile = new GameObject("Climb gear"); tile.transform.SetParent(root.transform,false);
-                    tile.transform.localPosition = new Vector3((float)gear.wall.x,-(float)gear.wall.y,0);
-                    var drive = tile.AddComponent<PhaseClimbGear>(); drive.wallSize = new Vector2Int((int)gear.wall.w,(int)gear.wall.h); drive.wallTop = (int)gear.top;
-                    drive.platformStart = new Vector2Int((int)gear.platform.x,(int)gear.platform.y); drive.platformSize = new Vector2Int((int)gear.platform.w,(int)gear.platform.h);
-                    drive.platformEndX = (int)gear.endX; drive.phaseMask = gear.phaseMask;
+                    var pickup = tile.AddComponent<PhaseCrystal>(); pickup.phaseMask = crystal.phaseMask;
                 }
                 var sandbox = root.AddComponent<PhaseSandbox>(); sandbox.custom = true;
                 sandbox.pixelCamera = camera; sandbox.pixelMaterial = material;
