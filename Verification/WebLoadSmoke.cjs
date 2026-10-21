@@ -37,7 +37,7 @@ const meanX = (from, without) => { const xs = [...from].filter(([i]) => !without
   let browser;
   const result = { errors: [], warnings: [], failedRequests: [] };
   try {
-    if (!remote) await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    if (!remote) await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
     browser = await chromium.launch({ channel: 'chromium', headless: true });
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
     page.on('console', message => {
