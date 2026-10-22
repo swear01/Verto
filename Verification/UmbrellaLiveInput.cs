@@ -38,14 +38,14 @@ public static class UmbrellaLiveInput
             PhaseSandbox.ApplyControls(PhaseSandbox.DefaultSlots);
             yield return null;
             keyboard = InputSystem.AddDevice<Keyboard>("PhaseLiveVerification");
-            var c = sandbox.Controller; c.Reset();
+            var c = sandbox.Controller; c.Reset(); int deaths = c.deaths;
             string directory = Path.Combine("TestResults", "Umbrella"); Directory.CreateDirectory(directory);
             int next = 0, screen = 0;
             double deadline = Time.realtimeSinceStartupAsDouble + 30;
             while (!sandbox.Won && Time.realtimeSinceStartupAsDouble < deadline)
             {
                 var p = sandbox.Controller.player;
-                if (sandbox.Controller.deaths > 0) { result.SetException(new InvalidOperationException($"Died at x={p.x:F0} in phase {sandbox.Controller.phase} after {next} jumps.")); yield break; }
+                if (sandbox.Controller.deaths > deaths) { result.SetException(new InvalidOperationException($"Died at x={p.x:F0} in phase {sandbox.Controller.phase} after {next} jumps.")); yield break; }
                 bool rising = !p.grounded && p.vy < 0;
                 bool jump = next < Jumps.Length && p.grounded && p.x >= Jumps[next];
                 if (jump) next++;
@@ -61,10 +61,11 @@ public static class UmbrellaLiveInput
         {
             if (keyboard != null) InputSystem.RemoveDevice(keyboard);
             PhaseSandbox.ApplyControls(slots);
-            result.TrySetException(new InvalidOperationException("The route stopped early; see the Console."));
             InputSystem.settings.backgroundBehavior = focus;
             InputSystem.settings.editorInputBehaviorInPlayMode = editorInput;
             Application.runInBackground = background;
+            // An exception in the route reaches the Console; this only stops the caller from waiting forever.
+            result.TrySetException(new InvalidOperationException("The route stopped early; see the Console."));
         }
     }
 }
