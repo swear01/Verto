@@ -171,10 +171,10 @@ Open `Assets/Scenes/PhaseDemo1.unity`. Rebuild the eight scenes from
 Each room uses `checkpointOnEntry`, resetting the player color while preserving elapsed time and
 jump/death counts. These jam rooms were built around dash and climbing; with both removed they are
 placeholders until the redesign, and some can no longer be cleared.
-Built-in levels link in both directions: Demo1, the classmate color room Demo1.1, Demo2–8, Crystal1–3, the classmate dash-platform room Demo12, then the extra laser rooms Demo13 and Demo14. Backward travel enters a safe standing position near the previous room’s right side. The last level’s right exit freezes play and shows the victory screen; jump restarts level1 in native Play, and Web also offers replay or level selection. Custom maps have no level links. The original sandbox links retain their momentum/color carry behavior.
+Built-in levels link in both directions: Demo1, the classmate color room Demo1.1, Demo2–8, Crystal1–3, the classmate dash-platform room Demo12, the extra laser rooms Demo13 and Demo14, the chaos level Demo15, then Umbrella. Backward travel enters a safe standing position near the previous room’s right side. The last level’s right exit freezes play and shows the victory screen; jump restarts level1 in native Play, and Web also offers replay or level selection. Custom maps have no level links. The original sandbox links retain their momentum/color carry behavior.
 See [room designs and live input verification](Demo.md).
 `BuildWeb.py` verifies these tests and builds `PhaseDemo1`, `PhaseDemo1.1`, `PhaseDemo2` through
-`PhaseDemo8`, followed by `PhaseCrystal1` through `PhaseCrystal3`, the hand-authored `PhaseDemo12`, `PhaseDemo13` through `PhaseDemo14`, and the chaos level `PhaseDemo15`. `DemoWebSmoke.cjs` still replays the jam levels' keyboard routes from
+`PhaseDemo8`, followed by `PhaseCrystal1` through `PhaseCrystal3`, the hand-authored `PhaseDemo12`, `PhaseDemo13` through `PhaseDemo14`, the chaos level `PhaseDemo15`, and `PhaseUmbrella`. `DemoWebSmoke.cjs` still replays the jam levels' keyboard routes from
 the removed `Verification/Routes` folder, so it fails until it is rewritten for the redesigned levels.
 
 ## CI
@@ -271,8 +271,8 @@ jump activation/death and respawn.
 
 ## Runtime map bridge
 
-The active `PHASE` object accepts `SelectDemoRoom("1".."15")` and
-`LoadCustomMap(json)`. Scene selection uses `PhaseSandbox.Levels` (Demo1, Demo1.1, Demo2–8, Crystal1–3, Demo12–14), which also defines both horizontal links.
+The active `PHASE` object accepts `SelectDemoRoom("1".."17")` and
+`LoadCustomMap(json)`. Scene selection uses `PhaseSandbox.Levels` (Demo1, Demo1.1, Demo2–8, Crystal1–3, Demo12–15, Umbrella), which also defines both horizontal links.
 Custom maps are version 2 JSON (`format` `verto-map`, `version`, `generator`, `name`, `size` and `spawn` in cells, `terrain` rows
 of `.`, `1`–`7` and spike-covered `A`–`G`, and typed `objects`: spike, laser, crystal, platform; see
 [the spec](JumpPlatformSpec.md)). Files without a version are v1 (`blocks`, `spikes`, `lasers`, `crystals`, `spawnX`, `spawnY` in
@@ -319,7 +319,7 @@ the eight-room demo.
 Lasers are continuous, with no timer or pulse. The 4px beam starts at the
 emitter cell's mouth and ends at the nearest current solid or the room edge.
 White is always lethal; other masks use the same active phases as terrain
-and spikes. Inactive beams remain visible at reduced opacity. Ghost and
+and spikes. Inactive beams remain visible at reduced opacity. Out-of-phase terrain a beam crosses is painted again in front of the beam. Ghost and
 deferred terrain do not block beams.
 The emitter artwork is not an additional solid collider.
 
@@ -464,7 +464,7 @@ until the redesign. Rebuild only these three scenes through the connected Editor
 The manually edited `PhaseDemo1.1` is separate from these builders.
 
 `PhaseDemo12` is the classmate-authored level formerly named `PhaseDemo1.2`; it is included in the Web build and selectable as **13**, after the crystal rooms. Its fourteen dash platforms were removed with dash, leaving only its terrain. Preserve this handmade scene when rebuilding generated demos.
-`PhaseDemo13` and `PhaseDemo14` are the later classmate laser rooms (`Assets/Phase/Imported/level-a.json` and `level-b.json`). They stay after the authored course, selectable as **14** and **15**. `PhaseDemo15` (select **16**) is the four-screen chaos level from `Assets/Phase/Imported/chaos.json`, which `python3 Verification/ChaosLevel.py Assets/Phase/Imported/chaos.json` generates ([design](ChaosLevel.md)). Leaving level 16 to the right wins. No level has a recorded route. Recreate the three scenes through Pipeline with `unity command eval 'PhaseSandboxBuilder.CreateImportedLevels();'`; it rewrites `PhaseDemo13` and `PhaseDemo14` with new object IDs, so discard those diffs when only the chaos level changed.
+`PhaseDemo13` and `PhaseDemo14` are the later classmate laser rooms (`Assets/Phase/Imported/level-a.json` and `level-b.json`). They stay after the authored course, selectable as **14** and **15**. `PhaseDemo15` (select **16**) is the four-screen chaos level from `Assets/Phase/Imported/chaos.json`, which `python3 Verification/ChaosLevel.py Assets/Phase/Imported/chaos.json` generates ([design](ChaosLevel.md)). The four-screen [Umbrella](Umbrella.md) level `PhaseUmbrella` (`Assets/Phase/Imported/umbrella.json`) follows as **17**; leaving it to the right wins. No level has a recorded route. Recreate the four scenes through Pipeline with `unity command eval 'PhaseSandboxBuilder.CreateImportedLevels();'`; it rewrites `PhaseDemo13` and `PhaseDemo14` with new object IDs, so discard those diffs when only the chaos or umbrella level changed.
 
 ## Press images
 

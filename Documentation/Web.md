@@ -72,7 +72,7 @@ Geometry occupies non-overlapping cells inside the room, 320×176 unless `width`
 including any red laser beam not stopped by red-active terrain.
 Masks are 1 red, 2 blue, 4 green, 3 magenta, 5 yellow, 6 cyan and 7 permanent white.
 Dash platforms (`platforms`), gears (`gears`), dash crystals (`kind` 1) and JSON over 2,000,000 characters are rejected.
-`PHASE.SelectDemoRoom("1".."15")` and `PHASE.LoadCustomMap(json)` remain Unity bridge
+`PHASE.SelectDemoRoom("1".."17")` and `PHASE.LoadCustomMap(json)` remain Unity bridge
 methods, but the page no longer sends them; `phase-map-result` still reports each
 completed load and the browser smoke test waits for it.
 The in-game editor's import/export icons raise `phase-map-import` / `phase-map-export`
@@ -146,6 +146,6 @@ The three crystal routes and the last level use controlled browser time to preve
 from extending held keys. Existing visible-checkpoint routes and UI checks use
 real time. This is functional verification, not a human timing/playtest.
 
-The level select also includes **2**, the classmate color room `PhaseDemo1.1`, and **13**, the classmate dash-platform scene `PhaseDemo12` (formerly `PhaseDemo1.2`). `PhaseDemo13` and `PhaseDemo14` (select **14** and **15**) are the later laser rooms and stay after that course; **16** is the chaos level `PhaseDemo15`. Routes for levels 2 and 14 are recorded. Level 15 does not yet have a 0-death route. Crystal levels10–12 now require distinct jump/dash/refill combinations and keep safe permanent edge landings.
+The level select also includes **2**, the classmate color room `PhaseDemo1.1`, and **13**, the classmate dash-platform scene `PhaseDemo12` (formerly `PhaseDemo1.2`). `PhaseDemo13` and `PhaseDemo14` (select **14** and **15**) are the later laser rooms and stay after that course; **16** is the chaos level `PhaseDemo15` and **17** the four-screen [Umbrella](Umbrella.md) level `PhaseUmbrella`. Routes for levels 2 and 14 are recorded. Level 15 does not yet have a 0-death route. Crystal levels10–12 now require distinct jump/dash/refill combinations and keep safe permanent edge landings.
 
-Built-in levels run in order1–16. Walking through the left edge returns to the previous level; level1’s left edge stays closed. Leaving level16 to the right shows “你贏了”, with replay-level1 and level-select icons.
+Built-in levels run in order1–17. Walking through the left edge returns to the previous level; level1’s left edge stays closed. Leaving level17 to the right shows “你贏了”, with replay-level1 and level-select icons.

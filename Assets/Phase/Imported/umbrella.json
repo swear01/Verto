@@ -1,0 +1,1491 @@
+{
+ "format": "verto-map",
+ "version": 3,
+ "generator": "Verto 0.3",
+ "name": "Umbrella",
+ "rooms": [
+  {
+   "at": [
+    0,
+    0
+   ],
+   "size": [
+    4,
+    1
+   ],
+   "terrain": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "........................................................................................................................222222.....2222222222222222222",
+    "",
+    "",
+    "77777111333332226666644455551113333322222222222266666444555551111111111133333222666644444555555555551111133333332666644444444444..................44444444477777",
+    "",
+    "",
+    "...........................................................................................................................1111111111111..44444",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777....7777777777777....777777777777777777777777777777....777777",
+    "777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777....7777777777777....777777777777777777777777777777....777777"
+   ],
+   "objects": [
+    {
+     "type": "spawn",
+     "cell": [
+      2,
+      18
+     ]
+    },
+    {
+     "type": "laser",
+     "cell": [
+      0,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      1,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      2,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      3,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      4,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      5,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      6,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      7,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      8,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      9,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      10,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      11,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      12,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      13,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      14,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      15,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      16,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      17,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      18,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      19,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      20,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      21,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      22,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      23,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      24,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      25,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      26,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      27,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      28,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      29,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      30,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      31,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      32,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      33,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      34,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      35,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      36,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      37,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      38,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      39,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      40,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      41,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      42,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      43,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      44,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      45,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      46,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      47,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      48,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      49,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      50,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      51,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      52,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      53,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      54,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      55,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      56,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      57,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      58,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      59,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      60,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      61,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      62,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      63,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      64,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      65,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      66,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      67,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      68,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      69,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      70,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      71,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      72,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      73,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      74,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      75,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      76,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      77,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      78,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      79,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      80,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      81,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      82,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      83,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      84,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      85,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      86,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      87,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      88,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      89,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      90,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      91,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      92,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      93,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      94,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      95,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      96,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      97,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      98,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      99,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      100,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      101,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      102,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      103,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      104,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      105,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      106,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      107,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      108,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      109,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      110,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      111,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      112,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      113,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      114,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      115,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      116,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      117,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      118,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      119,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      120,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      121,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      122,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      123,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      124,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      125,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      126,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      127,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      128,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      129,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      130,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      131,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      132,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      133,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      134,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      135,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      136,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      137,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      138,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      139,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      140,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      141,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      142,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      143,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      144,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      145,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      146,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      147,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      148,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      149,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      150,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      151,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      152,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      153,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      154,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      155,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      156,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      157,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      158,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    },
+    {
+     "type": "laser",
+     "cell": [
+      159,
+      0
+     ],
+     "dir": "down",
+     "mask": 7
+    }
+   ]
+  }
+ ]
+}

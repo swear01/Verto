@@ -172,7 +172,7 @@ namespace Phase
             for (int i = 0; i < s.blocks.Count; i++) if (s.blocks[i] is Platform) PaintBlock(s, i);
         }
         const double SpikeAlpha = .8;
-        void PaintBlock(PhaseController s, int i)
+        void PaintBlock(PhaseController s, int i, List<Block> only = null)
         {
             var b = s.blocks[i]; int color = surfaceIndices[b.Mask];
             Color32 cap = Color(Highlights[color]), rim = Color(Edges[color]), body = Color(Fills[color]);
@@ -183,6 +183,7 @@ namespace Phase
             int ox = isPlatform ? (int)b.x : 0, oy = isPlatform ? (int)b.y : 0;
             for (int Y = (int)b.y; Y < (isPlatform ? b.y + b.h : RenderBottom(b)); Y += 8) for (int X = (int)b.x; X < b.x + b.w; X += 8)
             {
+                if (only != null && !only.Exists(o => o.x < X + 8 && o.x + o.w > X && o.y < Y + 8 && o.y + o.h > Y)) continue;
                 bool Neighbor(int dx, int dy) => isPlatform ? X + dx * 8 >= b.x && X + dx * 8 < b.x + b.w && Y + dy * 8 >= b.y && Y + dy * 8 < b.y + b.h
                     : cells.TryGetValue((X + dx * 8, Y + dy * 8), out var kind) && kind == b.Mask;
                 bool u = Neighbor(0,-1), d = Neighbor(0,1), l = Neighbor(-1,0), r = Neighbor(1,0);
@@ -436,6 +437,9 @@ namespace Phase
             Crystals(s);
             Goal(s);
             Lasers(s);
+            // Out-of-phase terrain a beam crosses is painted again in front of it, so it stays readable as cover for another color.
+            var beams = s.lasers.Select(s.LaserBeam).Where(b => b.w > 0 && b.h > 0).ToList();
+            for (int i = 0; i < s.blocks.Count; i++) if (!(s.blocks[i] is Platform) && !s.blocks[i].ActiveInPhase(s.phase)) PaintBlock(s, i, beams);
             if (playerVisible && s.respawn <= 0) DrawPlayer(s.player, s.time, s.phase);
             if (playerVisible && s.respawn > 0 && s.respawn < .12)
             {

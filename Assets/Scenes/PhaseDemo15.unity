@@ -22623,7 +22623,7 @@ MonoBehaviour:
   pixelCamera: {fileID: 1594495103}
   pixelMaterial: {fileID: 2100000, guid: 5bd270b87f0174a5f9797bc29eed0fbe, type: 2}
   leftScene: PhaseDemo14
-  rightScene: 
+  rightScene: PhaseUmbrella
   checkpointOnEntry: 1
   spawn: {x: 16, y: 152}
   roomSize: {x: 1280, y: 180}

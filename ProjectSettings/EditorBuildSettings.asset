@@ -57,6 +57,9 @@ EditorBuildSettings:
     path: Assets/Scenes/PhaseDemo15.unity
     guid: e2143e2d10ae04de0a9767d0e5fbb306
   - enabled: 1
+    path: Assets/Scenes/PhaseUmbrella.unity
+    guid: cfd3dd4f5fc41407eab846aef41ff838
+  - enabled: 1
     path: Assets/Scenes/PhaseSandbox.unity
     guid: 95612d62033eb42338c7fdd522af857f
   - enabled: 1
