@@ -34,18 +34,19 @@ namespace Phase
         // Four bars of Am-F-C-G; every layer carries the bass, plus hats (red), arpeggio (blue) or lead (green).
         static AudioClip Loop(int layer)
         {
-            const float Step = 60f / 128 / 2; int per = (int)(Rate * Step), n = per * 32;
+            const float Beat = 60f / 128 / 2; int per = (int)(Rate * Beat), n = per * 32;
             var data = new float[n]; var random = new System.Random(layer);
             for (int i = 0; i < 32; i++)
             {
                 int bar = i / 8, s = i % 8, at = i * per;
+                float bass = Hz(Bass[bar]), chord = layer == 1 ? Hz(Chord[bar][s % 3] + 12) : 0, lead = layer == 2 && Lead[i] > 0 ? Hz(Lead[i]) : 0;
                 for (int k = 0; k < per; k++)
                 {
                     float t = k / (float)per, e = Mathf.Min(1, k / 40f) * (1 - t), v = 0;
-                    if (s == 0 || s == 3 || s == 4 || s == 6) v += (Mathf.Repeat(Hz(Bass[bar]) * k / Rate, 1) < .5f ? 1 : -1) * .5f * e;
+                    if (s == 0 || s == 3 || s == 4 || s == 6) v += (Mathf.Repeat(bass * k / Rate, 1) < .5f ? 1 : -1) * .5f * e;
                     if (layer == 0 && s % 2 == 1) v += ((float)random.NextDouble() * 2 - 1) * .25f * (1 - t) * (1 - t);
-                    if (layer == 1) v += (Mathf.Repeat(Hz(Chord[bar][s % 3] + 12) * k / Rate, 1) < .25f ? 1 : -1) * .3f * e;
-                    if (layer == 2 && Lead[i] > 0) v += Mathf.Sin(2 * Mathf.PI * Hz(Lead[i]) * k / Rate) * .45f * e;
+                    if (layer == 1) v += (Mathf.Repeat(chord * k / Rate, 1) < .25f ? 1 : -1) * .3f * e;
+                    if (layer == 2 && Lead[i] > 0) v += Mathf.Sin(2 * Mathf.PI * lead * k / Rate) * .45f * e;
                     data[at + k] = v;
                 }
             }
@@ -84,8 +85,9 @@ namespace Phase
             Init();
             var p = c.player;
             // Each jump moves the music to that phase's layer.
+            const float MusicVolume = .1f, MusicFadeSeconds = .5f;
             for (int i = 0; i < 3; i++)
-                music[i].volume = Mathf.MoveTowards(music[i].volume, i == Math.Max(0, c.phase) % 3 ? .1f : 0, .1f / .5f * (float)PhaseController.Dt);
+                music[i].volume = Mathf.MoveTowards(music[i].volume, i == Math.Max(0, c.phase) % 3 ? MusicVolume : 0, MusicVolume / MusicFadeSeconds * (float)PhaseController.Dt);
             if (c.deaths > was.deaths) Play(death);
             else if (c.jumps > was.jumps) Play(jump[Math.Max(0, c.phase) % 3]);
             else if (p.grounded && !was.grounded && c.respawn <= 0) Play(land);

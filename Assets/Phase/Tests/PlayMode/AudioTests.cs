@@ -6,14 +6,17 @@ using UnityEngine.TestTools;
 
 public class AudioTests
 {
+    [TearDown]
+    public void TearDown() { Object.DestroyImmediate(GameObject.Find("PHASE audio")); }
+
     [UnityTest]
     public IEnumerator MusicLoopsAndFollowsPhase()
     {
         var c = new PhaseController(new Block[0], 32, 100);
         var was = (c.jumps, c.deaths, c.player.grounded, c.player.airJump);
         PhaseAudio.Step(c, was);
-        var layers = Object.FindAnyObjectByType<AudioListener>().GetComponents<AudioSource>();
-        var music = System.Array.FindAll(layers, s => s.loop);
+        var music = System.Array.FindAll(Object.FindObjectsByType<AudioSource>(), s => s.loop);
+        System.Array.Sort(music, (a, b) => string.CompareOrdinal(a.clip.name, b.clip.name));
         Assert.AreEqual(3, music.Length);
         foreach (var m in music) { Assert.IsTrue(m.isPlaying); Assert.Greater(m.clip.length, 5f); }
         for (int i = 0; i < 90; i++) PhaseAudio.Step(c, was);
