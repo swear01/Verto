@@ -54,7 +54,7 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 16 controller cases, 6 laser cases, 8 crystal cases, 14 pixel cases, 12 platform cases,
-4 Grid authoring cases, 11 custom-map cases (validation, version migration, newer-version refusal, round trips), 6 scrolling-room cases, 15 world cases
+4 Grid authoring cases, 10 custom-map cases (validation, version migration, newer-version refusal, round trips), 6 scrolling-room cases, 15 world cases
 (map format v3, room changes, open top, respawns, goal, camera) and 3 key-binding cases
 (validation, PlayerPrefs persistence, key caps) in Edit Mode. The 22 Play Mode cases cover a big-room camera
 following a keyboard run, bindings, pause/release gating, room persistence, crystal triggers, imported maps, the
