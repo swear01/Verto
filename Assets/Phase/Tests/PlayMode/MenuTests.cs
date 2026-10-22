@@ -587,6 +587,50 @@ public class MenuTests : InputTestFixture
     }
 
     [UnityTest]
+    public IEnumerator EditorKeepsPlatformsOnTheirPathsWhenScrolledRefusesASplitThroughASpawnAndSavesCompactDrafts()
+    {
+        string saved = PlayerPrefs.HasKey(PhaseEditor.DraftKey) ? PlayerPrefs.GetString(PhaseEditor.DraftKey) : null;
+        PlayerPrefs.DeleteKey(PhaseEditor.DraftKey);
+        try
+        {
+            var rig = new EditorRig(); yield return OpenEditor(rig); var editor = rig.editor;
+            var tall = Plain(0, 0, 1, 2);
+            tall.platforms = new[] { new DemoPlatform { length = 3, pivots = new[] { (10, 40), (20, 40) }, spikes = new SpikeDirection[0] } };
+            tall.spawnX = 24; tall.spawnY = 21 * 8;
+            editor.ImportDraft(PhaseCustomMap.ToJson(new PhaseWorld { name = "自訂地圖", rooms = new[] { tall } }));
+            Assert.That(editor.RoomCount, Is.EqualTo(1));
+            Assert.That(PlayerPrefs.GetString(PhaseEditor.DraftKey).Contains("\n"), Is.False, "drafts are saved compact");
+
+            // Scrolled down, the platform body sits on its drawn path: it moved up by exactly the scroll.
+            double y0 = editor.Preview().platforms[0].y; int scroll0 = editor.Scroll.y;
+            for (int i = 0; i < 2; i++)
+            {
+                var from = new Vector2Int(160, 150); var to = from - new Vector2Int(0, 80);
+                yield return Point(rig.view, from, MouseButton.Middle); yield return Point(rig.view, to, MouseButton.Middle); yield return Point(rig.view, to);
+            }
+            Assert.That(editor.Scroll.y, Is.GreaterThan(scroll0));
+            Assert.That(editor.Preview().platforms[0].y, Is.EqualTo(y0 - 8 * (editor.Scroll.y - scroll0)), "the platform follows the scroll");
+            for (int i = 0; i < 2; i++)
+            {
+                var from = new Vector2Int(160, 70); var to = from + new Vector2Int(0, 80);
+                yield return Point(rig.view, from, MouseButton.Middle); yield return Point(rig.view, to, MouseButton.Middle); yield return Point(rig.view, to);
+            }
+
+            // A horizontal line between the two cells of the spawn's footprint is refused.
+            string before = PhaseCustomMap.ToJson(editor.World());
+            yield return Pick(rig, RoomSlot); yield return ClickCell(rig, 10, 22);
+            Assert.That((editor.RoomCount, editor.Flashing), Is.EqualTo((1, true)), "a split through a spawn is refused");
+            Assert.That(PhaseCustomMap.ToJson(editor.World()) == before, Is.True);
+            LogAssert.NoUnexpectedReceived();
+        }
+        finally
+        {
+            if (saved == null) PlayerPrefs.DeleteKey(PhaseEditor.DraftKey); else PlayerPrefs.SetString(PhaseEditor.DraftKey, saved);
+            PlayerPrefs.Save();
+        }
+    }
+
+    [UnityTest]
     public IEnumerator EditorExportsAndImportsAMultiRoomWorldAndShowsItInTheOverview()
     {
         string saved = PlayerPrefs.HasKey(PhaseEditor.DraftKey) ? PlayerPrefs.GetString(PhaseEditor.DraftKey) : null, clipboard = GUIUtility.systemCopyBuffer;

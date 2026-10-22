@@ -215,10 +215,10 @@ namespace Phase
             }
             if (room.goal != null) AddCells(room.goal.x, room.goal.y, 8, 8, occupied);
         }
-        public static string ToJson(PhaseWorld world)
+        public static string ToJson(PhaseWorld world, bool compact = false)
         {
             if (world?.rooms == null || world.rooms.Length == 0) throw new ArgumentException("地圖至少需要一個房間。");
-            return World(world.name, world.rooms.Select(RoomData)).ToString(Formatting.Indented);
+            return World(world.name, world.rooms.Select(RoomData)).ToString(compact ? Formatting.None : Formatting.Indented);
         }
         static JArray Cell(double x, double y) => new JArray((int)x / 8, (int)y / 8);
         static JObject World(string name, IEnumerable<JObject> rooms) => new JObject {

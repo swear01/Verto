@@ -187,7 +187,14 @@ namespace Phase
             // A draft that cannot be written keeps the previous one rather than failing every frame.
             try
             {
-                if (rooms.Count == 0) PlayerPrefs.DeleteKey(DraftKey); else PlayerPrefs.SetString(DraftKey, PhaseCustomMap.ToJson(World()));
+                if (rooms.Count == 0) PlayerPrefs.DeleteKey(DraftKey);
+                else
+                {
+                    // A draft the loader would refuse is not written; the previous one stays.
+                    string json = PhaseCustomMap.ToJson(World(), true);
+                    if (json.Length > PhaseCustomMap.MaxJsonLength) { Flash(.4f); dirty = false; return; }
+                    PlayerPrefs.SetString(DraftKey, json);
+                }
                 PlayerPrefs.Save();
             }
             catch (ArgumentException) { }
@@ -439,6 +446,8 @@ namespace Phase
             int cut = vertical ? first.Cols : first.RowCount;
             var shift = vertical ? new Vector2Int(cut, 0) : new Vector2Int(0, cut);
             bool Second(Vector2Int c) => (vertical ? c.x : c.y) >= cut;
+            // A spawn is two cells tall: a horizontal line may not run between them.
+            if (!vertical && room.spawns.Any(sp => sp.y == cut - 1)) { Flash(.4f); return true; }
             for (int i = 0; i < room.tools.Length; i++)
             {
                 if (room.tools[i] == Erase) continue;
@@ -515,7 +524,7 @@ namespace Phase
         PhaseController scene;
         Vector2Int sceneView;
         // The preview is a controller over exactly what the frame shows: every room's cells in view, moved so the frame's corner is (0, 0).
-        PhaseController Preview()
+        public PhaseController Preview()
         {
             if (scene != null && sceneView == View) return scene;
             sceneView = View; var origin = Origin;
@@ -539,10 +548,12 @@ namespace Phase
                 foreach (var platform in room.platforms)
                 {
                     var body = new Platform(platform.vertical, platform.length, platform.pivots.Select(p => (p.x + room.OriginX, p.y + room.OriginY)), platform.reverse, platform.phaseMask, platform.spiked, platform.spikes);
-                    body.Move(-origin.x, -origin.y); moving.Add(body);
+                    moving.Add(body);
                 }
             }
             scene = new PhaseController(blocks, -100, -100, spikes, lasers, crystals, width, height, moving) { flash = 0 };
+            // The constructor restarts the platforms at their pivots, so the move into frame space comes after it.
+            foreach (var body in moving) body.Move(-origin.x, -origin.y);
             foreach (var pair in beams) scene.beams[pair.Key] = pair.Value;
             beams.Clear();
             var goal = rooms.FirstOrDefault(r => r.goal != null);
