@@ -25,7 +25,7 @@ namespace Phase
         public DemoSpike[] spikes;
         public DemoLaser[] lasers;
         public DemoCrystal[] crystals;
-        public DemoPlatform[] platforms;
+        [NonSerialized] public DemoPlatform[] platforms;
         // Custom maps may be larger than one screen; 0 keeps the default 320×176 grid.
         public int width, height;
         public int GridWidth => width != 0 ? width : 320;
