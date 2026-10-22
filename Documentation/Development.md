@@ -1,7 +1,7 @@
 # Development
 
 Use the official Unity CLI and the project's `com.unity.pipeline` package to drive
-a resident Unity **6000.4.7f1** GUI Editor. Scene construction, tests, input checks,
+a resident Unity **6000.6.7f1** GUI Editor. Scene construction, tests, input checks,
 captures and Console inspection all run through the live Pipeline connection.
 Do not use direct Editor `-batchmode` / `-executeMethod` invocations or cold
 `unity run` / `unity test` jobs for this workflow. Fix a failed Pipeline connection
@@ -17,7 +17,7 @@ first Play Mode test run. The Editor resolves the committed package manifest its
 On macOS, launch a new agent Editor hidden and without activating it:
 
 ```sh
-open -g -j -n -a /Applications/Unity/Hub/Editor/6000.4.7f1/Unity.app --args -projectPath "$PWD"
+open -g -j -n -a /Applications/Unity/Hub/Editor/6000.6.7f1/Unity.app --args -projectPath "$PWD"
 ```
 
 This macOS launch only controls window activation; all Editor operations below
@@ -68,7 +68,7 @@ Before tests or live Play checks, `BackgroundEditor.Run` sets every existing
 Game/Simulator view to Play Unfocused. This is an Editor layout preference, not
 a game setting; Unity’s public `SetPlayModeFocused(false)` maximizes the view
 instead. The script fails if the installed Editor API changes or no view exists.
-Run it with Play stopped. It also initializes Unity6000.4's local
+Run it with Play stopped. It also initializes Unity 6000.6's local
 `UserSettings/Search.index` before Play, preventing first-use
 `SearchDatabase.EnumerateAll` exceptions. The index stays untracked.
 Never pass `--focus true` to `recompile` or call `editor_focus`. Wait for a

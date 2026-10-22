@@ -2,7 +2,7 @@
 
 [Play online](https://verto.5334601.xyz/), published by hand; see [Online play](#online-play).
 
-Unity **6000.4.7f1**, Web Build Support and Unity CLI are required. Open the GUI
+Unity **6000.6.7f1**, Web Build Support and Unity CLI are required. Open the GUI
 Editor as described in [Development](Development.md), then run:
 
 ```sh
@@ -124,7 +124,7 @@ commit or a newer one, so an older build never replaces a newer one. Run
 or a URL, starts level1 from the title in headless Chromium, walks right and
 requires a clean console.
 
-References: [Unity Web deployment](https://docs.unity3d.com/6000.4/Documentation/Manual/webgl-deploying.html),
+References: [Unity Web deployment](https://docs.unity3d.com/6000.6/Documentation/Manual/webgl-deploying.html),
 [Pages direct upload](https://developers.cloudflare.com/pages/get-started/direct-upload/),
 [Pages limits](https://developers.cloudflare.com/pages/platform/limits/).
 
