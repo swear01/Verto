@@ -21,14 +21,14 @@ other colours. A jump in the wrong colour, from an extra or a missing hop, is al
 keep the red → blue → green rhythm, and the player never waits in place.
 
 ## Tools
-- `Verification/ChaosLevel.py [out.json]` generates the map (verto-map v3, one 4×1 room, saved as `Assets/Phase/Imported/chaos.json`) and prints any
+- `Verification/ChaosLevel.py [out.json]` generates the map (verto-map v3, one 4×1 room, saved as `Assets/Phase/Imported/chaos.json`) and exits with an error on any
   jump that breaks the rule above.
 - The stopper positions use the arc measured from the controller: a hop spans 62 px, and its apex is 27 px
   above the ground. The route survives takeoff offsets of ±8 px in a headless controller simulation.
 
 ## Ideas kept for other levels
 - **Umbrella:** white laser rain from the ceiling, with coloured shields that let only your colour pass
-  safely. Being built in its own level.
+  safely.
 - **Pits:** a pit forces a jump at a fixed spot, so the player must count earlier hops to arrive in the
   right colour.
 - **Moving shields:** jump platforms (one step per jump) as stoppers that travel with the player.

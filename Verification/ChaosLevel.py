@@ -5,7 +5,6 @@ FP={16:(24,54),17:(17,61),18:(10,66)}   # px a hop's body spans in each beam ban
 CELL={16:(21,57),17:(15,63),18:(6,67)}   # same for whole cells (spiked stoppers reach .5px past their cell)
 TOL=8                                   # takeoff timing slack, px
 R,B,G=1,2,4
-# (takeoff px, spike obstacle under the hop, wall after this hop)
 # (spike obstacle under the hop, wall after this hop); takeoffs follow from the gaps
 PLAN=[(1,1),(1,0),(1,1),(1,0),(0,1),(1,0),(1,1),(0,0),(1,1),(1,0),(1,0),(1,1)]
 ROUTE=[]; x=40
@@ -24,7 +23,7 @@ for i,(x,o,w) in enumerate(ROUTE):
     if w:
         end=x+TOL+67; nxt=ROUTE[i+1][0]-TOL+10 if i+1<len(ROUTE) else 8*(W-1)
         c=math.ceil(end/8)+1; walls.append(c)   # wall cols c,c+1; emitters c-1 (left) and c+2 (right)
-        assert 8*(c-1)>=end and 8*(c+3)<=nxt, (x,c)
+        assert 8*(c-1)>=end and 8*(c+3)<=nxt, f'no room for the wall after the hop at {x}px'
         for r in range(0,19): grid[r][c]=grid[r][c+1]='7'
 bounds=[-3]+walls+[W]   # zone i spans between wall bounds[i] and bounds[i+1]
 beams=[]  # (row, colour, from px, to px)
@@ -58,8 +57,7 @@ for z in range(len(bounds)-1):
 for x,o,p in hops:
     for q in range(3):
         hit=any(m==col(q) and a<x+TOL+FP[r][1] and b>x-TOL+FP[r][0] for r,m,a,b in beams)
-        tag='OK' if hit!=(q==p) else 'BAD'
-        if tag=='BAD': print('hop',x,'phase',p,'colour',q,'hit' if hit else 'unguarded')
+        if hit==(q==p): sys.exit(f"hop {x} phase {p}: colour {q} {'hit' if hit else 'unguarded'}")
 json.dump({"format":"verto-map","version":3,"generator":"Verto 0.3","name":"Chaos","rooms":[{"at":[0,0],"size":[4,1],"terrain":[''.join(r) for r in grid],"objects":objs}]},open(sys.argv[1] if len(sys.argv)>1 else 'chaos.json','w'))
 print(len(objs),'objects; walls',walls)
 for r in grid[12:]: print(''.join(r))
