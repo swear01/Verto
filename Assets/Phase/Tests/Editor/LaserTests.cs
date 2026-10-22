@@ -56,6 +56,19 @@ public class LaserTests
 
 
     [Test]
+    public void AnInactiveBeamIsStoppedOnlyByWhatIsSolidInItsNextPhase()
+    {
+        var blue = new Laser(8, 80, LaserDirection.Right, 2); var green = new Laser(8, 120, LaserDirection.Right, 4);
+        var platform = new Platform(false, 1, new[] { (10, 10), (10, 11) }, phaseMask: 1);
+        var s = new PhaseController(new[] { new Block(80,120,8,8,phaseMask:1), new Block(160,120,8,8,phaseMask:4) }, 100, 40,
+            lasers: new[] { blue, green }, platforms: new[] { platform });
+        Assert.That(s.LaserBeam(blue).w, Is.EqualTo(304), "red platform does not stop a blue beam");
+        Assert.That(s.LaserBeam(green).w, Is.EqualTo(144), "green beam skips red terrain and stops at green terrain");
+        s.phase = 1; Assert.That(s.LaserBeam(green).w, Is.EqualTo(144));
+        s.phase = 2; Assert.That(s.LaserBeam(blue).w, Is.EqualTo(304));
+    }
+
+    [Test]
     public void SweepsCatchFastCrossingsAndIgnoreTangency()
     {
         var laser=new Laser(120,0,LaserDirection.Down);

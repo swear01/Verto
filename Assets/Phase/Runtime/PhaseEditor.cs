@@ -560,24 +560,27 @@ namespace Phase
             if (goal != null) scene.goal = new Block((goal.OriginX + goal.goal.Value.x) * 8 - origin.x, (goal.OriginY + goal.goal.Value.y) * 8 - origin.y, 8, 8);
             return scene;
         }
-        // Each laser of a room that reaches into the view: its beam runs inside its own room, stopped by that room's solids, then is clipped to the frame.
+        // Each laser of a room that reaches into the view: its beam runs inside its own room, stopped by that room's solids in the laser's
+        // first phase, then is clipped to the frame.
         readonly Dictionary<Laser, Block> beams = new Dictionary<Laser, Block>();
         void AddBeams(EditRoom room, Vector2Int origin, int width, int height, List<Laser> lasers)
         {
-            List<Block> solids = null;
+            var solidsIn = new List<Block>[3];
             for (int i = 0; i < room.tools.Length; i++)
             {
                 int tool = room.tools[i];
                 if (tool < LaserTool || tool >= CrystalTool) continue;
+                int phase = 0; while (phase < 2 && (room.colors[i] & (1 << phase)) == 0) phase++;
+                var solids = solidsIn[phase];
                 if (solids == null)
                 {
-                    solids = new List<Block>();
+                    solids = solidsIn[phase] = new List<Block>();
                     for (int j = 0; j < room.tools.Length; j++)
-                        if ((room.tools[j] == Terrain || room.tools[j] == Covered) && (room.colors[j] & 1) != 0) solids.Add(new Block(j % room.Cols * 8, j / room.Cols * 8, 8, 8));
+                        if ((room.tools[j] == Terrain || room.tools[j] == Covered) && (room.colors[j] & (1 << phase)) != 0) solids.Add(new Block(j % room.Cols * 8, j / room.Cols * 8, 8, 8));
                     foreach (var platform in room.platforms)
                     {
                         var body = new Platform(platform.vertical, platform.length, platform.pivots, platform.reverse, platform.phaseMask, platform.spiked, platform.spikes);
-                        if (body.ActiveInPhase(0)) solids.Add(body);
+                        if (body.ActiveInPhase(phase)) solids.Add(body);
                     }
                 }
                 int lx = i % room.Cols * 8, ly = i / room.Cols * 8; var direction = (LaserDirection)(tool - LaserTool);

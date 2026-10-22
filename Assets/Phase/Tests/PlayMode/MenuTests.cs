@@ -554,6 +554,12 @@ public class MenuTests : InputTestFixture
         try
         {
             var rig = new EditorRig(); yield return OpenEditor(rig); var editor = rig.editor;
+            // A beam stops only at terrain solid in the laser's own phase.
+            var room = Plain(0, 0, 1, 1); room.blocks = room.blocks.Append(new Block(160, 80, 8, 8, phaseMask: 1)).Append(new Block(200, 80, 8, 8, phaseMask: 1)).ToArray();
+            room.lasers = new[] { new DemoLaser { x = 160, y = 0, direction = LaserDirection.Down, phaseMask = 2 }, new DemoLaser { x = 200, y = 0, direction = LaserDirection.Down, phaseMask = 1 } };
+            editor.ImportDraft(PhaseCustomMap.ToJson(new PhaseWorld { name = "自訂地圖", rooms = new[] { room } }));
+            var preview = editor.Preview();
+            Assert.That(preview.lasers.Select(l => preview.LaserBeam(l).h), Is.EqualTo(new[] { 160.0, 72.0 }), "red terrain stops only the red beam");
             var tall = Plain(0, 0, 1, 2); tall.lasers = new[] { new DemoLaser { x = 160, y = 0, direction = LaserDirection.Down, phaseMask = 1 } };
             editor.ImportDraft(PhaseCustomMap.ToJson(new PhaseWorld { name = "自訂地圖", rooms = new[] { tall } }));
             Assert.That(editor.RoomCount, Is.EqualTo(1));
