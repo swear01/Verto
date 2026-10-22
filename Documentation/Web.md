@@ -146,6 +146,6 @@ The three crystal routes and the last level use controlled browser time to preve
 from extending held keys. Existing visible-checkpoint routes and UI checks use
 real time. This is functional verification, not a human timing/playtest.
 
-The level select also includes **2**, the classmate color room `PhaseDemo1.1`, and **13**, the classmate dash-platform scene `PhaseDemo12` (formerly `PhaseDemo1.2`). `PhaseDemo13` and `PhaseDemo14` (select **14** and **15**) are the later laser rooms and stay after that course; **16** is the chaos level `PhaseDemo15`. Routes for levels 2 and 14 are recorded. Level 15 does not yet have a 0-death route. Crystal levels10–12 now require distinct jump/dash/refill combinations and keep safe permanent edge landings.
+The level select also includes **2**, the classmate color room `PhaseDemo1.1`, and **13**, the classmate dash-platform scene `PhaseDemo12` (formerly `PhaseDemo1.2`). `PhaseDemo13` and `PhaseDemo14` (select **14** and **15**) are the later laser rooms and stay after that course; **16** is the chaos level `PhaseDemo15` and **17** the moving-platform room `PhaseGear`. Routes for levels 2 and 14 are recorded. Level 15 does not yet have a 0-death route. Crystal levels10–12 now require distinct jump/dash/refill combinations and keep safe permanent edge landings.
 
-Built-in levels run in order1–16. Walking through the left edge returns to the previous level; level1’s left edge stays closed. Leaving level16 to the right shows “你贏了”, with replay-level1 and level-select icons.
+Built-in levels run in order1–17. Walking through the left edge returns to the previous level; level1’s left edge stays closed. Leaving level17 to the right shows “你贏了”, with replay-level1 and level-select icons.

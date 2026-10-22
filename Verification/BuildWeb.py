@@ -7,7 +7,7 @@ import time
 
 PROJECT = Path(__file__).resolve().parent.parent
 REPORTS = PROJECT / "TestResults/Web"
-SCENES = ["Assets/Scenes/PhaseTitle.unity", "Assets/Scenes/PhaseDemo1.unity", "Assets/Scenes/PhaseDemo1.1.unity"] + [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(2, 9)] + [f"Assets/Scenes/PhaseCrystal{i}.unity" for i in range(1, 4)] + ["Assets/Scenes/PhaseDemo12.unity", "Assets/Scenes/PhaseDemo13.unity", "Assets/Scenes/PhaseDemo14.unity", "Assets/Scenes/PhaseDemo15.unity", "Assets/Scenes/PhaseEditor.unity"]
+SCENES = ["Assets/Scenes/PhaseTitle.unity", "Assets/Scenes/PhaseDemo1.unity", "Assets/Scenes/PhaseDemo1.1.unity"] + [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(2, 9)] + [f"Assets/Scenes/PhaseCrystal{i}.unity" for i in range(1, 4)] + ["Assets/Scenes/PhaseDemo12.unity", "Assets/Scenes/PhaseDemo13.unity", "Assets/Scenes/PhaseDemo14.unity", "Assets/Scenes/PhaseDemo15.unity", "Assets/Scenes/PhaseGear.unity", "Assets/Scenes/PhaseEditor.unity"]
 
 
 def command(name, *args):

@@ -22,7 +22,7 @@ public class MapBridgeTests : InputTestFixture
         yield return SceneManager.LoadSceneAsync("PhaseDemo1");
         var original=Object.FindAnyObjectByType<PhaseSandbox>();var controller=original.Controller;
         original.SetControlsOpen("true");
-        foreach(string value in new[]{null,"","02","09","17","10 ","+10","PhaseDemo2"}) original.SelectDemoRoom(value);
+        foreach(string value in new[]{null,"","02","09","18","10 ","+10","PhaseDemo2"}) original.SelectDemoRoom(value);
         foreach(string json in new[]{null,"{}",new string(' ',PhaseCustomMap.MaxJsonLength+1),
             "{\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phase\":-1,\"phaseMask\":7}],\"spawnX\":1,\"spawnY\":152}",
             "{\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phase\":-1,\"phaseMask\":7}],\"spawnX\":24,\"spawnY\":152,\"movers\":[{}]}",

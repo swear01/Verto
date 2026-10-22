@@ -18,7 +18,7 @@ class PipelineFailures(unittest.TestCase):
                     BuildWeb.recompile()
 
     def test_release_contains_demo_and_crystal_scenes_in_order(self):
-        self.assertEqual(BuildWeb.SCENES, ["Assets/Scenes/PhaseTitle.unity", "Assets/Scenes/PhaseDemo1.unity", "Assets/Scenes/PhaseDemo1.1.unity"] + [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(2, 9)] + [f"Assets/Scenes/PhaseCrystal{i}.unity" for i in range(1, 4)] + ["Assets/Scenes/PhaseDemo12.unity", "Assets/Scenes/PhaseDemo13.unity", "Assets/Scenes/PhaseDemo14.unity", "Assets/Scenes/PhaseDemo15.unity", "Assets/Scenes/PhaseEditor.unity"])
+        self.assertEqual(BuildWeb.SCENES, ["Assets/Scenes/PhaseTitle.unity", "Assets/Scenes/PhaseDemo1.unity", "Assets/Scenes/PhaseDemo1.1.unity"] + [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(2, 9)] + [f"Assets/Scenes/PhaseCrystal{i}.unity" for i in range(1, 4)] + ["Assets/Scenes/PhaseDemo12.unity", "Assets/Scenes/PhaseDemo13.unity", "Assets/Scenes/PhaseDemo14.unity", "Assets/Scenes/PhaseDemo15.unity", "Assets/Scenes/PhaseGear.unity", "Assets/Scenes/PhaseEditor.unity"])
         for scene in BuildWeb.SCENES:
             self.assertTrue((BuildWeb.PROJECT / scene).is_file(), scene)
 

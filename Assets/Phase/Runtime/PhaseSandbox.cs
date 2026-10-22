@@ -35,7 +35,7 @@ namespace Phase
         public bool Won { get; private set; }
         public static readonly string[] Levels = {
             "PhaseDemo1", "PhaseDemo1.1", "PhaseDemo2", "PhaseDemo3", "PhaseDemo4", "PhaseDemo5", "PhaseDemo6", "PhaseDemo7", "PhaseDemo8",
-            "PhaseCrystal1", "PhaseCrystal2", "PhaseCrystal3", "PhaseDemo12", "PhaseDemo13", "PhaseDemo14", "PhaseDemo15"
+            "PhaseCrystal1", "PhaseCrystal2", "PhaseCrystal3", "PhaseDemo12", "PhaseDemo13", "PhaseDemo14", "PhaseDemo15", "PhaseGear"
         };
         int level = -1;
         bool custom;
