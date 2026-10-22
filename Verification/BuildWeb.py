@@ -18,6 +18,10 @@ def command(name, *args):
     data = json.loads(completed.stdout)
     if completed.returncode or not data.get("success"):
         raise RuntimeError(f"{name}: {data.get('errors')}")
+    # While this project's Editor is still connecting, the CLI can hand the command to another open Editor.
+    target = (data["data"].get("target") or {}).get("projectPath")
+    if not target or Path(target).resolve() != PROJECT:
+        raise RuntimeError(f"{name}: answered by {target}, not {PROJECT}")
     result = data["data"]["result"]
     if isinstance(result, dict) and result.get("success") is False:
         raise RuntimeError(f"{name}: {result}")
@@ -78,7 +82,7 @@ def main():
         ("editor", "ControllerTests", 16), ("editor", "LaserTests", 6),
         ("editor", "CrystalTests", 8),
         ("editor", "PixelTests", 14), ("editor", "GridGeometryTests", 4),
-        ("editor", "CustomMapTests", 10), ("editor", "PlatformTests", 12), ("editor", "KeyBindingTests", 3), ("editor", "ScrollRoomTests", 6),
+        ("editor", "CustomMapTests", 11), ("editor", "PlatformTests", 12), ("editor", "KeyBindingTests", 3), ("editor", "ScrollRoomTests", 6), ("editor", "WorldTests", 15),
         ("playmode", "SandboxTests", 11), ("playmode", "MapBridgeTests", 1), ("playmode", "MenuTests", 10),
     ]:
         wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)

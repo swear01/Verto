@@ -31,7 +31,7 @@ public class CustomMapTests
         };
         // Block's computed Mask is not part of the wire schema.
         foreach(JObject block in data["blocks"])block.Remove("Mask");
-        string json=data.ToString(Formatting.None);var map=PhaseCustomMap.Parse(json);
+        string json=data.ToString(Formatting.None);var map=PhaseCustomMap.ParseRoom(json);
         Assert.That(map.crystals,Is.Null);Assert.That(map.lasers,Is.Null);
         Assert.That(map.blocks.Length,Is.EqualTo(40),"a 320x8 floor becomes 40 cells");Assert.That(map.spikes.Length,Is.EqualTo(1));
         foreach(var mutate in new Action<JObject>[] {
@@ -47,11 +47,11 @@ public class CustomMapTests
             d=>d["blocks"][0]["phaseMask"]=1.5,d=>((JObject)d["spikes"][0]).Remove("direction")
         }) {
             var bad=(JObject)data.DeepClone();mutate(bad);
-            Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(bad.ToString(Formatting.None)));
+            Assert.Throws<ArgumentException>(()=>PhaseCustomMap.ParseRoom(bad.ToString(Formatting.None)));
         }
-        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(json.Replace("\"spawnX\":24", "\"spawnX\":24,\"spawnX\":32")));
-        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(new string(' ',PhaseCustomMap.MaxJsonLength+1)));
-        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse("[]"));
+        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.ParseRoom(json.Replace("\"spawnX\":24", "\"spawnX\":24,\"spawnX\":32")));
+        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.ParseRoom(new string(' ',PhaseCustomMap.MaxJsonLength+1)));
+        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.ParseRoom("[]"));
     }
     [Test]
     public void SafeMapMovesJumpsAndRespawnsAtItsOwnCheckpoint()
@@ -72,7 +72,7 @@ public class CustomMapTests
     [Test]
     public void InvalidGeometryAndOverlappingCellsAreRejectedBeforePlaying()
     {
-        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Validate(null));
+        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Validate((PhaseDemoRoom)null));
         foreach(var mutate in new Action<PhaseDemoRoom>[] {
             m=>m.blocks=null,m=>m.blocks=Array.Empty<Block>(),m=>m.blocks=new Block[]{null},
             m=>m.blocks[0].x=1,m=>m.blocks[0].y=-8,m=>m.blocks[0].w=328,m=>m.blocks[0].h=0,
@@ -117,7 +117,7 @@ public class CustomMapTests
     public void LasersAndCrystalsRoundTripAndPlayFromTheirOwnCells()
     {
         var map=Simple();
-        Assert.That(JObject.Parse(PhaseCustomMap.ToJson(map)).Properties().Select(p=>p.Name),Is.EqualTo(new[]{"format","version","generator","name","size","spawn","terrain","objects"}),"saving always writes the latest format");
+        Assert.That(JObject.Parse(PhaseCustomMap.ToJson(map)).Properties().Select(p=>p.Name),Is.EqualTo(new[]{"format","version","generator","name","rooms"}),"saving always writes the latest format");
         map.blocks=new[]{map.blocks[0],new Block(24,80,8,8,phaseMask:7)};
         map.lasers=new[]{
             new DemoLaser{x=24,y=0,direction=LaserDirection.Down,phaseMask=1},
@@ -125,12 +125,12 @@ public class CustomMapTests
             new DemoLaser{x=160,y=160,direction=LaserDirection.Up,phaseMask=7}};
         map.crystals=new[]{new DemoCrystal{x=24,y=152,phaseMask=1},new DemoCrystal{x=96,y=128,phaseMask=6}};
         PhaseCustomMap.Validate(map);
-        string json=PhaseCustomMap.ToJson(map);var parsed=PhaseCustomMap.Parse(json);
+        string json=PhaseCustomMap.ToJson(map);var parsed=PhaseCustomMap.ParseRoom(json);
         Assert.That(PhaseCustomMap.ToJson(parsed),Is.EqualTo(json));
         Assert.That(parsed.lasers.Select(l=>(l.x,l.y,l.direction,l.phaseMask)),Is.EqualTo(map.lasers.Select(l=>(l.x,l.y,l.direction,l.phaseMask))));
         Assert.That(parsed.crystals.Select(c=>(c.x,c.y,c.phaseMask)),Is.EqualTo(map.crystals.Select(c=>(c.x,c.y,c.phaseMask))));
         var legacy=V1(map);legacy["crystals"][0]["kind"]=0;
-        Assert.That(PhaseCustomMap.ToJson(PhaseCustomMap.Parse(legacy.ToString())),Is.EqualTo(json),"older maps that tag jump crystals with kind 0 still load");
+        Assert.That(PhaseCustomMap.ToJson(PhaseCustomMap.ParseRoom(legacy.ToString())),Is.EqualTo(json),"older maps that tag jump crystals with kind 0 still load");
         var controller=parsed.CreateController();
         Assert.That((controller.lasers.Count,controller.crystals.Count),Is.EqualTo((3,2)));
         Assert.That(controller.LaserBeam(controller.lasers[0]).h,Is.EqualTo(72),"terrain stops the beam above the spawn");
@@ -138,28 +138,39 @@ public class CustomMapTests
         Assert.That(controller.crystals[0].collected,Is.True,"the spawn crystal is collected at once");Assert.That(controller.deaths,Is.Zero);
     }
     [Test]
+    public void PaddedTallRoomsSaveReopenAndPlaytest()
+    {
+        var map=Simple();map.height=720;map.blocks=new[]{new Block(0,712,320,8,phaseMask:7)};map.spikes=null;map.spawnY=696;
+        PhaseCustomMap.Validate(map);
+        string json=PhaseCustomMap.ToJson(map);var parsed=PhaseCustomMap.ParseRoom(json);
+        Assert.That(parsed.GridHeight,Is.EqualTo(880),"padded to five screens");
+        Assert.That(PhaseCustomMap.ToJson(parsed),Is.EqualTo(json),"saving the reopened room works");
+        Assert.That(PhaseCustomMap.ToWorld(parsed).rooms[0].GridHeight,Is.EqualTo(880),"the playtest world builds");
+    }
+    [Test]
     public void LargeRoomsRoundTripTheirSizeAndBoundObjectsByIt()
     {
         var map=Simple();
-        Assert.That(JObject.Parse(PhaseCustomMap.ToJson(map))["size"].ToObject<int[]>(),Is.EqualTo(new[]{40,22}),"a one-screen map is 40x22 cells");
-        Assert.That(map.CreateController().Height,Is.EqualTo(180),"a one-screen room keeps the 320x180 view");
+        Assert.That(JObject.Parse(PhaseCustomMap.ToJson(map))["rooms"][0]["size"].ToObject<int[]>(),Is.EqualTo(new[]{1,1}),"a one-screen map is one screen");
+        Assert.That(PhaseCustomMap.ParseRoom(PhaseCustomMap.ToJson(map)).CreateController().Height,Is.EqualTo(176),"a one-screen room is exactly one screen tall");
         map.width=640;map.height=360;
         map.blocks=new[]{new Block(0,168,320,8,phaseMask:7),new Block(600,344,40,8,phaseMask:7),new Block(320,0,8,8,phaseMask:2)};
         map.crystals=new[]{new DemoCrystal{x=624,y=336,phaseMask=7}};
         PhaseCustomMap.Validate(map);
         string json=PhaseCustomMap.ToJson(map);var data=JObject.Parse(json);
-        Assert.That(((int)data["size"][0],(int)data["size"][1]),Is.EqualTo((80,45)));
-        var parsed=PhaseCustomMap.Parse(json);
-        Assert.That((parsed.GridWidth,parsed.GridHeight),Is.EqualTo((640,360)));
+        Assert.That(((int)data["rooms"][0]["size"][0],(int)data["rooms"][0]["size"][1]),Is.EqualTo((2,3)),"rounded up to whole screens");
+        var parsed=PhaseCustomMap.ParseRoom(json);
+        Assert.That((parsed.GridWidth,parsed.GridHeight),Is.EqualTo((640,528)));
         Assert.That(PhaseCustomMap.ToJson(parsed),Is.EqualTo(json));
         var controller=parsed.CreateController();
-        Assert.That((controller.Width,controller.Height),Is.EqualTo((640,360)));
+        Assert.That((controller.Width,controller.Height),Is.EqualTo((640,528)));
+        Assert.That(parsed.blocks.Max(b=>b.y),Is.EqualTo(512),"content keeps its distance from the bottom: 21 rows were added above");
         Assert.That(controller.blocks.Count,Is.EqualTo(46),"40 floor cells, 5 more and one blue cell");
-        var wide=JObject.Parse(PhaseCustomMap.ToJson(Simple()));wide["size"]=new JArray(80,22);
-        Assert.That((PhaseCustomMap.Parse(wide.ToString()).GridWidth,PhaseCustomMap.Parse(wide.ToString()).GridHeight),Is.EqualTo((640,176)));
+        var wide=JObject.Parse(PhaseCustomMap.ToJson(Simple()));wide["rooms"][0]["size"]=new JArray(2,1);
+        Assert.That((PhaseCustomMap.ParseRoom(wide.ToString()).GridWidth,PhaseCustomMap.ParseRoom(wide.ToString()).GridHeight),Is.EqualTo((640,176)));
         Assert.That(Simple().CreateController().Width,Is.EqualTo(320));
         foreach(var mutate in new Action<PhaseDemoRoom>[] {
-            m=>m.width=316,m=>m.width=312,m=>m.width=1288,m=>m.height=168,m=>m.height=728,m=>m.height=-8,
+            m=>m.width=316,m=>m.width=312,m=>m.width=1288,m=>m.height=168,m=>m.height=888,m=>m.height=-8,
             m=>m.blocks[1].x=608,m=>m.blocks[1].y=360,m=>m.spawnX=640,m=>m.spawnY=352,
             m=>m.crystals[0].x=640
         }) {
@@ -167,10 +178,10 @@ public class CustomMapTests
             bad.crystals=new[]{new DemoCrystal{x=624,y=336,phaseMask=7}};
             mutate(bad);Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Validate(bad));
         }
-        foreach(var size in new JToken[]{new JArray(39,45),new JArray(161,45),new JArray(80,21),new JArray(80,91),new JArray("80",45),new JArray(80.5,45),new JArray(0,45),new JArray(80)})
+        foreach(var size in new JToken[]{new JArray(0,3),new JArray(5,3),new JArray(2,0),new JArray(2,6),new JArray("2",3),new JArray(2.5,3),new JArray(2)})
         {
-            var bad=JObject.Parse(json);bad["size"]=size;
-            Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(bad.ToString()),size.ToString());
+            var bad=JObject.Parse(json);bad["rooms"][0]["size"]=size;
+            Assert.Throws<ArgumentException>(()=>PhaseCustomMap.ParseRoom(bad.ToString()),size.ToString());
         }
     }
     [Test]
@@ -179,30 +190,30 @@ public class CustomMapTests
         var map=Simple();map.blocks=new[]{map.blocks[0],new Block(24,80,16,16,phaseMask:2)};
         map.spikes=new[]{new DemoSpike{x=80,y=144,length=24,direction=SpikeDirection.Right,phaseMask=3}};
         var old=V1(map);Assert.That(old.ContainsKey("version"),Is.False,"files without a version are version 1");
-        var migrated=PhaseCustomMap.Parse(old.ToString());
-        var data=JObject.Parse(PhaseCustomMap.ToJson(migrated));
+        var migrated=PhaseCustomMap.ParseRoom(old.ToString());
+        var data=JObject.Parse(PhaseCustomMap.ToJson(migrated));var room=data["rooms"][0];
         Assert.That(((int)data["version"],(string)data["format"],(string)data["generator"]),Is.EqualTo((PhaseCustomMap.Version,"verto-map",PhaseCustomMap.Generator)));
         Assert.That(migrated.blocks.Length,Is.EqualTo(44),"40 floor cells and a 2x2 block");
-        var terrain=data["terrain"].ToObject<string[]>();
+        var terrain=room["terrain"].ToObject<string[]>();
         Assert.That((terrain.Length,terrain[21],terrain[10],terrain[11]),Is.EqualTo((22,new string('7',40),"...22".PadRight(40,'.'),"...22".PadRight(40,'.'))));
-        var spikes=data["objects"].Where(o=>(string)o["type"]=="spike").ToList();
+        var spikes=room["objects"].Where(o=>(string)o["type"]=="spike").ToList();
         Assert.That(spikes.Select(o=>(o["cell"].ToObject<int[]>().Sum(),(string)o["dir"],(int)o["mask"])),Is.EqualTo(new[]{(28,"right",3),(29,"right",3),(30,"right",3)}.AsEnumerable()),"a 3-cell spike becomes three spike objects");
-        Assert.That(PhaseCustomMap.Parse(PhaseCustomMap.ToJson(migrated)).blocks.Length,Is.EqualTo(44));
-        Assert.That(PhaseCustomMap.ToJson(PhaseCustomMap.Parse(PhaseCustomMap.ToJson(migrated))),Is.EqualTo(PhaseCustomMap.ToJson(migrated)),"the latest version round-trips");
+        Assert.That(PhaseCustomMap.ParseRoom(PhaseCustomMap.ToJson(migrated)).blocks.Length,Is.EqualTo(44));
+        Assert.That(PhaseCustomMap.ToJson(PhaseCustomMap.ParseRoom(PhaseCustomMap.ToJson(migrated))),Is.EqualTo(PhaseCustomMap.ToJson(migrated)),"the latest version round-trips");
         var overlap=V1(map);overlap["blocks"][1]["x"]=0;overlap["blocks"][1]["y"]=160;
-        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(overlap.ToString()),"a version 1 map with overlapping cells is still refused");
+        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.ParseRoom(overlap.ToString()),"a version 1 map with overlapping cells is still refused");
     }
     [Test]
     public void NewerVersionsAndForeignFilesAreRefusedWithAClearError()
     {
         var data=JObject.Parse(PhaseCustomMap.ToJson(Simple()));
         data["version"]=PhaseCustomMap.Version+1;data["future"]=true;
-        var error=Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(data.ToString()));
+        var error=Assert.Throws<ArgumentException>(()=>PhaseCustomMap.ParseRoom(data.ToString()));
         Assert.That(error.Message,Does.Contain("第"+(PhaseCustomMap.Version+1)+"版").And.Contain("更新"),"names the version and asks to update the game");
         foreach(var mutate in new Action<JObject>[]{d=>d["format"]="other",d=>d.Remove("format"),d=>d["version"]=0,d=>d["version"]="2",d=>d["version"]=1.5,d=>d.Remove("version"),d=>d["extra"]=1})
         {
             var bad=JObject.Parse(PhaseCustomMap.ToJson(Simple()));mutate(bad);
-            Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(bad.ToString()));
+            Assert.Throws<ArgumentException>(()=>PhaseCustomMap.ParseRoom(bad.ToString()));
         }
     }
     [Test]
@@ -213,11 +224,12 @@ public class CustomMapTests
         map.platforms=new[]{new DemoPlatform{length=3,pivots=new[]{(10,12),(14,12),(14,6)},phaseMask=5,spiked=false,reverse=true,spikes=new[]{SpikeDirection.Up,SpikeDirection.Left}}};
         PhaseCustomMap.Validate(map);
         string json=PhaseCustomMap.ToJson(map);var data=JObject.Parse(json);
-        Assert.That(data["terrain"][10].ToString(),Does.StartWith("...B"),"B is spike-covered terrain in color 2");
-        var platform=data["objects"].Single(o=>(string)o["type"]=="platform");
+        var room=data["rooms"][0];
+        Assert.That(room["terrain"][10].ToString(),Does.StartWith("...B"),"B is spike-covered terrain in color 2");
+        var platform=room["objects"].Single(o=>(string)o["type"]=="platform");
         Assert.That(((string)platform["orientation"],(int)platform["length"],(bool)platform["reverse"],(int)platform["mask"],platform["pivots"].ToString(Formatting.None),platform["spikes"].ToString(Formatting.None)),
             Is.EqualTo(("horizontal",3,true,5,"[[10,12],[14,12],[14,6]]","[\"up\",\"left\"]")));
-        var parsed=PhaseCustomMap.Parse(json);
+        var parsed=PhaseCustomMap.ParseRoom(json);
         Assert.That(PhaseCustomMap.ToJson(parsed),Is.EqualTo(json));
         Assert.That(parsed.blocks.Count(b=>b.spiked),Is.EqualTo(1));
         var controller=parsed.CreateController();
@@ -230,8 +242,8 @@ public class CustomMapTests
             d=>d["objects"]=new JArray(new JObject{["type"]="dash"})
         })
         {
-            var bad=JObject.Parse(json);bad["objects"]=new JArray(data["objects"].Where(o=>(string)o["type"]=="platform"));mutate(bad);
-            Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(bad.ToString()));
+            var bad=JObject.Parse(json);var only=(JObject)bad["rooms"][0];only["objects"]=new JArray(room["objects"].Where(o=>(string)o["type"]=="platform").Concat(room["objects"].Where(o=>(string)o["type"]=="spawn")));mutate(only);
+            Assert.Throws<ArgumentException>(()=>PhaseCustomMap.ParseRoom(bad.ToString()));
         }
         map.platforms[0].pivots=new[]{(5,21),(5,12)};map.platforms[0].length=1;
         Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Validate(map),"a platform may not start on another object");
@@ -248,8 +260,8 @@ public class CustomMapTests
         var map=Simple();
         map.platforms=new[]{new DemoPlatform{vertical=true,length=3,pivots=new[]{(5,10),(5,6)},spikes=new[]{SpikeDirection.Left}}};
         PhaseCustomMap.Validate(map);string json=PhaseCustomMap.ToJson(map);
-        Assert.That((string)JObject.Parse(json)["objects"].Single(o=>(string)o["type"]=="platform")["orientation"],Is.EqualTo("vertical"));
-        var parsed=PhaseCustomMap.Parse(json);
+        Assert.That((string)JObject.Parse(json)["rooms"][0]["objects"].Single(o=>(string)o["type"]=="platform")["orientation"],Is.EqualTo("vertical"));
+        var parsed=PhaseCustomMap.ParseRoom(json);
         Assert.That(PhaseCustomMap.ToJson(parsed),Is.EqualTo(json));
         Assert.That((parsed.platforms[0].vertical,parsed.CreateController().platforms[0].h),Is.EqualTo((true,24d)));
         foreach(var mutate in new Action<DemoPlatform>[]{
@@ -266,9 +278,9 @@ public class CustomMapTests
         Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Validate(rows),"the spike row would leave the room at the second stop");
         Assert.Throws<ArgumentException>(()=>PhaseCustomMap.ToJson(rows));
         rows.platforms[0].pivots=new[]{(5,10),(5,1)};PhaseCustomMap.Validate(rows);
-        var huge=JObject.Parse(json);huge["spawn"]=new JArray(1e18,19);
-        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(huge.ToString()),"a huge number cannot wrap past the room checks");
+        var huge=JObject.Parse(json);huge["rooms"][0]["objects"].First(o=>(string)o["type"]=="spawn")["cell"]=new JArray(1e18,19);
+        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.ParseRoom(huge.ToString()),"a huge number cannot wrap past the room checks");
         var old=V1(Simple());old["spawnX"]=1e18;
-        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.Parse(old.ToString()));
+        Assert.Throws<ArgumentException>(()=>PhaseCustomMap.ParseRoom(old.ToString()));
     }
 }

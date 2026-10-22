@@ -28,7 +28,7 @@ namespace Phase
         static void Init()
         {
             if (source != null) return;
-            var go = new GameObject("PHASE audio") { hideFlags = HideFlags.HideAndDontSave };
+            var go = new GameObject("PHASE audio") { hideFlags = HideFlags.HideInHierarchy };
             UnityEngine.Object.DontDestroyOnLoad(go);
             source = go.AddComponent<AudioSource>();
             // PHASE scenes carry no listener; this persistent one hears every room.

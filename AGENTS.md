@@ -39,3 +39,7 @@
 - Verify Play with advancing frame count and controller time, live keyboard actions, a screen capture, and Console checks.
 - Keep the game free of explanatory text and level progression.
 - Commands and coordinate conventions: [Documentation/Development.md](Documentation/Development.md).
+
+## Web publishing
+
+- After merging a PR that changes the game (`Assets/`, `Packages/` or `ProjectSettings/`), publish <https://verto.5334601.xyz/> from a fresh checkout of the latest `origin/main`: run `Verification/BuildWeb.py`, deploy with `--commit-hash`, then check the live site with `WebLoadSmoke.cjs`. Skip it when the live deployment is already at that commit or a newer one. Steps: [Documentation/Web.md](Documentation/Web.md#online-play).

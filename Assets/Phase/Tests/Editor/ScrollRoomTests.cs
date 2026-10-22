@@ -13,7 +13,7 @@ public class ScrollRoomTests
         Assert.That((c.RoomWidth, c.Width, c.Height), Is.EqualTo((320, 320, 180)));
         Assert.That((Big().Width, Big().Height), Is.EqualTo((640, 360)));
         Assert.That(new PhaseController(Array.Empty<Block>(), 32, 149, width: 328, height: 184).Height, Is.EqualTo(184));
-        foreach (var (w, h) in new[] { (312, 180), (324, 180), (320, 176), (320, 182), (640, 362) })
+        foreach (var (w, h) in new[] { (312, 180), (324, 180), (320, 168), (320, 182), (640, 362) })
             Assert.Throws<ArgumentOutOfRangeException>(() => new PhaseController(Array.Empty<Block>(), 32, 149, width: w, height: h), $"{w}x{h}");
     }
 
@@ -75,10 +75,10 @@ public class ScrollRoomTests
         view.Follow(c, 320, 180); Assert.That(view.X, Is.InRange(161, 200), "eases instead of jumping");
         for (int i = 0; i < 600; i++) { view.Follow(c, 320, 180); Assert.That(view.x, Is.InRange(0, 320)); Assert.That(view.y, Is.InRange(0, 180)); }
         Assert.That((view.X, view.Y), Is.EqualTo((320, 0)), "settles at the top-right corner");
-        view.Follow(c, 640, 400, true); Assert.That((view.X, view.Y), Is.EqualTo((0, -20)), "a view taller than the room centres it");
+        view.Follow(c, 640, 400, true); Assert.That((view.X, view.Y), Is.EqualTo((0, -40)), "a view taller than the room sits the room at the bottom");
 
         var room = new PhaseController(Array.Empty<Block>(), 300, 10);
-        foreach (var (w, h, y) in new[] { (320, 180, 0), (320, 693, -256), (427, 180, 0) })
+        foreach (var (w, h, y) in new[] { (320, 180, 0), (320, 693, -513), (427, 180, 0) })
         {
             room.ResizeRoom(w); view.Follow(room, w, h); Assert.That((view.X, view.Y), Is.EqualTo((0, y)), $"default room in {w}x{h}");
         }

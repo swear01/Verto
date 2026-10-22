@@ -47,6 +47,8 @@ Jump platforms replace the removed dash platforms: every jump advances every pla
 
 ## Map format v2
 
+Map format v3 replaces `size` and `spawn` with rooms; see [Rooms](Rooms.md). The rest of this section still applies room by room.
+
 ```json
 {
   "format": "verto-map",

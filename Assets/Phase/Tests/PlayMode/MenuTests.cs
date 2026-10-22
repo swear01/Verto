@@ -84,6 +84,12 @@ public class MenuTests : InputTestFixture
             Assert.That(exported, Is.EqualTo(draft));
             editor.ImportDraft("{");
             Assert.That(PhaseCustomMap.ToJson(editor.Room()), Is.EqualTo(draft), "an invalid file leaves the draft unchanged");
+            var goalMap = PhaseCustomMap.ParseRoom(draft); goalMap.goal = new DemoPoint { x = 0, y = 0 };
+            editor.ImportDraft(PhaseCustomMap.ToJson(goalMap));
+            Assert.That(PhaseCustomMap.ToJson(editor.Room()), Is.EqualTo(draft), "a map with a goal is refused, not stripped");
+            goalMap.goal = null; goalMap.extraSpawns = new[] { new DemoPoint { x = 8, y = 8 } };
+            editor.ImportDraft(PhaseCustomMap.ToJson(goalMap));
+            Assert.That(PhaseCustomMap.ToJson(editor.Room()), Is.EqualTo(draft), "a map with extra spawns is refused, not stripped");
             editor.ImportDraft("{\"name\":\"x\",\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phaseMask\":2}],\"spawnX\":40,\"spawnY\":152}");
             Assert.That((editor.Room().blocks.Length, editor.Room().blocks[0].phaseMask, editor.SpawnCell), Is.EqualTo((PhaseEditor.Columns, 2, new Vector2Int(5, 19))), "wide blocks import as cells");
             editor.ImportDraft(exported);
@@ -200,7 +206,6 @@ public class MenuTests : InputTestFixture
             var sandbox = editor.Playtest;
             Assert.That(sandbox, Is.Not.Null);
             Assert.That((sandbox.Controller.platforms.Count, sandbox.Controller.platforms[0].attached.Length, sandbox.Controller.platforms[0].spiked), Is.EqualTo((2, 1, true)));
-            Assert.That(sandbox.GetComponentInChildren<PhaseJumpPlatform>(), Is.Not.Null, "the playtest builds the platform component");
             LogAssert.NoUnexpectedReceived();
         }
         finally
@@ -440,24 +445,24 @@ public class MenuTests : InputTestFixture
             Assert.That(editor.ExportDraft(), Is.True);
             string exported = GUIUtility.systemCopyBuffer, draft = PhaseCustomMap.ToJson(editor.Room());
             Assert.That(exported, Is.EqualTo(draft));
-            Assert.That(exported, Does.Contain("\"version\": 2")); var reread = PhaseCustomMap.Parse(exported); Assert.That((reread.GridWidth, reread.GridHeight), Is.EqualTo((576, 240)));
+            Assert.That(exported, Does.Contain("\"version\": 3")); var reread = PhaseCustomMap.ParseRoom(exported); Assert.That((reread.GridWidth, reread.GridHeight), Is.EqualTo((640, 352)), "saved as whole screens");
             editor.ImportDraft("{\"name\":\"x\",\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phaseMask\":2}],\"spawnX\":40,\"spawnY\":152}");
             Assert.That((editor.RoomColumns, editor.RoomRows, editor.Scroll), Is.EqualTo((40, 22, Vector2Int.zero)), "a version 1 file is one screen");
             editor.ImportDraft(exported);
-            Assert.That((editor.RoomColumns, editor.RoomRows, PhaseCustomMap.ToJson(editor.Room())), Is.EqualTo((72, 30, draft)), "export then import restores the room");
+            Assert.That((editor.RoomColumns, editor.RoomRows, PhaseCustomMap.ToJson(editor.Room())), Is.EqualTo((80, 44, draft)), "export then import restores the room, padded to whole screens");
 
             yield return Wheel(view, At(5, 5), new Vector2(0, -1));
             Assert.That(editor.Scroll, Is.EqualTo(new Vector2Int(0, 2)), "an imported room opens at its top-left corner");
             yield return Tap(Key.Enter);
             var sandbox = editor.Playtest;
             Assert.That(sandbox, Is.Not.Null);
-            Assert.That((sandbox.roomSize, sandbox.Controller.Width, sandbox.Controller.Height), Is.EqualTo((new Vector2Int(576, 240), 576, 240)), "the playtest runs the whole room");
+            Assert.That((sandbox.Controller.Width, sandbox.Controller.Height), Is.EqualTo((640, 352)), "the playtest runs the whole room");
             var size = new Vector2Int(sandbox.Frame.width, sandbox.Frame.height);
             Vector2Int Camera() { var at = sandbox.pixelCamera.transform.position; return new Vector2Int(Mathf.RoundToInt(at.x - sandbox.Frame.width / 2f), Mathf.RoundToInt(-at.y - sandbox.Frame.height / 2f)); }
-            Assert.That(Camera(), Is.EqualTo(new Vector2Int(0, Mathf.Max(0, 240 - size.y))), "the camera starts at the room's bottom-left");
-            sandbox.Controller.player.x = 560; sandbox.Controller.player.y = 216;
+            Assert.That(Camera(), Is.EqualTo(new Vector2Int(0, 352 - size.y)), "the camera starts at the room's bottom-left");
+            sandbox.Controller.player.x = 560; sandbox.Controller.player.y = 300;
             yield return new WaitForSeconds(2);
-            Assert.That((Camera().x, sandbox.Controller.deaths), Is.EqualTo((576 - size.x, 0)), "the camera follows Wick to the room's right edge");
+            Assert.That((Camera().x, sandbox.Controller.deaths), Is.EqualTo((640 - size.x, 0)), "the camera follows Wick to the room's right edge");
             yield return Tap(Key.Escape);
             Assert.That((editor.Playtest, editor.Scroll), Is.EqualTo(((PhaseSandbox)null, new Vector2Int(0, 2))), "the editor returns to the same view");
 
@@ -465,7 +470,7 @@ public class MenuTests : InputTestFixture
             yield return Tap(Key.Escape); yield return WaitFor(PhaseTitle.Scene);
             yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Z); yield return WaitFor(PhaseEditor.Scene);
             editor = Object.FindAnyObjectByType<PhaseEditor>();
-            Assert.That((editor.RoomColumns, editor.RoomRows, PhaseCustomMap.ToJson(editor.Room())), Is.EqualTo((72, 30, draft)), "the draft survives leaving the editor");
+            Assert.That((editor.RoomColumns, editor.RoomRows, PhaseCustomMap.ToJson(editor.Room())), Is.EqualTo((80, 44, draft)), "the draft survives leaving the editor");
             yield return Tap(Key.Escape); yield return WaitFor(PhaseTitle.Scene);
             PlayerPrefs.SetString(PhaseEditor.DraftKey, "3,19;" + string.Concat(Enumerable.Repeat("00", 840)) + string.Concat(Enumerable.Repeat("17", 40)));
             yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Z); yield return WaitFor(PhaseEditor.Scene);

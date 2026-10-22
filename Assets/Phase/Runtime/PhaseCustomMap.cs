@@ -9,15 +9,15 @@ namespace Phase
     public static class PhaseCustomMap
     {
         // The smallest room is one 320×176 screen; a larger room scrolls. MaxCells bounds the largest.
-        public const int Width = 320, Height = 176, MaxWidth = 1280, MaxHeight = 720, MaxCells = MaxWidth / 8 * (MaxHeight / 8), MaxJsonLength = 2000000, MaxNumber = 1000000;
+        public const int Width = 320, Height = 176, MaxWidth = 1280, MaxHeight = 720, MaxRoomHeight = 880, MaxCells = MaxWidth / 8 * (MaxHeight / 8), MaxJsonLength = 2000000, MaxNumber = 1000000;
         // The map file format: maps without a version are v1. Saving always writes the latest.
-        public const int Version = 2;
-        public const string Format = "verto-map", Generator = "Verto 0.2";
+        public const int Version = 3;
+        public const string Format = "verto-map", Generator = "Verto 0.3";
         static readonly string[] Directions = { "up", "down", "left", "right" };
         // Upgrades[n] turns a version n+1 file into version n+2.
-        static readonly Func<JObject, JObject>[] Upgrades = { data => ToData(ReadV1(data)) };
+        static readonly Func<JObject, JObject>[] Upgrades = { data => ToV2(ReadV1(data)), d => UpgradeV2(d, true) };
         // A draft may be unfinished, so it loads without the playability checks.
-        public static PhaseDemoRoom Parse(string json, bool validate = true)
+        public static PhaseWorld Parse(string json, bool validate = true)
         {
             if (string.IsNullOrWhiteSpace(json) || json.Length > MaxJsonLength)
                 throw new ArgumentException("地圖檔案過大或空白。");
@@ -37,12 +37,20 @@ namespace Phase
                     if (version > Upgrades.Length) throw new ArgumentException($"找不到地圖格式第{version}版的升級方式。");
                     data = Upgrades[version - 1](data);
                 }
-                var room = FromData(data);
-                if (validate) Validate(room);
-                return room;
+                var world = FromData(data);
+                if (validate) Validate(world);
+                return world;
             }
             catch (JsonException error) { throw new ArgumentException("地圖JSON格式無效。", error); }
             catch (OverflowException error) { throw new ArgumentException("地圖數值超出範圍。", error); }
+        }
+        // The single-room editor opens only maps with one room.
+        public static PhaseDemoRoom ParseRoom(string json, bool validate = true)
+        {
+            var world = Parse(json, validate);
+            if (world.rooms.Length != 1) throw new ArgumentException("編輯器一次只能開啟單一房間的地圖。");
+            world.rooms[0].name = world.name;
+            return world.rooms[0];
         }
         // The version 1 file: rectangles of terrain, spikes with a length in pixels, and cell positions in pixels.
         static PhaseDemoRoom ReadV1(JObject data)
@@ -129,28 +137,58 @@ namespace Phase
             if (Math.Abs(number) > MaxNumber) throw new ArgumentException("地圖數值超出範圍：" + field);
             return number;
         }
+        // A world: whole-screen rooms that do not overlap, one goal at most, and every room playable on its own.
+        public static void Validate(PhaseWorld world)
+        {
+            if (world == null || world.rooms == null || world.rooms.Length == 0 || world.rooms.Length > PhaseWorld.MaxRooms || world.rooms.Any(r => r == null))
+                throw new ArgumentException($"地圖需要1到{PhaseWorld.MaxRooms}個房間。");
+            foreach (var room in world.rooms)
+            {
+                int w = room.GridWidth, h = room.GridHeight;
+                if (w % PhaseWorld.ScreenWidth != 0 || h % PhaseWorld.ScreenHeight != 0 || w / PhaseWorld.ScreenWidth > PhaseWorld.MaxScreensWide || h / PhaseWorld.ScreenHeight > PhaseWorld.MaxScreensTall)
+                    throw new ArgumentException($"房間大小必須是1–{PhaseWorld.MaxScreensWide}×1–{PhaseWorld.MaxScreensTall}個畫面。");
+                if (Math.Abs(room.atX) > MaxNumber || Math.Abs(room.atY) > MaxNumber) throw new ArgumentException("房間位置超出範圍。");
+            }
+            for (int i = 0; i < world.rooms.Length; i++)
+                for (int j = i + 1; j < world.rooms.Length; j++)
+                    if (PhaseWorld.Overlaps(world.rooms[i], world.rooms[j])) throw new ArgumentException("房間不能重疊。");
+            if (world.rooms.Count(r => r.goal != null) > 1) throw new ArgumentException("地圖最多只能有一個終點。");
+            foreach (var room in world.rooms) CheckRoom(room);
+        }
+        // One free-sized room, as the editor draws it.
         public static void Validate(PhaseDemoRoom room)
         {
-            if (room == null || room.blocks == null || room.blocks.Length == 0)
+            if (room == null) throw new ArgumentException("地圖至少需要一格地形。");
+            int w = room.GridWidth, h = room.GridHeight;
+            if (w < Width || w > MaxWidth || h < Height || h > MaxRoomHeight || w % 8 != 0 || h % 8 != 0)
+                throw new ArgumentException($"地圖大小必須是8的倍數：寬{Width}–{MaxWidth}、高{Height}–{MaxRoomHeight}。");
+            CheckRoom(room);
+        }
+        static void CheckRoom(PhaseDemoRoom room)
+        {
+            if (room.blocks == null || room.blocks.Length == 0)
                 throw new ArgumentException("地圖至少需要一格地形。");
             int w = room.GridWidth, h = room.GridHeight;
-            if (w < Width || w > MaxWidth || h < Height || h > MaxHeight || w % 8 != 0 || h % 8 != 0)
-                throw new ArgumentException($"地圖大小必須是8的倍數：寬{Width}–{MaxWidth}、高{Height}–{MaxHeight}。");
             if (room.blocks.Length + (room.spikes?.Length ?? 0) + (room.lasers?.Length ?? 0) + (room.crystals?.Length ?? 0) + (room.platforms?.Length ?? 0) > w / 8 * (h / 8))
                 throw new ArgumentException($"地圖超過{w / 8 * (h / 8)}格。");
             void AddCells(double x, double y, double width, double height, HashSet<(int,int)> cells) => AddCellsIn(x, y, width, height, cells, w, h);
-            if (!Aligned(room.spawnX) || !Aligned(room.spawnY) || room.spawnX < 0 || room.spawnX > w - 8 || room.spawnY < 0 || room.spawnY > h - 16)
-                throw new ArgumentException("出生點必須位於格線內。");
+            var players = new List<Player>();
+            foreach (var (x, y) in room.Spawns)
+            {
+                if (!Aligned(x) || !Aligned(y) || x < 0 || x > w - 8 || y < 0 || y > h - 16)
+                    throw new ArgumentException("出生點必須位於格線內。");
+                players.Add(new Player(x, y));
+            }
+            bool Hits(Block b) => players.Any(p => PhaseController.Overlap(p, b));
             var occupied = new HashSet<(int,int)>();
-            var player = new Player(room.spawnX, room.spawnY);
             foreach (var block in room.blocks)
             {
                 if (block == null || block.phase < -1 || block.phase > 2 || block.phaseMask < 1 || block.phaseMask > 7)
                     throw new ArgumentException("地形顏色必須有效。");
                 AddCells(block.x, block.y, block.w, block.h, occupied);
-                if (block.ActiveInPhase(0) && PhaseController.Overlap(player, block))
+                if (block.ActiveInPhase(0) && Hits(block))
                     throw new ArgumentException("出生點與紅色模式的實體地形重疊。");
-                if (block.spiked && block.ActiveInPhase(0) && PhaseController.Overlap(player, PhaseController.Reach(block)))
+                if (block.spiked && block.ActiveInPhase(0) && Hits(PhaseController.Reach(block)))
                     throw new ArgumentException("出生點碰到紅色模式的尖刺覆蓋地形。");
             }
             foreach (var item in room.platforms ?? Array.Empty<DemoPlatform>())
@@ -160,9 +198,9 @@ namespace Phase
                 foreach (var teeth in platform.attached)
                 {
                     AddCells(teeth.x, teeth.y, teeth.w, teeth.h, occupied);
-                    if (teeth.ActiveInPhase(0) && PhaseController.Overlap(player, teeth.Hitbox)) throw new ArgumentException("出生點與紅色模式的尖刺重疊。");
+                    if (teeth.ActiveInPhase(0) && Hits(teeth.Hitbox)) throw new ArgumentException("出生點與紅色模式的尖刺重疊。");
                 }
-                if (platform.ActiveInPhase(0) && PhaseController.Overlap(player, platform.spiked ? PhaseController.Reach(platform) : platform))
+                if (platform.ActiveInPhase(0) && Hits(platform.spiked ? PhaseController.Reach(platform) : platform))
                     throw new ArgumentException("出生點與紅色模式的平台重疊。");
             }
             foreach (var spike in room.spikes ?? Array.Empty<DemoSpike>())
@@ -171,7 +209,7 @@ namespace Phase
                     throw new ArgumentException("尖刺方向、顏色或長度無效。");
                 var hazard = new Spike(spike.x, spike.y, spike.length, spike.direction, spike.phaseMask);
                 AddCells(hazard.x, hazard.y, hazard.w, hazard.h, occupied);
-                if (hazard.ActiveInPhase(0) && PhaseController.Overlap(player, hazard.Hitbox))
+                if (hazard.ActiveInPhase(0) && Hits(hazard.Hitbox))
                     throw new ArgumentException("出生點與紅色模式的尖刺重疊。");
             }
             var solids = room.blocks.Concat<Block>((room.platforms ?? Array.Empty<DemoPlatform>()).Select(p => p.Create()))
@@ -182,7 +220,7 @@ namespace Phase
                     throw new ArgumentException("雷射方向或顏色無效。");
                 AddCells(laser.x, laser.y, 8, 8, occupied);
                 var emitter = new Laser(laser.x, laser.y, laser.direction, laser.phaseMask);
-                if (emitter.ActiveInPhase(0) && PhaseController.Overlap(player, emitter.Beam(solids, w, Math.Max(180, h))))
+                if (emitter.ActiveInPhase(0) && Hits(emitter.Beam(solids, w, room.RoomHeight)))
                     throw new ArgumentException("出生點位於紅色模式的雷射光束上。");
             }
             foreach (var crystal in room.crystals ?? Array.Empty<DemoCrystal>())
@@ -191,14 +229,58 @@ namespace Phase
                     throw new ArgumentException("水晶顏色無效。");
                 AddCells(crystal.x, crystal.y, 8, 8, occupied);
             }
+            if (room.goal != null) AddCells(room.goal.x, room.goal.y, 8, 8, occupied);
         }
-        public static string ToJson(PhaseDemoRoom room) => ToData(room).ToString(Formatting.Indented);
+        public static string ToJson(PhaseWorld world)
+        {
+            if (world?.rooms == null || world.rooms.Length == 0) throw new ArgumentException("地圖至少需要一個房間。");
+            return World(world.name, world.rooms.Select(RoomData)).ToString(Formatting.Indented);
+        }
+        public static PhaseWorld ToWorld(PhaseDemoRoom room) => Parse(ToJson(room), false);
+        // A free-sized editor room is saved as a one-room world: padded to whole screens, content at the bottom, extra columns on the right.
+        public static string ToJson(PhaseDemoRoom room) => UpgradeV2(ToV2(room), false).ToString(Formatting.Indented);
         static JArray Cell(double x, double y) => new JArray((int)x / 8, (int)y / 8);
-        // The latest file: terrain as rows of cells, everything else as typed objects.
-        static JObject ToData(PhaseDemoRoom room)
+        static JObject World(string name, IEnumerable<JObject> rooms) => new JObject {
+            ["format"] = Format, ["version"] = Version, ["generator"] = Generator, ["name"] = name, ["rooms"] = new JArray(rooms)
+        };
+        // A version 3 room: position and size in screens, then room-local cells.
+        static JObject RoomData(PhaseDemoRoom room)
+        {
+            if (room == null || room.GridWidth % PhaseWorld.ScreenWidth != 0 || room.GridHeight % PhaseWorld.ScreenHeight != 0)
+                throw new ArgumentException("房間大小必須是整數個畫面。");
+            var (terrain, content) = Content(room);
+            var objects = new JArray();
+            foreach (var (x, y) in room.Spawns)
+            {
+                if (!Aligned(x) || !Aligned(y)) throw new ArgumentException("出生點必須位於格線內。");
+                objects.Add(new JObject { ["type"] = "spawn", ["cell"] = Cell(x, y) });
+            }
+            foreach (var item in content) objects.Add(item);
+            if (room.goal != null)
+            {
+                InsideRoom(room.goal.x, room.goal.y, 8, 8, room.GridWidth, room.GridHeight);
+                objects.Add(new JObject { ["type"] = "goal", ["cell"] = Cell(room.goal.x, room.goal.y) });
+            }
+            return new JObject {
+                ["at"] = new JArray(room.atX, room.atY), ["size"] = new JArray(room.GridWidth / PhaseWorld.ScreenWidth, room.GridHeight / PhaseWorld.ScreenHeight),
+                ["terrain"] = terrain, ["objects"] = objects
+            };
+        }
+        // The version 2 file, kept so older files upgrade step by step.
+        static JObject ToV2(PhaseDemoRoom room)
+        {
+            if (!Aligned(room.spawnX) || !Aligned(room.spawnY)) throw new ArgumentException("出生點必須位於格線內。");
+            var (terrain, objects) = Content(room);
+            return new JObject {
+                ["format"] = Format, ["version"] = 2, ["generator"] = "Verto 0.2", ["name"] = room.name,
+                ["size"] = new JArray(room.GridWidth / 8, room.GridHeight / 8), ["spawn"] = Cell(room.spawnX, room.spawnY),
+                ["terrain"] = terrain, ["objects"] = objects
+            };
+        }
+        // Terrain as rows of cells, everything else as typed objects.
+        static (JArray terrain, JArray objects) Content(PhaseDemoRoom room)
         {
             int w = room.GridWidth / 8, h = room.GridHeight / 8;
-            if (!Aligned(room.spawnX) || !Aligned(room.spawnY)) throw new ArgumentException("出生點必須位於格線內。");
             var rows = Enumerable.Range(0, h).Select(_ => Enumerable.Repeat('.', w).ToArray()).ToArray();
             foreach (var block in room.blocks)
             {
@@ -242,24 +324,57 @@ namespace Phase
                     ["spiked"] = platform.spiked, ["spikes"] = new JArray(platform.spikes.Select(d => Directions[(int)d]))
                 });
             }
-            return new JObject {
-                ["format"] = Format, ["version"] = Version, ["generator"] = Generator, ["name"] = room.name,
-                ["size"] = new JArray(w, h), ["spawn"] = Cell(room.spawnX, room.spawnY),
-                ["terrain"] = new JArray(rows.Select(r => new string(r))), ["objects"] = objects
-            };
+            return (new JArray(rows.Select(r => new string(r))), objects);
         }
-        static PhaseDemoRoom FromData(JObject data)
+        // Version 2 to 3: one room at the origin, rounded up to whole screens with the content at the bottom; the spawn becomes an object.
+        static JObject UpgradeV2(JObject data, bool legacy)
         {
             CheckFields(data, new[] { "format", "version", "generator", "name", "size", "spawn", "terrain", "objects" });
             if (data["name"] != null && data["name"].Type != JTokenType.Null && (data["name"].Type != JTokenType.String || data["name"].Value<string>().Length > 64))
                 throw new ArgumentException("地圖名稱最多64字元。");
             var size = Pair(data["size"], "size");
-            if (size.x < Width / 8 || size.x > MaxWidth / 8 || size.y < Height / 8 || size.y > MaxHeight / 8)
+            if (size.x < Width / 8 || size.x > MaxWidth / 8 || size.y < Height / 8 || size.y > (legacy ? MaxHeight : MaxRoomHeight) / 8)
                 throw new ArgumentException($"地圖大小必須介於{Width / 8}×{Height / 8}與{MaxWidth / 8}×{MaxHeight / 8}格。");
             var spawn = Pair(data["spawn"], "spawn");
             if (!(data["terrain"] is JArray terrain) || terrain.Count > size.y || terrain.Any(r => r.Type != JTokenType.String || r.Value<string>().Length > size.x))
                 throw new ArgumentException("地形必須是不超過地圖大小的字串陣列。");
             if (data["objects"] != null && !(data["objects"] is JArray)) throw new ArgumentException("物件必須是陣列。");
+            int cols = PhaseWorld.ScreenWidth / 8, screens = PhaseWorld.ScreenHeight / 8;
+            int wide = (size.x + cols - 1) / cols, tall = (size.y + screens - 1) / screens, pad = tall * screens - size.y;
+            var rows = new JArray(); for (int i = 0; i < pad; i++) rows.Add(new string('.', wide * cols));
+            foreach (var row in terrain) rows.Add(row.Value<string>().PadRight(wide * cols, '.'));
+            var objects = new JArray(new JObject { ["type"] = "spawn", ["cell"] = new JArray(spawn.x, spawn.y + pad) });
+            foreach (var item in data["objects"] ?? new JArray())
+            {
+                var obj = item as JObject;
+                if (obj?["cell"] != null) { var at = Pair(obj["cell"], "cell"); obj["cell"] = new JArray(at.x, at.y + pad); }
+                if (obj?["pivots"] is JArray stops) obj["pivots"] = new JArray(stops.Select(p => { var at = Pair(p, "pivots"); return new JArray(at.x, at.y + pad); }));
+                objects.Add(item);
+            }
+            return World(data["name"]?.Type == JTokenType.String ? data["name"].Value<string>() : null, new[] {
+                new JObject { ["at"] = new JArray(0, 0), ["size"] = new JArray(wide, tall), ["terrain"] = rows, ["objects"] = objects } });
+        }
+        static PhaseWorld FromData(JObject data)
+        {
+            CheckFields(data, new[] { "format", "version", "generator", "name", "rooms" });
+            if (data["name"] != null && data["name"].Type != JTokenType.Null && (data["name"].Type != JTokenType.String || data["name"].Value<string>().Length > 64))
+                throw new ArgumentException("地圖名稱最多64字元。");
+            if (!(data["rooms"] is JArray rooms) || rooms.Count < 1 || rooms.Count > PhaseWorld.MaxRooms)
+                throw new ArgumentException($"地圖需要1到{PhaseWorld.MaxRooms}個房間。");
+            return new PhaseWorld { name = data["name"]?.Type == JTokenType.String ? data["name"].Value<string>() : null, rooms = rooms.Select(r => FromRoom(r as JObject)).ToArray() };
+        }
+        static PhaseDemoRoom FromRoom(JObject data)
+        {
+            CheckFields(data, new[] { "at", "size", "terrain", "objects" });
+            var at = Pair(data["at"], "at");
+            var size = Pair(data["size"], "size");
+            if (size.x < 1 || size.x > PhaseWorld.MaxScreensWide || size.y < 1 || size.y > PhaseWorld.MaxScreensTall)
+                throw new ArgumentException($"房間大小必須是1–{PhaseWorld.MaxScreensWide}×1–{PhaseWorld.MaxScreensTall}個畫面。");
+            int cols = size.x * PhaseWorld.ScreenWidth / 8, rowCount = size.y * PhaseWorld.ScreenHeight / 8;
+            if (!(data["terrain"] is JArray terrain) || terrain.Count > rowCount || terrain.Any(r => r.Type != JTokenType.String || r.Value<string>().Length > cols))
+                throw new ArgumentException("地形必須是不超過地圖大小的字串陣列。");
+            if (data["objects"] != null && !(data["objects"] is JArray)) throw new ArgumentException("物件必須是陣列。");
+            var spawns = new List<DemoPoint>(); DemoPoint goal = null;
             var blocks = new List<Block>(); var spikes = new List<DemoSpike>(); var lasers = new List<DemoLaser>(); var crystals = new List<DemoCrystal>(); var platforms = new List<DemoPlatform>();
             for (int y = 0; y < terrain.Count; y++)
             {
@@ -280,20 +395,31 @@ namespace Phase
                 string type = obj?["type"]?.Type == JTokenType.String ? obj["type"].Value<string>() : null;
                 switch (type)
                 {
+                    case "spawn":
+                        CheckFields(obj, new[] { "type", "cell" });
+                        var cell = Pair(obj["cell"], "cell");
+                        spawns.Add(new DemoPoint { x = cell.x * 8, y = cell.y * 8 });
+                        break;
+                    case "goal":
+                        CheckFields(obj, new[] { "type", "cell" });
+                        if (goal != null) throw new ArgumentException("每個房間最多只能有一個終點。");
+                        cell = Pair(obj["cell"], "cell");
+                        goal = new DemoPoint { x = cell.x * 8, y = cell.y * 8 };
+                        break;
                     case "spike":
                         CheckFields(obj, new[] { "type", "cell", "dir", "mask" });
-                        var at = Pair(obj["cell"], "cell");
-                        spikes.Add(new DemoSpike { x = at.x * 8, y = at.y * 8, length = 8, direction = (SpikeDirection)Direction(obj["dir"]), phaseMask = Mask(obj) });
+                        cell = Pair(obj["cell"], "cell");
+                        spikes.Add(new DemoSpike { x = cell.x * 8, y = cell.y * 8, length = 8, direction = (SpikeDirection)Direction(obj["dir"]), phaseMask = Mask(obj) });
                         break;
                     case "laser":
                         CheckFields(obj, new[] { "type", "cell", "dir", "mask" });
-                        at = Pair(obj["cell"], "cell");
-                        lasers.Add(new DemoLaser { x = at.x * 8, y = at.y * 8, direction = (LaserDirection)Direction(obj["dir"]), phaseMask = Mask(obj) });
+                        cell = Pair(obj["cell"], "cell");
+                        lasers.Add(new DemoLaser { x = cell.x * 8, y = cell.y * 8, direction = (LaserDirection)Direction(obj["dir"]), phaseMask = Mask(obj) });
                         break;
                     case "crystal":
                         CheckFields(obj, new[] { "type", "cell", "mask" });
-                        at = Pair(obj["cell"], "cell");
-                        crystals.Add(new DemoCrystal { x = at.x * 8, y = at.y * 8, phaseMask = Mask(obj) });
+                        cell = Pair(obj["cell"], "cell");
+                        crystals.Add(new DemoCrystal { x = cell.x * 8, y = cell.y * 8, phaseMask = Mask(obj) });
                         break;
                     case "platform":
                         CheckFields(obj, new[] { "type", "orientation", "length", "pivots", "reverse", "mask", "spiked", "spikes" });
@@ -310,9 +436,12 @@ namespace Phase
                     default: throw new ArgumentException("地圖包含不支援的物件：" + (type ?? "未知"));
                 }
             }
+            if (spawns.Count == 0) throw new ArgumentException("每個房間至少需要一個出生點。");
+            spawns = spawns.OrderBy(p => p.x).ThenBy(p => p.y).ToList();
             return new PhaseDemoRoom {
-                name = data["name"]?.Type == JTokenType.String ? data["name"].Value<string>() : null, width = size.x * 8, height = size.y * 8,
-                spawnX = spawn.x * 8, spawnY = spawn.y * 8, blocks = blocks.ToArray(), spikes = spikes.ToArray(),
+                atX = at.x, atY = at.y, width = size.x * PhaseWorld.ScreenWidth, height = size.y * PhaseWorld.ScreenHeight,
+                spawnX = spawns[0].x, spawnY = spawns[0].y, extraSpawns = spawns.Count > 1 ? spawns.Skip(1).ToArray() : null, goal = goal,
+                blocks = blocks.ToArray(), spikes = spikes.ToArray(),
                 lasers = lasers.Count > 0 ? lasers.ToArray() : null, crystals = crystals.Count > 0 ? crystals.ToArray() : null, platforms = platforms.Count > 0 ? platforms.ToArray() : null
             };
         }
