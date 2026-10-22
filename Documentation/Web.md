@@ -4,7 +4,7 @@
 manually published eight-room demo; automatic CI/Pages still needs the owner
 setup below.
 
-Unity **6000.4.7f1**, Web Build Support and Unity CLI are required. Open the GUI
+Unity **6000.6.7f1**, Web Build Support and Unity CLI are required. Open the GUI
 Editor as described in [Development](Development.md), then run:
 
 ```sh
@@ -120,7 +120,7 @@ register a runner for this personal repository:
 
 1. Register a **dedicated macOS ARM64 runner** under Settings → Actions → Runners,
    with the custom label `gamejam1-unity`. Run it in a logged-in desktop session
-   with a licensed Unity 6000.4.7f1, Web Build Support, Python 3, and Unity CLI at
+   with a licensed Unity 6000.6.7f1, Web Build Support, Python 3, and Unity CLI at
    `~/.unity/bin/unity`. Runner jobs execute the repository's `main` code.
 2. Set Settings → Pages → Source to **GitHub Actions**. Pages from this private
    repository requires the owner's GitHub Pro or a qualifying paid plan; do not
@@ -135,7 +135,7 @@ missing setup cannot produce a green Web workflow. The existing
 GitHub-hosted controller/compatibility checks still run on pull requests and
 `main`. A local build passing does not prove that the runner or Pages is enabled.
 
-References: [Unity Web deployment](https://docs.unity3d.com/6000.4/Documentation/Manual/webgl-deploying.html),
+References: [Unity Web deployment](https://docs.unity3d.com/6000.6/Documentation/Manual/webgl-deploying.html),
 [runner registration](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners),
 [Pages publishing](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
 

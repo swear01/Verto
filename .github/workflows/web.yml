@@ -43,7 +43,7 @@ jobs:
       - name: Open GUI Editor with Unity CLI
         run: |
           echo "$HOME/.unity/bin" >> "$GITHUB_PATH"
-          "$HOME/.unity/bin/unity" open "$GITHUB_WORKSPACE" --editor-version 6000.4.7f1 --wait \
+          "$HOME/.unity/bin/unity" open "$GITHUB_WORKSPACE" --editor-version 6000.6.7f1 --wait \
             --args "-logFile $RUNNER_TEMP/phase-editor.log" > "$RUNNER_TEMP/phase-launch.json" 2>&1 &
       - name: Test and build through live Pipeline
         run: python3 Verification/BuildWeb.py
