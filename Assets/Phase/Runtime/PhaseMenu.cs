@@ -105,6 +105,7 @@ namespace Phase
         }
         int firstRow;
         public static int Columns(Vector2Int frame) => Layout(frame).columns;
+        public static int Rows(Vector2Int frame) => Layout(frame).rows;
         // A level's tile, thumbnail frame and number, in frame pixels, with the grid scrolled to the top.
         public static RectInt Tile(Vector2Int frame, int i, int count = -1) { var (columns, zoom, _) = Layout(frame, count < 0 ? Count : count); return zoom.Frame(LocalTile(columns, i)); }
         // Returns the chosen level number, 0 when Escape goes back, or -1.

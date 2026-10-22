@@ -397,7 +397,9 @@ public class PixelTests
         foreach (var size in new[] { new Vector2Int(320, 180), new Vector2Int(427, 180), new Vector2Int(320, 693) })
         {
             int minX = int.MaxValue, minY = int.MaxValue, maxX = 0, maxY = 0;
-            for (int i = 0; i < PhaseSandbox.Levels.Length; i++)
+            // Rows past the visible ones scroll into view.
+            int visible = Math.Min(PhaseSandbox.Levels.Length, PhaseLevels.Columns(size) * PhaseLevels.Rows(size));
+            for (int i = 0; i < visible; i++)
             {
                 var tile = PhaseLevels.Tile(size, i);
                 Assert.That(tile.xMin, Is.GreaterThanOrEqualTo(0));
