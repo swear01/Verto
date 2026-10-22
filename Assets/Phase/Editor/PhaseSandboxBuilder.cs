@@ -199,9 +199,8 @@ public static class PhaseSandboxBuilder
             }
             foreach (var item in room.platforms ?? System.Array.Empty<DemoPlatform>())
             {
-                var (cx, cy) = item.pivots[0];
-                var go = PhaseMechanismPrefabs.Instantiate("JumpPlatform", root.transform,
-                    new Vector3((cx - (item.vertical ? 0 : item.length / 2)) * 8, -(cy - (item.vertical ? item.length / 2 : 0)) * 8));
+                var (cx, cy) = item.pivots[0]; var origin = item.Create().OriginAt(0);
+                var go = PhaseMechanismPrefabs.Instantiate("JumpPlatform", root.transform, new Vector3((float)origin.x, -(float)origin.y));
                 var platform = go.GetComponent<PhaseJumpPlatform>();
                 platform.vertical = item.vertical; platform.length = item.length; platform.reverse = item.reverse; platform.spiked = item.spiked; platform.phaseMask = item.phaseMask;
                 platform.pivots = System.Array.ConvertAll(item.pivots, p => new Vector2Int(p.x - cx, p.y - cy));
