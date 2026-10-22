@@ -26,6 +26,9 @@ The build verifies both flags and records them in `TestResults/Web/splash.json`;
 browser checks preserve initial canvas frames before the first player frame.
 The player is a blue cat-eared robot with a pink scarf; the eyes indicate phase.
 Fast landings add neutral white dust; respawns end with a brief pixel convergence.
+Audio is synthesized at startup (no audio files): jump, land, death and crystal blips, plus a looping
+Am-F-C-G background track whose hat, arpeggio and lead layers crossfade with the red, blue and green phase.
+Browsers start it after the first key press.
 Pressing toward a wall while falling slides down it, ramping from 20 to 160 native
 pixels/second over 1.2 seconds, as in
 [Celeste’s original player source](https://github.com/NoelFB/Celeste/blob/1b0ce45c75e05649ae91b44a8bb6b196684e4352/Source/Player/Player.cs).
