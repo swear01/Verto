@@ -11,14 +11,15 @@ const root = remote ? null : path.resolve(process.argv[2] || 'Builds/Web');
 const reports = path.resolve(__dirname, '../TestResults/Web');
 fs.mkdirSync(reports, { recursive: true });
 const server = remote ? null : http.createServer((request, response) => {
-  let file;
+  let file, stat;
   try {
     file = path.resolve(root, '.' + decodeURIComponent(new URL(request.url, 'http://localhost').pathname));
     if (file === root) file = path.join(root, 'index.html');
-    if (!file.startsWith(root + path.sep) || !fs.statSync(file).isFile()) throw new Error('not a served file');
+    if (!file.startsWith(root + path.sep) || !(stat = fs.statSync(file)).isFile()) throw new Error('not a served file');
   } catch { response.writeHead(404).end(); return; }
   const mime = { '.html': 'text/html', '.js': 'application/javascript', '.wasm': 'application/wasm' };
   response.setHeader('Content-Type', mime[path.extname(file)] || 'application/octet-stream');
+  response.setHeader('Content-Length', stat.size);
   fs.createReadStream(file).on('error', () => response.destroy()).pipe(response);
 });
 
