@@ -13,22 +13,20 @@ RED, BLUE, GREEN = (255, 84, 112, 255), (64, 184, 255, 255), (64, 232, 128, 255)
 SKY = [(10, 16, 24, 255), (12, 19, 29, 255), (14, 21, 32, 255), (16, 26, 38, 255), (18, 30, 43, 255)]
 STARS = [(42, 57, 76, 255), (60, 78, 100, 255)]
 V_GLYPH = [
-    "###............###",
-    "###............###",
-    ".###..........###.",
-    ".###..........###.",
-    "..###........###..",
-    "..###........###..",
-    "...###......###...",
-    "...###......###...",
-    "....###....###....",
-    "....###....###....",
-    ".....###..###.....",
-    ".....###..###.....",
-    "......######......",
-    "......######......",
-    ".......####.......",
-    ".......####.......",
+    "##..............##",
+    "##..............##",
+    ".##............##.",
+    ".##............##.",
+    "..##..........##..",
+    "..##..........##..",
+    "...##........##...",
+    "...##........##...",
+    "....##......##....",
+    "....##......##....",
+    ".....##....##.....",
+    ".....##....##.....",
+    "......##..##......",
+    "......##..##......",
     ".......####.......",
     ".......####.......",
 ]
@@ -64,14 +62,6 @@ def solid(glyph):
         outside.add((x, y))
         todo += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
     return ["".join("#" if (x, y) not in outside else "." for x in range(w)) for y in range(h)]
-
-
-def outlined(glyph):
-    """The glyph grown by one pixel on every side."""
-    h, w = len(glyph), len(glyph[0])
-    hit = lambda x, y: 0 <= x < w and 0 <= y < h and glyph[y][x] == "#"
-    return ["".join("#" if any(hit(x + dx, y + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1)) else "."
-                    for x in range(-1, w + 1)) for y in range(-1, h + 1)]
 
 
 def stamp(image, glyph, left, top, color):
@@ -134,9 +124,8 @@ def icon():
             if inside(x, y):
                 rim = not all(inside(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
                 image.putpixel((x, y), RIM if rim else INK)
-    # Three overlapping V's, one per jump color, each ringed in ink so the layers stay apart.
-    for color, left, top in ((GREEN, 3, 9), (BLUE, 7, 7), (RED, 11, 5)):
-        stamp(image, outlined(V_GLYPH), left - 1, top - 1, INK)
+    # Three overlapping V's with 2-cell strokes, one per jump color; later ones cover earlier ones with no outline.
+    for color, left, top in ((GREEN, 3, 10), (BLUE, 6, 8), (RED, 9, 6)):
         stamp(image, V_GLYPH, left, top, color)
     return image
 
