@@ -239,7 +239,7 @@ function levelTile(width, height, index) {
     }
     const blueLanding=(label,min,max,height)=>stableLanding(label,1,min,max,height);
     await page.goto(url); await begin();
-    assert.equal(await page.title(),'PHASE');
+    assert.equal(await page.title(),'Verto');
     assert.equal(await page.locator('body').innerText(),'');
     const unrouted=JSON.parse(fs.readFileSync(path.join(__dirname,'Routes','unrouted.json')));
     const rooms=['DemoRooms','CrystalRooms'].flatMap(course=>JSON.parse(fs.readFileSync(path.join(__dirname,`../Assets/Phase/${course}.json`))).rooms);
@@ -621,7 +621,7 @@ function levelTile(width, height, index) {
     await page.waitForTimeout(500);fs.writeFileSync(path.join(reports,'demo-editor-import.png'),await capture());
     const editorDownload=await exportDraft();
     const editorExport=JSON.parse(fs.readFileSync(await (await editorDownload).path(),'utf8'));
-    assert.equal((await editorDownload).suggestedFilename(),'phase-custom-map.json');
+    assert.equal((await editorDownload).suggestedFilename(),'verto-custom-map.json');
     assert.deepEqual([editorExport.blocks.length,editorExport.spikes,editorExport.lasers,editorExport.crystals,editorExport.spawnX,editorExport.spawnY],
       [40,[],editorMap.lasers,editorMap.crystals,24,152],'In-game editor imports and exports lasers and crystals');
     await page.waitForTimeout(500);await page.reload();await loaded();await canvas.click();

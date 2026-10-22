@@ -1,8 +1,6 @@
 # Web preview
 
-[Play online](https://phase-gamejam1-20261016.swear01.chatgpt.site). This is a
-manually published eight-room demo; automatic CI/Pages still needs the owner
-setup below.
+[Play online](https://verto.5334601.xyz/), published by hand; see [Online play](#online-play).
 
 Unity **6000.4.7f1**, Web Build Support and Unity CLI are required. Open the GUI
 Editor as described in [Development](Development.md), then run:
@@ -50,7 +48,7 @@ follows that resize like any other. Loading failures remain visible.
 Level select, pause and keyboard bindings are in-game screens, the same as in native
 builds (see [Development](Development.md)). Opening level select or settings replaces the
 screen behind it. Both scale by whole pixels so the screen fills most of the view; each
-level tile is a thumbnail of that room. The build opens on the PHASE title; its icons
+level tile is a thumbnail of that room. The build opens on the Verto title; its icons
 start level1, open the level select, the in-game level editor or settings (key bindings
 and fullscreen). Escape in a level pauses. Bindings are stored with Unity PlayerPrefs (`phase.keys.v1`) in this
 browser's IndexedDB; bindings saved by the old page dialog (`phase.controls.v2`) are not
@@ -93,8 +91,12 @@ right before the linked crystal-room exit.
 For an isolated diagnostic, append `--room=1`, `--room=5` or `--room=8` to the
 local verifier command; a calibration report is not a complete release check.
 
-The custom `Phase` template uses gzip with Unity's decompression fallback, so a
-static host does not need custom `Content-Encoding` headers. The 2D renderer has
+The custom `Phase` template uses Brotli with Unity's decompression fallback, so a
+static host does not need custom `Content-Encoding` headers. The build uses High
+managed stripping, IL2CPP OptimizeSize and Web code optimization `DiskSize`, keeping
+each file well under Cloudflare Pages' 25 MiB limit. The code optimization lives in
+the Editor's local build settings, so `BuildWeb.py` sets it and refuses to build if
+any of these differ (`TestResults/Web/size.json`). The 2D renderer has
 post-processing disabled. A scoped WebGL guard returns no MSAA samples for the
 six SNORM formats that Unity 6000.4 queries incorrectly in Chromium; ordinary
 queries and warnings remain intact. Revisit it after an engine/browser fix.
@@ -102,38 +104,25 @@ The build warning about an absent `RuntimePipelineConfig` is expected: release
 Players do not need Pipeline's remote-control server. Do not enable it to silence
 the warning.
 
-## Enable automatic builds and online play
+## Online play
 
-`Web build and preview` runs only on `main`, after push or manual dispatch.
-It uses Unity CLI + live Pipeline for 165 Editor tests, 35 Play Mode tests and
-the Web build, then verifies browser rendering, keyboard routes through all fifteen rooms and fourteen scene-edge transitions,
-adaptive viewport sizing, keyboard settings, fullscreen, visible load failures,
-and absence of browser errors/warnings. Only a passing build is
-uploaded and deployed. `web-verification` contains the reports/captures.
+<https://verto.5334601.xyz/> is the Cloudflare Pages project `verto`, uploaded
+by hand from a local build; merging to `main` does not update it. After building
+and verifying as above, publish and check the live site:
 
-The repository owner must complete runner/Pages setup first. Write access cannot
-register a runner for this personal repository:
+```sh
+npx wrangler pages deploy Builds/Web --project-name verto --branch main
+node Verification/WebLoadSmoke.cjs https://verto.5334601.xyz/
+```
 
-1. Register a **dedicated macOS ARM64 runner** under Settings → Actions → Runners,
-   with the custom label `gamejam1-unity`. Run it in a logged-in desktop session
-   with a licensed Unity 6000.4.7f1, Web Build Support, Python 3, and Unity CLI at
-   `~/.unity/bin/unity`. Runner jobs execute the repository's `main` code.
-2. Set Settings → Pages → Source to **GitHub Actions**. Pages from this private
-   repository requires the owner's GitHub Pro or a qualifying paid plan; do not
-   change repository visibility to work around this requirement.
-3. Set the Actions repository variable **`UNITY_WEB_CI_ENABLED=true`**, then run
-   `Web build and preview` on `main`. The successful deployment reports the
-   playable URL in its `github-pages` environment.
-
-Until this setup is complete the Web build/deploy jobs are explicitly skipped.
-The hosted setup job fails with this blocker in the workflow summary, so a
-missing setup cannot produce a green Web workflow. The existing
-GitHub-hosted controller/compatibility checks still run on pull requests and
-`main`. A local build passing does not prove that the runner or Pages is enabled.
+Run `npx wrangler login` once per machine first. Pages caps each file at 25 MiB;
+`Build/Web.wasm.unityweb` is the largest. `WebLoadSmoke.cjs` takes a build folder
+or a URL, starts level1 from the title in headless Chromium, walks right and
+requires a clean console.
 
 References: [Unity Web deployment](https://docs.unity3d.com/6000.4/Documentation/Manual/webgl-deploying.html),
-[runner registration](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners),
-[Pages publishing](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
+[Pages direct upload](https://developers.cloudflare.com/pages/get-started/direct-upload/),
+[Pages limits](https://developers.cloudflare.com/pages/platform/limits/).
 
 Rendering reference: [Unity Web canvas sizing](https://docs.unity.com/en-us/engine/6000.0/manual/platform-specific/webgl/develop/canvas-size).
 The template keeps automatic sizing disabled and sets the backing store to the display size
