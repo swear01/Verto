@@ -4,6 +4,8 @@ import unittest
 from unittest.mock import patch
 import BuildWeb
 
+TARGET = {"projectPath": str(BuildWeb.PROJECT)}
+
 
 class PipelineFailures(unittest.TestCase):
     def test_recompile_accepts_current_scripts_but_rejects_compiler_errors(self):
@@ -21,15 +23,21 @@ class PipelineFailures(unittest.TestCase):
             self.assertTrue((BuildWeb.PROJECT / scene).is_file(), scene)
 
     def test_text_command_result_is_valid(self):
-        response = {"success": True, "data": {"result": "Auto-tick enabled"}}
+        response = {"success": True, "data": {"result": "Auto-tick enabled", "target": TARGET}}
         with patch.object(BuildWeb.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, json.dumps(response))):
             self.assertEqual(BuildWeb.command("set_autotick"), "Auto-tick enabled")
 
     def test_outer_success_does_not_hide_command_failure(self):
-        response = {"success": True, "data": {"result": {"success": False, "error": "compile failed"}}}
+        response = {"success": True, "data": {"result": {"success": False, "error": "compile failed"}, "target": TARGET}}
         with patch.object(BuildWeb.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, json.dumps(response))):
             with self.assertRaisesRegex(RuntimeError, "compile failed"):
                 BuildWeb.command("eval")
+
+    def test_another_editor_answer_is_rejected(self):
+        response = {"success": True, "data": {"result": {"status": "ready"}, "target": {"projectPath": "/elsewhere/Verto"}}}
+        with patch.object(BuildWeb.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, json.dumps(response))):
+            with self.assertRaisesRegex(RuntimeError, "answered by /elsewhere/Verto"):
+                BuildWeb.command("editor_status")
 
     def test_transport_failure_is_not_success(self):
         response = {"success": False, "errors": [{"message": "disconnected"}]}
