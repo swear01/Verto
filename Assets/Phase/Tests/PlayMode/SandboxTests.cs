@@ -418,6 +418,17 @@ public class SandboxTests : InputTestFixture
     }
 
     [UnityTest]
+    public IEnumerator GearSceneKeepsItsImportedJumpPlatforms()
+    {
+        yield return SceneManager.LoadSceneAsync("PhaseGear");
+        static string Describe(Platform p) => $"{p.vertical} {p.length} {string.Join(";", p.pivots)} {p.reverse} {p.Mask} {p.spiked} {p.OriginAt(0)} {string.Join(";", p.attached.Select(s => s.direction))}";
+        var expected = PhaseCustomMap.Parse(File.ReadAllText("Assets/Phase/Imported/level-gear.json")).rooms[0].CreatePlatforms().Select(Describe);
+        var built = Object.FindAnyObjectByType<PhaseSandbox>().Controller.platforms.Select(Describe);
+        Assert.That(built, Is.EquivalentTo(expected));
+        Assert.That(expected.Count(), Is.EqualTo(10));
+    }
+
+    [UnityTest]
     public IEnumerator LastLevelRightExitWinsAndJumpRestartsLevelOne()
     {
         string previous = PhaseSandbox.Levels[PhaseSandbox.Levels.Length - 2], last = PhaseSandbox.Levels[PhaseSandbox.Levels.Length - 1];

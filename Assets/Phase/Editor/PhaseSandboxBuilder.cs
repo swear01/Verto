@@ -160,17 +160,17 @@ public static class PhaseSandboxBuilder
         RecordOverrides(root);
         EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), second ? "Assets/Scenes/PhaseRoom2.unity" : "Assets/Scenes/PhaseSandbox.unity");
     }
-    // Imports level-a, level-b, the chaos level and umbrella and puts every playable scene, including the hand-authored color room, in the build.
+    // Imports level-a, level-b, the chaos level, umbrella and the gear level and puts every playable scene, including the hand-authored color room, in the build.
     public static string CreateImportedLevels()
     {
         if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) throw new System.OperationCanceledException("Unsaved scenes were kept.");
-        var maps = new[] { ("Assets/Phase/Imported/level-a.json", "PhaseDemo13"), ("Assets/Phase/Imported/level-b.json", "PhaseDemo14"), ("Assets/Phase/Imported/chaos.json", "PhaseDemo15"), ("Assets/Phase/Imported/umbrella.json", "PhaseUmbrella") };
+        var maps = new[] { ("Assets/Phase/Imported/level-a.json", "PhaseDemo13"), ("Assets/Phase/Imported/level-b.json", "PhaseDemo14"), ("Assets/Phase/Imported/chaos.json", "PhaseDemo15"), ("Assets/Phase/Imported/umbrella.json", "PhaseUmbrella"), ("Assets/Phase/Imported/level-gear.json", "PhaseGear") };
         foreach (var (source, sceneName) in maps)
         {
             var map = PhaseCustomMap.Parse(System.IO.File.ReadAllText(source));
             if (map.rooms.Length != 1) throw new System.InvalidOperationException(source + " holds " + map.rooms.Length + " rooms; a scene level is one room.");
             var room = map.rooms[0]; room.CreateController();
-            if (room.platforms != null || room.goal != null) throw new System.InvalidOperationException(source + " has platforms or a goal; scene levels end at the right edge.");
+            if (room.goal != null) throw new System.InvalidOperationException(source + " has a goal; scene levels end at the right edge.");
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             var root = new GameObject("PHASE"); root.AddComponent<Grid>().cellSize = new Vector3(8, 8, 1); root.AddComponent<PhaseGrid>(); var sandbox = root.AddComponent<PhaseSandbox>();
             var camera = new GameObject("Camera").AddComponent<Camera>();
@@ -196,6 +196,17 @@ public static class PhaseSandboxBuilder
             {
                 var go = PhaseMechanismPrefabs.Instantiate("Laser", root.transform, new Vector3((float)laser.x, -(float)laser.y));
                 var emitter = go.GetComponent<PhaseLaser>(); emitter.direction = laser.direction; emitter.phaseMask = laser.Mask;
+            }
+            foreach (var item in room.platforms ?? System.Array.Empty<DemoPlatform>())
+            {
+                var (cx, cy) = item.pivots[0]; var origin = item.Create().OriginAt(0);
+                var go = PhaseMechanismPrefabs.Instantiate("JumpPlatform", root.transform, new Vector3((float)origin.x, -(float)origin.y));
+                var platform = go.GetComponent<PhaseJumpPlatform>();
+                platform.vertical = item.vertical; platform.length = item.length; platform.reverse = item.reverse; platform.spiked = item.spiked; platform.phaseMask = item.phaseMask;
+                platform.pivots = System.Array.ConvertAll(item.pivots, p => new Vector2Int(p.x - cx, p.y - cy));
+                platform.spikes = 0;
+                foreach (var side in item.spikes)
+                    platform.spikes |= side == SpikeDirection.Up ? PlatformSides.Up : side == SpikeDirection.Down ? PlatformSides.Down : side == SpikeDirection.Left ? PlatformSides.Left : PlatformSides.Right;
             }
             string path = "Assets/Scenes/" + sceneName + ".unity";
             RecordOverrides(root);
