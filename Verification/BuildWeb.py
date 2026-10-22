@@ -19,7 +19,7 @@ def command(name, *args):
     if completed.returncode or not data.get("success"):
         raise RuntimeError(f"{name}: {data.get('errors')}")
     # While this project's Editor is still connecting, the CLI can hand the command to another open Editor.
-    target = data["data"].get("target", {}).get("projectPath")
+    target = (data["data"].get("target") or {}).get("projectPath")
     if not target or Path(target).resolve() != PROJECT:
         raise RuntimeError(f"{name}: answered by {target}, not {PROJECT}")
     result = data["data"]["result"]

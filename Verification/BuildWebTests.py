@@ -39,6 +39,12 @@ class PipelineFailures(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "answered by /elsewhere/Verto"):
                 BuildWeb.command("editor_status")
 
+    def test_null_target_is_retryable(self):
+        response = {"success": True, "data": {"result": {"status": "ready"}, "target": None}}
+        with patch.object(BuildWeb.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, json.dumps(response))):
+            with self.assertRaisesRegex(RuntimeError, "answered by None"):
+                BuildWeb.command("editor_status")
+
     def test_transport_failure_is_not_success(self):
         response = {"success": False, "errors": [{"message": "disconnected"}]}
         with patch.object(BuildWeb.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, json.dumps(response))):
