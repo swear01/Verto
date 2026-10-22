@@ -190,7 +190,7 @@ namespace Phase
             catch (ArgumentException) { }
             dirty = false;
         }
-        // The map as authored. A room without a spawn gets one at its top-left cell here; playtest and export refuse such a room first.
+        // The map as authored. A room without a spawn stays without one; playtest and export refuse such a room.
         public PhaseWorld World()
         {
             var made = new List<PhaseDemoRoom>();
@@ -206,11 +206,10 @@ namespace Phase
                     else if (tool != Erase) spikes.Add(new DemoSpike { x = x, y = y, length = 8, direction = (SpikeDirection)(tool - 2), phaseMask = room.colors[i] });
                 }
                 var spawns = room.spawns.OrderBy(s => s.x).ThenBy(s => s.y).ToList();
-                if (spawns.Count == 0) spawns.Add(Vector2Int.zero);
                 made.Add(new PhaseDemoRoom {
                     atX = room.atX, atY = room.atY, width = room.w * PhaseWorld.ScreenWidth, height = room.h * PhaseWorld.ScreenHeight,
                     blocks = blocks.ToArray(), spikes = spikes.ToArray(), lasers = lasers.ToArray(), crystals = crystals.ToArray(), platforms = room.platforms.ToArray(),
-                    spawnX = spawns[0].x * 8, spawnY = spawns[0].y * 8,
+                    noSpawn = spawns.Count == 0, spawnX = spawns.Count > 0 ? spawns[0].x * 8 : 0, spawnY = spawns.Count > 0 ? spawns[0].y * 8 : 0,
                     extraSpawns = spawns.Count > 1 ? spawns.Skip(1).Select(s => new DemoPoint { x = s.x * 8, y = s.y * 8 }).ToArray() : null,
                     goal = room.goal is Vector2Int g ? new DemoPoint { x = g.x * 8, y = g.y * 8 } : null
                 });

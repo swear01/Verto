@@ -517,6 +517,32 @@ public class MenuTests : InputTestFixture
     }
 
     [UnityTest]
+    public IEnumerator EditorDraftKeepsARoomWithoutASpawnAfterReload()
+    {
+        string saved = PlayerPrefs.HasKey(PhaseEditor.DraftKey) ? PlayerPrefs.GetString(PhaseEditor.DraftKey) : null;
+        PlayerPrefs.DeleteKey(PhaseEditor.DraftKey);
+        try
+        {
+            var rig = new EditorRig(); yield return OpenEditor(rig); var editor = rig.editor;
+            yield return Pan(rig, 35); yield return ClickCell(rig, 45, 21);
+            Assert.That(editor.RoomCount, Is.EqualTo(2));
+            Assert.That(editor.World().rooms[1].noSpawn, Is.True, "a new room has no spawn");
+            yield return Tap(Key.Escape); yield return WaitFor(PhaseTitle.Scene);
+            yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Z); yield return WaitFor(PhaseEditor.Scene);
+            editor = Object.FindAnyObjectByType<PhaseEditor>();
+            var world = editor.World();
+            Assert.That((world.rooms.Length, world.rooms[1].noSpawn, world.rooms[1].Spawns.Count, world.rooms[0].Spawns.Count), Is.EqualTo((2, true, 0, 1)), "the reloaded draft still has no spawn there");
+            Assert.That(editor.StartPlaytest(), Is.False, "and it still refuses to play");
+            LogAssert.NoUnexpectedReceived();
+        }
+        finally
+        {
+            if (saved == null) PlayerPrefs.DeleteKey(PhaseEditor.DraftKey); else PlayerPrefs.SetString(PhaseEditor.DraftKey, saved);
+            PlayerPrefs.Save();
+        }
+    }
+
+    [UnityTest]
     public IEnumerator EditorExportsAndImportsAMultiRoomWorldAndShowsItInTheOverview()
     {
         string saved = PlayerPrefs.HasKey(PhaseEditor.DraftKey) ? PlayerPrefs.GetString(PhaseEditor.DraftKey) : null, clipboard = GUIUtility.systemCopyBuffer;
