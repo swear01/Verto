@@ -570,7 +570,7 @@ namespace Phase
             {
                 int tool = room.tools[i];
                 if (tool < LaserTool || tool >= CrystalTool) continue;
-                int phase = 0; while ((room.colors[i] & (1 << phase)) == 0) phase++;
+                int phase = 0; while (phase < 2 && (room.colors[i] & (1 << phase)) == 0) phase++;
                 var solids = solidsIn[phase];
                 if (solids == null)
                 {
