@@ -428,9 +428,11 @@ public class SandboxTests : InputTestFixture
             IEnumerator ExitRight(PhaseSandbox room)
             {
                 var c = room.Controller;
-                var floor = c.blocks.Where(b => b.x < c.Width && b.x + b.w >= c.Width && b.y >= 11).OrderBy(b => b.y).FirstOrDefault();
+                int PhaseOf(Block b) => System.Array.FindIndex(new[] { 0,1,2 }, b.ActiveInPhase);
+                var floor = c.blocks.Where(b => b.x < c.Width && b.x + b.w >= c.Width && b.y >= 11).OrderBy(b => b.y)
+                    .FirstOrDefault(b => c.SafeSpawn(c.Width - c.player.w - .5, b.y - c.player.h, PhaseOf(b)));
                 Assert.That(floor, Is.Not.Null, room.gameObject.scene.name + " has an authored edge landing");
-                c.phase = System.Array.FindIndex(new[] { 0,1,2 }, floor.ActiveInPhase);
+                c.phase = PhaseOf(floor);
                 c.player.x = c.Width - c.player.w - .5; c.player.y = floor.y - c.player.h; c.player.vx = 90; c.player.vy = 0;
                 InputSystem.QueueStateEvent(k, new KeyboardState(Key.RightArrow)); yield return null; yield return null;
             }
