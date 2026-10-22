@@ -24,7 +24,7 @@ while preserving run statistics. Room changes use a
 The Unity splash screen and logo are disabled in PlayerSettings.
 The build verifies both flags and records them in `TestResults/Web/splash.json`;
 browser checks preserve initial canvas frames before the first player frame.
-The hood and scarf are amber; the cloak stays bone-white and the eyes indicate phase.
+The player is a blue cat-eared robot with a pink scarf; the eyes indicate phase.
 Fast landings add neutral white dust; respawns end with a brief pixel convergence.
 Pressing toward a wall while falling slides down it, ramping from 20 to 160 native
 pixels/second over 1.2 seconds, as in
