@@ -262,7 +262,13 @@ namespace Phase
         }
         // A beam fixed by the caller, for a view that shows lasers of rooms this controller does not hold.
         public readonly Dictionary<Laser, Block> beams = new Dictionary<Laser, Block>();
-        public Block LaserBeam(Laser laser) => beams.TryGetValue(laser, out var fixedBeam) ? fixedBeam : laser.Beam(Solid(), Width, Height);
+        // An inactive laser shows the beam it will fire in its next phase on the jump cycle, stopped only by what is solid then.
+        public Block LaserBeam(Laser laser)
+        {
+            if (beams.TryGetValue(laser, out var fixedBeam)) return fixedBeam;
+            int next = phase; while (!laser.ActiveInPhase(next)) next = (next + 1) % 3;
+            return laser.Beam(next == phase ? Solid() : blocks.Where(b => b.ActiveInPhase(next)).ToList(), Width, Height);
+        }
         public bool CheckHazards(Block from = null)
         {
             if (CheckSpikes(from)) return true;
