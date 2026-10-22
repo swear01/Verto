@@ -16,7 +16,7 @@ namespace Phase
             if (mask < 1 || mask > 7) throw new ArgumentOutOfRangeException(nameof(mask));
             return Hex(Highlights[surfaceIndices[mask]]);
         }
-        const string Ink = "0b0f16", Glow = "4fe8ff", Wall = "f0f0f0", WallEdge = "bdbdbd";
+        const string Ink = "0b0f16", Glow = "4fe8ff";
         static readonly Dictionary<string, Color32> colors = new Dictionary<string, Color32>();
         Color32[] view = new Color32[320 * 180], buffer;
         public int Width => Texture.width;
@@ -171,6 +171,7 @@ namespace Phase
         {
             for (int i = 0; i < s.blocks.Count; i++) if (s.blocks[i] is Platform) PaintBlock(s, i);
         }
+        const double TileAlpha = .8, SpikeAlpha = .8;
         void PaintBlock(PhaseController s, int i)
         {
             var b = s.blocks[i]; int color = surfaceIndices[b.Mask];
@@ -185,8 +186,7 @@ namespace Phase
                 bool Neighbor(int dx, int dy) => isPlatform ? X + dx * 8 >= b.x && X + dx * 8 < b.x + b.w && Y + dy * 8 >= b.y && Y + dy * 8 < b.y + b.h
                     : cells.TryGetValue((X + dx * 8, Y + dy * 8), out var kind) && kind == b.Mask;
                 bool u = Neighbor(0,-1), d = Neighbor(0,1), l = Neighbor(-1,0), r = Neighbor(1,0);
-                if (b.spiked && active) { Rect(X, Y, 8, 8, Mix(body, Color("000000"), .5)); Blit(Covered(b.Mask, true), X - 1, Y - 1);
-                    if (Mixed(b.Mask) && (((X-(int)b.x+Y-(int)b.y)>>3)&1)==0) Pips(X,Y,b.Mask,1);
+                if (b.spiked && active) { Rect(X, Y, 8, 8, Mix(body, Color("000000"), .5)); Blit(Covered(b.Mask, true), X - 1, Y - 1, SpikeAlpha);
                     continue; }
                 if (!active)
                 {
@@ -200,29 +200,18 @@ namespace Phase
                         if (!l && dy) Rect(X, Y + n, 1, 1, rim, alpha);
                         if (!r && dy) Rect(X + 7, Y + n, 1, 1, rim, alpha);
                     }
-                    if (b.spiked) Blit(Covered(b.Mask, false), X - 1, Y - 1);
-                    if (Mixed(b.Mask) && (((X-(int)b.x+Y-(int)b.y)>>3)&1)==0) Pips(X,Y,b.Mask,.6);
+                    if (b.spiked) Blit(Covered(b.Mask, false), X - 1, Y - 1, SpikeAlpha);
                     continue;
                 }
-                // White is always solid: a plain bright slab. Phase colours are dark glass with a neon rim.
-                bool white = color == 3;
-                Color32 fill = white ? Color(Wall) : deep, glow = white ? Color("ffffff") : cap, side = white ? Color(WallEdge) : rim;
-                Rect(X, Y, 8, 8, fill);
-                if (!white && Hash(X - ox, Y - oy) % 7 == 0) Rect(X + 2 + (int)(Hash(Y - oy, X - ox) % 4), Y + 3, 1, 1, rim, .5);
-                if (!u) { Rect(X, Y, 8, 1, glow); if (!white) Rect(X, Y + 1, 8, 1, rim, .5); }
-                if (!d) Rect(X, Y + 7, 8, 1, side);
-                if (!l) Rect(X, Y + (u ? 0 : 1), 1, u ? 8 : 7, white ? side : glow);
-                if (!r) Rect(X + 7, Y + (u ? 0 : 1), 1, u ? 8 : 7, white ? side : glow);
-                if (Mixed(b.Mask) && (((X-(int)b.x+Y-(int)b.y)>>3)&1)==0) Pips(X,Y,b.Mask,1);
+                // One tile for every colour, white included: outer frame, darker inner frame, darker centre.
+                for (int py = 0; py < 8; py++) for (int px = 0; px < 8; px++)
+                {
+                    int edge = Math.Min(Math.Min(u ? 8 : py, d ? 8 : 7 - py), Math.Min(l ? 8 : px, r ? 8 : 7 - px));
+                    Rect(X + px, Y + py, 1, 1, edge < 2 ? cap : edge < 4 ? body : deep, TileAlpha);
+                }
             }
         }
         static bool Mixed(int mask) => mask == 3 || mask == 5 || mask == 6;
-        void Pips(int x, int y, int mask, double alpha)
-        {
-            int dot = 0;
-            for (int phase = 0; phase < 3; phase++) if ((mask & (1<<phase)) != 0)
-            { int at=x+2+dot++*3; Rect(at,y+6,2,1,Ink,alpha); Rect(at,y+4,2,2,Highlights[phase],alpha); }
-        }
         static readonly string[] spikeRows = {".oo..oo.","oTMooTMo","oLMooLMo","oLMooLMo","LLMMLLMM","LMMDLMMD","MMDDMMDD","DDDDDDDD"};
         static Dictionary<char,Color32> SpikePalette(int mask,bool active)
         {
@@ -259,7 +248,7 @@ namespace Phase
                 }
                 for(int y=(int)spike.y;y<spike.y+spike.h;y+=8)for(int x=(int)spike.x;x<spike.x+spike.w;x+=8)
                 {
-                    Blit(tile,x-1,y-1);
+                    Blit(tile,x-1,y-1,SpikeAlpha);
                     if(Mixed(spike.Mask)&&(active||(x==spike.x&&y==spike.y)))
                     {
                         int dot=0;for(int phase=0;phase<3;phase++)if(spike.ActiveInPhase(phase))
