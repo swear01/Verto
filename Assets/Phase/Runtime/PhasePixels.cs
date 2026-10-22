@@ -361,26 +361,25 @@ namespace Phase
         {
             for (int py = 0; py < image.height; py++) for (int px = 0; px < image.width; px++) Put(x + px, y + py, image.pixels[py * image.width + px], alpha);
         }
-        // The visor shows phase.
+        // The eyes show phase.
         static readonly Dictionary<string,string[]> Frames = new Dictionary<string,string[]> {
-            ["idle"] = new[] { "..cc......","..dcc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcfeefee.",".dcfeefee.","..kkkkk...",".dccccccc.",".dcccccdc.",".ssssssss.","..bb..bb..","..bb..bb.." },
-            ["blink"] = new[] { "..cc......","..dcc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcffffff.",".dcfeefee.","..kkkkk...",".dccccccc.",".dcccccdc.",".ssssssss.","..bb..bb..","..bb..bb.." },
-            ["run0"] = new[] { "...cc.....","...dcc....","..dccccc..","..dcccccc.","..dccfffff","..dcfeefee","..dcfeefee","...kkkkk..",".dcccccccd","ddccccccc.",".ssssssss.",".bb...BB..","bb.....BB." },
-            ["run1"] = new[] { "...dcc....","..dccccc..","..dcccccc.","..dccfffff","..dcfeefee","..dcfeefee","...kkkkk..",".dccccccd.",".dcccccdc.",".ssssssss.",".bbbBB....",".bb.BB....","....BB...." },
-            ["run2"] = new[] { "...cc.....","...dcc....","..dccccc..","..dcccccc.","..dccfffff","..dcfeefee","..dcfeefee","...kkkkk..",".dccccccc.","dddcccccc.",".ssssssss.",".BB...bb..","BB.....bb." },
-            ["run3"] = new[] { "...dcc....","..dccccc..","..dcccccc.","..dccfffff","..dcfeefee","..dcfeefee","...kkkkk..",".dccccccd.",".dcccccdc.",".ssssssss.",".BBBbb....",".BB.bb....","....bb...." },
-            ["jump"] = new[] { "..........","ccc.......",".dcccccc..",".dccccccc.",".dccfffff.",".dcfeefee.",".dcfeefee.","..kkkkk...","ddccccccdd",".dccccccc.",".ssssssss.","..bb.BB...","..b...B..." },
-            ["fall"] = new[] { "...cc.....","...cc.....",".dccccc...",".dcccccc..",".dccfffff.",".dcfeefee.",".dcfeefee.","d.kkkkk..d","ddccccccdd",".dccccccc.","ssssssssss","..bb..BB..","..b....B.." },
+            ["idle"] = new[] { "..w...w...","..ww.ww...",".gwwwwwww.",".gwffffff.",".gfeeffee.",".gfeeffee.",".gwffffff.","..kkkkk...",".gwwwwwww.",".gwwwwwgw.",".ssssssss.","..bb..bb..","..bb..bb.." },
+            ["blink"] = new[] { "..w...w...","..ww.ww...",".gwwwwwww.",".gwffffff.",".gfffffff.",".gfeeffee.",".gwffffff.","..kkkkk...",".gwwwwwww.",".gwwwwwgw.",".ssssssss.","..bb..bb..","..bb..bb.." },
+            ["run0"] = new[] { "..w...w...","..ww.ww...",".gwwwwwww.",".gwffffff.",".gfeeffee.",".gfeeffee.",".gwffffff.","..kkkkk...",".gwwwwwwwg","ggwwwwwww.",".ssssssss.",".bb...BB..","bb.....BB." },
+            ["run1"] = new[] { "..ww.ww...",".gwwwwwww.",".gwffffff.",".gfeeffee.",".gfeeffee.",".gwffffff.","..kkkkk...",".gwwwwwwg.",".gwwwwwgw.",".ssssssss.",".bbbBB....",".bb.BB....","....BB...." },
+            ["run2"] = new[] { "..w...w...","..ww.ww...",".gwwwwwww.",".gwffffff.",".gfeeffee.",".gfeeffee.",".gwffffff.","..kkkkk...",".gwwwwwwwg","ggwwwwwww.",".ssssssss.",".BB...bb..","BB.....bb." },
+            ["run3"] = new[] { "..ww.ww...",".gwwwwwww.",".gwffffff.",".gfeeffee.",".gfeeffee.",".gwffffff.","..kkkkk...",".gwwwwwwg.",".gwwwwwgw.",".ssssssss.",".BBBbb....",".BB.bb....","....bb...." },
+            ["jump"] = new[] { "..........","..ww.ww...",".gwwwwwww.",".gwffffff.",".gfeeffee.",".gfeeffee.",".gwffffff.","..kkkkk...","ggwwwwwwgg",".gwwwwwww.",".ssssssss.","..bb.BB...","..b...B..." },
+            ["fall"] = new[] { "..w...w...","..ww.ww...",".gwwwwwww.",".gwffffff.",".gfeeffee.",".gfeeffee.",".gwffffff.","g.kkkkk..g","ggwwwwwwgg",".gwwwwwgw.","ssssssssss","..bb..BB..","..b....B.." },
         };
         static readonly string[] Scarf = { "ff3ea5","b81f78" };
         Bitmap Sprite(string pose, int facing, int phase)
         {
             var key = (pose, facing, phase);
             if (sprites.TryGetValue(key, out var image)) return image;
-            var palette = new Dictionary<char,Color32> { ['c']=Color("3b2a78"),['d']=Color("261a52"),['s']=Color("ff3ea5"),['f']=Color("0a0618"),['b']=Color("4a3a92"),['B']=Color("2c2160"),['e']=Color(Highlights[phase]),['k']=Color(Scarf[0]),['h']=Color(Scarf[0]),['H']=Color(Scarf[1]) };
-            var rows = (string[])Frames[pose].Clone();
-            for (int y = 0; y < rows.Length && !rows[y].Contains("k"); y++) rows[y] = rows[y].Replace('c','h').Replace('d','H');
-            return sprites[key] = Paint(rows, palette, facing < 0, true);
+            var palette = new Dictionary<char,Color32> { ['w']=Color("3d8bff"),['g']=Color("2058c0"),['f']=Color("14101e"),['s']=Color("ffc2e0"),['b']=Color("ffc2e0"),['B']=Color("f0a0c8"),['e']=Color(Highlights[phase]),['k']=Color(Scarf[0]) };
+            var rows = Frames[pose];
+            return sprites[key] = Paint(rows, palette, facing < 0);
         }
         static string Pose(Player p, double t)
         {

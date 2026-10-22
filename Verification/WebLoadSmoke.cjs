@@ -23,8 +23,8 @@ const server = remote ? null : http.createServer((request, response) => {
   fs.createReadStream(file).on('error', () => response.destroy()).pipe(response);
 });
 
-// Pixels in the player's body colors (palette c, d, b and B in PhasePixels.Sprite); nothing else in the game uses them.
-const body = ['3b2a78', '261a52', '4a3a92', '2c2160'].map(hex => [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16)));
+// Pixels in the player's body colors (palette w, g, b and B in PhasePixels.Sprite); nothing else in the game uses them.
+const body = ['3d8bff', '2058c0', 'ffc2e0', 'f0a0c8'].map(hex => [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16)));
 function playerPixels(buffer) {
   const image = PNG.sync.read(buffer), pixels = new Map();
   for (let i = 0; i < image.data.length; i += 4)
