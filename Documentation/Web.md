@@ -12,7 +12,7 @@ npm ci
 npx --no-install playwright install chromium
 cd ..
 node Verification/WebPageBrowser.cjs
-node Verification/DemoWebSmoke.cjs Builds/Web
+node Verification/WebLoadSmoke.cjs Builds/Web
 python3 -m http.server 8765 --bind 127.0.0.1 --directory Builds/Web
 ```
 
@@ -78,7 +78,8 @@ sends the chosen file to `PHASE.ImportDraft`.
 `WebPageBrowser.cjs` verifies page events using a mock Unity bridge; it does not
 prove native map loading. Verify the native bridge through Pipeline and the final
 built Web Player before publishing.
-`DemoWebSmoke.cjs` selects all fifteen rooms through the pause menu's level select,
+`DemoWebSmoke.cjs` still expects the jam's routes and cloak colors, fails on Verto's levels and does not
+gate publishing. It selects all fifteen rooms through the pause menu's level select,
 reaches the victory banner and replays through its level select, rebinds keys in the
 in-game settings and checks they persist across reload, then checks in-game editor
 laser/crystal import and export, panel clicks, panel drags and grid strokes at 960×540, 2560×1080 and
@@ -106,16 +107,19 @@ the warning.
 
 ## Online play
 
-<https://verto.5334601.xyz/> is the Cloudflare Pages project `verto`, uploaded
-by hand from a local build; merging to `main` does not update it. After building
-and verifying as above, publish and check the live site:
+<https://verto.5334601.xyz/> is the Cloudflare Pages project `verto`. GitHub does
+not deploy it: after merging a PR that changes the game, the merging session builds
+the latest `main` in a fresh checkout as above, then publishes and checks the live site:
 
 ```sh
-npx wrangler pages deploy Builds/Web --project-name verto --branch main
+npx wrangler pages deployment list --project-name verto
+npx wrangler pages deploy Builds/Web --project-name verto --branch main --commit-hash "$(git rev-parse HEAD)"
 node Verification/WebLoadSmoke.cjs https://verto.5334601.xyz/
 ```
 
-Run `npx wrangler login` once per machine first. Pages caps each file at 25 MiB;
+The list's Source column is the live commit; skip publishing when it is already this
+commit or a newer one, so an older build never replaces a newer one. Run
+`npx wrangler login` once per machine first. Pages caps each file at 25 MiB;
 `Build/Web.wasm.unityweb` is the largest. `WebLoadSmoke.cjs` takes a build folder
 or a URL, starts level1 from the title in headless Chromium, walks right and
 requires a clean console.

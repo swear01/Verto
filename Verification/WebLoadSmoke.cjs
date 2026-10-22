@@ -22,12 +22,12 @@ const server = remote ? null : http.createServer((request, response) => {
   fs.createReadStream(file).on('error', () => response.destroy()).pipe(response);
 });
 
-// Pixels in the bone-white cloak colors DemoWebSmoke tracks; Verto's levels draw no UI in those colors.
-const cloak = Array.from({length:9},(_,i)=>[234,223,197].map((v,k)=>Math.round(v+([255,91,94][k]-v)*i/8)));
-function cloakPixels(buffer) {
+// Pixels in the player's body colors (palette c, d, b and B in PhasePixels.Sprite); nothing else in the game uses them.
+const body = ['3b2a78', '261a52', '4a3a92', '2c2160'].map(hex => [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16)));
+function playerPixels(buffer) {
   const image = PNG.sync.read(buffer), pixels = new Map();
   for (let i = 0; i < image.data.length; i += 4)
-    if (image.data[i] >= 232 && cloak.some(rgb => rgb.every((v, k) => Math.abs(image.data[i + k] - v) < 4))) pixels.set(i / 4, (i / 4) % image.width);
+    if (body.some(rgb => rgb.every((v, k) => Math.abs(image.data[i + k] - v) < 4))) pixels.set(i / 4, (i / 4) % image.width);
   return pixels;
 }
 const centroidX = pixels => [...pixels.values()].reduce((a, b) => a + b) / pixels.size;
@@ -52,7 +52,7 @@ const centroidX = pixels => [...pixels.values()].reduce((a, b) => a + b) / pixel
     assert.equal(await page.locator('#error').isVisible(), false, `The Web build failed to load: ${await page.locator('#error').textContent()}`);
     const canvas = page.locator('#unity-canvas');
     await canvas.focus();
-    // The title's selected icon shares the cloak colors, so wait for the level-load result. Enter confirms whatever jump is bound to.
+    // A dropped key leaves the title up, so wait for the level-load result. Enter confirms whatever jump is bound to.
     await page.evaluate(() => { window.__levelStarted = false; addEventListener('phase-map-result', () => window.__levelStarted = true, { once: true }); });
     // A press right after a screen opens is ignored until keys are released; retry only after a full wait.
     for (let attempt = 0; attempt < 3 && !await page.evaluate(() => window.__levelStarted); attempt++) {
@@ -61,12 +61,12 @@ const centroidX = pixels => [...pixels.values()].reduce((a, b) => a + b) / pixel
     }
     assert(await page.evaluate(() => window.__levelStarted), 'The title starts level1');
     await page.waitForTimeout(1000);
-    const start = cloakPixels(await canvas.screenshot());
+    const start = playerPixels(await canvas.screenshot());
     assert(start.size, 'Level1 shows the player');
     // A short walk stays on the spawn ledge.
     await page.keyboard.down('ArrowRight'); await page.waitForTimeout(250); await page.keyboard.up('ArrowRight');
     await page.waitForTimeout(300);
-    const shot = await canvas.screenshot(), walked = cloakPixels(shot);
+    const shot = await canvas.screenshot(), walked = playerPixels(shot);
     fs.writeFileSync(path.join(reports, 'load-smoke.png'), shot);
     assert(walked.size, 'Level1 still shows the player after the walk');
     result.moved = centroidX(walked) - centroidX(start);
