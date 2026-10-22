@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Phase;
 using UnityEngine;
@@ -16,7 +17,7 @@ public static class UmbrellaLiveInput
     public static Task<string> Run()
     {
         var sandbox = UnityEngine.Object.FindAnyObjectByType<PhaseSandbox>();
-        if (sandbox == null || !Application.isPlaying || sandbox.gameObject.scene.name != "PhaseUmbrella") throw new InvalidOperationException("Open PhaseUmbrella in Play mode first.");
+        if (sandbox == null || !Application.isPlaying || sandbox.gameObject.scene.name != "PhaseUmbrella" || sandbox.Won) throw new InvalidOperationException("Open PhaseUmbrella in a fresh Play session first.");
         var result = new TaskCompletionSource<string>();
         sandbox.StartCoroutine(Check(sandbox, result));
         return result.Task;
@@ -27,18 +28,21 @@ public static class UmbrellaLiveInput
         var background = Application.runInBackground;
         var focus = InputSystem.settings.backgroundBehavior;
         var editorInput = InputSystem.settings.editorInputBehaviorInPlayMode;
+        var slots = PhaseSandbox.Slots.ToArray();
         Keyboard keyboard = null;
         try
         {
             Application.runInBackground = true;
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
             InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+            PhaseSandbox.ApplyControls(PhaseSandbox.DefaultSlots);
             yield return null;
             keyboard = InputSystem.AddDevice<Keyboard>("PhaseLiveVerification");
             var c = sandbox.Controller; c.Reset();
             string directory = Path.Combine("TestResults", "Umbrella"); Directory.CreateDirectory(directory);
-            int next = 0, screen = 0, frames = 0;
-            while (!sandbox.Won && frames++ < 60 * 30)
+            int next = 0, screen = 0;
+            double deadline = Time.realtimeSinceStartupAsDouble + 30;
+            while (!sandbox.Won && Time.realtimeSinceStartupAsDouble < deadline)
             {
                 var p = sandbox.Controller.player;
                 if (sandbox.Controller.deaths > 0) { result.SetException(new InvalidOperationException($"Died at x={p.x:F0} in phase {sandbox.Controller.phase} after {next} jumps.")); yield break; }
@@ -51,11 +55,13 @@ public static class UmbrellaLiveInput
                 yield return null;
             }
             InputSystem.QueueStateEvent(keyboard, new KeyboardState());
-            result.SetResult(sandbox.Won ? $"passed: {next} jumps, 0 deaths, {sandbox.Controller.time:F1}s" : $"no victory after {frames} frames at x={sandbox.Controller.player.x:F0}");
+            result.SetResult(sandbox.Won ? $"passed: {next} jumps, 0 deaths, {sandbox.Controller.time:F1}s" : $"no victory after 30s at x={sandbox.Controller.player.x:F0}");
         }
         finally
         {
             if (keyboard != null) InputSystem.RemoveDevice(keyboard);
+            PhaseSandbox.ApplyControls(slots);
+            result.TrySetException(new InvalidOperationException("The route stopped early; see the Console."));
             InputSystem.settings.backgroundBehavior = focus;
             InputSystem.settings.editorInputBehaviorInPlayMode = editorInput;
             Application.runInBackground = background;
