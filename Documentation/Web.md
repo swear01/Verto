@@ -106,16 +106,19 @@ the warning.
 
 ## Online play
 
-<https://verto.5334601.xyz/> is the Cloudflare Pages project `verto`, uploaded
-by hand from a local build; merging to `main` does not update it. After building
-and verifying as above, publish and check the live site:
+<https://verto.5334601.xyz/> is the Cloudflare Pages project `verto`. GitHub does
+not deploy it: after merging a PR that changes the game, the merging session builds
+the latest `main` in a fresh checkout as above, then publishes and checks the live site:
 
 ```sh
-npx wrangler pages deploy Builds/Web --project-name verto --branch main
+npx wrangler pages deployment list --project-name verto
+npx wrangler pages deploy Builds/Web --project-name verto --branch main --commit-hash "$(git rev-parse HEAD)"
 node Verification/WebLoadSmoke.cjs https://verto.5334601.xyz/
 ```
 
-Run `npx wrangler login` once per machine first. Pages caps each file at 25 MiB;
+The list's Source column is the live commit; skip publishing when it is already this
+commit or a newer one, so an older build never replaces a newer one. Run
+`npx wrangler login` once per machine first. Pages caps each file at 25 MiB;
 `Build/Web.wasm.unityweb` is the largest. `WebLoadSmoke.cjs` takes a build folder
 or a URL, starts level1 from the title in headless Chromium, walks right and
 requires a clean console.

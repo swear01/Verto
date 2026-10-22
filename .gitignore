@@ -119,3 +119,6 @@ InitTestScene*.unity*
 /Verification/node_modules/
 /Verification/__pycache__/
 /TestResults/
+
+# Wrangler cache from publishing Builds/Web
+.wrangler/
