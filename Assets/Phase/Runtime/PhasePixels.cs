@@ -171,7 +171,7 @@ namespace Phase
         {
             for (int i = 0; i < s.blocks.Count; i++) if (s.blocks[i] is Platform) PaintBlock(s, i);
         }
-        const double TileAlpha = .8, SpikeAlpha = .8;
+        const double SpikeAlpha = .8;
         void PaintBlock(PhaseController s, int i)
         {
             var b = s.blocks[i]; int color = surfaceIndices[b.Mask];
@@ -207,7 +207,7 @@ namespace Phase
                 for (int py = 0; py < 8; py++) for (int px = 0; px < 8; px++)
                 {
                     int edge = Math.Min(Math.Min(u ? 8 : py, d ? 8 : 7 - py), Math.Min(l ? 8 : px, r ? 8 : 7 - px));
-                    Rect(X + px, Y + py, 1, 1, edge < 2 ? cap : edge < 4 ? body : deep, TileAlpha);
+                    Rect(X + px, Y + py, 1, 1, cap, edge < 2 ? .9 : edge < 4 ? .55 : .25);
                 }
             }
         }
