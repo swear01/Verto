@@ -77,48 +77,72 @@ namespace Phase
         public PhaseLevels(int current = 0) { Choice = Mathf.Clamp(current, 0, Count - 1); }
         static int Count => PhaseSandbox.Levels.Length;
         // The column count and zoom that show the grid largest within the view.
-        static (int columns, UiZoom zoom) Layout(Vector2Int frame)
+        // The column count and zoom that show the whole grid largest within the view; when even scale 1 overflows,
+        // as many columns and rows as fit, and the rest scroll.
+        static (int columns, UiZoom zoom, int rows) Layout(Vector2Int frame, int count)
         {
-            (int columns, UiZoom zoom) best = default; int bestArea = -1;
-            foreach (int columns in columnChoices)
+            (int columns, UiZoom zoom, int rows) best = default; int bestArea = 0;
+            foreach (int choice in columnChoices.Concat(Enumerable.Range(1, count)))
             {
-                int w = columns * (Box + GapX) - GapX, h = (Count + columns - 1) / columns * (TileHeight + GapY) - GapY;
+                int columns = Mathf.Min(choice, count), rows = (count + columns - 1) / columns;
+                int w = columns * (Box + GapX) - GapX, h = rows * (TileHeight + GapY) - GapY;
                 var zoom = UiZoom.Fit(frame, w, h);
                 int area = UiZoom.Fits(frame, w * zoom.Scale, h * zoom.Scale) ? w * h * zoom.Scale * zoom.Scale : 0;
-                if (area > bestArea) { best = (columns, zoom); bestArea = area; }
+                if (area > bestArea) { best = (columns, zoom, rows); bestArea = area; }
             }
-            return best;
+            if (bestArea > 0) return best;
+            int fitColumns = Mathf.Clamp((int)(frame.x * .8f + GapX) / (Box + GapX), 1, count), fitRows = Mathf.Max(1, (int)(frame.y * .8f + GapY) / (TileHeight + GapY));
+            return (fitColumns, UiZoom.Fit(frame, fitColumns * (Box + GapX) - GapX, fitRows * (TileHeight + GapY) - GapY), fitRows);
         }
-        static RectInt LocalTile(int columns, int i) => new RectInt(i % columns * (Box + GapX), i / columns * (TileHeight + GapY), Box, TileHeight);
+        static (int columns, UiZoom zoom, int rows) Layout(Vector2Int frame) => Layout(frame, Count);
+        static RectInt LocalTile(int columns, int i, int firstRow = 0) =>
+            new RectInt(i % columns * (Box + GapX), (i / columns - firstRow) * (TileHeight + GapY), Box, TileHeight);
+        // Keeps the chosen row inside the visible rows.
+        int Scroll(int columns, int rows)
+        {
+            int row = Choice / columns, total = (Count + columns - 1) / columns;
+            return firstRow = Mathf.Clamp(firstRow, Mathf.Max(0, row - rows + 1), Mathf.Min(row, Mathf.Max(0, total - rows)));
+        }
+        int firstRow;
         public static int Columns(Vector2Int frame) => Layout(frame).columns;
-        // A level's tile, thumbnail frame and number, in frame pixels.
-        public static RectInt Tile(Vector2Int frame, int i) { var (columns, zoom) = Layout(frame); return zoom.Frame(LocalTile(columns, i)); }
+        // A level's tile, thumbnail frame and number, in frame pixels, with the grid scrolled to the top.
+        public static RectInt Tile(Vector2Int frame, int i, int count = -1) { var (columns, zoom, _) = Layout(frame, count < 0 ? Count : count); return zoom.Frame(LocalTile(columns, i)); }
         // Returns the chosen level number, 0 when Escape goes back, or -1.
         public int Tick(Keyboard k, Mouse m, Vector2Int frameSize)
         {
             if (k != null && k.escapeKey.wasPressedThisFrame) return 0;
-            var (columns, zoom) = Layout(frameSize);
+            var (columns, zoom, rows) = Layout(frameSize);
             if (k != null)
             {
                 int column = Choice % columns + PhaseMenu.Horizontal(k), row = Choice / columns + PhaseMenu.Vertical(k);
                 if (column >= 0 && column < columns && row >= 0 && row * columns + column < Count) Choice = row * columns + column;
             }
+            int top = Scroll(columns, rows);
             if (m != null && m.leftButton.wasPressedThisFrame)
             {
                 var at = zoom.Local(PhaseMenu.FramePoint(m, frameSize));
-                for (int i = 0; i < Count; i++) if (LocalTile(columns, i).Contains(at)) { Choice = i; return i + 1; }
+                for (int i = 0; i < Count; i++) if (i / columns >= top && i / columns < top + rows && LocalTile(columns, i, top).Contains(at)) { Choice = i; return i + 1; }
             }
             return PhaseMenu.Confirmed(k) ? Choice + 1 : -1;
         }
         public void Draw(PixelFrame frame)
         {
             frame.Fill(0, 0, frame.Width, frame.Height, PixelFrame.Ink, .85f);
-            var (columns, zoom) = Layout(new Vector2Int(frame.Width, frame.Height));
+            var (columns, zoom, rows) = Layout(new Vector2Int(frame.Width, frame.Height));
+            int top = Scroll(columns, rows);
             var grid = frame.Zoom(zoom);
             thumbnails ??= PhaseSandbox.Levels.Select(Thumbnail).ToArray();
+            int totalRows = (Count + columns - 1) / columns;
+            if (totalRows > rows)
+            {
+                int barHeight = rows * (TileHeight + GapY) - GapY, x = columns * (Box + GapX) - GapX + 3;
+                grid.Fill(x, 0, 1, barHeight, PixelFrame.Light, .2f);
+                grid.Fill(x, top * barHeight / totalRows, 1, rows * barHeight / totalRows, PixelFrame.Selection);
+            }
             for (int i = 0; i < Count; i++)
             {
-                var tile = LocalTile(columns, i); bool selected = i == Choice;
+                if (i / columns < top || i / columns >= top + rows) continue;
+                var tile = LocalTile(columns, i, top); bool selected = i == Choice;
                 if (thumbnails[i] != null) grid.Image(thumbnails[i], 40, tile.x + 2, tile.y + 2);
                 if (!selected) grid.Fill(tile.x + 2, tile.y + 2, 40, 22, PixelFrame.Ink, .4f);
                 grid.Outline(tile.x, tile.y, Box, BoxHeight, selected ? PixelFrame.Selection : PixelFrame.Light, selected ? 1 : .3f);

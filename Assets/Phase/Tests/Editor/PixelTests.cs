@@ -376,6 +376,22 @@ public class PixelTests
     }
 
     [Test]
+    public void LevelSelectFitsAnyLevelCount()
+    {
+        foreach (var size in new[] { new Vector2Int(320, 180), new Vector2Int(320, 693) })
+            foreach (int count in new[] { 1, 2, 3, 7, 11, 40, 300 })
+            {
+                var first = PhaseLevels.Tile(size, 0, count);
+                Assert.That(first.xMin, Is.GreaterThanOrEqualTo(0), $"{count} at {size}");
+                Assert.That(first.yMin, Is.GreaterThanOrEqualTo(0));
+                int columns = 0; while (columns < count && PhaseLevels.Tile(size, columns, count).yMin == first.yMin) columns++;
+                var last = PhaseLevels.Tile(size, columns - 1, count);
+                Assert.That(last.xMax, Is.LessThanOrEqualTo(size.x), $"{count} at {size}");
+                Assert.That(first.xMin + last.xMax, Is.InRange(size.x - 2, size.x + 2), "centered");
+            }
+    }
+
+    [Test]
     public void MenusFitTheReferenceViews()
     {
         foreach (var icon in new[] { PhaseMenu.PlayIcon, PhaseMenu.LevelsIcon, PhaseMenu.EditIcon, PhaseMenu.SettingsIcon, PhaseMenu.HomeIcon, PhaseMenu.RetryIcon, PhaseMenu.CloseIcon })
