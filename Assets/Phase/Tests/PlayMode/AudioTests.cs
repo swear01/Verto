@@ -19,6 +19,8 @@ public class AudioTests
         System.Array.Sort(music, (a, b) => string.CompareOrdinal(a.clip.name, b.clip.name));
         Assert.AreEqual(3, music.Length);
         foreach (var m in music) { Assert.IsTrue(m.isPlaying); Assert.Greater(m.clip.length, 5f); }
+        Assert.AreEqual(music[0].clip.samples, music[1].clip.samples);
+        Assert.AreEqual(music[0].clip.samples, music[2].clip.samples);
         for (int i = 0; i < 90; i++) PhaseAudio.Step(c, was);
         Assert.AreEqual(.1f, music[Mathf.Max(0, c.phase) % 3].volume, 1e-4f);
         c.phase = 1;
