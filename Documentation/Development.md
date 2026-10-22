@@ -58,7 +58,7 @@ starting the next test run. There are 16 controller cases, 6 laser cases, 8 crys
 (map format v3, room changes, open top, respawns, goal, camera) and 3 key-binding cases
 (validation, PlayerPrefs persistence, key caps) in Edit Mode. The 22 Play Mode cases cover a big-room camera
 following a keyboard run, bindings, pause/release gating, room persistence, crystal triggers, imported maps, the
-title/editor flow, the editor's fixed tool panel under mouse input, large editor rooms, the pause menu with key
+title/editor flow, the editor's fixed tool panel under mouse input, room creation, merging, splitting and moving in the editor, the pause menu with key
 settings, the fullscreen switch, and level select from the title, pause and victory screens.
 The two reference files preserve 12 movement traces (running, jumps, buffers, coyote time, falling, wall
 slide and wall jump) recorded before dash and climbing were removed; their expectations are unchanged.
@@ -390,31 +390,32 @@ when on); Enter, jump or a click toggles it. It is player state, not saved by th
 standalone players keep Unity's own setting and Web starts windowed. Web applies the
 request within that key press or click. The Editor's Game view ignores `Screen.fullScreen`,
 so tests and `KeysLiveInput` swap `PhaseKeys.IsFullScreen`/`SetFullScreen`.
-The editor paints the custom-map grid (40×22 cells by default, up to 160×90; terrain, spikes and lasers in four
-directions, jump crystals, jump platforms, spike cover, spawn, erase; seven masks) and renders it with the game's own pixels in the starting
+The editor paints the custom-map world (a grid of 40×22-cell screens; terrain, spikes and lasers in four
+directions, jump crystals, jump platforms, spike cover, spawns, the goal, erase, the room tool and the move tool; seven masks) and renders it with the game's own pixels in the starting
 red phase. The editor widens its own view (same aspect as the screen) so a fixed panel with one 2× icon per object type sits right
 of the grid, or below it when that leaves the grid larger (tall screens); the panel never moves and never covers a
 cell. Hovering a slot highlights it, a click picks it, and the selected tool and color are framed. Mouse: left paints,
 right erases; a stroke paints only if it starts on the grid, so a drag from the panel never paints.
 Keyboard: the left/right bindings and ↑/↓ move the cursor, jump paints, C erases, X cycles the
-tool type, R/E (or the mouse wheel) turn spikes and lasers clockwise/counter-clockwise, F flips the platform under the cursor, Escape or right-click cancels a platform being placed, 1–7 pick the mask, Enter playtests, Escape returns to the title.
-The last four panel slots size the room: arrows with an edge bar pull the right or bottom edge in or push it out by
-eight cells (never below 40×22 or past 160×90). Shrinking refuses with the red flash when a cell or the spawn
-would be cut off, so it never deletes anything. The 40×22 cells you see are a window onto the room, so the
-panel stays put: the cursor scrolls the window when it nears an edge, the wheel scrolls rows and Ctrl+wheel or a sideways wheel
-scrolls columns (a room that already fits vertically keeps the wheel for turning spikes and lasers), and a middle-button drag,
-or a Ctrl+left drag, pans. Two thin bars along the window's right and bottom edges show where it sits in a larger room,
-and the padding past the room's edges is dimmed. A refused playtest scrolls to a blocked spawn. `PhasePixels` draws the room
-with its own scrolling camera: the preview controller pads the room by the panel's width and the vertical band so every
-scroll position stays inside the camera's clamp, and caches the terrain until the draft changes.
+tool type, R/E (or the mouse wheel) turn spikes and lasers clockwise/counter-clockwise, F flips the platform under the cursor, Escape or right-click cancels a platform being placed, 1–7 pick the mask, Enter playtests, Tab shows the world overview, Escape returns to the title.
+The canvas is the whole world: the cursor scrolls the 40×22-cell window when it nears an edge, the wheel scrolls rows and
+Ctrl+wheel or a sideways wheel scrolls columns (a spike or laser tool keeps the wheel for turning), and a middle-button drag,
+or a Ctrl+left drag, pans. Screens without a room are dimmed, faint lines mark the screens, each room has a frame (brighter for
+the selected room and the room under the cursor) and a stretch shared by two rooms is dashed. Painting in a screen with no room makes a 1×1 room; erasing a
+room's last content removes it. The room tool, clicked within three cells of a seam, merges the rooms on either side (refused with the red
+flash if the joined rectangle would cover another room or pass 4×5 screens) or splits a room along the whole line (refused if a platform path
+crosses it). The move tool picks a room (Shift adds more), a drag of more than half a screen or Ctrl with an arrow moves the chosen rooms by whole
+screens, and a drop onto another room is refused. Spawn and goal are per room: a second click on a spawn takes it back, a world holds one goal, and a room
+without a spawn blinks red when a playtest or export is refused. The playtest starts in the room under the middle of the window at its nearest spawn.
+Tab shows every room scaled down; a click scrolls the window there. The preview is a `PhaseController` over exactly what the frame shows,
+rebuilt when the draft or the scroll changes.
 An invalid
 map flashes a red border instead of starting; when Wick's start overlaps terrain or a hazard,
 Wick's start box and the flag slot also blink red. The playtest runs a `PhaseSandbox`
 child named `Playtest`; Escape destroys it and returns to the unchanged draft. A Web
 `LoadCustomMap` sent in the editor scene plays that map the same way. The draft
 autosaves to PlayerPrefs `phase.editor.v1` as the map file's own JSON, loaded through the same migration without the playability checks. Drafts saved before the
-format change (one tool/mask pair per cell, `3,19;…`, dash crystals left empty) still load.
-Import and export carry the room size, and a playtest runs the whole room with the scrolling camera.
+format change (one tool/mask pair per cell, `3,19;…`, dash crystals left empty) still load as one room. Import and export carry the whole world.
 The two tray icons after the colors import (arrow out of the tray) and export (arrow into the tray) custom-map JSON.
 On Web, export calls `PhaseExportMap` and the page downloads `phase-custom-map.json`;
 import calls `PhaseImportMap`, the page opens a file picker and sends the text to
@@ -425,10 +426,9 @@ With `PhaseTitle` in Play mode, run `Verification/MenuLiveInput.cs`, entry
 `MenuLiveInput.Run`. It drives title→editor→paint terrain, a laser and a crystal→mouse panel and grid
 checks→clipboard export/import→playtest→back→level1 by keyboard,
 restores the developer's draft and clipboard and saves captures to `TestResults/Menu/`.
-`Verification/BigRoomLiveInput.cs`, entry `BigRoomLiveInput.Run`, starts from `PhaseTitle` in Play and drives the editor with a virtual
-keyboard and mouse: size the room to 80×30 with the panel arrows→scroll with the wheel and a drag→paint a floor in the far corner→
-export and re-import the JSON→playtest and run into the scrolled part of the room, checking the camera follows. It restores the
-developer's draft and clipboard and saves captures to `TestResults/BigRoom/`.
+`Verification/WorldEditorLiveInput.cs`, entry `WorldEditorLiveInput.Run`, starts from `PhaseTitle` in Play and drives the editor with a virtual
+keyboard and mouse: paint two screens→merge them with the room tool→split them→place spawns and a goal→playtest across the seam. It restores the
+developer's draft and clipboard and saves captures to `TestResults/WorldEditor/`.
 `Verification/KeysLiveInput.cs`, entry `KeysLiveInput.Run`, also starts from `PhaseTitle`
 in Play: title settings→bind J to jump (a duplicate is rejected)→title level
 select→level1 jumps with J→Escape pause freezes play→pause level select→the next level→

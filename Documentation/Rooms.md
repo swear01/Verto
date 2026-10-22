@@ -2,7 +2,7 @@
 
 A map is a world of connected rooms. A room is the camera's range, so its size and shape set how the camera behaves: one screen is a fixed view, a wide room scrolls sideways, a tall room is for climbing or falling. Leaving a room slides the view into the next one.
 
-Part A is the runtime world and map format v3. Part B, the editor's world canvas, is described under Editor and comes later.
+Part A is the runtime world and map format v3; part B is the editor's world canvas.
 
 ## Decisions
 
@@ -61,9 +61,8 @@ Part A is the runtime world and map format v3. Part B, the editor's world canvas
 - Validation: rooms do not overlap; each room has at least one spawn; the world has at most one goal; sizes are 1–4 by 1–5; every object and every platform stop with its attached rows lies inside its own room; the number bounds are unchanged.
 - Upgrade from v1 and v2 (a v1 file goes through v2): one room at `[0, 0]`, its size rounded up to whole screens, the content bottom-aligned (the floor stays at the room's bottom) with extra columns on the right. The old spawn becomes a spawn object.
 - A file newer than the game is refused with a message to update the game.
-- The single-room editor saves and exports a v3 world with one room, padded the same way, and opens only single-room worlds.
 
-## Editor (part B)
+## Editor
 
 - The canvas is the whole world, scrolls in any direction and shows faint screen gridlines.
 - **Draw:** drawing in a screen that belongs to no room makes it a new 1×1 room.

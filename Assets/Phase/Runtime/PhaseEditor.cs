@@ -90,7 +90,7 @@ namespace Phase
         public bool Overview { get; private set; }
         public bool Flashing => flash > 0;
         // Indices of the rooms chosen with the move tool.
-        public IReadOnlyList<int> Selection => selection.Select(rooms.IndexOf).OrderBy(i => i).ToList();
+        public IReadOnlyList<int> Selection => selection.Select(r => rooms.IndexOf(r)).OrderBy(i => i).ToList();
         protected override bool Hidden => Playtest != null;
         readonly List<EditRoom> selection = new List<EditRoom>();
         // The rooms that refused a playtest or export for lacking a spawn; their frames blink with the border.
@@ -346,13 +346,15 @@ namespace Phase
         {
             if (tool == Spawn)
             {
+                if (!press) return false;
                 var spawn = new Vector2Int(cell.x, Math.Min(cell.y, rows - 2));
-                if (room.spawns.Contains(spawn)) { if (!press) return false; room.spawns.Remove(spawn); return Edited(); }
+                if (room.spawns.Contains(spawn)) { room.spawns.Remove(spawn); return Edited(); }
                 room.spawns.Add(spawn); return Edited();
             }
             if (tool == GoalTool)
             {
-                if (room.goal == cell) { if (!press) return false; room.goal = null; return Edited(); }
+                if (!press) return false;
+                if (room.goal == cell) { room.goal = null; return Edited(); }
                 if (rooms.Any(r => r.goal != null)) { flash = .4f; return true; }
                 room.goal = cell; return Edited();
             }

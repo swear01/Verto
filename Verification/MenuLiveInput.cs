@@ -101,17 +101,17 @@ public static class MenuLiveInput
             Capture(editor, "editor-hover");
             await Point(mouse, view, Slot(yellow), MouseButton.Left); await Point(mouse, view, Slot(yellow));
             await Point(mouse, view, Slot(0), MouseButton.Left); await Point(mouse, view, Cell(30, 5), MouseButton.Left); await Point(mouse, view, Cell(30, 5));
-            Require(editor.Tool == PhaseEditor.Terrain && editor.Mask == 5 && PhaseCustomMap.ToJson(editor.Room()) == PhaseCustomMap.ToJson(room),
+            Require(editor.Tool == PhaseEditor.Terrain && editor.Mask == 5 && PhaseCustomMap.ToJson(editor.World()) == PhaseCustomMap.ToJson(new PhaseWorld { rooms = new[] { room } }),
                 "Panel clicks did not pick yellow terrain, or a drag from the panel painted.");
             await Point(mouse, view, Cell(30, 5), MouseButton.Left); await Point(mouse, view, Cell(30, 5));
             Require(editor.Room().blocks.Any(b => b.x == 240 && b.y == 40 && b.phaseMask == 5), "A click on the grid did not paint yellow terrain.");
             Capture(editor, "editor-mouse");
             await Point(mouse, view, Cell(30, 5), MouseButton.Right); await Point(mouse, view, Cell(30, 5));
-            Require(PhaseCustomMap.ToJson(editor.Room()) == PhaseCustomMap.ToJson(room), "Right-click did not erase the painted cell.");
-            string draft = PhaseCustomMap.ToJson(room);
+            Require(PhaseCustomMap.ToJson(editor.World()) == PhaseCustomMap.ToJson(new PhaseWorld { rooms = new[] { room } }), "Right-click did not erase the painted cell.");
+            string draft = PhaseCustomMap.ToJson(new PhaseWorld { rooms = new[] { room } });
             Require(editor.ExportDraft() && GUIUtility.systemCopyBuffer == draft, "Export did not copy the draft.");
-            editor.ImportDraft("{"); Require(PhaseCustomMap.ToJson(editor.Room()) == draft, "Invalid import changed the draft.");
-            editor.ImportDraft(draft); Require(PhaseCustomMap.ToJson(editor.Room()) == draft, "Import did not restore the draft.");
+            editor.ImportDraft("{"); Require(PhaseCustomMap.ToJson(editor.World()) == draft, "Invalid import changed the draft.");
+            editor.ImportDraft(draft); Require(PhaseCustomMap.ToJson(editor.World()) == draft, "Import did not restore the draft.");
 
             await Point(mouse, view, Slot(PhaseEditor.PlaySlot), MouseButton.Left); await Point(mouse, view, Slot(PhaseEditor.PlaySlot));
             var playtest = editor.Playtest; Require(playtest != null, "The play slot did not start the playtest.");
