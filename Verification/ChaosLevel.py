@@ -10,11 +10,11 @@ R,B,G=1,2,4
 PLAN=[(1,1),(1,0),(1,1),(1,0),(0,1),(1,0),(1,1),(0,0),(1,1),(1,0),(1,0),(1,1)]
 ROUTE=[]; x=40
 for o,w in PLAN: ROUTE.append((x,o,w)); x+=112 if w else 80
-SPAWN=(2,19); GOAL=(159,20)
+SPAWN=(2,19)
 # row colour order on each wall face, rotated per wall for variety
 PERMS=[(R,B,G),(G,R,B),(B,G,R),(R,G,B),(B,R,G),(G,B,R)]
 grid=[['.']*W for _ in range(H)]; grid[21]=['7']*W
-objs=[{"type":"spawn","cell":list(SPAWN)},{"type":"goal","cell":list(GOAL)}]
+objs=[{"type":"spawn","cell":list(SPAWN)}]
 hops=[(x,o,(i+1)%3) for i,(x,o,_) in enumerate(ROUTE)]  # phase index after hop: 0 R,1 B,2 G
 col=lambda p:1<<p
 walls=[]
@@ -22,7 +22,7 @@ for i,(x,o,w) in enumerate(ROUTE):
     if o:  # 1-cell white spike block centred under the hop
         grid[20][(x+33)//8]='G'
     if w:
-        end=x+TOL+67; nxt=ROUTE[i+1][0]-TOL+10 if i+1<len(ROUTE) else 8*GOAL[0]
+        end=x+TOL+67; nxt=ROUTE[i+1][0]-TOL+10 if i+1<len(ROUTE) else 8*(W-1)
         c=math.ceil(end/8)+1; walls.append(c)   # wall cols c,c+1; emitters c-1 (left) and c+2 (right)
         assert 8*(c-1)>=end and 8*(c+3)<=nxt, (x,c)
         for r in range(0,19): grid[r][c]=grid[r][c+1]='7'

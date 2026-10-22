@@ -1,8 +1,9 @@
 # Chaos level: segmented laser walls
 
-A four-screen (160×22 cell) horizontal level that looks crowded but runs on one rule:
+Level 16 (`PhaseDemo15`) is a four-screen (160×22 cell) horizontal level that looks crowded but runs on one rule:
 **a beam reaches only as far as the first block that is solid in its colour.**
 The player only has to jump at the right places. The colour after each jump decides which beams are live.
+Leaving the room to the right wins.
 
 ## Layout
 - **Laser walls.** White walls hang from the ceiling down to row 18. The player always runs under them.
@@ -20,7 +21,7 @@ other colours. A jump in the wrong colour, from an extra or a missing hop, is al
 keep the red → blue → green rhythm, and the player never waits in place.
 
 ## Tools
-- `Verification/ChaosLevel.py [out.json]` generates the map (verto-map v3, one 4×1 room) and prints any
+- `Verification/ChaosLevel.py [out.json]` generates the map (verto-map v3, one 4×1 room, saved as `Assets/Phase/Imported/chaos.json`) and prints any
   jump that breaks the rule above.
 - The stopper positions use the arc measured from the controller: a hop spans 62 px, and its apex is 27 px
   above the ground. The route survives takeoff offsets of ±8 px in a headless controller simulation.

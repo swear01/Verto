@@ -32,11 +32,12 @@ public static class PhaseSandboxBuilder
             sandbox.pixelCamera = camera;
             sandbox.pixelMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Phase/PixelSurface.mat");
             sandbox.spawn = new Vector2Int((int)room.spawnX, (int)room.spawnY);
+            sandbox.roomSize = new Vector2Int(room.GridWidth, Mathf.Max(180, room.GridHeight));
             sandbox.checkpointOnEntry = true;
             int level = System.Array.IndexOf(PhaseSandbox.Levels, prefix + (i + 1));
             sandbox.leftScene = level > 0 ? PhaseSandbox.Levels[level - 1] : "";
             sandbox.rightScene = level < PhaseSandbox.Levels.Length - 1 ? PhaseSandbox.Levels[level + 1] : "";
-            foreach (var b in room.blocks) Add(root, "Terrain", (int)b.x, (int)b.y, (int)b.w, (int)b.h, b.phase, b.phaseMask);
+            foreach (var b in room.blocks) Add(root, "Terrain", (int)b.x, (int)b.y, (int)b.w, (int)b.h, b.phase, b.phaseMask, b.spiked);
             foreach (var spike in room.CreateSpikes())
             {
                 var go = PhaseMechanismPrefabs.Instantiate("Spikes", root.transform, new Vector3((float)spike.x, -(float)spike.y));
@@ -159,16 +160,17 @@ public static class PhaseSandboxBuilder
         RecordOverrides(root);
         EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), second ? "Assets/Scenes/PhaseRoom2.unity" : "Assets/Scenes/PhaseSandbox.unity");
     }
-    // Imports level-a and level-b and puts every playable scene, including the hand-authored color room, in the build.
+    // Imports level-a, level-b and the chaos level and puts every playable scene, including the hand-authored color room, in the build.
     public static string CreateImportedLevels()
     {
         if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) throw new System.OperationCanceledException("Unsaved scenes were kept.");
-        var maps = new[] { ("Assets/Phase/Imported/level-a.json", "PhaseDemo13"), ("Assets/Phase/Imported/level-b.json", "PhaseDemo14") };
+        var maps = new[] { ("Assets/Phase/Imported/level-a.json", "PhaseDemo13"), ("Assets/Phase/Imported/level-b.json", "PhaseDemo14"), ("Assets/Phase/Imported/chaos.json", "PhaseDemo15") };
         foreach (var (source, sceneName) in maps)
         {
             var map = PhaseCustomMap.Parse(System.IO.File.ReadAllText(source));
             if (map.rooms.Length != 1) throw new System.InvalidOperationException(source + " holds " + map.rooms.Length + " rooms; a scene level is one room.");
             var room = map.rooms[0]; room.CreateController();
+            if (room.platforms != null || room.goal != null) throw new System.InvalidOperationException(source + " has platforms or a goal; scene levels end at the right edge.");
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             var root = new GameObject("PHASE"); root.AddComponent<Grid>().cellSize = new Vector3(8, 8, 1); root.AddComponent<PhaseGrid>(); var sandbox = root.AddComponent<PhaseSandbox>();
             var camera = new GameObject("Camera").AddComponent<Camera>();
@@ -177,12 +179,13 @@ public static class PhaseSandboxBuilder
             sandbox.pixelCamera = camera;
             sandbox.pixelMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/Phase/PixelSurface.mat");
             sandbox.spawn = new Vector2Int((int)room.spawnX, (int)room.spawnY);
+            sandbox.roomSize = new Vector2Int(room.GridWidth, Mathf.Max(180, room.GridHeight));
             sandbox.checkpointOnEntry = true;
             int level = System.Array.IndexOf(PhaseSandbox.Levels, sceneName);
             if (level < 0) throw new System.InvalidOperationException(sceneName + " is not in the level list.");
             sandbox.leftScene = level > 0 ? PhaseSandbox.Levels[level - 1] : "";
             sandbox.rightScene = level < PhaseSandbox.Levels.Length - 1 ? PhaseSandbox.Levels[level + 1] : "";
-            foreach (var b in room.blocks) Add(root, "Terrain", (int)b.x, (int)b.y, (int)b.w, (int)b.h, b.phase, b.phaseMask);
+            foreach (var b in room.blocks) Add(root, "Terrain", (int)b.x, (int)b.y, (int)b.w, (int)b.h, b.phase, b.phaseMask, b.spiked);
             foreach (var spike in room.CreateSpikes())
             {
                 var go = PhaseMechanismPrefabs.Instantiate("Spikes", root.transform, new Vector3((float)spike.x, -(float)spike.y));
@@ -219,9 +222,9 @@ public static class PhaseSandboxBuilder
         foreach (var component in root.GetComponentsInChildren<Component>())
             if (PrefabUtility.IsPartOfPrefabInstance(component)) PrefabUtility.RecordPrefabInstancePropertyModifications(component);
     }
-    static void Add(GameObject root, string name, int x, int y, int w, int h, int phase, int phaseMask = 0)
+    static void Add(GameObject root, string name, int x, int y, int w, int h, int phase, int phaseMask = 0, bool spiked = false)
     {
         var go = new GameObject(name); go.transform.SetParent(root.transform); go.transform.position = new Vector3(x, -y, 0);
-        var terrain = go.AddComponent<PhaseTerrain>(); terrain.size = new Vector2Int(w, h); terrain.phase = phase; terrain.phaseMask = phaseMask; terrain.CreateBlock();
+        var terrain = go.AddComponent<PhaseTerrain>(); terrain.size = new Vector2Int(w, h); terrain.phase = phase; terrain.phaseMask = phaseMask; terrain.spiked = spiked; terrain.CreateBlock();
     }
 }

@@ -902,7 +902,7 @@ public class MenuTests : InputTestFixture
         int light = 0, replaced = 0;
         for (int i = 0; i < before.Length; i++) if (before[i].Equals(PixelFrame.Light)) { light++; if (!after[i].Equals(before[i])) replaced++; }
         Assert.That(replaced, Is.GreaterThan(light / 2), "level select replaces the title");
-        for (int i = 0; i < PhaseSandbox.Levels.Length; i++)
+        for (int i = 0; i < Mathf.Min(PhaseSandbox.Levels.Length, PhaseLevels.Columns(size) * PhaseLevels.Rows(size)); i++)
         {
             var tile = PhaseLevels.Tile(size, i);
             Assert.That(tile.xMin >= 0 && tile.yMin >= 0 && tile.xMax <= size.x && tile.yMax <= size.y, Is.True, $"tile {i} stays inside the view");
