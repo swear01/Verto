@@ -20,6 +20,8 @@ public static class MenuLiveInput
         while (Time.frameCount < target && Time.realtimeSinceStartupAsDouble < deadline) await Task.Delay(16);
         if (Time.frameCount < target) throw new TimeoutException("Player loop did not advance.");
     }
+    // The editor names its world 自訂地圖, so a room is compared inside a world of that name.
+    static string Json(PhaseDemoRoom room) => PhaseCustomMap.ToJson(new PhaseWorld { name = "自訂地圖", rooms = new[] { room } });
     static void Require(bool value, string message) { if (!value) throw new InvalidOperationException(message); }
     static async Task Tap(Keyboard keyboard, params Key[] keys)
     {
@@ -69,14 +71,14 @@ public static class MenuLiveInput
             for (int i = 0; i < 3; i++) await Tap(keyboard, Key.UpArrow);
             await Tap(keyboard, Key.Z);
             await Tap(keyboard, Key.RightArrow); await Tap(keyboard, Key.Z);
-            Require(editor.Room().blocks.Count(b => b.phaseMask == 2) == 2, "Keyboard did not paint two blue cells.");
+            Require(editor.World().rooms[0].blocks.Count(b => b.phaseMask == 2) == 2, "Keyboard did not paint two blue cells.");
             await Tap(keyboard, Key.X); await Tap(keyboard, Key.X); await Tap(keyboard, Key.R); await Tap(keyboard, Key.R);
             Require(editor.Tool == PhaseEditor.LaserTool + 1, "X and R did not pick the down laser.");
             await Tap(keyboard, Key.Digit2); await Tap(keyboard, Key.UpArrow); await Tap(keyboard, Key.Z);
             await Tap(keyboard, Key.X);
             Require(editor.Tool == PhaseEditor.CrystalTool, "X did not cycle to the jump crystal.");
             await Tap(keyboard, Key.Digit1); await Tap(keyboard, Key.RightArrow); await Tap(keyboard, Key.Z);
-            var room = editor.Room();
+            var room = editor.World().rooms[0];
             Require(room.lasers.Length == 1 && room.lasers[0].phaseMask == 1 && room.lasers[0].direction == LaserDirection.Down, "Keyboard did not paint a red down laser.");
             Require(room.crystals.Length == 1 && room.crystals[0].phaseMask == 7, "Keyboard did not paint a white jump crystal.");
             Capture(editor, "editor");
@@ -101,14 +103,14 @@ public static class MenuLiveInput
             Capture(editor, "editor-hover");
             await Point(mouse, view, Slot(yellow), MouseButton.Left); await Point(mouse, view, Slot(yellow));
             await Point(mouse, view, Slot(0), MouseButton.Left); await Point(mouse, view, Cell(30, 5), MouseButton.Left); await Point(mouse, view, Cell(30, 5));
-            Require(editor.Tool == PhaseEditor.Terrain && editor.Mask == 5 && PhaseCustomMap.ToJson(editor.World()) == PhaseCustomMap.ToJson(new PhaseWorld { rooms = new[] { room } }),
+            Require(editor.Tool == PhaseEditor.Terrain && editor.Mask == 5 && PhaseCustomMap.ToJson(editor.World()) == Json(room),
                 "Panel clicks did not pick yellow terrain, or a drag from the panel painted.");
             await Point(mouse, view, Cell(30, 5), MouseButton.Left); await Point(mouse, view, Cell(30, 5));
-            Require(editor.Room().blocks.Any(b => b.x == 240 && b.y == 40 && b.phaseMask == 5), "A click on the grid did not paint yellow terrain.");
+            Require(editor.World().rooms[0].blocks.Any(b => b.x == 240 && b.y == 40 && b.phaseMask == 5), "A click on the grid did not paint yellow terrain.");
             Capture(editor, "editor-mouse");
             await Point(mouse, view, Cell(30, 5), MouseButton.Right); await Point(mouse, view, Cell(30, 5));
-            Require(PhaseCustomMap.ToJson(editor.World()) == PhaseCustomMap.ToJson(new PhaseWorld { rooms = new[] { room } }), "Right-click did not erase the painted cell.");
-            string draft = PhaseCustomMap.ToJson(new PhaseWorld { rooms = new[] { room } });
+            Require(PhaseCustomMap.ToJson(editor.World()) == Json(room), "Right-click did not erase the painted cell.");
+            string draft = Json(room);
             Require(editor.ExportDraft() && GUIUtility.systemCopyBuffer == draft, "Export did not copy the draft.");
             editor.ImportDraft("{"); Require(PhaseCustomMap.ToJson(editor.World()) == draft, "Invalid import changed the draft.");
             editor.ImportDraft(draft); Require(PhaseCustomMap.ToJson(editor.World()) == draft, "Import did not restore the draft.");

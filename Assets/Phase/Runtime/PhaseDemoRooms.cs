@@ -47,7 +47,9 @@ namespace Phase
             foreach (var spike in CreateSpikes()) { Cell(spike.x); Cell(spike.y); }
             foreach (var laser in CreateLasers()) { Cell(laser.x); Cell(laser.y); }
             foreach (var crystal in CreateCrystals()) { Cell(crystal.x); Cell(crystal.y); }
-            var start = Spawns[0];
+            var spawns = Spawns;
+            if (spawns.Count == 0) throw new InvalidOperationException("The room has no spawn.");
+            var start = spawns[0];
             return new PhaseController(blocks.Select(b => new Block(b.x,b.y,b.w,b.h,b.phase,b.phaseMask) { spiked = b.spiked }), start.x, start.y,
                 spikes: CreateSpikes(), lasers: CreateLasers(), crystals: CreateCrystals(), width: GridWidth, height: RoomHeight, platforms: CreatePlatforms())
                 { goal = goal == null ? null : new Block(goal.x, goal.y, 8, 8) };

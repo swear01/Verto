@@ -20,7 +20,9 @@ namespace Phase
         // A room with its neighbors: the rooms that share an edge with it, as rectangles in its pixels.
         public PhaseController Create(int index)
         {
-            var room = rooms[index]; var controller = room.CreateController();
+            var room = rooms[index];
+            if (room.noSpawn) throw new ArgumentException("每個房間至少需要一個出生點。");
+            var controller = room.CreateController();
             double w = room.GridWidth, h = room.GridHeight;
             for (int i = 0; i < rooms.Length; i++)
             {
@@ -51,9 +53,10 @@ namespace Phase
         // Starts in `start` (the first room by default); with `near`, a point in that room's pixels, at the spawn nearest to it.
         public PhaseWorldPlay(PhaseWorld world, int? start = null, (double x, double y)? near = null)
         {
+            if (world.rooms.Any(r => r.noSpawn)) throw new ArgumentException("每個房間至少需要一個出生點。");
             this.world = world; controllers = new PhaseController[world.rooms.Length];
             Room = start ?? world.Start; controllers[Room] = world.Create(Room);
-            if (near is var (x, y))
+            if (near is var (x, y) && world.rooms[Room].Spawns.Count > 0)
             {
                 var spawn = world.rooms[Room].Spawns.OrderBy(s => Math.Pow(s.x - x, 2) + Math.Pow(s.y - y, 2)).First();
                 controllers[Room].spawnX = spawn.x; controllers[Room].spawnY = spawn.y; controllers[Room].Reset();

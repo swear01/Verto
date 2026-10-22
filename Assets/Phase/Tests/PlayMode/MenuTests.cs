@@ -377,7 +377,6 @@ public class MenuTests : InputTestFixture
         rig.editor = Object.FindAnyObjectByType<PhaseEditor>(); mouse = InputSystem.AddDevice<Mouse>();
         rig.view = PhaseEditor.ViewFor(Screen.width, Screen.height);
     }
-    static readonly int[] toolSlots = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
     const int TerrainSlot = 0, SpawnSlot = 6, EraseSlot = 7, GoalSlot = 8, RoomSlot = 9, MoveSlot = 10;
     IEnumerator Click(EditorRig rig, Vector2Int at) { yield return Point(rig.view, at, MouseButton.Left); yield return Point(rig.view, at); }
     IEnumerator ClickCell(EditorRig rig, int x, int y) { yield return Click(rig, rig.At(x, y)); }
@@ -480,7 +479,9 @@ public class MenuTests : InputTestFixture
             yield return Pick(rig, GoalSlot); yield return ClickCell(rig, 20, 10);
             Assert.That(editor.World().rooms[0].goal.x, Is.EqualTo(160));
             yield return ClickCell(rig, 25, 10);
-            Assert.That((editor.World().rooms[0].goal.x, editor.Flashing), Is.EqualTo((160d, true)), "a second goal is refused");
+            Assert.That((editor.World().rooms[0].goal.x, editor.Flashing), Is.EqualTo((200d, false)), "the goal moves within its room");
+            yield return ClickCell(rig, 25, 21);
+            Assert.That((editor.World().rooms[0].goal.x, editor.World().rooms[0].goal.y, editor.Flashing), Is.EqualTo((200d, 80d, true)), "a goal onto terrain is refused");
             yield return new WaitForSeconds(.5f);
 
             // A room made by painting has no spawn: playtest and export are refused with its frame flashing.
@@ -542,6 +543,49 @@ public class MenuTests : InputTestFixture
         }
     }
 
+    static PhaseDemoRoom Plain(int x, int y, int w, int h) => new PhaseDemoRoom {
+        atX = x, atY = y, width = w * 320, height = h * 176, spawnX = 24, spawnY = h * 176 - 24, blocks = new[] { new Block(0, h * 176 - 8, w * 320, 8, phaseMask: 7) } };
+
+    [UnityTest]
+    public IEnumerator EditorShowsABeamWhoseEmitterIsOffscreenAndRefusesASplitPastTheRoomLimit()
+    {
+        string saved = PlayerPrefs.HasKey(PhaseEditor.DraftKey) ? PlayerPrefs.GetString(PhaseEditor.DraftKey) : null;
+        PlayerPrefs.DeleteKey(PhaseEditor.DraftKey);
+        try
+        {
+            var rig = new EditorRig(); yield return OpenEditor(rig); var editor = rig.editor;
+            var tall = Plain(0, 0, 1, 2); tall.lasers = new[] { new DemoLaser { x = 160, y = 0, direction = LaserDirection.Down, phaseMask = 1 } };
+            editor.ImportDraft(PhaseCustomMap.ToJson(new PhaseWorld { name = "自訂地圖", rooms = new[] { tall } }));
+            Assert.That(editor.RoomCount, Is.EqualTo(1));
+            var texture = editor.GetComponentInChildren<SpriteRenderer>().sprite.texture;
+            Color Pixel(Vector2Int p) => texture.GetPixel(p.x, rig.view.y - 1 - p.y);
+            // Scroll until the emitter is above the window: the beam below it is still drawn, and stops at the floor of its own room.
+            for (int i = 0; i < 2; i++)
+            {
+                var from = new Vector2Int(160, 150); var to = from - new Vector2Int(0, 80);
+                yield return Point(rig.view, from, MouseButton.Middle); yield return Point(rig.view, to, MouseButton.Middle); yield return Point(rig.view, to);
+            }
+            Assert.That(editor.Scroll.y, Is.EqualTo(20));
+            Assert.That(Pixel(rig.At(20, 30)), Is.Not.EqualTo(Pixel(rig.At(26, 30))), "the beam shows although its emitter is offscreen");
+
+            // Splitting a room that would make the 257th is refused before anything changes.
+            var rooms = new System.Collections.Generic.List<PhaseDemoRoom> { Plain(0, 0, 2, 1) };
+            for (int i = 0; i < 255; i++) rooms.Add(Plain(2 + i % 16, i / 16, 1, 1));
+            editor.ImportDraft(PhaseCustomMap.ToJson(new PhaseWorld { name = "自訂地圖", rooms = rooms.ToArray() }));
+            Assert.That(editor.RoomCount, Is.EqualTo(PhaseWorld.MaxRooms));
+            string before = PhaseCustomMap.ToJson(editor.World());
+            yield return Pick(rig, RoomSlot); yield return ClickCell(rig, 39, 10);
+            Assert.That((editor.RoomCount, editor.Flashing), Is.EqualTo((PhaseWorld.MaxRooms, true)), "the split is refused with the flash");
+            Assert.That(PhaseCustomMap.ToJson(editor.World()) == before, Is.True, "and nothing changed");
+            LogAssert.NoUnexpectedReceived();
+        }
+        finally
+        {
+            if (saved == null) PlayerPrefs.DeleteKey(PhaseEditor.DraftKey); else PlayerPrefs.SetString(PhaseEditor.DraftKey, saved);
+            PlayerPrefs.Save();
+        }
+    }
+
     [UnityTest]
     public IEnumerator EditorExportsAndImportsAMultiRoomWorldAndShowsItInTheOverview()
     {
@@ -577,9 +621,9 @@ public class MenuTests : InputTestFixture
             var area = new Vector2Int((panel.x > 100 ? panel.x : rig.view.x) / 2, (panel.x > 100 ? rig.view.y : panel.y) / 2);
             yield return Click(rig, area);
             Assert.That(editor.Overview, Is.False);
-            // The world spans screens -1..2 across and -2..1 down, so its middle is cell (20, -11) give or take the pixel rounding.
-            Assert.That(Mathf.Abs(editor.Scroll.x + 20 - 20), Is.LessThanOrEqualTo(25));
-            Assert.That(Mathf.Abs(editor.Scroll.y + 11 + 11), Is.LessThanOrEqualTo(25));
+            // The world spans screens -1..2 across and -2..1 down, so its middle is cell (20, -11) and the window's corner (0, -22), give or take the pixel rounding.
+            Assert.That(editor.Scroll.x, Is.EqualTo(0).Within(25));
+            Assert.That(editor.Scroll.y, Is.EqualTo(-22).Within(25));
             Assert.That(editor.Scroll, Is.Not.EqualTo(before));
             LogAssert.NoUnexpectedReceived();
         }

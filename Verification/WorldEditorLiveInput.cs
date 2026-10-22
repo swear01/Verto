@@ -85,7 +85,7 @@ public static class WorldEditorLiveInput
             // A spawn and a goal in the second room.
             await Click(Slot(6)); await Click(At(44, 19));
             await Click(Slot(8)); await Click(At(46, 20));
-            Require(editor.World().rooms[1].extraSpawns == null && editor.World().rooms[1].goal != null, "The second room did not get its spawn and goal.");
+            Require(!editor.World().rooms[1].noSpawn && editor.World().rooms[1].extraSpawns == null && editor.World().rooms[1].goal != null, "The second room did not get its spawn and goal.");
             Capture(editor, "3-spawn-goal");
             await Tap(keyboard, Key.Tab); Require(editor.Overview, "Tab did not show the overview."); Capture(editor, "4-overview"); await Tap(keyboard, Key.Tab);
             // Back at the first room: the playtest starts there, runs right across the seam and touches the goal.

@@ -358,4 +358,15 @@ public class WorldTests
         Assert.Throws<ArgumentException>(() => PhaseCustomMap.Parse(json));
         Assert.Throws<ArgumentException>(() => PhaseCustomMap.Validate(draft));
     }
+
+    [Test]
+    public void PlayingAWorldWithARoomThatHasNoSpawnFailsClearly()
+    {
+        var bare = Room(1, 0); bare.noSpawn = true;
+        var world = World(Room(0, 0), bare);
+        var error = Assert.Throws<ArgumentException>(() => new PhaseWorldPlay(world));
+        Assert.That(error.Message, Does.Contain("出生點"));
+        Assert.Throws<ArgumentException>(() => world.Create(1));
+        Assert.Throws<InvalidOperationException>(() => bare.CreateController());
+    }
 }

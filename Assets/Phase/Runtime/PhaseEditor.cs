@@ -99,6 +99,9 @@ namespace Phase
         // Where a pan began, while its button is held; and where a room drag began, in world cells.
         Vector2Int? panFrom, dragFrom;
         float repeatAt, flash;
+        bool mouseKnown;
+        // A flash for any reason other than a blocked spawn stops the spawn markers blinking.
+        void Flash(float seconds) { flash = seconds; SpawnBlocked = false; }
         // A mouse stroke paints or erases only when its press began on the grid.
         bool dirty, stroke;
         // A refused map whose spawn overlaps something: the spawn markers and the flag slot blink with the border.
@@ -126,7 +129,7 @@ namespace Phase
             // A larger room appends its columns and rows to the spawn cell; older drafts hold a 40×22 grid.
             int c = Columns, r = Rows;
             bool sized = spawn.Length == 4 && int.TryParse(spawn[2], out c) && int.TryParse(spawn[3], out r);
-            if (parts.Length == 2 && (spawn.Length == 2 || sized) && c >= Columns && c <= PhaseCustomMap.MaxWidth / 8 && r >= Rows && r <= PhaseCustomMap.MaxHeight / 8 && parts[1].Length >= c * r * 2 &&
+            if (parts.Length == 2 && (spawn.Length == 2 || sized) && c >= Columns && c <= PhaseCustomMap.MaxWidth / 8 && r >= Rows && r <= PhaseCustomMap.MaxRoomHeight / 8 && parts[1].Length >= c * r * 2 &&
                 int.TryParse(spawn[0], out int sx) && int.TryParse(spawn[1], out int sy) && sx >= 0 && sx < c && sy >= 0 && sy <= r - 2)
             {
                 // The grid becomes one room: whole screens, the content at the bottom and the extra columns on the right.
@@ -287,12 +290,12 @@ namespace Phase
             {
                 if (cell.y == first.y) { draftVertical = false; draftLength = Math.Abs(cell.x - first.x) * 2 + 1; }
                 else if (cell.x == first.x) { draftVertical = true; draftLength = Math.Abs(cell.y - first.y) * 2 + 1; }
-                else flash = .4f;
+                else Flash(.4f);
                 return true;
             }
-            if (cell != first && draft.Contains(cell)) { flash = .4f; return true; }
+            if (cell != first && draft.Contains(cell)) { Flash(.4f); return true; }
             if (cell != first) { draft.Add(cell); return true; }
-            if (draft.Count < 2) { flash = .4f; return true; }
+            if (draft.Count < 2) { Flash(.4f); return true; }
             var made = new DemoPlatform { vertical = draftVertical, length = draftLength, phaseMask = Mask, pivots = draft.Select(c => (c.x, c.y)).ToArray() };
             var body = made.Create();
             bool free = Fits(made, cols, rows) && Enumerable.Range(0, (int)(body.w * body.h / 64)).All(n =>
@@ -300,7 +303,7 @@ namespace Phase
                 var at = new Vector2Int((int)body.x / 8 + (draftVertical ? 0 : n), (int)body.y / 8 + (draftVertical ? n : 0));
                 return tools[at.y * cols + at.x] == Erase && PlatformAt(at).platform == null;
             });
-            if (!free) { flash = .4f; return true; }
+            if (!free) { Flash(.4f); return true; }
             platforms.Add(made); CancelPlacing(); return Edited();
         }
         // The cover tool flips terrain or a platform between plain and spike-covered, or paints covered terrain on an empty cell.
@@ -331,10 +334,10 @@ namespace Phase
             if (room == null)
             {
                 if (tool == Erase) return false;
-                if (rooms.Count >= PhaseWorld.MaxRooms || (Placing && tool == PlatformTool)) { flash = .4f; return true; }
+                if (rooms.Count >= PhaseWorld.MaxRooms || (Placing && tool == PlatformTool)) { Flash(.4f); return true; }
                 room = new EditRoom(FloorDiv(world.x, Columns), FloorDiv(world.y, Rows)); rooms.Add(room); made = true;
             }
-            if (Placing && tool == PlatformTool && room != draftRoom) { flash = .4f; return true; }
+            if (Placing && tool == PlatformTool && room != draftRoom) { Flash(.4f); return true; }
             cur = room;
             bool changed = ApplyIn(room, new Vector2Int(world.x - room.OriginX, world.y - room.OriginY), tool, press);
             if (made && changed) { dirty = true; scene = null; }
@@ -354,7 +357,9 @@ namespace Phase
             {
                 if (!press) return false;
                 if (room.goal == cell) { room.goal = null; return Edited(); }
-                if (rooms.Any(r => r.goal != null)) { flash = .4f; return true; }
+                // One goal per world: it moves within its room, and another room's goal blocks a second.
+                if (rooms.Any(r => r != room && r.goal != null) || tools[cell.y * cols + cell.x] != Erase || room.spawns.Contains(cell) || PlatformAt(cell, true).platform != null)
+                { Flash(.4f); return true; }
                 room.goal = cell; return Edited();
             }
             if (tool == PlatformTool) return press && PlaceStep(cell);
@@ -374,7 +379,7 @@ namespace Phase
                 var face = (SpikeDirection)(tool - SpikeTool);
                 if (platform.spikes.Contains(face)) platform.spikes = platform.spikes.Where(d => d != face).ToArray();
                 else if (RowFree(platform, face)) platform.spikes = platform.spikes.Append(face).ToArray();
-                else { flash = .4f; return true; }
+                else { Flash(.4f); return true; }
                 return Edited();
             }
             // Where a platform starts, the cell is taken.
@@ -401,7 +406,7 @@ namespace Phase
         {
             int x0 = Math.Min(a.atX, b.atX), y0 = Math.Min(a.atY, b.atY), x1 = Math.Max(a.atX + a.w, b.atX + b.w), y1 = Math.Max(a.atY + a.h, b.atY + b.h);
             if (x1 - x0 > PhaseWorld.MaxScreensWide || y1 - y0 > PhaseWorld.MaxScreensTall || rooms.Any(r => r != a && r != b && r.atX < x1 && r.atX + r.w > x0 && r.atY < y1 && r.atY + r.h > y0))
-            { flash = .4f; return true; }
+            { Flash(.4f); return true; }
             var merged = new EditRoom(x0, y0, x1 - x0, y1 - y0);
             foreach (var part in new[] { a, b })
             {
@@ -428,6 +433,7 @@ namespace Phase
         // The room divides along the whole line of screens before `at` (a column for a vertical line, a row otherwise); a platform path may not cross it.
         bool Split(EditRoom room, bool vertical, int at)
         {
+            if (rooms.Count >= PhaseWorld.MaxRooms) { Flash(.4f); return true; }
             var first = vertical ? new EditRoom(room.atX, room.atY, at - room.atX, room.h) : new EditRoom(room.atX, room.atY, room.w, at - room.atY);
             var second = vertical ? new EditRoom(at, room.atY, room.atX + room.w - at, room.h) : new EditRoom(room.atX, at, room.w, room.atY + room.h - at);
             int cut = vertical ? first.Cols : first.RowCount;
@@ -446,7 +452,7 @@ namespace Phase
                 var home = new Vector2Int(platform.pivots[0].x, platform.pivots[0].y); var part = Second(home) ? second : first; var by = Second(home) ? shift : Vector2Int.zero;
                 var moved = new DemoPlatform { vertical = platform.vertical, reverse = platform.reverse, spiked = platform.spiked, length = platform.length, phaseMask = platform.phaseMask,
                     spikes = platform.spikes, pivots = platform.pivots.Select(p => (p.x - by.x, p.y - by.y)).ToArray() };
-                if (!Fits(moved, part.Cols, part.RowCount)) { flash = .4f; return true; }
+                if (!Fits(moved, part.Cols, part.RowCount)) { Flash(.4f); return true; }
                 part.platforms.Add(moved);
             }
             int index = rooms.IndexOf(room);
@@ -469,7 +475,7 @@ namespace Phase
         {
             if (selection.Count == 0 || (dx == 0 && dy == 0)) return false;
             if (rooms.Any(o => !selection.Contains(o) && selection.Any(r => r.atX + dx < o.atX + o.w && r.atX + dx + r.w > o.atX && r.atY + dy < o.atY + o.h && r.atY + dy + r.h > o.atY)))
-            { flash = .4f; return true; }
+            { Flash(.4f); return true; }
             foreach (var room in selection) { room.atX += dx; room.atY += dy; }
             return Edited();
         }
@@ -525,9 +531,11 @@ namespace Phase
                         int x = cx * 8 - origin.x, y = cy * 8 - origin.y;
                         if (tool == Terrain || tool == Covered) blocks.Add(new Block(x, y, 8, 8, -1, mask) { spiked = tool == Covered });
                         else if (tool == CrystalTool) crystals.Add(new Crystal(x, y, mask));
-                        else if (tool >= LaserTool) lasers.Add(new Laser(x, y, (LaserDirection)(tool - LaserTool), mask));
+                        else if (tool >= LaserTool) continue;
                         else if (tool != Erase) spikes.Add(new Spike(x, y, 8, (SpikeDirection)(tool - 2), mask));
                     }
+                if (room.OriginX * 8 < origin.x + View.x && (room.OriginX + room.Cols) * 8 > origin.x && room.OriginY * 8 < origin.y + View.y && (room.OriginY + room.RowCount) * 8 > origin.y)
+                    AddBeams(room, origin, width, height, lasers);
                 foreach (var platform in room.platforms)
                 {
                     var body = new Platform(platform.vertical, platform.length, platform.pivots.Select(p => (p.x + room.OriginX, p.y + room.OriginY)), platform.reverse, platform.phaseMask, platform.spiked, platform.spikes);
@@ -535,9 +543,39 @@ namespace Phase
                 }
             }
             scene = new PhaseController(blocks, -100, -100, spikes, lasers, crystals, width, height, moving) { flash = 0 };
+            foreach (var pair in beams) scene.beams[pair.Key] = pair.Value;
+            beams.Clear();
             var goal = rooms.FirstOrDefault(r => r.goal != null);
             if (goal != null) scene.goal = new Block((goal.OriginX + goal.goal.Value.x) * 8 - origin.x, (goal.OriginY + goal.goal.Value.y) * 8 - origin.y, 8, 8);
             return scene;
+        }
+        // Each laser of a room that reaches into the view: its beam runs inside its own room, stopped by that room's solids, then is clipped to the frame.
+        readonly Dictionary<Laser, Block> beams = new Dictionary<Laser, Block>();
+        void AddBeams(EditRoom room, Vector2Int origin, int width, int height, List<Laser> lasers)
+        {
+            List<Block> solids = null;
+            for (int i = 0; i < room.tools.Length; i++)
+            {
+                int tool = room.tools[i];
+                if (tool < LaserTool || tool >= CrystalTool) continue;
+                if (solids == null)
+                {
+                    solids = new List<Block>();
+                    for (int j = 0; j < room.tools.Length; j++)
+                        if ((room.tools[j] == Terrain || room.tools[j] == Covered) && (room.colors[j] & 1) != 0) solids.Add(new Block(j % room.Cols * 8, j / room.Cols * 8, 8, 8));
+                    foreach (var platform in room.platforms)
+                    {
+                        var body = new Platform(platform.vertical, platform.length, platform.pivots, platform.reverse, platform.phaseMask, platform.spiked, platform.spikes);
+                        if (body.ActiveInPhase(0)) solids.Add(body);
+                    }
+                }
+                int lx = i % room.Cols * 8, ly = i / room.Cols * 8; var direction = (LaserDirection)(tool - LaserTool);
+                var beam = new Laser(lx, ly, direction, room.colors[i]).Beam(solids, room.Cols * 8, room.RowCount * 8);
+                double dx = room.OriginX * 8 - origin.x, dy = room.OriginY * 8 - origin.y;
+                double x0 = Math.Max(0, beam.x + dx), y0 = Math.Max(0, beam.y + dy), x1 = Math.Min(width, beam.x + beam.w + dx), y1 = Math.Min(height, beam.y + beam.h + dy);
+                var placed = new Laser(lx + dx, ly + dy, direction, room.colors[i]);
+                beams[placed] = new Block(x0, y0, Math.Max(0, x1 - x0), Math.Max(0, y1 - y0)); lasers.Add(placed);
+            }
         }
         int? Slot(Vector2Int p)
         {
@@ -604,7 +642,7 @@ namespace Phase
             foreach (var room in rooms)
             {
                 bool chosen = selection.Contains(room) || room == under;
-                DrawFrame(frame, room, ox, oy, chosen ? PixelFrame.Light : PixelFrame.Light, chosen ? 1f : .4f);
+                DrawFrame(frame, room, ox, oy, PixelFrame.Light, chosen ? 1f : .4f);
                 if (flash > 0 && missing.Contains(room) && (int)(flash * 6) % 2 == 0) DrawFrame(frame, room, ox, oy, PixelFrame.Warning, 1f);
             }
             if (dragFrom != null)
@@ -737,7 +775,7 @@ namespace Phase
         // Every spawn refusal in PhaseCustomMap.Validate names 出生點 (the spawn).
         void Refuse(ArgumentException error)
         {
-            flash = 1.2f; SpawnBlocked = error.Message.Contains("出生點");
+            Flash(1.2f); SpawnBlocked = error.Message.Contains("出生點");
             Refresh();
         }
         void Leave() { CancelPlacing(); if (dirty) Save(); Open(PhaseTitle.Scene); }
@@ -830,6 +868,8 @@ namespace Phase
                 if (m.leftButton.wasPressedThisFrame || m.rightButton.wasPressedThisFrame) stroke = onGrid && !pan;
                 if (m.rightButton.wasPressedThisFrame && Placing) { CancelPlacing(); stroke = false; changed = true; }
                 if (m.leftButton.wasPressedThisFrame && slot is int chosen) { Choose(chosen); return; }
+                // A pointer that merely rests where the editor opened does not take the keyboard cursor.
+                if (!mouseKnown) { mouseKnown = true; if (!m.leftButton.isPressed && !m.rightButton.isPressed && !m.middleButton.isPressed) lastMouse = p; }
                 if (onGrid && p != lastMouse) { Cursor = cell; changed = true; }
                 lastMouse = p;
                 bool press = m.leftButton.wasPressedThisFrame;
@@ -849,9 +889,9 @@ namespace Phase
         bool Check(out PhaseWorld world)
         {
             world = World(); missing.Clear();
-            if (rooms.Count == 0) { flash = 1.2f; Refresh(); return false; }
+            if (rooms.Count == 0) { Flash(1.2f); Refresh(); return false; }
             missing.AddRange(rooms.Where(r => r.spawns.Count == 0));
-            if (missing.Count > 0) { flash = 1.2f; Refresh(); return false; }
+            if (missing.Count > 0) { Flash(1.2f); Refresh(); return false; }
             try { PhaseCustomMap.Validate(world); }
             catch (ArgumentException error) { Refuse(error); return false; }
             return true;
@@ -880,7 +920,7 @@ namespace Phase
         public void ImportDraft(string json)
         {
             try { Fill(PhaseCustomMap.Parse(json)); }
-            catch (ArgumentException) { flash = .4f; Refresh(); return; }
+            catch (ArgumentException) { Flash(.4f); Refresh(); return; }
             Save(); Refresh();
         }
         // The playtest starts in the room under the middle of the window, at that room's spawn nearest to it.
