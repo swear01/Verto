@@ -20,6 +20,8 @@ namespace Phase
         // A world plays in place: one live controller for the current room, no scene loads.
         PhaseWorld world;
         PhaseWorldPlay play;
+        // Where an editor playtest starts: a room, and the point in it whose nearest spawn is used.
+        int? worldStart; (double x, double y)? worldNear;
         public PhaseWorldPlay World => play;
         public Texture2D Frame => pixels?.Texture;
         PhasePixels pixels;
@@ -113,7 +115,7 @@ namespace Phase
             LinkLevel();
             bool arriving = world == null && traveler != null && gameObject.scene.name == arrivalScene;
             var size = arriving && travelFrame != null ? travelSize : ViewSize(Screen.width, Screen.height);
-            if (world != null) { play = new PhaseWorldPlay(world); Controller = play.Controller; }
+            if (world != null) { play = new PhaseWorldPlay(world, worldStart, worldNear); Controller = play.Controller; }
             else Controller = Build(spawn, size.x);
             if (arriving)
             {
@@ -261,7 +263,7 @@ namespace Phase
             if (Won)
             {
                 int chosen = VictoryMenu.Tick(k, Mouse.current, new Vector2Int(pixels.Width, pixels.Height), VictoryTop, out bool changed);
-                if (chosen == 0 && play != null) { play = new PhaseWorldPlay(world); Controller = play.Controller; Won = false; Look(true); Render(); }
+                if (chosen == 0 && play != null) { play = new PhaseWorldPlay(world, worldStart, worldNear); Controller = play.Controller; Won = false; Look(true); Render(); }
                 else if (chosen == 0) SelectDemoRoom("1");
                 else if (chosen == 1) { LevelSelect = new PhaseLevels(); Render(); }
                 else if (changed) Render();

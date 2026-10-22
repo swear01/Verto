@@ -345,4 +345,28 @@ public class WorldTests
         var future = V2(40, 22); future["version"] = 4;
         Assert.That(Assert.Throws<ArgumentException>(() => PhaseCustomMap.Parse(future.ToString())).Message, Does.Contain("第4版"));
     }
+
+    [Test]
+    public void ADraftMayHoldARoomWithoutASpawnButAMapMayNot()
+    {
+        var bare = Room(0, 0); bare.noSpawn = true;
+        string json = PhaseCustomMap.ToJson(new PhaseWorld { rooms = new[] { bare, Room(1, 0) } });
+        Assert.That(JObject.Parse(json)["rooms"][0]["objects"].Count(o => (string)o["type"] == "spawn"), Is.Zero, "no placeholder is written");
+        var draft = PhaseCustomMap.Parse(json, false);
+        Assert.That((draft.rooms[0].noSpawn, draft.rooms[0].Spawns.Count, draft.rooms[1].noSpawn), Is.EqualTo((true, 0, false)));
+        Assert.That(PhaseCustomMap.ToJson(draft), Is.EqualTo(json));
+        Assert.Throws<ArgumentException>(() => PhaseCustomMap.Parse(json));
+        Assert.Throws<ArgumentException>(() => PhaseCustomMap.Validate(draft));
+    }
+
+    [Test]
+    public void PlayingAWorldWithARoomThatHasNoSpawnFailsClearly()
+    {
+        var bare = Room(1, 0); bare.noSpawn = true;
+        var world = World(Room(0, 0), bare);
+        var error = Assert.Throws<ArgumentException>(() => new PhaseWorldPlay(world));
+        Assert.That(error.Message, Does.Contain("出生點"));
+        Assert.Throws<ArgumentException>(() => world.Create(1));
+        Assert.Throws<InvalidOperationException>(() => bare.CreateController());
+    }
 }

@@ -37,20 +37,12 @@ namespace Phase
                     if (version > Upgrades.Length) throw new ArgumentException($"找不到地圖格式第{version}版的升級方式。");
                     data = Upgrades[version - 1](data);
                 }
-                var world = FromData(data);
+                var world = FromData(data, !validate);
                 if (validate) Validate(world);
                 return world;
             }
             catch (JsonException error) { throw new ArgumentException("地圖JSON格式無效。", error); }
             catch (OverflowException error) { throw new ArgumentException("地圖數值超出範圍。", error); }
-        }
-        // The single-room editor opens only maps with one room.
-        public static PhaseDemoRoom ParseRoom(string json, bool validate = true)
-        {
-            var world = Parse(json, validate);
-            if (world.rooms.Length != 1) throw new ArgumentException("編輯器一次只能開啟單一房間的地圖。");
-            world.rooms[0].name = world.name;
-            return world.rooms[0];
         }
         // The version 1 file: rectangles of terrain, spikes with a length in pixels, and cell positions in pixels.
         static PhaseDemoRoom ReadV1(JObject data)
@@ -147,6 +139,7 @@ namespace Phase
                 int w = room.GridWidth, h = room.GridHeight;
                 if (w % PhaseWorld.ScreenWidth != 0 || h % PhaseWorld.ScreenHeight != 0 || w / PhaseWorld.ScreenWidth > PhaseWorld.MaxScreensWide || h / PhaseWorld.ScreenHeight > PhaseWorld.MaxScreensTall)
                     throw new ArgumentException($"房間大小必須是1–{PhaseWorld.MaxScreensWide}×1–{PhaseWorld.MaxScreensTall}個畫面。");
+                if (room.noSpawn) throw new ArgumentException("每個房間至少需要一個出生點。");
                 if (Math.Abs(room.atX) > MaxNumber || Math.Abs(room.atY) > MaxNumber) throw new ArgumentException("房間位置超出範圍。");
             }
             for (int i = 0; i < world.rooms.Length; i++)
@@ -154,15 +147,6 @@ namespace Phase
                     if (PhaseWorld.Overlaps(world.rooms[i], world.rooms[j])) throw new ArgumentException("房間不能重疊。");
             if (world.rooms.Count(r => r.goal != null) > 1) throw new ArgumentException("地圖最多只能有一個終點。");
             foreach (var room in world.rooms) CheckRoom(room);
-        }
-        // One free-sized room, as the editor draws it.
-        public static void Validate(PhaseDemoRoom room)
-        {
-            if (room == null) throw new ArgumentException("地圖至少需要一格地形。");
-            int w = room.GridWidth, h = room.GridHeight;
-            if (w < Width || w > MaxWidth || h < Height || h > MaxRoomHeight || w % 8 != 0 || h % 8 != 0)
-                throw new ArgumentException($"地圖大小必須是8的倍數：寬{Width}–{MaxWidth}、高{Height}–{MaxRoomHeight}。");
-            CheckRoom(room);
         }
         static void CheckRoom(PhaseDemoRoom room)
         {
@@ -231,14 +215,11 @@ namespace Phase
             }
             if (room.goal != null) AddCells(room.goal.x, room.goal.y, 8, 8, occupied);
         }
-        public static string ToJson(PhaseWorld world)
+        public static string ToJson(PhaseWorld world, bool compact = false)
         {
             if (world?.rooms == null || world.rooms.Length == 0) throw new ArgumentException("地圖至少需要一個房間。");
-            return World(world.name, world.rooms.Select(RoomData)).ToString(Formatting.Indented);
+            return World(world.name, world.rooms.Select(RoomData)).ToString(compact ? Formatting.None : Formatting.Indented);
         }
-        public static PhaseWorld ToWorld(PhaseDemoRoom room) => Parse(ToJson(room), false);
-        // A free-sized editor room is saved as a one-room world: padded to whole screens, content at the bottom, extra columns on the right.
-        public static string ToJson(PhaseDemoRoom room) => UpgradeV2(ToV2(room), false).ToString(Formatting.Indented);
         static JArray Cell(double x, double y) => new JArray((int)x / 8, (int)y / 8);
         static JObject World(string name, IEnumerable<JObject> rooms) => new JObject {
             ["format"] = Format, ["version"] = Version, ["generator"] = Generator, ["name"] = name, ["rooms"] = new JArray(rooms)
@@ -354,16 +335,17 @@ namespace Phase
             return World(data["name"]?.Type == JTokenType.String ? data["name"].Value<string>() : null, new[] {
                 new JObject { ["at"] = new JArray(0, 0), ["size"] = new JArray(wide, tall), ["terrain"] = rows, ["objects"] = objects } });
         }
-        static PhaseWorld FromData(JObject data)
+        static PhaseWorld FromData(JObject data, bool draft)
         {
             CheckFields(data, new[] { "format", "version", "generator", "name", "rooms" });
             if (data["name"] != null && data["name"].Type != JTokenType.Null && (data["name"].Type != JTokenType.String || data["name"].Value<string>().Length > 64))
                 throw new ArgumentException("地圖名稱最多64字元。");
             if (!(data["rooms"] is JArray rooms) || rooms.Count < 1 || rooms.Count > PhaseWorld.MaxRooms)
                 throw new ArgumentException($"地圖需要1到{PhaseWorld.MaxRooms}個房間。");
-            return new PhaseWorld { name = data["name"]?.Type == JTokenType.String ? data["name"].Value<string>() : null, rooms = rooms.Select(r => FromRoom(r as JObject)).ToArray() };
+            return new PhaseWorld { name = data["name"]?.Type == JTokenType.String ? data["name"].Value<string>() : null, rooms = rooms.Select(r => FromRoom(r as JObject, draft)).ToArray() };
         }
-        static PhaseDemoRoom FromRoom(JObject data)
+        // A draft may hold a room that has no spawn yet.
+        static PhaseDemoRoom FromRoom(JObject data, bool draft)
         {
             CheckFields(data, new[] { "at", "size", "terrain", "objects" });
             var at = Pair(data["at"], "at");
@@ -436,11 +418,13 @@ namespace Phase
                     default: throw new ArgumentException("地圖包含不支援的物件：" + (type ?? "未知"));
                 }
             }
-            if (spawns.Count == 0) throw new ArgumentException("每個房間至少需要一個出生點。");
+            if (spawns.Count == 0 && !draft) throw new ArgumentException("每個房間至少需要一個出生點。");
             spawns = spawns.OrderBy(p => p.x).ThenBy(p => p.y).ToList();
+            bool nobody = spawns.Count == 0;
+            if (nobody) spawns.Add(new DemoPoint());
             return new PhaseDemoRoom {
                 atX = at.x, atY = at.y, width = size.x * PhaseWorld.ScreenWidth, height = size.y * PhaseWorld.ScreenHeight,
-                spawnX = spawns[0].x, spawnY = spawns[0].y, extraSpawns = spawns.Count > 1 ? spawns.Skip(1).ToArray() : null, goal = goal,
+                noSpawn = nobody, spawnX = spawns[0].x, spawnY = spawns[0].y, extraSpawns = spawns.Count > 1 ? spawns.Skip(1).ToArray() : null, goal = goal,
                 blocks = blocks.ToArray(), spikes = spikes.ToArray(),
                 lasers = lasers.Count > 0 ? lasers.ToArray() : null, crystals = crystals.Count > 0 ? crystals.ToArray() : null, platforms = platforms.Count > 0 ? platforms.ToArray() : null
             };

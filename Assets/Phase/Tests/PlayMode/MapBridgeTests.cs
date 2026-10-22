@@ -48,7 +48,7 @@ public class MapBridgeTests : InputTestFixture
         var previous = sandbox.gameObject;
         map.lasers=new[]{new DemoLaser{x=160,y=160,direction=LaserDirection.Up,phaseMask=7}};
         map.crystals=new[]{new DemoCrystal{x=80,y=80,phaseMask=2}};
-        sandbox.LoadCustomMap(PhaseCustomMap.ToJson(map));
+        sandbox.LoadCustomMap(PhaseCustomMap.ToJson(new PhaseWorld { rooms = new[] { map } }));
         Assert.That(PhaseSandbox.LastMapError, Is.Empty, PhaseSandbox.LastMapError); yield return null;
         sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
         Assert.That(previous == null, Is.True, "reimport disposes the previous map");

@@ -60,13 +60,13 @@ namespace Phase
             }
         }
         // A parented world is an editor playtest; it is renamed so the "PHASE" bridge object stays unique.
-        internal static PhaseSandbox CreateCustom(PhaseWorld world, Camera camera, Material material, Transform parent = null)
+        internal static PhaseSandbox CreateCustom(PhaseWorld world, Camera camera, Material material, Transform parent = null, int? start = null, (double x, double y)? near = null)
         {
             var root = new GameObject(parent == null ? "PHASE" : "Playtest"); root.SetActive(false);
             try
             {
                 root.transform.SetParent(parent,false);
-                var sandbox = root.AddComponent<PhaseSandbox>(); sandbox.custom = true; sandbox.world = world;
+                var sandbox = root.AddComponent<PhaseSandbox>(); sandbox.custom = true; sandbox.world = world; sandbox.worldStart = start; sandbox.worldNear = near;
                 sandbox.pixelCamera = camera; sandbox.pixelMaterial = material;
                 ClearTravel();
                 root.SetActive(true);

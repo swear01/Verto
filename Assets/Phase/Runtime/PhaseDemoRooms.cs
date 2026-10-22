@@ -20,6 +20,8 @@ namespace Phase
         public int atX, atY;
         public DemoPoint[] extraSpawns;
         public DemoPoint goal;
+        // A draft room may have no spawn yet; such a room is refused before it can be played or exported.
+        public bool noSpawn;
         public DemoSpike[] spikes;
         public DemoLaser[] lasers;
         public DemoCrystal[] crystals;
@@ -31,7 +33,7 @@ namespace Phase
         // A room without a stated height is the 320×180 view; a stated one is its own height.
         public int RoomHeight => height != 0 ? height : 180;
         // Every spawn, leftmost first.
-        public List<(double x, double y)> Spawns => new[] { (spawnX, spawnY) }.Concat(extraSpawns?.Select(p => (p.x, p.y)) ?? Array.Empty<(double, double)>())
+        public List<(double x, double y)> Spawns => noSpawn ? new List<(double x, double y)>() : new[] { (spawnX, spawnY) }.Concat(extraSpawns?.Select(p => (p.x, p.y)) ?? Array.Empty<(double, double)>())
             .OrderBy(p => p.Item1).ThenBy(p => p.Item2).ToList();
 
         public Spike[] CreateSpikes() => spikes?.Select(s => new Spike(s.x,s.y,s.length,s.direction,s.phaseMask)).ToArray() ?? Array.Empty<Spike>();
@@ -45,7 +47,9 @@ namespace Phase
             foreach (var spike in CreateSpikes()) { Cell(spike.x); Cell(spike.y); }
             foreach (var laser in CreateLasers()) { Cell(laser.x); Cell(laser.y); }
             foreach (var crystal in CreateCrystals()) { Cell(crystal.x); Cell(crystal.y); }
-            var start = Spawns[0];
+            var spawns = Spawns;
+            if (spawns.Count == 0) throw new InvalidOperationException("The room has no spawn.");
+            var start = spawns[0];
             return new PhaseController(blocks.Select(b => new Block(b.x,b.y,b.w,b.h,b.phase,b.phaseMask) { spiked = b.spiked }), start.x, start.y,
                 spikes: CreateSpikes(), lasers: CreateLasers(), crystals: CreateCrystals(), width: GridWidth, height: RoomHeight, platforms: CreatePlatforms())
                 { goal = goal == null ? null : new Block(goal.x, goal.y, 8, 8) };

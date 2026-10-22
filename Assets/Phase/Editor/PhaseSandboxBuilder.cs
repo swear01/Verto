@@ -166,7 +166,9 @@ public static class PhaseSandboxBuilder
         var maps = new[] { ("Assets/Phase/Imported/level-a.json", "PhaseDemo13"), ("Assets/Phase/Imported/level-b.json", "PhaseDemo14") };
         foreach (var (source, sceneName) in maps)
         {
-            var room = PhaseCustomMap.ParseRoom(System.IO.File.ReadAllText(source)); room.CreateController();
+            var map = PhaseCustomMap.Parse(System.IO.File.ReadAllText(source));
+            if (map.rooms.Length != 1) throw new System.InvalidOperationException(source + " holds " + map.rooms.Length + " rooms; a scene level is one room.");
+            var room = map.rooms[0]; room.CreateController();
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             var root = new GameObject("PHASE"); root.AddComponent<Grid>().cellSize = new Vector3(8, 8, 1); root.AddComponent<PhaseGrid>(); var sandbox = root.AddComponent<PhaseSandbox>();
             var camera = new GameObject("Camera").AddComponent<Camera>();

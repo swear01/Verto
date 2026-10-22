@@ -260,7 +260,9 @@ namespace Phase
             }
             return enter < leave;
         }
-        public Block LaserBeam(Laser laser) => laser.Beam(Solid(), Width, Height);
+        // A beam fixed by the caller, for a view that shows lasers of rooms this controller does not hold.
+        public readonly Dictionary<Laser, Block> beams = new Dictionary<Laser, Block>();
+        public Block LaserBeam(Laser laser) => beams.TryGetValue(laser, out var fixedBeam) ? fixedBeam : laser.Beam(Solid(), Width, Height);
         public bool CheckHazards(Block from = null)
         {
             if (CheckSpikes(from)) return true;
