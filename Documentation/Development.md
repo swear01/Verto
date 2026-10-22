@@ -56,8 +56,8 @@ Wait for each `test_status` result to be `completed` and inspect its summary bef
 starting the next test run. There are 16 controller cases, 7 laser cases, 8 crystal cases, 15 pixel cases, 12 platform cases,
 4 Grid authoring cases, 10 custom-map cases (validation, version migration, newer-version refusal, round trips), 6 scrolling-room cases, 17 world cases
 (map format v3, room changes, open top, respawns, goal, camera) and 3 key-binding cases
-(validation, PlayerPrefs persistence, key caps) in Edit Mode. The 22 Play Mode cases cover a big-room camera
-following a keyboard run, bindings, pause/release gating, room persistence, crystal triggers, imported maps, the
+(validation, PlayerPrefs persistence, key caps) in Edit Mode. The 29 Play Mode cases cover a big-room camera
+following a keyboard run, bindings, pause/release gating, room persistence, crystal triggers, imported maps and jump platforms, the
 title/editor flow, the editor's fixed tool panel under mouse input, room creation, merging, splitting and moving in the editor, the pause menu with key
 settings, the fullscreen switch, and level select from the title, pause and victory screens.
 The two reference files preserve 12 movement traces (running, jumps, buffers, coyote time, falling, wall
