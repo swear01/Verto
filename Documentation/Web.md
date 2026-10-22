@@ -12,7 +12,7 @@ npm ci
 npx --no-install playwright install chromium
 cd ..
 node Verification/WebPageBrowser.cjs
-node Verification/DemoWebSmoke.cjs Builds/Web
+node Verification/WebLoadSmoke.cjs Builds/Web
 python3 -m http.server 8765 --bind 127.0.0.1 --directory Builds/Web
 ```
 
@@ -78,7 +78,8 @@ sends the chosen file to `PHASE.ImportDraft`.
 `WebPageBrowser.cjs` verifies page events using a mock Unity bridge; it does not
 prove native map loading. Verify the native bridge through Pipeline and the final
 built Web Player before publishing.
-`DemoWebSmoke.cjs` selects all fifteen rooms through the pause menu's level select,
+`DemoWebSmoke.cjs` still expects the jam's routes and cloak colors, fails on Verto's levels and does not
+gate publishing. It selects all fifteen rooms through the pause menu's level select,
 reaches the victory banner and replays through its level select, rebinds keys in the
 in-game settings and checks they persist across reload, then checks in-game editor
 laser/crystal import and export, panel clicks, panel drags and grid strokes at 960×540, 2560×1080 and
