@@ -176,7 +176,6 @@ See [room designs and live input verification](Demo.md).
 `BuildWeb.py` verifies these tests and builds `PhaseDemo1`, `PhaseDemo1.1`, `PhaseDemo2` through
 `PhaseDemo8`, followed by `PhaseCrystal1` through `PhaseCrystal3`, the hand-authored `PhaseDemo12`, and `PhaseDemo13` through `PhaseDemo14`. `DemoWebSmoke.cjs` still replays the jam levels' keyboard routes from
 the removed `Verification/Routes` folder, so it fails until it is rewritten for the redesigned levels.
-The older `WebSmoke.cjs` remains a verifier for the original two-sandbox build.
 
 ## CI
 
@@ -473,5 +472,5 @@ The manually edited `PhaseDemo1.1` is separate from these builders.
 smoothing. The motif is the phase shift: a light letterform trailed by red, blue and green
 echoes on the game's night-sky palette; the Verto lettering is read from `PhaseTitle.cs`.
 It writes the itch.io cover `Documentation/press/cover.png` (960×480: 2:1 for itch link cards, logo inside the centre 1.25:1 grid crop), the link preview
-`social.png` (1280×640), the icon `icon.png` (256×256, a "V" mark on a dark tile), the default
+`social.png` (1280×640), the icon `icon.png` (256×256, three overlapping red, blue and green V's on a dark tile), the default
 Player icon `Assets/Phase/Art/AppIcon.png` and the Web favicon.
