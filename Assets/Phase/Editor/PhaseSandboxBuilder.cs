@@ -160,11 +160,11 @@ public static class PhaseSandboxBuilder
         RecordOverrides(root);
         EditorSceneManager.SaveScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene(), second ? "Assets/Scenes/PhaseRoom2.unity" : "Assets/Scenes/PhaseSandbox.unity");
     }
-    // Imports level-a, level-b, the chaos level and the gear level and puts every playable scene, including the hand-authored color room, in the build.
+    // Imports level-a, level-b, the chaos level, umbrella and the gear level and puts every playable scene, including the hand-authored color room, in the build.
     public static string CreateImportedLevels()
     {
         if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) throw new System.OperationCanceledException("Unsaved scenes were kept.");
-        var maps = new[] { ("Assets/Phase/Imported/level-a.json", "PhaseDemo13"), ("Assets/Phase/Imported/level-b.json", "PhaseDemo14"), ("Assets/Phase/Imported/chaos.json", "PhaseDemo15"), ("Assets/Phase/Imported/level-gear.json", "PhaseGear") };
+        var maps = new[] { ("Assets/Phase/Imported/level-a.json", "PhaseDemo13"), ("Assets/Phase/Imported/level-b.json", "PhaseDemo14"), ("Assets/Phase/Imported/chaos.json", "PhaseDemo15"), ("Assets/Phase/Imported/umbrella.json", "PhaseUmbrella"), ("Assets/Phase/Imported/level-gear.json", "PhaseGear") };
         foreach (var (source, sceneName) in maps)
         {
             var map = PhaseCustomMap.Parse(System.IO.File.ReadAllText(source));

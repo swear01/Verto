@@ -778,9 +778,12 @@ public class MenuTests : InputTestFixture
         Assert.That(levels.Choice, Is.EqualTo(second), "pause level select starts at the current level");
         yield return Tap(Key.DownArrow); yield return Tap(Key.DownArrow); yield return Tap(Key.DownArrow);
         for (int i = 0; i < columns; i++) yield return Tap(Key.RightArrow);
-        Assert.That(levels.Choice, Is.EqualTo(PhaseSandbox.Levels.Length - 1), "the bottom row stops at the last level");
+        int row = 1, column = 1, count = PhaseSandbox.Levels.Length;
+        for (int i = 0; i < 3; i++) if ((row + 1) * columns + column < count) row++;
+        while (column + 1 < columns && row * columns + column + 1 < count) column++;
+        Assert.That(levels.Choice, Is.EqualTo(row * columns + column), "the bottom row stops at the last level");
         yield return Tap(Key.Z);
-        yield return WaitFor(PhaseSandbox.Levels[PhaseSandbox.Levels.Length - 1]);
+        yield return WaitFor(PhaseSandbox.Levels[row * columns + column]);
 
         yield return SceneManager.LoadSceneAsync("PhaseDemo12"); yield return null;
         var sandbox = Sandbox();
