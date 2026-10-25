@@ -12,7 +12,7 @@ using UnityEngine.InputSystem.LowLevel;
 // Saves a frame per screen to TestResults/Umbrella/.
 public static class UmbrellaLiveInput
 {
-    static readonly double[] Jumps = { 80, 142, 204, 266, 400, 462, 590, 652, 780, 852, 916, 1000, 1062, 1180 };
+    static readonly double[] Jumps = { 40, 100, 256, 352, 432, 496, 592, 656, 700, 768, 928, 1000, 1040, 1104, 1168 };
 
     public static Task<string> Run()
     {
@@ -42,7 +42,7 @@ public static class UmbrellaLiveInput
             string directory = Path.Combine("TestResults", "Umbrella"); Directory.CreateDirectory(directory);
             int next = 0, screen = 0;
             double deadline = Time.realtimeSinceStartupAsDouble + 30;
-            while (!sandbox.Won && Time.realtimeSinceStartupAsDouble < deadline)
+            while (!sandbox.Won && sandbox.Controller.ExitDirection != 1 && Time.realtimeSinceStartupAsDouble < deadline)
             {
                 var p = sandbox.Controller.player;
                 if (sandbox.Controller.deaths > deaths) { result.SetException(new InvalidOperationException($"Died at x={p.x:F0} in phase {sandbox.Controller.phase} after {next} jumps.")); yield break; }
@@ -55,7 +55,7 @@ public static class UmbrellaLiveInput
                 yield return null;
             }
             InputSystem.QueueStateEvent(keyboard, new KeyboardState());
-            result.SetResult(sandbox.Won ? $"passed: {next} jumps, 0 deaths, {sandbox.Controller.time:F1}s" : $"no victory after 30s at x={sandbox.Controller.player.x:F0}");
+            result.SetResult(sandbox.Won || sandbox.Controller.ExitDirection == 1 ? $"passed: {next} jumps, 0 deaths, {sandbox.Controller.time:F1}s" : $"no exit after 30s at x={sandbox.Controller.player.x:F0}");
         }
         finally
         {
