@@ -42,7 +42,7 @@ public static class UmbrellaLiveInput
             string directory = Path.Combine("TestResults", "Umbrella"); Directory.CreateDirectory(directory);
             int next = 0, screen = 0;
             double deadline = Time.realtimeSinceStartupAsDouble + 30;
-            while (!sandbox.Won && sandbox.Controller.ExitDirection <= 0 && Time.realtimeSinceStartupAsDouble < deadline)
+            while (!sandbox.Won && sandbox.Controller.ExitDirection == 0 && Time.realtimeSinceStartupAsDouble < deadline)
             {
                 var p = sandbox.Controller.player;
                 if (sandbox.Controller.deaths > deaths) { result.SetException(new InvalidOperationException($"Died at x={p.x:F0} in phase {sandbox.Controller.phase} after {next} jumps.")); yield break; }
