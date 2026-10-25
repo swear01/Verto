@@ -53,5 +53,5 @@ deaths and the victory at the right edge. It saves one frame per screen to `Test
 
 Edit `umbrella.json` (map format v3; the in-game editor opens it as a custom map), then rebuild the scene with
 `unity command eval 'PhaseSandboxBuilder.CreateImportedLevels();'` and rebake the level-select thumbnail with
-`Verification/LevelThumbnails.cs`. The builder sizes the scene to the room, so imported rooms may be up to four
+`LevelThumbnails.Run()` (every build does too). The builder sizes the scene to the room, so imported rooms may be up to four
 screens wide. Scene levels have no goal object; the right edge of the last level wins.
