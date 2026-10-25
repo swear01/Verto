@@ -213,16 +213,16 @@ namespace Phase
             }
         }
         static bool Mixed(int mask) => mask == 3 || mask == 5 || mask == 6;
-        static readonly string[] spikeRows = {".oo..oo.","oTMooTMo","oLMooLMo","oLMooLMo","LLMMLLMM","LMMDLMMD","MMDDMMDD","DDDDDDDD"};
+        static readonly string[] spikeRows = {".TT..TT.","oTTooTTo","oTMooTMo","oLMooLMo","LLMMLLMM","LMMDLMMD","MMDDMMDD","DDDDDDDD"};
         static Dictionary<char,Color32> SpikePalette(int mask,bool active)
         {
             int color=surfaceIndices[mask];var cap=Color(Highlights[color]);var rim=Color(Edges[color]);var body=Color(Fills[color]);
-            var palette=new Dictionary<char,Color32>{['T']=active?Mix(cap,Color("ffffff"),.6):Mix(rim,Color("101a26"),.45),['L']=active?cap:Mix(body,Color("101a26"),.4),['M']=active?rim:Mix(body,Color("101a26"),.6),['D']=active?body:Mix(body,Color("101a26"),.6)};
+            var palette=new Dictionary<char,Color32>{['T']=active?Color("ff2d3d"):Mix(rim,Color("101a26"),.45),['L']=active?cap:Mix(body,Color("101a26"),.4),['M']=active?rim:Mix(body,Color("101a26"),.6),['D']=active?body:Mix(body,Color("101a26"),.6)};
             if(active)palette['o']=Color(Ink);
             return palette;
         }
         // A spike-covered cell: teeth on all four sides.
-        static readonly string[] coveredRows = {"...TT...","..TLMM..",".oLLMMo.","TLLMMMDD","LLMMMDDD",".oMMDDo.","..MDDD..","...DD..."};
+        static readonly string[] coveredRows = {"...TT...","..TTMM..",".oLLMMo.","TLLMMMDD","LLMMMDDD",".oMMDDo.","..MDDD..","...DD..."};
         readonly Dictionary<(int,bool),Bitmap> coveredTiles = new Dictionary<(int,bool),Bitmap>();
         Bitmap Covered(int mask,bool active)
         {
