@@ -16,7 +16,7 @@
 - Retry an operation once when the failure appears transient; otherwise diagnose it and continue with safe, equivalent, in-scope alternatives when available.
 - Match existing style, names, and patterns; keep changes minimal and add no dependencies or comments unless necessary for the requested result.
 - Change requested behavior directly; do not add unrequested compatibility options.
-- For explicit GitHub PR review, use `github-pr-review-loop`; local review is supplementary.
+- Before merging a PR, trigger a GitHub bot review with `github-pr-review-loop`; merge once it passes on the latest head. Local review is supplementary.
 
 ## Completion
 
@@ -39,6 +39,12 @@
 - Verify Play with advancing frame count and controller time, live keyboard actions, a screen capture, and Console checks.
 - Keep the game free of explanatory text and level progression.
 - Commands and coordinate conventions: [Documentation/Development.md](Documentation/Development.md).
+
+## Pull requests
+
+- No review bot runs automatically. After every push to a PR, trigger one yourself with `"$(git rev-parse --path-format=absolute --git-common-dir)/info/trigger-pr-review" <pr> <head-sha>` (posts `/swear-review`), or post `/gemini review`. If neither answers, post `@claude review this PR`. Waiting without a trigger comment means no review ever arrives.
+- Merge only when CI is green and a review you triggered passed on the latest head. Never merge on CI alone.
+- Once only nits remain, reply/resolve and merge with `gh pr merge <n> --merge --match-head-commit <sha> --delete-branch`. If the auto-mode classifier blocks the merge, report it; do not work around it.
 
 ## Web publishing
 
