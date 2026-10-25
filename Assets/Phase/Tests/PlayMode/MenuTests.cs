@@ -912,8 +912,9 @@ public class MenuTests : InputTestFixture
         yield return Send(Bar(barHeight - 1), left: true); levels.Tick(keyboard, mouse, frame);
         Assert.That(levels.Choice / columns, Is.EqualTo(total - 1), "clicking the track bottom jumps to the last row");
         yield return Send(Bar(barHeight - 1)); levels.Tick(keyboard, mouse, frame);
+        yield return Send(Bar(barHeight - 2), left: true); levels.Tick(keyboard, mouse, frame);
         yield return Send(Bar(2), left: true); levels.Tick(keyboard, mouse, frame);
-        Assert.That(levels.Choice / columns, Is.EqualTo(0), "dragging the bar to the top scrolls to the first row");
+        Assert.That(levels.Choice / columns, Is.EqualTo(0), "dragging the thumb to the top scrolls to the first row");
         yield return Send(Bar(2)); levels.Tick(keyboard, mouse, frame);
     }
     [UnityTest]

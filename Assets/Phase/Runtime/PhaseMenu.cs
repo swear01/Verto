@@ -129,12 +129,12 @@ namespace Phase
                 int total = (Count + columns - 1) / columns, barHeight = BarHeight(rows), barX = BarX(columns), maxTop = Mathf.Max(0, total - rows);
                 bool moved = pointer != null && pointer != m.position.ReadValue(), scrolled = false;
                 pointer = m.position.ReadValue();
+                if (!m.leftButton.isPressed || total <= rows) dragging = false;
                 if (total > rows)
                 {
                     int thumb = top * barHeight / total, thumbHeight = rows * barHeight / total;
                     if (m.leftButton.wasPressedThisFrame && Mathf.Abs(at.x - barX) <= 3 && at.y >= 0 && at.y < barHeight)
                     { grab = at.y >= thumb && at.y < thumb + thumbHeight ? at.y - thumb : thumbHeight / 2; dragging = true; }
-                    if (!m.leftButton.isPressed) dragging = false;
                     int target = top;
                     if (dragging) target = Mathf.RoundToInt((at.y - grab) * total / (float)barHeight);
                     float wheel = m.scroll.ReadValue().y;
