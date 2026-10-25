@@ -81,7 +81,9 @@ namespace Phase
             int authored = c.phase;
             try
             {
-                for (int x = (c.Width - 16) / 8 * 8; x >= c.Width / 2; x -= 8)
+                // The flush edge comes second so a doorway only reachable from the last column is not skipped for a far-off floor.
+                int inner = (c.Width - 16) / 8 * 8;
+                foreach (int x in new[] { inner, c.Width - 8 }.Concat(Enumerable.Range(1, inner / 8).Select(i => inner - i * 8).Where(x => x >= c.Width / 2)))
                 {
                     foreach (int phase in new[] { 0, preferPhase, 1, 2 }.Distinct())
                     {

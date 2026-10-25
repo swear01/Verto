@@ -379,7 +379,7 @@ public class SandboxTests : InputTestFixture
                 InputSystem.QueueStateEvent(k, new KeyboardState());
                 sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
                 var s = sandbox.Controller;
-                Assert.That(s.player.x, Is.InRange(s.Width / 2, s.Width - 8), levels[i] + " enters at the right");
+                Assert.That(s.player.x, Is.InRange(s.Width - 16, s.Width - 8), levels[i] + " enters at the right edge");
                 var checkpoint = s.phase == 0 ? (s.player.x, s.player.y) : (sandbox.spawn.x, sandbox.spawn.y);
                 Assert.That((s.spawnX, s.spawnY), Is.EqualTo(checkpoint), levels[i] + " respawns on terrain solid in red");
                 Assert.That(s.player.facing, Is.EqualTo(-1));
