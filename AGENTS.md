@@ -16,7 +16,7 @@
 - Retry an operation once when the failure appears transient; otherwise diagnose it and continue with safe, equivalent, in-scope alternatives when available.
 - Match existing style, names, and patterns; keep changes minimal and add no dependencies or comments unless necessary for the requested result.
 - Change requested behavior directly; do not add unrequested compatibility options.
-- For explicit GitHub PR review, use `github-pr-review-loop`; local review is supplementary.
+- Before merging a PR, trigger a GitHub bot review with `github-pr-review-loop`; merge once it passes on the latest head. Local review is supplementary.
 
 ## Completion
 
