@@ -66,7 +66,7 @@ namespace Phase
     }
 
     // Level select: a grid of room thumbnails numbered in pixel digits; every level is always available.
-    // Arrows or movement keys move, Enter or jump loads, a click picks, Escape goes back.
+    // Arrows or movement keys move, Enter or jump loads, a click picks, the mouse wheel or a dragged scrollbar scrolls, Escape goes back.
     public sealed class PhaseLevels
     {
         // A tile is a 44×26 frame around the 40×22 thumbnail (one pixel per 8px cell) above its 2× number.
@@ -103,7 +103,11 @@ namespace Phase
             int row = Choice / columns, total = (Count + columns - 1) / columns;
             return firstRow = Mathf.Clamp(firstRow, Mathf.Max(0, row - rows + 1), Mathf.Min(row, Mathf.Max(0, total - rows)));
         }
-        int firstRow;
+        int firstRow, grab;
+        bool dragging;
+        Vector2? pointer;
+        static int BarHeight(int rows) => rows * (TileHeight + GapY) - GapY;
+        static int BarX(int columns) => columns * (Box + GapX) - GapX + 3;
         public static int Columns(Vector2Int frame) => Layout(frame).columns;
         public static int Rows(Vector2Int frame) => Layout(frame).rows;
         // A level's tile, thumbnail frame and number, in frame pixels, with the grid scrolled to the top.
@@ -119,10 +123,33 @@ namespace Phase
                 if (column >= 0 && column < columns && row >= 0 && row * columns + column < Count) Choice = row * columns + column;
             }
             int top = Scroll(columns, rows);
-            if (m != null && m.leftButton.wasPressedThisFrame)
+            if (m != null && Screen.width > 0 && Screen.height > 0)
             {
                 var at = zoom.Local(PhaseMenu.FramePoint(m, frameSize));
-                for (int i = 0; i < Count; i++) if (i / columns >= top && i / columns < top + rows && LocalTile(columns, i, top).Contains(at)) { Choice = i; return i + 1; }
+                int total = (Count + columns - 1) / columns, barHeight = BarHeight(rows), barX = BarX(columns), maxTop = Mathf.Max(0, total - rows);
+                bool moved = pointer != null && pointer != m.position.ReadValue(), scrolled = false;
+                pointer = m.position.ReadValue();
+                if (!m.leftButton.isPressed || total <= rows) dragging = false;
+                if (total > rows)
+                {
+                    int thumb = top * barHeight / total, thumbHeight = rows * barHeight / total;
+                    if (m.leftButton.wasPressedThisFrame && Mathf.Abs(at.x - barX) <= 3 && at.y >= 0 && at.y < barHeight)
+                    { grab = at.y >= thumb && at.y < thumb + thumbHeight ? at.y - thumb : thumbHeight / 2; dragging = true; }
+                    int target = top;
+                    if (dragging) target = Mathf.RoundToInt((at.y - grab) * total / (float)barHeight);
+                    float wheel = m.scroll.ReadValue().y;
+                    if (wheel != 0) target = top - (wheel > 0 ? 1 : -1);
+                    target = Mathf.Clamp(target, 0, maxTop);
+                    if (target != top) { top = firstRow = target; scrolled = true; }
+                    if (scrolled) Choice = Mathf.Min(Count - 1, Mathf.Clamp(Choice / columns, top, top + rows - 1) * columns + Choice % columns);
+                }
+                if (!dragging)
+                    for (int i = 0; i < Count; i++)
+                        if (i / columns >= top && i / columns < top + rows && LocalTile(columns, i, top).Contains(at))
+                        {
+                            if (moved) Choice = i;
+                            if (m.leftButton.wasPressedThisFrame) { Choice = i; return i + 1; }
+                        }
             }
             return PhaseMenu.Confirmed(k) ? Choice + 1 : -1;
         }
@@ -136,7 +163,7 @@ namespace Phase
             int totalRows = (Count + columns - 1) / columns;
             if (totalRows > rows)
             {
-                int barHeight = rows * (TileHeight + GapY) - GapY, x = columns * (Box + GapX) - GapX + 3;
+                int barHeight = BarHeight(rows), x = BarX(columns);
                 grid.Fill(x, 0, 1, barHeight, PixelFrame.Light, .2f);
                 grid.Fill(x, top * barHeight / totalRows, 1, rows * barHeight / totalRows, PixelFrame.Selection);
             }
