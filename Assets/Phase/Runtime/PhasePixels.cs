@@ -16,7 +16,7 @@ namespace Phase
             if (mask < 1 || mask > 7) throw new ArgumentOutOfRangeException(nameof(mask));
             return Hex(Highlights[surfaceIndices[mask]]);
         }
-        const string Ink = "0b0f16", Glow = "4fe8ff";
+        const string Ink = "0b0f16", Glow = "4fe8ff", Danger = "ff2d3d";
         static readonly Dictionary<string, Color32> colors = new Dictionary<string, Color32>();
         Color32[] view = new Color32[320 * 180], buffer;
         public int Width => Texture.width;
@@ -96,7 +96,7 @@ namespace Phase
             {
                 int d = x * x + y * y; if (d > 484) continue;
                 int row = y + 22; if (y > 0 && (row % 6) < (y / 6 + 1)) continue;
-                Rect(232 + x, 92 + g + y, 1, 1, Mix(Color("ffd36e"), Color("ff2f8f"), (y + 22) / 44.0), d > 420 ? .55 : 1);
+                Rect(232 + x, 92 + g + y, 1, 1, Mix(Color("ffd36e"), Color("ff2f8f"), (y + 22) / 44.0), d > 420 ? .3 : .55);
             }
             var stars = new[] { (18,14),(47,30),(71,9),(103,22),(131,41),(150,12),(178,27),(204,8),(221,44),(240,17),(292,12),(307,46),(86,52),(12,58),(164,60),(283,66) };
             for (int i = 0; i < stars.Length; i++)
@@ -124,9 +124,9 @@ namespace Phase
             // Ground horizon with a receding neon grid.
             for (int x = left / 2 * 2; x < left + cols; x += 2) { int y = Hill(x); Rect(x, y, 2, 180 + g - y, "09021c"); Rect(x, y, 2, 1, "ff3ea5"); }
             int horizon = Hill(160) + 2;
-            for (int i = 0, y = horizon; y < 180 + g; i++, y += 2 + i * 2) Rect(left, y, cols, 1, "8a2be2", .5);
+            for (int i = 0, y = horizon; y < 180 + g; i++, y += 2 + i * 2) Rect(left, y, cols, 1, "8a2be2", .4);
             for (int x = left / 16 * 16 - 320; x < left + cols + 320; x += 16)
-                for (int y = horizon; y < 180 + g; y++) Rect(x + Round((x - 160) * (y - horizon) / 40.0), y, 1, 1, "8a2be2", .45);
+                for (int y = horizon; y < 180 + g; y++) Rect(x + Round((x - 160) * (y - horizon) / 40.0), y, 1, 1, "8a2be2", .35);
             backdrop = (Color32[])buffer.Clone();
         }
         int Hill(int x) => Round(146 + 5 * Math.Sin(x * .031 + 2) + 3 * Math.Sin(x * .09)) + roomHeight - 180;
@@ -169,7 +169,27 @@ namespace Phase
         // Platforms move, so they are painted over the cached terrain each frame.
         void Platforms(PhaseController s)
         {
+            foreach (var b in s.blocks) if (b is Platform p) PathHint(p);
             for (int i = 0; i < s.blocks.Count; i++) if (s.blocks[i] is Platform) PaintBlock(s, i);
+        }
+        // A dashed track through the stops, a dot on each, and a faint outline where the next jump lands.
+        void PathHint(Platform p)
+        {
+            var color = Color(Highlights[surfaceIndices[p.Mask]]);
+            double hw = p.w / 2, hh = p.h / 2;
+            for (int i = 0; i < p.pivots.Length; i++)
+            {
+                var a = p.OriginAt(i);
+                Rect(Round(a.x + hw) - 1, Round(a.y + hh) - 1, 3, 3, color, .5);
+                if (p.pivots.Length == 2 && i == 1) continue;
+                var b = p.OriginAt((i + 1) % p.pivots.Length);
+                double dx = b.x - a.x, dy = b.y - a.y; int n = (int)Math.Max(Math.Abs(dx), Math.Abs(dy));
+                for (int k = 0; k < n; k++) if ((k & 7) < 4) Rect(Round(a.x + hw + dx * k / n), Round(a.y + hh + dy * k / n), 1, 1, color, .35);
+            }
+            var to = p.OriginAt(p.Next);
+            if (to.x == p.x && to.y == p.y) return;
+            Rect(to.x, to.y, p.w, 1, color, .3); Rect(to.x, to.y + p.h - 1, p.w, 1, color, .3);
+            Rect(to.x, to.y + 1, 1, p.h - 2, color, .3); Rect(to.x + p.w - 1, to.y + 1, 1, p.h - 2, color, .3);
         }
         const double SpikeAlpha = .8;
         void PaintBlock(PhaseController s, int i, List<Block> only = null)
@@ -213,16 +233,16 @@ namespace Phase
             }
         }
         static bool Mixed(int mask) => mask == 3 || mask == 5 || mask == 6;
-        static readonly string[] spikeRows = {".oo..oo.","oTMooTMo","oLMooLMo","oLMooLMo","LLMMLLMM","LMMDLMMD","MMDDMMDD","DDDDDDDD"};
+        static readonly string[] spikeRows = {".TT..TT.","oTTooTTo","oTMooTMo","oLMooLMo","LLMMLLMM","LMMDLMMD","MMDDMMDD","DDDDDDDD"};
         static Dictionary<char,Color32> SpikePalette(int mask,bool active)
         {
             int color=surfaceIndices[mask];var cap=Color(Highlights[color]);var rim=Color(Edges[color]);var body=Color(Fills[color]);
-            var palette=new Dictionary<char,Color32>{['T']=active?Mix(cap,Color("ffffff"),.6):Mix(rim,Color("101a26"),.45),['L']=active?cap:Mix(body,Color("101a26"),.4),['M']=active?rim:Mix(body,Color("101a26"),.6),['D']=active?body:Mix(body,Color("101a26"),.6)};
+            var palette=new Dictionary<char,Color32>{['T']=active?Color(Danger):Mix(rim,Color("101a26"),.45),['L']=active?cap:Mix(body,Color("101a26"),.4),['M']=active?rim:Mix(body,Color("101a26"),.6),['D']=active?body:Mix(body,Color("101a26"),.6)};
             if(active)palette['o']=Color(Ink);
             return palette;
         }
         // A spike-covered cell: teeth on all four sides.
-        static readonly string[] coveredRows = {"...TT...","..TLMM..",".oLLMMo.","TLLMMMDD","LLMMMDDD",".oMMDDo.","..MDDD..","...DD..."};
+        static readonly string[] coveredRows = {"...TT...","..TTMM..",".oLLMMo.","TLLMMMTT","TLMMMDTT",".oMMDDo.","..MTTD..","...TT..."};
         readonly Dictionary<(int,bool),Bitmap> coveredTiles = new Dictionary<(int,bool),Bitmap>();
         Bitmap Covered(int mask,bool active)
         {
