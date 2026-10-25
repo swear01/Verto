@@ -16,7 +16,7 @@ namespace Phase
             if (mask < 1 || mask > 7) throw new ArgumentOutOfRangeException(nameof(mask));
             return Hex(Highlights[surfaceIndices[mask]]);
         }
-        const string Ink = "0b0f16", Glow = "4fe8ff";
+        const string Ink = "0b0f16", Glow = "4fe8ff", Danger = "ff2d3d";
         static readonly Dictionary<string, Color32> colors = new Dictionary<string, Color32>();
         Color32[] view = new Color32[320 * 180], buffer;
         public int Width => Texture.width;
@@ -217,12 +217,12 @@ namespace Phase
         static Dictionary<char,Color32> SpikePalette(int mask,bool active)
         {
             int color=surfaceIndices[mask];var cap=Color(Highlights[color]);var rim=Color(Edges[color]);var body=Color(Fills[color]);
-            var palette=new Dictionary<char,Color32>{['T']=active?Color("ff2d3d"):Mix(rim,Color("101a26"),.45),['L']=active?cap:Mix(body,Color("101a26"),.4),['M']=active?rim:Mix(body,Color("101a26"),.6),['D']=active?body:Mix(body,Color("101a26"),.6)};
+            var palette=new Dictionary<char,Color32>{['T']=active?Color(Danger):Mix(rim,Color("101a26"),.45),['L']=active?cap:Mix(body,Color("101a26"),.4),['M']=active?rim:Mix(body,Color("101a26"),.6),['D']=active?body:Mix(body,Color("101a26"),.6)};
             if(active)palette['o']=Color(Ink);
             return palette;
         }
         // A spike-covered cell: teeth on all four sides.
-        static readonly string[] coveredRows = {"...TT...","..TTMM..",".oLLMMo.","TLLMMMDD","LLMMMDDD",".oMMDDo.","..MDDD..","...DD..."};
+        static readonly string[] coveredRows = {"...TT...","..TTMM..",".oLLMMo.","TLLMMMTT","TLMMMDTT",".oMMDDo.","..MTTD..","...TT..."};
         readonly Dictionary<(int,bool),Bitmap> coveredTiles = new Dictionary<(int,bool),Bitmap>();
         Bitmap Covered(int mask,bool active)
         {
