@@ -152,7 +152,7 @@ namespace Phase
                 grid.Zoom(new UiZoom(2, new Vector2Int(tile.x + Box / 2 - PixelFrame.TextWidth(label), tile.y + BoxHeight + 2))).Text(label, 0, 0, selected ? 1 : .6f);
             }
         }
-        // Baked by Verification/LevelThumbnails.cs into Resources/Levels; a missing one leaves the frame empty.
+        // Baked into Resources/Levels by Phase/Editor/LevelThumbnails.cs on every build; a missing one leaves the frame empty.
         static Color32[] Thumbnail(string scene)
         {
             var texture = Resources.Load<Texture2D>("Levels/" + scene);

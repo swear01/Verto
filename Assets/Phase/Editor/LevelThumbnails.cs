@@ -2,15 +2,19 @@ using System.IO;
 using System.Linq;
 using Phase;
 using UnityEditor;
+using UnityEditor.Build;
+using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 // Bakes each level's level-select thumbnail: one pixel per 8px cell of the room rendered by PhasePixels.
 // A cell shows its center pixel, or its most saturated one when that is clearly more colorful, so phase blocks,
-// lasers and crystals keep their color. Rebake whenever a level scene changes.
-public static class LevelThumbnails
+// lasers and crystals keep their color. Every player build rebakes them; `Run` also works through run_script.
+public class LevelThumbnails : IPreprocessBuildWithReport
 {
+    public int callbackOrder => 0;
+    public void OnPreprocessBuild(BuildReport report) => Run();
     const string Folder = "Assets/Phase/Resources/Levels/";
     const int Columns = 40, Rows = 22;
     static int Chroma(Color32 c) => Mathf.Max(c.r, Mathf.Max(c.g, c.b)) - Mathf.Min(c.r, Mathf.Min(c.g, c.b));

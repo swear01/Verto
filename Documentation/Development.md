@@ -375,8 +375,9 @@ Level select and settings replace the screen behind them. Level select picks 4, 
 room (one pixel per 8px cell) above its 2× number; the selected tile has a blue frame.
 Every level is always selectable, it opens at the current level from pause, and Escape
 goes back. Thumbnails live in `Assets/Phase/Resources/Levels/<Scene>.png`; rebake them
-whenever a level scene changes or a level is added, with
-`unity command run_script -- --file Verification/LevelThumbnails.cs --entry LevelThumbnails.Run`.
+automatically before every player build (`Phase/Editor/LevelThumbnails.cs`, an
+`IPreprocessBuildWithReport`); commit the changed PNGs. To rebake without building, run
+`unity command eval 'LevelThumbnails.Run();'`.
 A missing thumbnail leaves its frame empty.
 Settings show three action icons (left, right, jump) with two key caps each, labelled in a tiny pixel font,
 then restore, fullscreen and close controls. Arrows and Enter always navigate. Enter,
