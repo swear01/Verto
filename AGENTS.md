@@ -40,6 +40,12 @@
 - Keep the game free of explanatory text and level progression.
 - Commands and coordinate conventions: [Documentation/Development.md](Documentation/Development.md).
 
+## Pull requests
+
+- No review bot runs automatically. After every push to a PR, trigger one yourself with `"$(git rev-parse --path-format=absolute --git-common-dir)/info/trigger-pr-review" <pr> <head-sha>` (posts `/swear-review`), or post `/gemini review`. If neither answers, post `@claude review this PR`. Waiting without a trigger comment means no review ever arrives.
+- Merge only when CI is green and a review you triggered passed on the latest head. Never merge on CI alone.
+- Once only nits remain, reply/resolve and merge with `gh pr merge <n> --merge --match-head-commit <sha> --delete-branch`. If the auto-mode classifier blocks the merge, report it; do not work around it.
+
 ## Web publishing
 
 - After merging a PR that changes the game (`Assets/`, `Packages/` or `ProjectSettings/`), publish <https://verto.5334601.xyz/> from a fresh checkout of the latest `origin/main`: run `Verification/BuildWeb.py`, deploy with `--commit-hash`, then check the live site with `WebLoadSmoke.cjs`. Skip it when the live deployment is already at that commit or a newer one. Steps: [Documentation/Web.md](Documentation/Web.md#online-play).
