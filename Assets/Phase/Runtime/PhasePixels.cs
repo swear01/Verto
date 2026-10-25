@@ -179,10 +179,12 @@ namespace Phase
             double hw = p.w / 2, hh = p.h / 2;
             for (int i = 0; i < p.pivots.Length; i++)
             {
-                var a = p.OriginAt(i); var b = p.OriginAt((i + 1) % p.pivots.Length);
+                var a = p.OriginAt(i);
+                Rect(Round(a.x + hw) - 1, Round(a.y + hh) - 1, 3, 3, color, .5);
+                if (p.pivots.Length == 2 && i == 1) continue;
+                var b = p.OriginAt((i + 1) % p.pivots.Length);
                 double dx = b.x - a.x, dy = b.y - a.y; int n = (int)Math.Max(Math.Abs(dx), Math.Abs(dy));
                 for (int k = 0; k < n; k++) if ((k & 7) < 4) Rect(Round(a.x + hw + dx * k / n), Round(a.y + hh + dy * k / n), 1, 1, color, .35);
-                Rect(Round(a.x + hw) - 1, Round(a.y + hh) - 1, 3, 3, color, .5);
             }
             var to = p.OriginAt(p.Next);
             if (to.x == p.x && to.y == p.y) return;
