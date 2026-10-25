@@ -23,9 +23,8 @@ jobs:
         run: node Verification/WebTemplateTests.cjs
       - name: Verify Pipeline failure handling
         run: python3 Verification/BuildWebTests.py
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
-        with:
-          dotnet-version: '10.0.x'
+      - name: Use the .NET SDK preinstalled on the runner
+        run: dotnet --list-sdks
       - name: Run shared controller tests
         run: >-
           dotnet test Verification/ControllerTests.csproj
