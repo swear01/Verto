@@ -96,7 +96,7 @@ namespace Phase
             {
                 int d = x * x + y * y; if (d > 484) continue;
                 int row = y + 22; if (y > 0 && (row % 6) < (y / 6 + 1)) continue;
-                Rect(232 + x, 92 + g + y, 1, 1, Mix(Color("ffd36e"), Color("ff2f8f"), (y + 22) / 44.0), d > 420 ? .55 : 1);
+                Rect(232 + x, 92 + g + y, 1, 1, Mix(Color("ffd36e"), Color("ff2f8f"), (y + 22) / 44.0), d > 420 ? .3 : .55);
             }
             var stars = new[] { (18,14),(47,30),(71,9),(103,22),(131,41),(150,12),(178,27),(204,8),(221,44),(240,17),(292,12),(307,46),(86,52),(12,58),(164,60),(283,66) };
             for (int i = 0; i < stars.Length; i++)
@@ -124,9 +124,9 @@ namespace Phase
             // Ground horizon with a receding neon grid.
             for (int x = left / 2 * 2; x < left + cols; x += 2) { int y = Hill(x); Rect(x, y, 2, 180 + g - y, "09021c"); Rect(x, y, 2, 1, "ff3ea5"); }
             int horizon = Hill(160) + 2;
-            for (int i = 0, y = horizon; y < 180 + g; i++, y += 2 + i * 2) Rect(left, y, cols, 1, "8a2be2", .5);
+            for (int i = 0, y = horizon; y < 180 + g; i++, y += 2 + i * 2) Rect(left, y, cols, 1, "8a2be2", .4);
             for (int x = left / 16 * 16 - 320; x < left + cols + 320; x += 16)
-                for (int y = horizon; y < 180 + g; y++) Rect(x + Round((x - 160) * (y - horizon) / 40.0), y, 1, 1, "8a2be2", .45);
+                for (int y = horizon; y < 180 + g; y++) Rect(x + Round((x - 160) * (y - horizon) / 40.0), y, 1, 1, "8a2be2", .35);
             backdrop = (Color32[])buffer.Clone();
         }
         int Hill(int x) => Round(146 + 5 * Math.Sin(x * .031 + 2) + 3 * Math.Sin(x * .09)) + roomHeight - 180;
