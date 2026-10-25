@@ -169,7 +169,25 @@ namespace Phase
         // Platforms move, so they are painted over the cached terrain each frame.
         void Platforms(PhaseController s)
         {
+            foreach (var b in s.blocks) if (b is Platform p) PathHint(p);
             for (int i = 0; i < s.blocks.Count; i++) if (s.blocks[i] is Platform) PaintBlock(s, i);
+        }
+        // A dashed track through the stops, a dot on each, and a faint outline where the next jump lands.
+        void PathHint(Platform p)
+        {
+            var color = Color(Highlights[surfaceIndices[p.Mask]]);
+            double hw = p.w / 2, hh = p.h / 2;
+            for (int i = 0; i < p.pivots.Length; i++)
+            {
+                var a = p.OriginAt(i); var b = p.OriginAt((i + 1) % p.pivots.Length);
+                double dx = b.x - a.x, dy = b.y - a.y; int n = (int)Math.Max(Math.Abs(dx), Math.Abs(dy));
+                for (int k = 0; k < n; k++) if ((k & 7) < 4) Rect(Round(a.x + hw + dx * k / n), Round(a.y + hh + dy * k / n), 1, 1, color, .35);
+                Rect(Round(a.x + hw) - 1, Round(a.y + hh) - 1, 3, 3, color, .5);
+            }
+            var to = p.OriginAt(p.Next);
+            if (to.x == p.x && to.y == p.y) return;
+            Rect(to.x, to.y, p.w, 1, color, .3); Rect(to.x, to.y + p.h - 1, p.w, 1, color, .3);
+            Rect(to.x, to.y + 1, 1, p.h - 2, color, .3); Rect(to.x + p.w - 1, to.y + 1, 1, p.h - 2, color, .3);
         }
         const double SpikeAlpha = .8;
         void PaintBlock(PhaseController s, int i, List<Block> only = null)
