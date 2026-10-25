@@ -883,6 +883,40 @@ public class MenuTests : InputTestFixture
         InputSystem.QueueStateEvent(mouse, new MouseState { position = point }); yield return null;
     }
     [UnityTest]
+    public IEnumerator LevelSelectFollowsMouseHoverWheelAndScrollbar()
+    {
+        keyboard = InputSystem.AddDevice<Keyboard>();
+        var mouse = InputSystem.AddDevice<Mouse>();
+        var frame = new Vector2Int(120, 70);
+        var levels = new PhaseLevels();
+        int columns = PhaseLevels.Columns(frame), rows = PhaseLevels.Rows(frame), total = (PhaseSandbox.Levels.Length + columns - 1) / columns;
+        Assert.That(rows, Is.LessThan(total), "the small view scrolls");
+        var origin = PhaseLevels.Tile(frame, 0); int scale = origin.width / 44, barX = columns * 50 - 6 + 3, barHeight = rows * 43 - 5;
+        Vector2 Screen(Vector2 f) => new Vector2(f.x / frame.x * UnityEngine.Screen.width, (1f - f.y / frame.y) * UnityEngine.Screen.height);
+        Vector2 Bar(float y) => Screen(origin.position + new Vector2(barX, y) * scale);
+        IEnumerator Send(Vector2 at, bool left = false, float wheel = 0)
+        {
+            var state = new MouseState { position = at, scroll = new Vector2(0, wheel) };
+            InputSystem.QueueStateEvent(mouse, left ? state.WithButton(MouseButton.Left) : state); yield return null;
+        }
+        yield return Send(Screen(Vector2.zero)); levels.Tick(keyboard, mouse, frame);
+        yield return Send(Screen(PhaseLevels.Tile(frame, 1).center)); int result = levels.Tick(keyboard, mouse, frame);
+        Assert.That((levels.Choice, result), Is.EqualTo((1, -1)), "hovering a tile selects it without entering");
+        yield return Send(Screen(PhaseLevels.Tile(frame, 1).center), left: true); result = levels.Tick(keyboard, mouse, frame);
+        Assert.That(result, Is.EqualTo(2), "clicking a tile enters that level");
+        yield return Send(Screen(Vector2.zero)); levels.Tick(keyboard, mouse, frame);
+        yield return Send(Screen(Vector2.zero), wheel: -1); levels.Tick(keyboard, mouse, frame);
+        Assert.That(levels.Choice / columns, Is.EqualTo(1), "wheel down scrolls one row");
+        yield return Send(Screen(Vector2.zero), wheel: 1); levels.Tick(keyboard, mouse, frame);
+        Assert.That(levels.Choice / columns, Is.EqualTo(0), "wheel up scrolls back");
+        yield return Send(Bar(barHeight - 1), left: true); levels.Tick(keyboard, mouse, frame);
+        Assert.That(levels.Choice / columns, Is.EqualTo(total - 1), "clicking the track bottom jumps to the last row");
+        yield return Send(Bar(barHeight - 1)); levels.Tick(keyboard, mouse, frame);
+        yield return Send(Bar(2), left: true); levels.Tick(keyboard, mouse, frame);
+        Assert.That(levels.Choice / columns, Is.EqualTo(0), "dragging the bar to the top scrolls to the first row");
+        yield return Send(Bar(2)); levels.Tick(keyboard, mouse, frame);
+    }
+    [UnityTest]
     public IEnumerator FirstClickQuickTapAndMouseReachTheMenus()
     {
         yield return SceneManager.LoadSceneAsync(PhaseTitle.Scene);
