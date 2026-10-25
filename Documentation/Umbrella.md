@@ -3,7 +3,7 @@
 `PhaseUmbrella` is one scrolling room four screens wide (160×22 cells), built from `Assets/Phase/Imported/umbrella.json`.
 Leaving its right edge leads to `PhaseGear`.
 
-## Rul## Rule
+## Rule
 
 White light kills, and only blocks of your current color stop it.
 
@@ -40,7 +40,7 @@ The intended route holds right and jumps at x = 40, 100, 256, 352, 432, 496, 592
 controller, 10 of 10 runs win with every jump moved by a random ±6 px, and the terrain alone allows ±8 px.
 A tapped jump hops only 26 px instead of 62 and cannot clear a pit.
 
-ification
+## Verification
 
 In PhaseUmbrella Play, run `Verification/UmbrellaLiveInput.cs` (entry `UmbrellaLiveInput.Run`, script
 `--timeout_ms 60000`). It plays the route with the virtual keyboard, holding jump while rising, and requires no
