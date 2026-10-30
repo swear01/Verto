@@ -191,6 +191,42 @@ public class ControllerTests
         Assert.That(capped.player.x+capped.player.w,Is.EqualTo(100),"a block over the raised spot blocks the step-up");
     }
     [Test]
+    public void HittingACeilingCapsTheJumpThenHangsBrieflyKeepingForwardSpeed()
+    {
+        // Underside 3px (a bonk while the variable-jump hold is still fresh) and 17px above the head (a bonk mid-rise).
+        foreach (int underside in new[] { 144, 131 })
+        {
+            var s = new PhaseController(new[] { new Block(0,160,320,24), new Block(0,underside-16,320,16) },120,148);
+            var p = s.player; p.grounded = true; p.coyote = .1;
+            int hit = -1, falling = -1; double vxBefore = 0;
+            for (int i = 0; i < 40; i++)
+            {
+                double vx = p.vx;
+                s.Step(new Controls { jump = i == 0, jumpHeld = true, x = 1 });
+                Assert.That(p.y, Is.GreaterThanOrEqualTo(underside), $"underside {underside}: never inside the ceiling");
+                if (hit < 0 && i > 0 && p.vy >= 0) { hit = i; vxBefore = vx; Assert.That(p.y, Is.EqualTo(underside), $"underside {underside}: the rise ended on the ceiling"); Assert.That(p.vx, Is.GreaterThanOrEqualTo(vx), $"underside {underside}: forward speed survives the bonk"); }
+                else if (hit >= 0 && falling < 0)
+                {
+                    if (p.vy > 0) falling = i;
+                    else Assert.That(p.vy, Is.EqualTo(0), $"underside {underside}: no upward or downward kick while hanging");
+                }
+                if (hit >= 0) Assert.That(p.vx, Is.GreaterThanOrEqualTo(vxBefore), $"underside {underside}: keeps running forward");
+            }
+            Assert.That(hit, Is.GreaterThan(0), $"underside {underside}: the rise ends at the ceiling");
+            Assert.That(falling - hit, Is.InRange(4, 8), $"underside {underside}: a few frames of hang, then gravity takes over");
+            Assert.That(p.y, Is.GreaterThan(underside), $"underside {underside}: does not stay stuck to the ceiling");
+        }
+    }
+    [Test]
+    public void RisingIntoACeilingCornerSlidesPastItAndKeepsRising()
+    {
+        var s = new PhaseController(new[] { new Block(0,160,320,24), new Block(90,120,44,16) },120,149);
+        var p = s.player; p.grounded = true; p.coyote = .1;
+        Ticks(s,1,new Controls { jump = true, jumpHeld = true, x = 1 });
+        for (int i = 0; i < 12; i++) s.Step(new Controls { jumpHeld = true, x = 1 });
+        Assert.That(p.y, Is.LessThan(136), "the corner nudge lets the rise continue past the slab underside");
+    }
+    [Test]
     public void FastLandingKicksUpNeutralDustOnlyOnce()
     {
         foreach (double speed in new[] { 60.0, 160.0 })
