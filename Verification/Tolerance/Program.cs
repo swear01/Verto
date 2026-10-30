@@ -57,5 +57,6 @@ static class Program
             return result;
         }).ToList();
         File.WriteAllText("Verification/ToleranceReport.md", PhaseTolerance.Markdown(results));
+        if (results.Any(result => result.error != null)) Environment.ExitCode = 1;
     }
 }

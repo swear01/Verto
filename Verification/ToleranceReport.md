@@ -28,7 +28,7 @@ Histogram: 1–3f 0, 4–6f 1, 7–9f 0, 10–12f 0, 13+f 5
 
 ## PhaseDemo13
 
-Route 410 frames (6.8s), 10 jumps; from the recorded route, the most forgiving of 1 routes (180000 searched states, 11s).
+Route 410 frames (6.8s), 10 jumps; from the recorded route, the most forgiving of 1 routes (180000 searched states, 17s).
 
 Histogram: 1–3f 0, 4–6f 1, 7–9f 3, 10–12f 3, 13+f 23
 
@@ -67,7 +67,7 @@ Histogram: 1–3f 0, 4–6f 1, 7–9f 3, 10–12f 3, 13+f 23
 
 ## PhaseDemo14
 
-Route 460 frames (7.7s), 10 jumps; from the recorded route, the most forgiving of 1 routes (180000 searched states, 29s).
+Route 461 frames (7.7s), 10 jumps; from the recorded route, the most forgiving of 1 routes (180000 searched states, 50s).
 
 Histogram: 1–3f 0, 4–6f 0, 7–9f 4, 10–12f 1, 13+f 17
 
@@ -84,21 +84,21 @@ Histogram: 1–3f 0, 4–6f 0, 7–9f 4, 10–12f 1, 13+f 17
 | 9 | 128 | jump | 224 | ground | green | 17 (-8..≥+8) | 24 | free |
 | 10 | 137 | release | 240 | wall |  | 17 (≤-8..≥+8) | 14 | free |
 | 11 | 146 | left | 240 | wall |  | 17 (-8..≥+8) | 0 | free |
-| 12 | 146 | left | 238 | air |  | 14 (≤-7..+6) | 2 | free |
-| 13 | 163 | release | 210 | air |  | 17 (-8..≥+8) | 24 | free |
-| 14 | 193 | jump | 165 | ground | blue | 14 (-7..+6) | 19 | free |
-| 15 | 200 | release | 151 | air |  | 7 (-3..+3) | 10 | moderate |
-| 16 | 217 | jump | 125 | ground | green | 17 (≤-8..+8) | 24 | free |
-| 17 | 231 | release | 101 | air |  | 17 (-8..≥+8) | 24 | free |
-| 18 | 252 | jump | 69 | ground | red | 17 (-8..≥+8) | 24 | free |
-| 19 | 258 | release | 57 | air |  | 10 (≤-5..+4) | 16 | moderate |
-| 20 | 267 | jump | 48 | wall | blue | 17 (≤-8..≥+8) | 8 | free |
-| 21 | 273 | right | 43 | air |  | 17 (≤-8..≥+8) | 5 | free |
-| 22 | 279 | release | 43 | air |  | 17 (≤-8..≥+8) | 8 | free |
+| 12 | 146 | jump | 240 | wall | red | 14 (≤-8..+5) | 2 | free |
+| 13 | 164 | release | 210 | air |  | 17 (-8..≥+8) | 24 | free |
+| 14 | 194 | jump | 165 | ground | blue | 14 (-7..+6) | 19 | free |
+| 15 | 201 | release | 151 | air |  | 7 (-3..+3) | 11 | moderate |
+| 16 | 218 | jump | 125 | ground | green | 17 (≤-8..+8) | 24 | free |
+| 17 | 232 | release | 101 | air |  | 17 (-8..≥+8) | 24 | free |
+| 18 | 253 | jump | 69 | ground | red | 17 (-8..≥+8) | 24 | free |
+| 19 | 259 | release | 58 | air |  | 10 (≤-5..+4) | 16 | moderate |
+| 20 | 268 | jump | 48 | wall | blue | 17 (≤-8..≥+8) | 8 | free |
+| 21 | 274 | right | 43 | air |  | 17 (≤-8..≥+8) | 5 | free |
+| 22 | 280 | release | 43 | air |  | 17 (≤-8..≥+8) | 8 | free |
 
 ## PhaseDemo15
 
-Route 836 frames (13.9s), 10 jumps; from a 4-frame search, the most forgiving of 3 routes (1216 searched states, 19s).
+Route 836 frames (13.9s), 10 jumps; from a 4-frame search, the most forgiving of 3 routes (1216 searched states, 20s).
 
 Histogram: 1–3f 0, 4–6f 0, 7–9f 0, 10–12f 2, 13+f 20
 
@@ -112,24 +112,24 @@ Histogram: 1–3f 0, 4–6f 0, 7–9f 0, 10–12f 2, 13+f 20
 | 6 | 252 | release | 398 | air |  | 10 (≤-4..+5) | 16 | moderate |
 | 7 | 373 | jump | 580 | ground | blue | 17 (≤-8..+8) | 24 | free |
 | 8 | 380 | release | 594 | air |  | 14 (≤-6..+7) | 22 | free |
-| 9 | 380 | release | 594 | air |  | 13 (-6..+6) | 20 | free |
-| 10 | 398 | right | 602 | air |  | 17 (≤-8..≥+8) | 0 | free |
-| 11 | 401 | jump | 603 | ground | green | 11 (-5..+5) | 8 | moderate |
-| 12 | 410 | release | 617 | air |  | 17 (≤-8..≥+8) | 24 | free |
-| 13 | 450 | jump | 677 | ground | red | 17 (≤-8..+8) | 24 | free |
-| 14 | 462 | release | 698 | air |  | 17 (≤-8..≥+8) | 25 | free |
-| 15 | 489 | jump | 739 | ground | blue | 17 (≤-8..+8) | 24 | free |
-| 16 | 501 | release | 760 | air |  | 17 (≤-8..≥+8) | 25 | free |
-| 17 | 567 | jump | 859 | ground | green | 17 (≤-8..+8) | 24 | free |
-| 18 | 576 | release | 876 | air |  | 17 (≤-8..≥+8) | 27 | free |
-| 19 | 652 | jump | 990 | ground | red | 17 (≤-8..+8) | 24 | free |
-| 20 | 664 | release | 1011 | air |  | 17 (≤-8..≥+8) | 25 | free |
-| 21 | 770 | jump | 1170 | ground | blue | 17 (≤-8..+8) | 24 | free |
-| 22 | 785 | release | 1196 | air |  | 17 (-8..≥+8) | 24 | free |
+| 9 | 383 | stop | 599 | air |  | 13 (-9..+3) | 20 | free |
+| 10 | 400 | right | 604 | ground |  | 17 (-8..≥+8) | 0 | free |
+| 11 | 401 | jump | 605 | ground | green | 12 (-6..+5) | 6 | moderate |
+| 12 | 410 | release | 618 | air |  | 17 (≤-8..≥+8) | 24 | free |
+| 13 | 450 | jump | 678 | ground | red | 17 (≤-8..+8) | 24 | free |
+| 14 | 462 | release | 699 | air |  | 17 (≤-8..≥+8) | 25 | free |
+| 15 | 488 | jump | 738 | ground | blue | 17 (≤-8..+8) | 24 | free |
+| 16 | 501 | release | 761 | air |  | 17 (-8..≥+8) | 25 | free |
+| 17 | 566 | jump | 859 | ground | green | 17 (≤-8..+8) | 24 | free |
+| 18 | 575 | release | 876 | air |  | 17 (≤-8..≥+8) | 27 | free |
+| 19 | 651 | jump | 990 | ground | red | 17 (≤-8..+8) | 24 | free |
+| 20 | 663 | release | 1011 | air |  | 17 (≤-8..≥+8) | 25 | free |
+| 21 | 769 | jump | 1170 | ground | blue | 17 (≤-8..+8) | 24 | free |
+| 22 | 784 | release | 1196 | air |  | 17 (-8..≥+8) | 24 | free |
 
 ## PhaseUmbrella
 
-Route 836 frames (13.9s), 15 jumps; from a 4-frame search, the most forgiving of 3 routes (18992 searched states, 390s).
+Route 836 frames (13.9s), 15 jumps; from a 4-frame search, the most forgiving of 3 routes (18992 searched states, 405s).
 
 Histogram: 1–3f 0, 4–6f 0, 7–9f 1, 10–12f 6, 13+f 25
 
@@ -170,9 +170,9 @@ Histogram: 1–3f 0, 4–6f 0, 7–9f 1, 10–12f 6, 13+f 25
 
 ## PhaseGear
 
-Route 221 frames (3.7s), 8 jumps; from a 4-frame search, the most forgiving of 1 routes (163429 searched states, 50s).
+Route 221 frames (3.7s), 8 jumps; from a 4-frame search, the most forgiving of 1 routes (163429 searched states, 51s).
 
-Histogram: 1–3f 0, 4–6f 1, 7–9f 4, 10–12f 2, 13+f 16
+Histogram: 1–3f 0, 4–6f 2, 7–9f 3, 10–12f 2, 13+f 16
 
 | # | Frame | Input | x | Contact | Color | Window (frames) | Window (px) | Grade |
 |---|---|---|---|---|---|---|---|---|
@@ -191,10 +191,10 @@ Histogram: 1–3f 0, 4–6f 1, 7–9f 4, 10–12f 2, 13+f 16
 | 13 | 122 | release | 182 | wall |  | 17 (≤-3..≥+13) | 5 | free |
 | 14 | 124 | jump | 184 | wall | red | 7 (≤-1..+5) | 0 | moderate |
 | 15 | 140 | left | 198 | air |  | 17 (≤-8..≥+8) | 2 | free |
-| 16 | 140 | left | 198 | air |  | 14 (-7..+6) | 3 | free |
-| 17 | 142 | jump | 198 | air | blue | 8 (≤-4..+3) | 3 | moderate |
-| 18 | 149 | right | 201 | air |  | 17 (≤-8..≥+8) | 16 | free |
-| 19 | 150 | release | 203 | air |  | 15 (≤-7..+7) | 17 | free |
+| 16 | 140 | release | 198 | air |  | 14 (-10..+3) | 3 | free |
+| 17 | 143 | jump | 197 | air | blue | 5 (≤-2..+2) | 3 | moderate |
+| 18 | 148 | right | 199 | air |  | 16 (≤-7..+8) | 15 | free |
+| 19 | 150 | release | 203 | air |  | 13 (≤-6..+6) | 17 | free |
 | 20 | 157 | press | 214 | air |  | 13 (≤-6..+6) | 19 | free |
 | 21 | 164 | release | 225 | air |  | 14 (≤-6..+7) | 19 | free |
 | 22 | 172 | jump | 237 | ground | green | 15 (≤-7..+7) | 21 | free |

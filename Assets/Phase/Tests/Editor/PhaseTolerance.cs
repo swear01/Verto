@@ -127,6 +127,7 @@ public static class PhaseTolerance
             {
                 var top = open.Min; open.Remove(top); expansions++;
                 var node = nodes[top.id];
+                nodes[top.id] = (null, node.parent, node.input, node.frames, node.turns);
                 foreach (var input in Actions)
                 {
                     Load(c, node.state);
@@ -435,9 +436,9 @@ public static class PhaseTolerance
             int centre = (lo + hi) / 2;
             if (centre != 0 && e.frame + centre >= 0 && Recover(c, r, p, centre, out _, int.MaxValue) is List<Input> relaxed)
             {
-                int count = r.events.Count;
                 var moved = Trace(c, relaxed, r, Math.Min(e.frame, e.frame + centre));
-                if (moved.events.Count == count) { r = moved; lo -= centre; hi -= centre; e = r.events[p]; }
+                // Keep it only when the inputs stay the same and in the same order, with this one at its new frame.
+                if (moved.events.Select(m => (m.kind, m.value)).SequenceEqual(r.events.Select(m => (m.kind, m.value))) && moved.events[p].frame == e.frame + centre) { r = moved; lo -= centre; hi -= centre; e = r.events[p]; }
             }
             result.steps.Add(new Step { kind = e.kind, frame = e.frame, value = e.value, lo = lo, hi = hi, loCapped = loCapped, hiCapped = hiCapped,
                 contact = Contact(r.grounded[e.frame], r.wall[e.frame]), x = r.x[e.frame], xLo = Math.Min(xLo, xHi), xHi = Math.Max(xLo, xHi),
