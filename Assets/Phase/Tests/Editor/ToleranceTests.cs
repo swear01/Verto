@@ -18,11 +18,13 @@ public class ToleranceTests
         var wide = PhaseTolerance.Analyze("wide", Pit(48));
         Assert.That(wide.error, Is.Null);
         Assert.That(wide.jumps, Is.EqualTo(1));
-        Assert.That(wide.steps.Single(s => s.kind == PhaseTolerance.Kind.Press).Grade, Is.EqualTo("free"));
+        var presses = wide.steps.Where(s => s.kind == PhaseTolerance.Kind.Press).ToList();
+        Assert.That(presses, Is.Not.Empty);
+        Assert.That(presses.Select(s => s.Grade), Is.All.EqualTo("free"));
         // The takeoff barely reaches the far wall, and a wall jump finishes the climb.
         var tight = PhaseTolerance.Analyze("tight", Pit(84));
         Assert.That(tight.error, Is.Null);
-        Assert.That(tight.steps.First(s => s.jumps).Grade, Is.EqualTo("tight"));
+        Assert.That(tight.steps.FirstOrDefault(s => s.jumps)?.Grade, Is.EqualTo("tight"));
         Assert.That(tight.Verdict, Is.EqualTo("too tight"));
     }
 }

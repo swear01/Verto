@@ -103,8 +103,9 @@ public static class PhaseTolerance
         void Mix(long v) { unchecked { h = h * 1000003 + v; } }
         Mix((long)Math.Round(p.x)); Mix((long)Math.Round(p.y)); Mix((long)Math.Round(p.vx / 10)); Mix((long)Math.Round(p.vy / 10));
         Mix(c.phase); Mix(p.grounded ? 1 : 0); Mix(held ? 1 : 0); Mix(p.wall); Mix(p.varTime > 0 ? 1 : 0); Mix(p.wallLock > 0 ? 1 : 0);
-        Mix(p.airJump); Mix(p.coyote > 0 ? 1 : 0); Mix((long)(p.slide * 10));
-        foreach (var platform in c.platforms) { Mix((long)platform.x); Mix((long)platform.y); Mix(platform.queued); }
+        Mix(p.airJump); Mix(p.coyote > 0 ? 1 : 0); Mix((long)(p.slide * 10)); Mix(p.buffer > 0 ? 1 : 0); Mix(p.retention > 0 ? 1 : 0);
+        Mix(p.facing); Mix(p.wallLock > 0 ? p.forceX : 0);
+        foreach (var platform in c.platforms) { Mix((long)platform.x); Mix((long)platform.y); Mix(platform.pivot); Mix(platform.queued); }
         foreach (var crystal in c.crystals) Mix(crystal.collected ? 1 : 0);
         foreach (int b in c.blocked.OrderBy(b => b)) Mix(b + 7);
         return h;
@@ -226,6 +227,8 @@ public static class PhaseTolerance
         public int[] wall, phase;
     }
 
+    static readonly Input Neutral = new Input { x = 1 };
+
     static string Contact(bool grounded, int wall) => grounded ? "ground" : wall != 0 ? "wall" : "air";
 
     // Records the state before every frame; with `prior`, frames before `from` are copied from it because the routes share them.
@@ -242,19 +245,24 @@ public static class PhaseTolerance
             Load(c, prior.states[from]);
         }
         bool previous = from > 0 && route[from - 1].held;
-        for (int i = from; i <= route.Count; i++)
+        try
         {
-            var p = c.player;
-            r.states[i] = Save(c, previous); r.x[i] = p.x; r.y[i] = p.y; r.vx[i] = p.vx; r.vy[i] = p.vy; r.grounded[i] = p.grounded || p.coyote > 0; r.wall[i] = p.wall; r.phase[i] = c.phase;
-            if (i == route.Count) break;
-            Tick(c, route[i], previous); previous = route[i].held;
+            for (int i = from; i <= route.Count; i++)
+            {
+                var p = c.player;
+                r.states[i] = Save(c, previous); r.x[i] = p.x; r.y[i] = p.y; r.vx[i] = p.vx; r.vy[i] = p.vy; r.grounded[i] = p.grounded || p.coyote > 0; r.wall[i] = p.wall; r.phase[i] = c.phase;
+                if (i == route.Count) break;
+                Tick(c, route[i], previous); previous = route[i].held;
+            }
         }
-        Load(c, start);
+        finally { Load(c, start); }
+        // Inputs are measured against running right with jump released, so a route that starts otherwise has a frame-0 event.
         int press = -1;
-        for (int i = 1; i < route.Count; i++)
+        for (int i = 0; i < route.Count; i++)
         {
-            if (route[i].x != route[i - 1].x) r.events.Add(new Event { kind = Kind.Turn, frame = i, value = route[i].x });
-            if (route[i].held != route[i - 1].held)
+            var before = i > 0 ? route[i - 1] : Neutral;
+            if (route[i].x != before.x) r.events.Add(new Event { kind = Kind.Turn, frame = i, value = route[i].x });
+            if (route[i].held != before.held)
             {
                 r.events.Add(new Event { kind = route[i].held ? Kind.Press : Kind.Release, frame = i, value = route[i].held ? 1 : 0, pair = route[i].held ? -1 : press });
                 if (route[i].held) press = r.events.Count - 1;
@@ -294,7 +302,7 @@ public static class PhaseTolerance
         var fired = new int[events.Count];
         int next = 0; while (next < events.Count && events[next].frame < begin) { fired[next] = events[next].frame; next++; }
         var played = r.route.Take(begin).ToList();
-        var input = begin > 0 ? r.route[begin - 1] : r.route[0];
+        var input = begin > 0 ? r.route[begin - 1] : Neutral;
         Load(c, r.states[begin]);
         bool previous = r.states[begin].held;
         int limit = r.route.Count + 600;
@@ -416,8 +424,8 @@ public static class PhaseTolerance
             bool late = true, early = lo > Math.Max(-Reach, min);
             while ((late || early) && hi - lo + 1 < Enough)
             {
-                if (late) { if (hi < Reach && Recover(c, r, p, hi + 1, out double fx) != null) { hi++; xHi = fx; } else late = false; }
-                if (early && hi - lo + 1 < Enough) { if (lo > Math.Max(-Reach, min) && Recover(c, r, p, lo - 1, out double fx) != null) { lo--; xLo = fx; } else early = false; }
+                if (late) { if (hi < Reach && Recover(c, r, p, hi + 1, out double fx) != null) { hi++; if (!double.IsNaN(fx)) xHi = fx; } else late = false; }
+                if (early && hi - lo + 1 < Enough) { if (lo > Math.Max(-Reach, min) && Recover(c, r, p, lo - 1, out double fx) != null) { lo--; if (!double.IsNaN(fx)) xLo = fx; } else early = false; }
             }
             bool loCapped = early || lo <= Math.Max(-Reach, min), hiCapped = late || hi >= Reach;
             // Recentre the input in its window, as a careful player would, before measuring the inputs after it.

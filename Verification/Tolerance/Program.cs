@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json.Linq;
@@ -38,7 +39,14 @@ static class Program
 
     static void Main(string[] args)
     {
+        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
         var levels = args.Length > 0 ? args : Maps.Keys.ToArray();
+        var unknown = levels.Where(level => !Maps.ContainsKey(level)).ToList();
+        if (unknown.Count > 0)
+        {
+            Console.Error.WriteLine($"Unknown level(s): {string.Join(", ", unknown)}. Known: {string.Join(", ", Maps.Keys)}.");
+            Environment.Exit(1);
+        }
         var results = levels.Select(level =>
         {
             var result = PhaseTolerance.Analyze(level, Build(level), recorded: Recorded(level));

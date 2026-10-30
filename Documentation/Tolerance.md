@@ -23,9 +23,10 @@ For scale: the controller's coyote time is 6 frames and its jump buffer 5, close
 ## How it works
 
 1. **Search.** Weighted A* over held inputs (left/still/right × jump held or not) that change every 4 or 6 frames,
-   merging states on position, rounded velocity, color, contact, platform positions, crystals and deferred blocks.
-   Its cost counts frames, jumps and direction changes, and its heuristic is the distance to the nearest landing on the
-   right edge. Hazards change only on jumps, not on time, so this state is complete enough to merge on.
+   merging states on whole-pixel position, rounded velocity, color, contact, jump buffer and wall timers, platform
+   positions, crystals and deferred blocks. Hazards change only on jumps, not on time, so only sub-pixel remainders are
+   lost when states merge. Its cost counts frames, jumps and direction changes, and its heuristic is the distance to the
+   nearest landing on the right edge.
 2. **Simplify.** A recorded route joins the searched ones here. Drop jumps the route does not need, hold each jump through the variable-height window, and drop every
    detour (a stop or step back with its return, or a release with the next press) whose removal still wins. Later
    inputs keep their positions when a detour is dropped.
