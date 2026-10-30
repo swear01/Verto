@@ -733,7 +733,7 @@ public class MenuTests : InputTestFixture
             Assert.That(sandbox.Controller.jumps, Is.EqualTo(1), "the new key jumps");
 
             yield return Tap(Key.Escape); yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Enter);
-            for (int i = 0; i < PhaseKeys.RestoreRow; i++) yield return Tap(Key.DownArrow);
+            for (int i = 0; i < PhaseKeys.ControlsRow; i++) yield return Tap(Key.DownArrow);
             yield return Tap(Key.Enter);
             Assert.That(PhaseSandbox.Slots, Is.EqualTo(PhaseSandbox.DefaultSlots), "restore defaults");
             Assert.That(PlayerPrefs.GetString(PhaseSandbox.ControlsKey), Is.EqualTo(string.Join(",", PhaseSandbox.DefaultSlots)));
@@ -799,12 +799,12 @@ public class MenuTests : InputTestFixture
         LogAssert.NoUnexpectedReceived();
     }
 
-    // Lit pixels at the switch's off and on knob centers. The knob is cell-relative page pixels (19, 7) and (24, 7).
+    // Lit pixels that tell the outward corner brackets from the inward ones in the fullscreen control (cell-relative page pixels (0, 1) and (3, 1)).
     static (bool off, bool on) Knob(PhaseKeys keys)
     {
         var size = PhaseSandbox.ViewSize(Screen.width, Screen.height);
-        int scale = UiZoom.Fit(size, 67, 84).Scale;
-        int ox = (size.x - 67 * scale) / 2, oy = (size.y - 84 * scale) / 2;
+        int scale = UiZoom.Fit(size, 67, 74).Scale;
+        int ox = (size.x - 67 * scale) / 2, oy = (size.y - 74 * scale) / 2;
         var texture = new Texture2D(size.x, size.y);
         try
         {
@@ -815,7 +815,7 @@ public class MenuTests : InputTestFixture
                 int x = ox + pageX * scale + scale / 2, y = oy + pageY * scale + scale / 2;
                 return pixels[(size.y - 1 - y) * size.x + x].Equals(PixelFrame.Light);
             }
-            return (Lit(17 + 19, 52 + 7), Lit(17 + 24, 52 + 7));
+            return (Lit(26 + 2, 59 + 3), Lit(26 + 2 + 3, 59 + 3));
         }
         finally { Object.Destroy(texture); }
     }
@@ -834,15 +834,16 @@ public class MenuTests : InputTestFixture
             yield return Tap(Key.Z);
             var keys = title.Keys;
             Assert.That(keys, Is.Not.Null, "jump on the gear opens settings");
-            for (int i = 0; i < PhaseKeys.FullScreenRow; i++) yield return Tap(Key.DownArrow);
-            Assert.That((keys.Row, Knob(keys)), Is.EqualTo((PhaseKeys.FullScreenRow, (true, false))), "down reaches the fullscreen switch, off");
+            for (int i = 0; i < PhaseKeys.ControlsRow; i++) yield return Tap(Key.DownArrow);
+            yield return Tap(Key.RightArrow);
+            Assert.That((keys.Row, keys.Column, Knob(keys)), Is.EqualTo((PhaseKeys.ControlsRow, PhaseKeys.FullScreenColumn, (true, false))), "right reaches the fullscreen control, brackets out");
             yield return Tap(Key.Enter);
             Assert.That((full, Knob(keys)), Is.EqualTo((true, (false, true))), "Enter turns fullscreen on");
             yield return Tap(Key.Z);
             Assert.That((full, keys.Capturing), Is.EqualTo((false, false)), "jump turns it off");
 
             var mouse = InputSystem.AddDevice<Mouse>();
-            var size = PhaseSandbox.ViewSize(Screen.width, Screen.height); var center = PhaseKeys.Area(size, PhaseKeys.FullScreenRow, 0).center;
+            var size = PhaseSandbox.ViewSize(Screen.width, Screen.height); var center = PhaseKeys.Area(size, PhaseKeys.ControlsRow, PhaseKeys.FullScreenColumn).center;
             var point = new Vector2(center.x / size.x * Screen.width, (1 - center.y / size.y) * Screen.height);
             InputSystem.QueueStateEvent(mouse, new MouseState { position = point }.WithButton(MouseButton.Left)); yield return null; yield return null;
             InputSystem.QueueStateEvent(mouse, new MouseState { position = point }); yield return null;
@@ -856,8 +857,9 @@ public class MenuTests : InputTestFixture
             var sandbox = Sandbox();
             yield return Tap(Key.Escape); yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Enter);
             keys = sandbox.Keys;
-            for (int i = 0; i < PhaseKeys.FullScreenRow; i++) yield return Tap(Key.DownArrow);
-            Assert.That(Knob(keys), Is.EqualTo((false, true)), "the switch stays on in another scene");
+            for (int i = 0; i < PhaseKeys.ControlsRow; i++) yield return Tap(Key.DownArrow);
+            yield return Tap(Key.RightArrow);
+            Assert.That(Knob(keys), Is.EqualTo((false, true)), "fullscreen stays on in another scene");
             yield return Tap(Key.Enter);
             Assert.That((full, requests), Is.EqualTo((false, 4)));
             LogAssert.NoUnexpectedReceived();
