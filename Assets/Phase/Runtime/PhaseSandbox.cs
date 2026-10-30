@@ -89,7 +89,7 @@ namespace Phase
                         c.phase = phase;
                         var blockers = c.Solid().Concat(c.spikes.Where(s => s.ActiveInPhase(phase)).Select(s => s.Hitbox))
                             .Concat(c.lasers.Where(l => l.ActiveInPhase(phase)).Select(c.LaserBeam))
-                            .Concat(c.blocks.Where((b, i) => b.spiked && b.ActiveInPhase(phase) && !c.blocked.Contains(i)).Select(PhaseController.Reach)).ToList();
+                            .Concat(c.blocks.Where((b, i) => b.spiked && b.ActiveInPhase(phase) && !c.blocked.Contains(i)).SelectMany(PhaseController.Teeth)).ToList();
                         var spots = c.blocks.Where((b, i) => b.ActiveInPhase(phase) && !c.blocked.Contains(i) && b.x <= x && b.x + b.w >= x + 8 && b.y >= 11)
                             .Select(b => new Block(x, b.y - 11, 8, 11)).Where(p => !blockers.Any(o => PhaseController.Overlap(p, o)))
                             .OrderBy(p => Math.Abs(p.y - preferY)).ToList();

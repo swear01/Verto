@@ -54,12 +54,12 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 16 controller cases, 7 laser cases, 8 crystal cases, 15 pixel cases, 12 platform cases,
-4 Grid authoring cases, 10 custom-map cases (validation, version migration, newer-version refusal, round trips), 6 scrolling-room cases, 17 world cases
-(map format v3, room changes, open top, respawns, goal, camera), 3 key-binding cases
-(validation, PlayerPrefs persistence, key caps) and 1 level-route case in Edit Mode. The 30 Play Mode cases cover a big-room camera
+4 Grid authoring cases, 11 custom-map cases (validation, version migration, newer-version refusal, round trips, the chaos route), 6 scrolling-room cases, 17 world cases
+(map format v3, room changes, open top, respawns, goal, camera), 4 key-binding cases
+(validation, PlayerPrefs persistence, key caps, volume levels) and 1 level-route case in Edit Mode. The 30 Play Mode cases cover a big-room camera
 following a keyboard run, bindings, pause/release gating, room persistence, crystal triggers, imported maps and jump platforms, the
 title/editor flow, the editor's fixed tool panel under mouse input, room creation, merging, splitting and moving in the editor, the pause menu with key
-settings, the fullscreen switch, and level select from the title, pause and victory screens.
+settings, the fullscreen control, and level select from the title, pause and victory screens.
 The two reference files preserve 12 movement traces (running, jumps, buffers, coyote time, falling, wall
 slide and wall jump) recorded before dash and climbing were removed; their expectations are unchanged.
 Production steps at 1/60 s; reference replays use the recorded 0.0166667 s.
@@ -173,6 +173,8 @@ jump/death counts.
 Built-in levels link in both directions: Demo1, the classmate color room Demo1.1, the laser rooms Demo13 and Demo14, the chaos level Demo15, Umbrella, then the moving-platform room Gear. Backward travel enters a safe standing position near the previous room’s right side. The last level’s right exit freezes play and shows the victory screen; jump restarts level 1 in native Play, and Web also offers replay or level selection. Custom maps have no level links. The original sandbox links retain their momentum/color carry behavior.
 See [the level course](Demo.md).
 `BuildWeb.py` verifies these tests and builds `PhaseDemo1`, `PhaseDemo1.1`, `PhaseDemo13`, `PhaseDemo14`, the chaos level `PhaseDemo15`, `PhaseUmbrella`, and `PhaseGear`.
+In PhaseGear Play, `Verification/GearLiveInput.cs` (entry `GearLiveInput.Run`) plays the intended route, every floor
+blue bar, green platform, red bar or platform, with the virtual keyboard; it fails on a death or a ceiling bonk.
 
 ## CI
 

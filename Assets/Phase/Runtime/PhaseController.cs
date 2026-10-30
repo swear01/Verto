@@ -188,12 +188,18 @@ namespace Phase
             var solids = blocks.Where(b => b.ActiveInPhase(ph)).ToList();
             return !solids.Any(b => Overlap(p, b))
                 && !spikes.Any(s => s.ActiveInPhase(ph) && Overlap(p, s.Hitbox))
-                && !spikedBlocks.Any(i => blocks[i].ActiveInPhase(ph) && Overlap(p, Reach(blocks[i])))
+                && !spikedBlocks.Any(i => blocks[i].ActiveInPhase(ph) && Teeth(blocks[i]).Any(t => Overlap(p, t)))
                 && !lasers.Any(l => l.ActiveInPhase(ph) && Overlap(p, l.Beam(solids, Width, Height)));
         }
         public static bool Overlap(Block a, Block b, double x = 0, double y = 0) =>
             a.x + x < b.x + b.w && a.x + a.w + x > b.x && a.y + y < b.y + b.h && a.y + a.h + y > b.y;
-        public List<Block> Solid() => blocks.Where((b, i) => b.ActiveInPhase(phase) && !blocked.Contains(i)).ToList();
+        public List<Block> Solid() => Solid(phase);
+        List<Block> Solid(int ph)
+        {
+            var list = new List<Block>(blocks.Count);
+            for (int i = 0; i < blocks.Count; i++) if (blocks[i].ActiveInPhase(ph) && (ph != phase || !blocked.Contains(i))) list.Add(blocks[i]);
+            return list;
+        }
         static bool Collides(Player p, List<Block> solids, double x = 0, double y = 0) => solids.Any(b => Overlap(p, b, x, y));
         static int WallAt(Player p, List<Block> solids, int preferred, double reach = 3)
         {
@@ -231,11 +237,16 @@ namespace Phase
                 if (HitsSweep(spike.Hitbox, from)) { Kill(); return true; }
             }
             foreach (int i in spikedBlocks)
-                if (Lethal(i) && HitsSweep(Reach(blocks[i]), from)) { Kill(); return true; }
+                if (Lethal(i) && Teeth(blocks[i]).Any(t => HitsSweep(t, from))) { Kill(); return true; }
             return false;
         }
-        // A spike-covered block hurts on contact, so its reach is one half pixel past each face.
-        public static Block Reach(Block b) => new Block(b.x - .5, b.y - .5, b.w + 1, b.h + 1);
+        // A spike-covered block hurts only through its teeth: a one pixel strip on each face, with the corners left safe to graze.
+        public const double TeethInset = 2;
+        public static Block[] Teeth(Block b) => new[]
+        {
+            new Block(b.x + TeethInset, b.y - .5, b.w - 2 * TeethInset, 1), new Block(b.x + TeethInset, b.y + b.h - .5, b.w - 2 * TeethInset, 1),
+            new Block(b.x - .5, b.y + TeethInset, 1, b.h - 2 * TeethInset), new Block(b.x + b.w - .5, b.y + TeethInset, 1, b.h - 2 * TeethInset)
+        };
         bool Lethal(int i) => blocks[i].ActiveInPhase(phase) && !blocked.Contains(i);
         // The block index of the n-th platform; platforms follow the terrain.
         public int PlatformIndex(int n) => blocks.Count - platforms.Count + n;
@@ -269,6 +280,18 @@ namespace Phase
             int next = phase; while (!laser.ActiveInPhase(next)) next = (next + 1) % 3;
             return laser.Beam(next == phase ? Solid() : blocks.Where(b => b.ActiveInPhase(next)).ToList(), Width, Height);
         }
+        // Every laser's beam, building each phase's solids once.
+        public Block[] LaserBeams()
+        {
+            var result = new Block[lasers.Count]; var sets = new List<Block>[3];
+            for (int i = 0; i < result.Length; i++)
+            {
+                if (beams.TryGetValue(lasers[i], out var fixedBeam)) { result[i] = fixedBeam; continue; }
+                int next = phase; while (!lasers[i].ActiveInPhase(next)) next = (next + 1) % 3;
+                result[i] = lasers[i].Beam(sets[next] ?? (sets[next] = Solid(next)), Width, Height);
+            }
+            return result;
+        }
         public bool CheckHazards(Block from = null)
         {
             if (CheckSpikes(from)) return true;
@@ -290,8 +313,15 @@ namespace Phase
         }
         // A spot overlapping an active spike strip or laser beam, without killing.
         bool Hazardous(Block at) => spikes.Any(s => s.ActiveInPhase(phase) && !Shielded(s) && Overlap(at, s.Hitbox)) ||
-            spikedBlocks.Any(i => Lethal(i) && Overlap(at, Reach(blocks[i]))) ||
-            lasers.Any(l => l.ActiveInPhase(phase) && Overlap(at, l.Beam(Solid(), Width, Height)));
+            spikedBlocks.Any(i => Lethal(i) && Teeth(blocks[i]).Any(t => Overlap(at, t))) ||
+            HazardLaser(at);
+        bool HazardLaser(Block at)
+        {
+            if (lasers.Count == 0) return false;
+            var solids = Solid();
+            foreach (var l in lasers) if (l.ActiveInPhase(phase) && Overlap(at, l.Beam(solids, Width, Height))) return true;
+            return false;
+        }
         bool CheckInteractions(Block from = null)
         {
             if (CheckHazards(from)) return true;

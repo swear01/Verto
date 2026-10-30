@@ -1,34 +1,43 @@
 # Chaos level: segmented laser walls
 
 Level 5 (`PhaseDemo15`) is a four-screen (160×22 cell) horizontal level that looks crowded but runs on one rule:
-**a beam reaches only as far as the first block that is solid in its colour.**
-The player only has to jump at the right places. The colour after each jump decides which beams are live.
+**a beam reaches only as far as the first block solid in your colour.**
+Every beat asks a different question about that rule, so an obstacle on the floor is not by itself a reason to jump.
 Leaving the room to the right wins.
 
-## Layout
-- **Laser walls.** White walls hang from the ceiling down to row 18. The player always runs under them.
-  Each wall face has three emitter segments at rows 16, 17 and 18, one red, one blue and one green, and
-  they fire sideways into the neighbouring zone. Grounded players sit in rows 19–20 and are never hit,
-  so every segment matters only while the player is in the air.
-- **Stoppers.** Coloured blocks at rows 16–18, some of them spiked, cut a beam of their own colour.
-  A red block is solid exactly when red beams are live, so a red beam always ends at the first red block.
-- **Floor spikes.** White one-cell spike blocks force most jumps. Two jumps have no spike. The player must
-  take those anyway, or they reach the next spike in the wrong colour.
+## Pieces
+- **Laser walls.** White walls hang from the ceiling to three cells above the floor, at irregular spacing. Each face fires
+  one red, one blue and one green segment sideways into its zone, over the highest floor in that zone. Grounded
+  players are never hit, so the segments only matter in the air.
+- **Stoppers.** Spiked coloured blocks in the beam rows cut a beam of their own colour. A red block is solid exactly
+  when red beams are live, so a red beam always ends at the first red block.
+- **Floor obstacles.** A white spike must be jumped. A coloured spike or block matters only in its own colour: in
+  another colour you walk through it, and jumping it is the mistake.
+- **Floor height.** A step up costs a jump; walking off a ledge keeps your colour.
+- **Shields.** Three white ceiling lasers are stopped by a coloured block: under one you must be its colour.
+- **Rain.** Three coloured ceiling lasers fall over stretches you walk in another colour; an extra jump there is fatal.
+- **Moving platform.** A red jump platform crosses the pit. It alternates between two stops with every jump of the
+  run, so it is under you only on the right count.
 
-## Rule per jump
-Every jump's arc must be clear of beams of the colour the jump gives, and is crossed by beams of both
-other colours. A jump in the wrong colour, from an extra or a missing hop, is always fatal. The colours
-keep the red → blue → green rhythm, and the player never waits in place.
+## Beats
+1. A white spike: the first jump, to blue.
+2. A no-jump zone: a red spike you walk through in blue, under green rain and beams in every colour.
+3. A step up to a shelf (blue → green).
+4. A green block on the shelf with a red stopper above it: jump before the block, not over it (green → red), then walk
+   through it.
+5. Walk off the shelf, then a red shield and a green shield with two jumps between them and nothing on the floor.
+6. The pit: jump onto the red platform and off it.
+7. A blue spike (jump it in blue), then a red spike (walk it in green).
+8. One jump under a red shield and up to a shelf, past a cyan spike you walk in red, down again, and a last white spike.
 
 ## Tools
-- `Verification/ChaosLevel.py [out.json]` generates the map (verto-map v3, one 4×1 room, saved as `Assets/Phase/Imported/chaos.json`) and exits with an error on any
-  jump that breaks the rule above.
-- The stopper positions use the arc measured from the controller: a hop spans 62 px, and its apex is 27 px
-  above the ground. The route survives takeoff offsets of ±8 px in a headless controller simulation.
-
-## Ideas kept for other levels
-- **Umbrella:** white laser rain from the ceiling, with coloured shields that let only your colour pass
-  safely.
-- **Pits:** a pit forces a jump at a fixed spot, so the player must count earlier hops to arrive in the
-  right colour.
-- **Moving shields:** jump platforms (one step per jump) as stoppers that travel with the player.
+- `Verification/ChaosLevel.py [out.json]` generates the map (verto-map v3, one 4×1 room, saved as
+  `Assets/Phase/Imported/chaos.json`). It places the stoppers from a hop arc measured in the controller and exits with
+  an error when a route jump is hit in its own colour, a rule jump survives in a wrong colour, a listed naive jump
+  survives, or a walk between jumps is hit.
+- `CustomMapTests.ChaosRouteWinsAndJumpingOnSightDies` replays the route in the controller with the takeoffs shifted by
+  up to ±6 px and checks that three naive jumps die. Keep its route in step with the generator.
+- In PhaseDemo15 Play, `Verification/UmbrellaLiveInput.cs` (entry `UmbrellaLiveInput.Chaos`, script
+  `--timeout_ms 60000`) plays the route with the virtual keyboard and saves a frame per screen to `TestResults/Chaos/`.
+- Rebuild the scene with `unity command eval 'PhaseSandboxBuilder.CreateImportedLevels();'` and rebake its
+  thumbnail with `LevelThumbnails.Run()`.
