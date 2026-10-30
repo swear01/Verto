@@ -8,22 +8,27 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 
-// Plays PhaseUmbrella with the virtual keyboard: hold right and jump at the intended spots, without dying, out the right edge.
-// Saves a frame per screen to TestResults/Umbrella/.
+// Plays PhaseUmbrella (Run) or the chaos level (Chaos) with the virtual keyboard: hold right and jump at the intended spots,
+// without dying, out the right edge. Saves a frame per screen to TestResults/<level>/.
 public static class UmbrellaLiveInput
 {
     static readonly double[] Jumps = { 40, 100, 256, 352, 432, 496, 592, 656, 700, 768, 928, 1000, 1040, 1104, 1168 };
+    // Verification/ChaosLevel.py's route.
+    static readonly double[] ChaosJumps = { 40, 232, 328, 528, 588, 672, 736, 848, 990, 1168 };
 
-    public static Task<string> Run()
+    public static Task<string> Run() => Play("PhaseUmbrella", Jumps, "Umbrella");
+    public static Task<string> Chaos() => Play("PhaseDemo15", ChaosJumps, "Chaos");
+
+    static Task<string> Play(string scene, double[] jumps, string folder)
     {
         var sandbox = UnityEngine.Object.FindAnyObjectByType<PhaseSandbox>();
-        if (sandbox == null || !Application.isPlaying || sandbox.gameObject.scene.name != "PhaseUmbrella" || sandbox.Won) throw new InvalidOperationException("Open PhaseUmbrella in a fresh Play session first.");
+        if (sandbox == null || !Application.isPlaying || sandbox.gameObject.scene.name != scene || sandbox.Won) throw new InvalidOperationException($"Open {scene} in a fresh Play session first.");
         var result = new TaskCompletionSource<string>();
-        sandbox.StartCoroutine(Check(sandbox, result));
+        sandbox.StartCoroutine(Check(sandbox, jumps, folder, result));
         return result.Task;
     }
 
-    static IEnumerator Check(PhaseSandbox sandbox, TaskCompletionSource<string> result)
+    static IEnumerator Check(PhaseSandbox sandbox, double[] Jumps, string folder, TaskCompletionSource<string> result)
     {
         var background = Application.runInBackground;
         var focus = InputSystem.settings.backgroundBehavior;
@@ -39,7 +44,7 @@ public static class UmbrellaLiveInput
             yield return null;
             keyboard = InputSystem.AddDevice<Keyboard>("PhaseLiveVerification");
             var c = sandbox.Controller; c.Reset(); int deaths = c.deaths;
-            string directory = Path.Combine("TestResults", "Umbrella"); Directory.CreateDirectory(directory);
+            string directory = Path.Combine("TestResults", folder); Directory.CreateDirectory(directory);
             int next = 0, screen = 0;
             double deadline = Time.realtimeSinceStartupAsDouble + 30;
             while (!sandbox.Won && sandbox.Controller.ExitDirection == 0 && Time.realtimeSinceStartupAsDouble < deadline)
