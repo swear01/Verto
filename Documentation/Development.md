@@ -64,7 +64,7 @@ file changes (no "modified externally" dialog). Unsaved edits are therefore drop
 `EditorSceneManager.SaveScene` in the same `eval` or script.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 16 controller cases, 7 laser cases, 8 crystal cases, 15 pixel cases, 12 platform cases,
+starting the next test run. There are 18 controller cases, 7 laser cases, 8 crystal cases, 15 pixel cases, 12 platform cases,
 4 Grid authoring cases, 11 custom-map cases (validation, version migration, newer-version refusal, round trips, the chaos route), 6 scrolling-room cases, 17 world cases
 (map format v3, room changes, open top, respawns, goal, camera), 4 key-binding cases
 (validation, PlayerPrefs persistence, key caps, volume levels), 1 level-route case and 1 [input tolerance](Tolerance.md) case in Edit Mode. The 30 Play Mode cases cover a big-room camera
