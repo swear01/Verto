@@ -288,7 +288,7 @@ namespace Phase
             {
                 if (beams.TryGetValue(lasers[i], out var fixedBeam)) { result[i] = fixedBeam; continue; }
                 int next = phase; while (!lasers[i].ActiveInPhase(next)) next = (next + 1) % 3;
-                result[i] = lasers[i].Beam(sets[next] ?? (sets[next] = next == phase ? Solid() : blocks.Where(b => b.ActiveInPhase(next)).ToList()), Width, Height);
+                result[i] = lasers[i].Beam(sets[next] ?? (sets[next] = Solid(next)), Width, Height);
             }
             return result;
         }

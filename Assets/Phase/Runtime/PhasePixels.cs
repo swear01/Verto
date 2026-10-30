@@ -459,7 +459,8 @@ namespace Phase
             var beams = s.LaserBeams();
             Lasers(s, beams);
             // Out-of-phase terrain a beam crosses is painted again in front of it, so it stays readable as cover for another color.
-            var visible = beams.Where(b => b.w > 0 && b.h > 0).ToList();
+            var visible = new List<Block>(beams.Length);
+            foreach (var b in beams) if (b.w > 0 && b.h > 0) visible.Add(b);
             if (visible.Count > 0)
                 for (int i = 0; i < s.blocks.Count; i++) if (!(s.blocks[i] is Platform) && !s.blocks[i].ActiveInPhase(s.phase)) PaintBlock(s, i, visible);
             if (playerVisible && s.respawn <= 0) DrawPlayer(s.player, s.time, s.phase);
