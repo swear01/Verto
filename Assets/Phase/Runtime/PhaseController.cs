@@ -408,7 +408,7 @@ namespace Phase
             p.coyote = p.grounded ? .1 : Math.Max(0, (double)((float)p.coyote - (float)dt)); if (p.coyote < 1e-8) p.coyote = 0;
             p.wallLock = Math.Max(0, p.wallLock - dt);
             p.varTime = Math.Max(0, p.varTime - dt);
-            bool hanging = p.hang > 1e-9; p.hang = Math.Max(0, p.hang - dt);
+            bool hanging = p.hang > 1e-9; p.hang = p.grounded ? 0 : Math.Max(0, p.hang - dt);
             if (p.grounded) p.slide = 0;
             if (p.retention > 0)
             {
