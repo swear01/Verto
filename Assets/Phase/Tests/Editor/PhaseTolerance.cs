@@ -106,7 +106,7 @@ public static class PhaseTolerance
         Mix(p.airJump); Mix(p.coyote > 0 ? 1 : 0); Mix((long)(p.slide * 10));
         foreach (var platform in c.platforms) { Mix((long)platform.x); Mix((long)platform.y); Mix(platform.queued); }
         foreach (var crystal in c.crystals) Mix(crystal.collected ? 1 : 0);
-        foreach (int b in c.blocked) Mix(b + 7);
+        foreach (int b in c.blocked.OrderBy(b => b)) Mix(b + 7);
         return h;
     }
 
@@ -138,8 +138,10 @@ public static class PhaseTolerance
                     if (dead) continue;
                     if (won)
                     {
-                        var route = Enumerable.Repeat(input, ran).ToList();
-                        for (int id = top.id; nodes[id].parent >= 0; id = nodes[id].parent) route.InsertRange(0, Enumerable.Repeat(nodes[id].input, macro));
+                        var route = new List<Input>();
+                        for (int id = top.id; nodes[id].parent >= 0; id = nodes[id].parent) route.AddRange(Enumerable.Repeat(nodes[id].input, macro));
+                        route.Reverse();
+                        route.AddRange(Enumerable.Repeat(input, ran));
                         return route;
                     }
                     if (!seen.Add(Key(c, input.held))) continue;
@@ -334,12 +336,14 @@ public static class PhaseTolerance
         finally { Load(c, r.states[0]); }
     }
 
-    // The reference without the events at `a` and `b`; later inputs keep their position anchors.
+    // The reference without the events at `a` and `b`; later inputs keep their position anchors. A release whose press `b`
+    // is dropped with release `a` now ends the hold of the press before `a`.
     static Reference Without(Reference r, int a, int b)
     {
         var copy = new Reference { route = r.route, states = r.states, x = r.x, y = r.y, vx = r.vx, vy = r.vy, grounded = r.grounded, wall = r.wall, phase = r.phase };
+        int Pair(int q) { if (q == b) q = r.events[a].pair; return q < 0 ? -1 : q - (q > a ? 1 : 0) - (q > b ? 1 : 0); }
         copy.events = r.events.Where((e, i) => i != a && i != b).Select(e => new Event { kind = e.kind, frame = e.frame, value = e.value, byTime = e.byTime,
-            pair = e.pair < 0 ? -1 : e.pair - (e.pair > a ? 1 : 0) - (e.pair > b ? 1 : 0) }).ToList();
+            pair = Pair(e.pair) }).ToList();
         return copy;
     }
 
