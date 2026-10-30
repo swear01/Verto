@@ -34,6 +34,8 @@ namespace Phase
         List<Block> terrainBlocks;
         int terrainBlockCount;
         Color32[] backdrop;
+        // Off for level thumbnails: the room is drawn on plain ink instead of the neon night.
+        public bool Backdrop = true;
         public Texture2D Texture { get; }
         public PhasePixels()
         { Texture = new Texture2D(320, 180, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, name = "PHASE 320x180" }; Target(false); }
@@ -79,6 +81,7 @@ namespace Phase
         void Background()
         {
             if (backdrop != null) { Array.Copy(backdrop, buffer, buffer.Length); return; }
+            if (!Backdrop) { Array.Fill(buffer, Color(Ink)); backdrop = (Color32[])buffer.Clone(); return; }
             // Neon night: a taller room keeps the skyline at its bottom and adds open sky above; a shorter one sits at the bottom of the view.
             var bands = new[] { "0b0420", "110628", "180932", "200b3c", "2a0d46" }; int g = roomHeight - 180;
             Rect(left, top, cols, Math.Min(0, g) - top, bands[0]);

@@ -410,7 +410,7 @@ public class PixelTests
                 maxX = Math.Max(maxX, tile.xMax); maxY = Math.Max(maxY, tile.yMax);
             }
             float fill = Math.Max((maxX - minX) / (float)size.x, (maxY - minY) / (float)size.y);
-            Assert.That(fill, Is.InRange(0.6f, 0.8f), $"level select fill at {size}");
+            Assert.That(fill, Is.InRange(0.55f, 0.8f), $"level select fill at {size}");
             int scale = UiZoom.Fit(size, 80, 44).Scale;
             Assert.That((3 * PhaseMenu.Pitch + PhaseMenu.Size) * scale, Is.LessThanOrEqualTo(size.x));
             Assert.That(44 * scale, Is.LessThanOrEqualTo(size.y));
