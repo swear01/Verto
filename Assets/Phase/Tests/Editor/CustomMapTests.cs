@@ -280,4 +280,28 @@ public class CustomMapTests
         var old=V1(Simple());old["spawnX"]=1e18;
         Assert.Throws<ArgumentException>(()=>ParseRoom(old.ToString()));
     }
+    // The chaos level's route from Verification/ChaosLevel.py: hold right, full jumps from these x positions.
+    static readonly double[] ChaosJumps={40,232,328,528,588,672,736,848,990,1168};
+    static string ChaosRun(double[] jumps,double shift=0)
+    {
+        var c=PhaseCustomMap.Parse(System.IO.File.ReadAllText("Assets/Phase/Imported/chaos.json")).Create(0);c.exitRight=true;
+        int next=0;
+        for(int f=0;f<3600;f++)
+        {
+            var p=c.player;bool jump=next<jumps.Length&&p.grounded&&p.x>=jumps[next]+shift;if(jump)next++;
+            c.Step(new Controls{x=1,jump=jump,jumpHeld=jump||!p.grounded&&p.vy<0});
+            if(c.deaths>0)return $"died at x={c.player.x:F0} after {next} jumps";
+            if(c.ExitDirection>0)return next==jumps.Length?"exit":"exit early";
+        }
+        return "stuck";
+    }
+    [Test]
+    public void ChaosRouteWinsAndJumpingOnSightDies()
+    {
+        foreach(var shift in new[]{-6,-3,0,3,6})Assert.That(ChaosRun(ChaosJumps,shift),Is.EqualTo("exit"),$"route shifted {shift}px");
+        // Jumping the red spike while blue, the green block while green, or the red spike while green is fatal.
+        Assert.That(ChaosRun(new double[]{40,140}),Does.StartWith("died"));
+        Assert.That(ChaosRun(new double[]{40,232,368}),Does.StartWith("died"));
+        Assert.That(ChaosRun(new double[]{40,232,328,528,588,672,736,848,900}),Does.StartWith("died"));
+    }
 }
