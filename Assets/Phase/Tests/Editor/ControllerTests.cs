@@ -191,6 +191,36 @@ public class ControllerTests
         Assert.That(capped.player.x+capped.player.w,Is.EqualTo(100),"a block over the raised spot blocks the step-up");
     }
     [Test]
+    public void HittingACeilingZeroesRiseWithoutReversingOrSticking()
+    {
+        // Underside 3px (frames into the jump, while the variable-jump hold is still fresh) and 30px above the head.
+        foreach (int underside in new[] { 144, 118 })
+        {
+            var s = new PhaseController(new[] { new Block(0,160,320,24), new Block(0,underside-16,320,16) },120,148);
+            var p = s.player; p.grounded = true; p.coyote = .1;
+            int hit = -1, falling = -1;
+            for (int i = 0; i < 40; i++)
+            {
+                s.Step(new Controls { jump = i == 0, jumpHeld = true });
+                Assert.That(p.y, Is.GreaterThanOrEqualTo(underside), $"underside {underside}: never inside the ceiling");
+                if (hit < 0 && i > 0 && p.vy >= 0) hit = i;
+                if (hit >= 0 && falling < 0 && p.vy > 0) falling = i;
+                if (hit >= 0 && i <= hit + 1) Assert.That(p.vy, Is.LessThan(20), $"underside {underside}: no downward kick on impact");
+            }
+            Assert.That(hit, Is.GreaterThan(0), $"underside {underside}: the rise ends at the ceiling");
+            Assert.That(falling - hit, Is.LessThanOrEqualTo(1), $"underside {underside}: gravity takes over at once, no sticking");
+        }
+    }
+    [Test]
+    public void RisingIntoACeilingCornerSlidesPastItAndKeepsRising()
+    {
+        var s = new PhaseController(new[] { new Block(0,160,320,24), new Block(90,120,40,16) },120,149);
+        var p = s.player; p.grounded = true; p.coyote = .1;
+        Ticks(s,1,new Controls { jump = true, jumpHeld = true, x = 1 });
+        for (int i = 0; i < 12; i++) s.Step(new Controls { jumpHeld = true, x = 1 });
+        Assert.That(p.y, Is.LessThan(136), "the corner nudge lets the rise continue past the slab underside");
+    }
+    [Test]
     public void FastLandingKicksUpNeutralDustOnlyOnce()
     {
         foreach (double speed in new[] { 60.0, 160.0 })

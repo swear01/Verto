@@ -442,7 +442,7 @@ namespace Phase
                                 particles.Add(new Particle { x = p.x + p.w / 2, y = p.y + p.h - 1,
                                     vx = (dust % 2 == 0 ? -1 : 1) * (12 + random.NextDouble() * 24),
                                     vy = -10 - random.NextDouble() * 15, life = .25 + random.NextDouble() * .15, phase = -1 });
-                        p.vy = 0; hitY = true; if (vy > 0 || p.varTime < .2 - .05) p.varTime = 0;
+                        p.vy = 0; hitY = true; p.varTime = 0;
                     }
                 }
                 if (CheckInteractions(before)) return;
