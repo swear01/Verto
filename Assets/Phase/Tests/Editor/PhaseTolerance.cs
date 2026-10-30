@@ -282,8 +282,9 @@ public static class PhaseTolerance
     }
 
     // Replays the reference with event `p` moved by `shift` frames. Later presses and turns follow the player: each fires where
-    // the player reaches the reference spot; a release keeps its hold time. Returns the frame route played, or null on failure.
-    static List<Input> Play(PhaseController c, Reference r, int p, int shift, out double firedX, int horizon = Horizon, int start = int.MaxValue)
+    // the player reaches the reference spot; a release keeps its hold time. With `rigid`, later inputs keep their timing after
+    // the moved one instead. Returns the frame route played, or null on failure.
+    static List<Input> Play(PhaseController c, Reference r, int p, int shift, out double firedX, int horizon = Horizon, int start = int.MaxValue, bool rigid = false)
     {
         firedX = double.NaN;
         var events = r.events; var target = events[p];
@@ -311,7 +312,7 @@ public static class PhaseTolerance
                     if (next < p) due = f >= e.frame;
                     else if (!done) break;
                     else if (e.kind == Kind.Release && e.pair >= 0) due = f >= fired[e.pair] + (e.frame - events[e.pair].frame);
-                    else if (e.byTime) due = f >= fired[next - 1] + (e.frame - events[next - 1].frame);
+                    else if (e.byTime || rigid) due = f >= fired[next - 1] + (e.frame - events[next - 1].frame);
                     else due = Anchored(r, e, pl.x, pl.y, pl.grounded || pl.coyote > 0, pl.wall);
                     if (!due)
                     {
@@ -363,6 +364,10 @@ public static class PhaseTolerance
         return r;
     }
 
+    // A player may keep either the places or the rhythm of the inputs after a moved one; either recovery counts.
+    static List<Input> Recover(PhaseController c, Reference r, int p, int shift, out double firedX, int horizon = Horizon) =>
+        Play(c, r, p, shift, out firedX, horizon) ?? Play(c, r, p, shift, out firedX, horizon, rigid: true);
+
     static void Apply(Event e, ref Input input) { if (e.kind == Kind.Turn) input.x = e.value; else input.held = e.value == 1; }
 
     // ---- Analysis.
@@ -407,13 +412,13 @@ public static class PhaseTolerance
             bool late = true, early = lo > Math.Max(-Reach, min);
             while ((late || early) && hi - lo + 1 < Enough)
             {
-                if (late) { if (hi < Reach && Play(c, r, p, hi + 1, out double fx) != null) { hi++; xHi = fx; } else late = false; }
-                if (early && hi - lo + 1 < Enough) { if (lo > Math.Max(-Reach, min) && Play(c, r, p, lo - 1, out double fx) != null) { lo--; xLo = fx; } else early = false; }
+                if (late) { if (hi < Reach && Recover(c, r, p, hi + 1, out double fx) != null) { hi++; xHi = fx; } else late = false; }
+                if (early && hi - lo + 1 < Enough) { if (lo > Math.Max(-Reach, min) && Recover(c, r, p, lo - 1, out double fx) != null) { lo--; xLo = fx; } else early = false; }
             }
             bool loCapped = early || lo <= Math.Max(-Reach, min), hiCapped = late || hi >= Reach;
             // Recentre the input in its window, as a careful player would, before measuring the inputs after it.
             int centre = (lo + hi) / 2;
-            if (centre != 0 && Play(c, r, p, centre, out _, int.MaxValue) is List<Input> relaxed)
+            if (centre != 0 && Recover(c, r, p, centre, out _, int.MaxValue) is List<Input> relaxed)
             {
                 int count = r.events.Count;
                 var moved = Trace(c, relaxed, r, Math.Min(e.frame, e.frame + centre));
