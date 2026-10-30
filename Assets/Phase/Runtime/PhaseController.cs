@@ -53,7 +53,7 @@ namespace Phase
     {
         public double vx, vy, coyote = .1, buffer, remX, remY;
         public double wallLock, slide, retention, retained;
-        public double varTime, varSpeed = -105;
+        public double varTime, varSpeed = -105, hang;
         public int facing = 1, airJump, wall, forceX;
         public bool grounded = true;
         public Player(double x, double y) : base(x, y, 8, 11) { }
@@ -333,7 +333,7 @@ namespace Phase
             }
             else p.vx += input.x * 40;
             p.vy = p.varSpeed = -105; p.varTime = .2;
-            p.grounded = false; p.coyote = p.buffer = 0; p.slide = 0;
+            p.grounded = false; p.coyote = p.buffer = 0; p.slide = 0; p.hang = 0;
             jumps++; foreach (var platform in platforms) platform.queued++;
             Shift(); Burst(p.x + 4, p.y + 11, -1, 4);
         }
@@ -363,6 +363,7 @@ namespace Phase
             }
             return CheckInteractions();
         }
+        const double BonkHang = .1;
         public void Step(Controls input, double dt = Dt)
         {
             time += dt; flash = Math.Max(0, flash - dt);
@@ -382,6 +383,7 @@ namespace Phase
             p.coyote = p.grounded ? .1 : Math.Max(0, (double)((float)p.coyote - (float)dt)); if (p.coyote < 1e-8) p.coyote = 0;
             p.wallLock = Math.Max(0, p.wallLock - dt);
             p.varTime = Math.Max(0, p.varTime - dt);
+            bool hanging = p.hang > 1e-9; p.hang = Math.Max(0, p.hang - dt);
             if (p.grounded) p.slide = 0;
             if (p.retention > 0)
             {
@@ -397,7 +399,7 @@ namespace Phase
             int slide = WallAt(p, solids, p.facing, 1);
             if (slide == p.facing && move == p.facing && p.vy >= 0 && p.slide < 1.2)
             { maxFall = 20 + (160 - 20) * p.slide / 1.2; p.slide += dt; }
-            if (!p.grounded) { double gravity = Math.Abs(p.vy) < 40 && input.jumpHeld ? 450 : 900; p.vy = Approach(p.vy, maxFall, gravity * dt); }
+            if (!p.grounded && !hanging) { double gravity = Math.Abs(p.vy) < 40 && input.jumpHeld ? 450 : 900; p.vy = Approach(p.vy, maxFall, gravity * dt); }
             if (p.varTime > 1e-9) { if (input.jumpHeld) p.vy = Math.Min(p.vy, p.varSpeed); else p.varTime = 0; }
             if (p.buffer > 0 && (p.coyote > 0 || contact != 0)) { var jumpInput = input; jumpInput.x = move; Jump(p.coyote > 0 ? 0 : contact, jumpInput); }
             else if (airJumpRequested && !airJumpCollected && p.airJump > 0 && !p.grounded) Jump(0, input, true);
@@ -448,6 +450,8 @@ namespace Phase
                                     vx = (dust % 2 == 0 ? -1 : 1) * (12 + random.NextDouble() * 24),
                                     vy = -10 - random.NextDouble() * 15, life = .25 + random.NextDouble() * .15, phase = -1 });
                         p.vy = 0; hitY = true; p.varTime = 0;
+                        // Capped, not thrown: gravity pauses for a few frames and vx is untouched, so the run carries on along the ceiling.
+                        if (vy < 0) p.hang = BonkHang;
                     }
                 }
                 if (CheckInteractions(before)) return;
