@@ -79,7 +79,13 @@ namespace Phase
         // The column count and zoom that show the grid largest within the view.
         // The column count and zoom that show the whole grid largest within the view; when even scale 1 overflows,
         // as many columns and rows as fit, and the rest scroll.
+        static Vector2Int layoutFrame; static int layoutCount = -1; static (int columns, UiZoom zoom, int rows) layout;
         static (int columns, UiZoom zoom, int rows) Layout(Vector2Int frame, int count)
+        {
+            if (count != layoutCount || frame != layoutFrame) { layout = Measure(frame, count); layoutFrame = frame; layoutCount = count; }
+            return layout;
+        }
+        static (int columns, UiZoom zoom, int rows) Measure(Vector2Int frame, int count)
         {
             (int columns, UiZoom zoom, int rows) best = default; int bestArea = 0;
             foreach (int choice in columnChoices.Concat(Enumerable.Range(1, count)))
@@ -112,6 +118,8 @@ namespace Phase
         public static int Rows(Vector2Int frame) => Layout(frame).rows;
         // A level's tile, thumbnail frame and number, in frame pixels, with the grid scrolled to the top.
         public static RectInt Tile(Vector2Int frame, int i, int count = -1) { var (columns, zoom, _) = Layout(frame, count < 0 ? Count : count); return zoom.Frame(LocalTile(columns, i)); }
+        // Changes whenever the drawn grid does, so a caller can skip redrawing an unchanged one.
+        public int Signature(Vector2Int frame) => (Choice * 397 ^ firstRow) * 397 ^ frame.x * 8191 ^ frame.y;
         // Returns the chosen level number, 0 when Escape goes back, or -1.
         public int Tick(Keyboard k, Mouse m, Vector2Int frameSize)
         {

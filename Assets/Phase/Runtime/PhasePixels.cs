@@ -282,11 +282,11 @@ namespace Phase
                 }
             }
         }
-        void Lasers(PhaseController s)
+        void Lasers(PhaseController s, Block[] beams)
         {
-            foreach (var laser in s.lasers)
+            for (int n = 0; n < s.lasers.Count; n++)
             {
-                var beam = s.LaserBeam(laser); bool active = laser.ActiveInPhase(s.phase);
+                var laser = s.lasers[n]; var beam = beams[n]; bool active = laser.ActiveInPhase(s.phase);
                 bool horizontal = laser.direction == LaserDirection.Left || laser.direction == LaserDirection.Right;
                 int color = surfaceIndices[laser.Mask]; var edge = Color(Highlights[color]);
                 var core = Mix(edge, Color("ffffff"), .6);
@@ -456,11 +456,12 @@ namespace Phase
             Spikes(s);
             Crystals(s);
             Goal(s);
-            Lasers(s);
+            var beams = s.LaserBeams();
+            Lasers(s, beams);
             // Out-of-phase terrain a beam crosses is painted again in front of it, so it stays readable as cover for another color.
-            var beams = s.lasers.Select(s.LaserBeam).Where(b => b.w > 0 && b.h > 0).ToList();
-            if (beams.Count > 0)
-                for (int i = 0; i < s.blocks.Count; i++) if (!(s.blocks[i] is Platform) && !s.blocks[i].ActiveInPhase(s.phase)) PaintBlock(s, i, beams);
+            var visible = beams.Where(b => b.w > 0 && b.h > 0).ToList();
+            if (visible.Count > 0)
+                for (int i = 0; i < s.blocks.Count; i++) if (!(s.blocks[i] is Platform) && !s.blocks[i].ActiveInPhase(s.phase)) PaintBlock(s, i, visible);
             if (playerVisible && s.respawn <= 0) DrawPlayer(s.player, s.time, s.phase);
             if (playerVisible && s.respawn > 0 && s.respawn < .12)
             {
