@@ -36,7 +36,8 @@ For scale: the controller's coyote time is 6 frames and its jump buffer 5, close
    wall contact for a press); a release keeps its hold time. If that fails, the later inputs keep their rhythm instead: each
    follows the one before it by the same number of frames as on the route. A move counts when the player survives the next 2 jumps
    and half a second after them, or wins. A window stops growing at 17 frames or 20 to one side, shown as ≥/≤; a move
-   also cannot pass the previous input on the same key, shown as ≤.
+   also cannot pass the previous input on the same key, shown as ≤. An input on the first frame can be held from before
+   the start, so its early side counts as open.
 4. **Relax.** Before measuring the next input, the measured one moves to the middle of its window, as a careful
    player would aim for the middle of a gap.
 5. **Choose.** The recorded route and three search settings give up to four routes; the report keeps the one with the fewest tight steps,

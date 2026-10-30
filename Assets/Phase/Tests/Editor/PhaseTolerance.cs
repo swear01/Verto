@@ -428,9 +428,11 @@ public static class PhaseTolerance
                 if (early && hi - lo + 1 < Enough) { if (lo > Math.Max(-Reach, min) && Recover(c, r, p, lo - 1, out double fx) != null) { lo--; if (!double.IsNaN(fx)) xLo = fx; } else early = false; }
             }
             bool loCapped = early || lo <= Math.Max(-Reach, min), hiCapped = late || hi >= Reach;
+            // An input on the first frame can be held from before the start, so its early side is open.
+            if (e.frame == 0) lo = -Reach;
             // Recentre the input in its window, as a careful player would, before measuring the inputs after it.
             int centre = (lo + hi) / 2;
-            if (centre != 0 && Recover(c, r, p, centre, out _, int.MaxValue) is List<Input> relaxed)
+            if (centre != 0 && e.frame + centre >= 0 && Recover(c, r, p, centre, out _, int.MaxValue) is List<Input> relaxed)
             {
                 int count = r.events.Count;
                 var moved = Trace(c, relaxed, r, Math.Min(e.frame, e.frame + centre));
