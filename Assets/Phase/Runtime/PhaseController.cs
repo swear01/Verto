@@ -141,7 +141,7 @@ namespace Phase
             player.x = direction > 0 ? 0 : Width - player.w;
             if (previous.Height != Height) player.y = Math.Max(0, Math.Min(player.y, Height - player.h));
             player.wall = player.forceX = 0;
-            player.wallLock = player.retention = player.slide = 0;
+            player.wallLock = player.retention = player.slide = player.hang = 0;
             UpdateGrounded(Solid());
         }
 
