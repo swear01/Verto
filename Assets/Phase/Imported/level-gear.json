@@ -90,7 +90,7 @@
       {"type": "platform", "orientation": "horizontal", "length": 3, "pivots": [[14, 17], [20, 17]], "reverse": false, "mask": 4, "spiked": false, "spikes": []},
       {"type": "platform", "orientation": "horizontal", "length": 3, "pivots": [[26, 14], [20, 14]], "reverse": false, "mask": 4, "spiked": false, "spikes": []},
       {"type": "platform", "orientation": "horizontal", "length": 3, "pivots": [[13, 11], [13, 8]], "reverse": false, "mask": 4, "spiked": false, "spikes": []},
-      {"type": "platform", "orientation": "horizontal", "length": 3, "pivots": [[18, 8], [18, 11]], "reverse": false, "mask": 1, "spiked": false, "spikes": []},
+      {"type": "platform", "orientation": "horizontal", "length": 3, "pivots": [[18, 7], [18, 10]], "reverse": false, "mask": 1, "spiked": false, "spikes": []},
       {"type": "platform", "orientation": "horizontal", "length": 3, "pivots": [[21, 8], [15, 8]], "reverse": false, "mask": 4, "spiked": false, "spikes": []},
       {"type": "platform", "orientation": "horizontal", "length": 3, "pivots": [[14, 5], [10, 5]], "reverse": false, "mask": 4, "spiked": false, "spikes": []},
       {"type": "platform", "orientation": "horizontal", "length": 3, "pivots": [[22, 2], [22, 5]], "reverse": false, "mask": 1, "spiked": false, "spikes": []},

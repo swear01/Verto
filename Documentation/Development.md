@@ -176,6 +176,8 @@ See [room designs and live input verification](Demo.md).
 `BuildWeb.py` verifies these tests and builds `PhaseDemo1`, `PhaseDemo1.1`, `PhaseDemo2` through
 `PhaseDemo8`, followed by `PhaseCrystal1` through `PhaseCrystal3`, the hand-authored `PhaseDemo12`, `PhaseDemo13` through `PhaseDemo14`, the chaos level `PhaseDemo15`, `PhaseUmbrella`, and `PhaseGear`. `DemoWebSmoke.cjs` still replays the jam levels' keyboard routes from
 the removed `Verification/Routes` folder, so it fails until it is rewritten for the redesigned levels.
+In PhaseGear Play, `Verification/GearLiveInput.cs` (entry `GearLiveInput.Run`) plays the intended route, every floor
+blue bar, green platform, red bar or platform, with the virtual keyboard; it fails on a death or a ceiling bonk.
 
 ## CI
 
