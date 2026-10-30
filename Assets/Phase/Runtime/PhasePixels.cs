@@ -16,7 +16,7 @@ namespace Phase
             if (mask < 1 || mask > 7) throw new ArgumentOutOfRangeException(nameof(mask));
             return Hex(Highlights[surfaceIndices[mask]]);
         }
-        const string Ink = "0b0f16", Glow = "4fe8ff", Danger = "ff2d3d";
+        const string Ink = "0b0f16", Glow = "4fe8ff", Tooth = "f5f1e4";
         static readonly Dictionary<string, Color32> colors = new Dictionary<string, Color32>();
         Color32[] view = new Color32[320 * 180], buffer;
         public int Width => Texture.width;
@@ -237,7 +237,7 @@ namespace Phase
         static Dictionary<char,Color32> SpikePalette(int mask,bool active)
         {
             int color=surfaceIndices[mask];var cap=Color(Highlights[color]);var rim=Color(Edges[color]);var body=Color(Fills[color]);
-            var palette=new Dictionary<char,Color32>{['T']=active?Color(Danger):Mix(rim,Color("101a26"),.45),['L']=active?cap:Mix(body,Color("101a26"),.4),['M']=active?rim:Mix(body,Color("101a26"),.6),['D']=active?body:Mix(body,Color("101a26"),.6)};
+            var palette=new Dictionary<char,Color32>{['T']=active?Color(Tooth):Mix(rim,Color("101a26"),.45),['L']=active?cap:Mix(body,Color("101a26"),.4),['M']=active?rim:Mix(body,Color("101a26"),.6),['D']=active?body:Mix(body,Color("101a26"),.6)};
             if(active)palette['o']=Color(Ink);
             return palette;
         }
@@ -282,11 +282,11 @@ namespace Phase
                 }
             }
         }
-        void Lasers(PhaseController s)
+        void Lasers(PhaseController s, Block[] beams)
         {
-            foreach (var laser in s.lasers)
+            for (int n = 0; n < s.lasers.Count; n++)
             {
-                var beam = s.LaserBeam(laser); bool active = laser.ActiveInPhase(s.phase);
+                var laser = s.lasers[n]; var beam = beams[n]; bool active = laser.ActiveInPhase(s.phase);
                 bool horizontal = laser.direction == LaserDirection.Left || laser.direction == LaserDirection.Right;
                 int color = surfaceIndices[laser.Mask]; var edge = Color(Highlights[color]);
                 var core = Mix(edge, Color("ffffff"), .6);
@@ -456,11 +456,13 @@ namespace Phase
             Spikes(s);
             Crystals(s);
             Goal(s);
-            Lasers(s);
+            var beams = s.LaserBeams();
+            Lasers(s, beams);
             // Out-of-phase terrain a beam crosses is painted again in front of it, so it stays readable as cover for another color.
-            var beams = s.lasers.Select(s.LaserBeam).Where(b => b.w > 0 && b.h > 0).ToList();
-            if (beams.Count > 0)
-                for (int i = 0; i < s.blocks.Count; i++) if (!(s.blocks[i] is Platform) && !s.blocks[i].ActiveInPhase(s.phase)) PaintBlock(s, i, beams);
+            var visible = new List<Block>(beams.Length);
+            foreach (var b in beams) if (b.w > 0 && b.h > 0) visible.Add(b);
+            if (visible.Count > 0)
+                for (int i = 0; i < s.blocks.Count; i++) if (!(s.blocks[i] is Platform) && !s.blocks[i].ActiveInPhase(s.phase)) PaintBlock(s, i, visible);
             if (playerVisible && s.respawn <= 0) DrawPlayer(s.player, s.time, s.phase);
             if (playerVisible && s.respawn > 0 && s.respawn < .12)
             {
