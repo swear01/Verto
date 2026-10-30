@@ -31,10 +31,10 @@ Jump platforms replace the removed dash platforms: every jump advances every pla
 ## Spike cover
 
 - There is no separate spike-block object: any block, every terrain cell and every platform, can be fully covered in spikes.
-- A covered block is lethal on every face, on contact.
+- A covered block is lethal through its teeth only: a 1 px strip on each face, with the 2 px at every corner left safe, so brushing a corner or the side of a tooth does not kill. Teeth are drawn as cream-tipped triangles in the block's color and follow its phase (dim while dark).
 - It is still a block: solid, lethal and laser-blocking only in its own color, harmless and passable while dark. A covered block that turns solid around the player waits until the player leaves it, like any other block.
 - A covered platform is a moving spike block and cannot be stood on.
-- Ordinary and attached spikes sit in cells beside a block and only their root is lethal; a covered block is lethal over its whole body.
+- Ordinary and attached spikes sit in cells beside a block and only their root is lethal; a covered block's teeth are lethal along the faces, not the corners.
 
 ## Editor
 
