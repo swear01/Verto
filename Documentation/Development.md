@@ -370,7 +370,7 @@ Player Settings keep Run In Background on: with it off, the Input System resets 
 page gains focus and drops the click that focused it. `maps.js` still pauses play while the page is unfocused.
 Level select and settings replace the screen behind them. Level select picks 4, 5, 6, 3 or
 2 columns, whichever shows the grid largest. Each tile frames a 40×22 thumbnail of the
-room (one pixel per 8px cell) above its 2× number; the selected tile has a blue frame.
+room (one pixel per 8px cell, terrain and lasers on plain ink, no backdrop) above its 2× number; the selected tile has a blue frame.
 Every level is always selectable, it opens at the current level from pause, and Escape
 goes back. Thumbnails live in `Assets/Phase/Resources/Levels/<Scene>.png`; rebake them
 automatically before every player build (`Phase/Editor/LevelThumbnails.cs`, an

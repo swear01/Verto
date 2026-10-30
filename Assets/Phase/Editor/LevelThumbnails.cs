@@ -8,7 +8,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-// Bakes each level's level-select thumbnail: one pixel per 8px cell of the room rendered by PhasePixels.
+// Bakes each level's level-select thumbnail: one pixel per 8px cell of the room rendered by PhasePixels without its backdrop.
 // A cell shows its center pixel, or its most saturated one when that is clearly more colorful, so phase blocks,
 // lasers and crystals keep their color. Every player build rebakes them; `Run` also works through run_script.
 public class LevelThumbnails : IPreprocessBuildWithReport
@@ -29,7 +29,7 @@ public class LevelThumbnails : IPreprocessBuildWithReport
             PhaseController room;
             try { room = opened.GetRootGameObjects().SelectMany(o => o.GetComponentsInChildren<PhaseSandbox>()).Single().CreateController(); }
             finally { if (!loaded.isLoaded) EditorSceneManager.CloseScene(opened, true); }
-            var pixels = new PhasePixels();
+            var pixels = new PhasePixels { Backdrop = false };
             var thumbnail = new Texture2D(Columns, Rows, TextureFormat.RGBA32, false);
             try
             {
