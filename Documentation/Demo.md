@@ -27,8 +27,16 @@ step, the next jump turns blue onto the floor above, right of where the white la
 gate moved down one cell so the last jump clears it from the right of the blue ceiling laser.
 `Verification/Routes/PhaseDemo13.json` is its recorded route.
 
-Level 4 (level-b) is unchanged and cannot be finished with run and jump: it was built around climbing
-its colored pillars.
+Level 4 (level-b) keeps the classmates' premise: you climb between a red pillar and a green pillar past
+red, blue and green lasers fired alternately from both sides, and a colored laser kills only in its own
+color, so every jump swaps which beams are lethal. The pillars shield their own color: red beams only come
+from the right and green beams only from the left. The climb used to scale the pillars without changing
+color, so it was re-laid as a zigzag of three-cell steps colored in jump order: blue, green, red, blue up
+to the green pillar, a wall jump off the green pillar (green while touching it, red after) back left onto
+red, blue, green, and a wall jump off the red pillar onto a long blue walkway. The walkway runs under a
+green beam, so the last stretch is walked, not jumped, through the green pillar to the white exit ledge.
+A white wall right of the green pillar closes the drop below the ledge.
+`Verification/Routes/PhaseDemo14.json` is its recorded route.
 
 The jam rooms Demo2–8, Crystal1–3 and the classmate dash-platform room Demo12 were removed: they were built
 around dash, climbing, gears and dash crystals, which Verto no longer has.

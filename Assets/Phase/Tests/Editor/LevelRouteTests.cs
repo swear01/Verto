@@ -9,6 +9,7 @@ public class LevelRouteTests
 {
     // Replays a level's recorded keyboard route on the controller its saved scene builds.
     [TestCase("PhaseDemo13")]
+    [TestCase("PhaseDemo14")]
     public void RecordedRouteLeavesThroughTheRightEdgeWithoutDying(string level)
     {
         var scene = EditorSceneManager.OpenScene($"Assets/Scenes/{level}.unity", OpenSceneMode.Additive);
