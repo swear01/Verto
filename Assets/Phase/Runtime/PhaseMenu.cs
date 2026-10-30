@@ -79,7 +79,13 @@ namespace Phase
         // The column count and zoom that show the grid largest within the view.
         // The column count and zoom that show the whole grid largest within the view; when even scale 1 overflows,
         // as many columns and rows as fit, and the rest scroll.
+        static Vector2Int layoutFrame; static int layoutCount = -1; static (int columns, UiZoom zoom, int rows) layout;
         static (int columns, UiZoom zoom, int rows) Layout(Vector2Int frame, int count)
+        {
+            if (count != layoutCount || frame != layoutFrame) { layout = Measure(frame, count); layoutFrame = frame; layoutCount = count; }
+            return layout;
+        }
+        static (int columns, UiZoom zoom, int rows) Measure(Vector2Int frame, int count)
         {
             (int columns, UiZoom zoom, int rows) best = default; int bestArea = 0;
             foreach (int choice in columnChoices.Concat(Enumerable.Range(1, count)))
@@ -112,6 +118,8 @@ namespace Phase
         public static int Rows(Vector2Int frame) => Layout(frame).rows;
         // A level's tile, thumbnail frame and number, in frame pixels, with the grid scrolled to the top.
         public static RectInt Tile(Vector2Int frame, int i, int count = -1) { var (columns, zoom, _) = Layout(frame, count < 0 ? Count : count); return zoom.Frame(LocalTile(columns, i)); }
+        // Changes whenever the drawn grid does, so a caller can skip redrawing an unchanged one.
+        public int Signature(Vector2Int frame) => (Choice * 397 ^ firstRow) * 397 ^ frame.x * 8191 ^ frame.y;
         // Returns the chosen level number, 0 when Escape goes back, or -1.
         public int Tick(Keyboard k, Mouse m, Vector2Int frameSize)
         {
@@ -187,12 +195,19 @@ namespace Phase
         }
     }
 
-    // Settings: three action rows (left, right, jump) with two key slots each, restore defaults, the fullscreen switch and close.
-    // Arrows move; Enter, jump or a click captures the next key or uses the control; Backspace clears; Escape cancels or closes.
+    // Settings: three action rows (left, right, jump) with two key slots each, effect and music volume sliders,
+    // then a row of three controls: restore default keys, fullscreen and close.
+    // Arrows move; left and right (or a click) set a slider; Enter, jump or a click captures the next key or uses the control; Backspace clears; Escape cancels or closes.
     public sealed class PhaseKeys
     {
-        public const int RestoreRow = 3, FullScreenRow = 4, BackRow = 5;
-        static readonly string[] fullScreenIcon = { "###.....###", "###.....###", "#.........#", "...........", "...........", "...........", "...........", "...........", "#.........#", "###.....###", "###.....###" };
+        public const int SfxRow = 3, MusicRow = 4, ControlsRow = 5, RestoreColumn = 0, FullScreenColumn = 1, BackColumn = 2;
+        // Corner brackets pointing out to enter fullscreen, and in to leave it.
+        static readonly string[] enterFullScreenIcon = { "####...####", "#.........#", "#.........#", "#.........#", "...........", "...........", "...........", "#.........#", "#.........#", "#.........#", "####...####" },
+            exitFullScreenIcon = { "...#...#...", "...#...#...", "...#...#...", "####...####", "...........", "...........", "...........", "####...####", "...#...#...", "...#...#...", "...#...#..." },
+            // An arrow curling back counter-clockwise, as on every "reset to default" button.
+            resetIcon = { "..#........", ".##........", "###.#####..", ".##.....##.", "..#......##", "..........#", "..........#", ".........##", ".......##..", "...#####...", "..........." },
+            soundIcon = { "...#...", "..##.#.", "####..#", "####..#", "####..#", "..##.#.", "...#..." },
+            musicIcon = { "..#####", "..#...#", "..#...#", "..#...#", "###..##", "###..##", ".#...#." };
         // Unity applies Screen.fullScreen natively and, within the confirming key or click, on Web; the Editor ignores it, so tests swap these.
         public static System.Func<bool> IsFullScreen = () => Screen.fullScreen;
         public static System.Action<bool> SetFullScreen = on => Screen.fullScreen = on;
@@ -214,7 +229,7 @@ namespace Phase
             for (char c = 'A'; c <= 'Z'; c++) Labels[c.ToString()] = c.ToString();
             for (char c = '0'; c <= '9'; c++) Labels["Digit" + c] = c.ToString();
         }
-        const int CapWidth = 25, Pitch = 11, PageWidth = 67, PageHeight = 84;
+        const int CapWidth = 25, Pitch = 11, PageWidth = 67, PageHeight = 74, SliderX = 13, SliderWidth = 54;
         public int Row { get; private set; }
         public int Column { get; private set; }
         public bool Capturing { get; private set; }
@@ -223,14 +238,15 @@ namespace Phase
         Vector2Int size;
 
         static UiZoom Page(Vector2Int frame) => UiZoom.Fit(frame, PageWidth, PageHeight);
-        // A key cap, or the restore, fullscreen or close control with its selection border, in page pixels.
+        // A key cap, a slider, or the restore, fullscreen or close control with its selection border, in page pixels.
         static RectInt Cell(int row, int column) => row switch
         {
-            < RestoreRow => new RectInt(13 + column * (CapWidth + 4), row * Pitch, CapWidth, 9),
-            RestoreRow => new RectInt(26, 35, 15, 15),
-            FullScreenRow => new RectInt(17, 52, 32, 15),
-            _ => new RectInt(26, 69, 15, 15)
+            < SfxRow => new RectInt(SliderX + column * (CapWidth + 4), row * Pitch, CapWidth, 9),
+            < ControlsRow => new RectInt(SliderX, 35 + (row - SfxRow) * Pitch, SliderWidth, 9),
+            _ => new RectInt(column * 26, 59, 15, 15)
         };
+        static int Columns(int row) => row < SfxRow ? 2 : row < ControlsRow ? 1 : 3;
+        static int Level(int row) => row == SfxRow ? PhaseAudio.SfxLevel : PhaseAudio.MusicLevel;
         // The same in frame pixels.
         public static RectInt Area(Vector2Int frame, int row, int column) => Page(frame).Frame(Cell(row, column));
 
@@ -250,26 +266,38 @@ namespace Phase
             if (k.escapeKey.wasPressedThisFrame) return true;
             int vertical = PhaseMenu.Vertical(k), horizontal = PhaseMenu.Horizontal(k);
             if (vertical < 0) Row = Mathf.Max(0, Row - 1);
-            if (vertical > 0) Row = Mathf.Min(BackRow, Row + 1);
-            if (horizontal < 0) Column = 0;
-            if (horizontal > 0) Column = 1;
+            if (vertical > 0) Row = Mathf.Min(ControlsRow, Row + 1);
+            Column = Mathf.Min(Column, Columns(Row) - 1);
+            if (Row is SfxRow or MusicRow) { if (horizontal != 0) PhaseAudio.SetLevel(Row == SfxRow, Level(Row) + horizontal); }
+            else Column = Mathf.Clamp(Column + horizontal, 0, Columns(Row) - 1);
             var m = Mouse.current;
             if (m != null && m.leftButton.wasPressedThisFrame)
             {
                 var at = Page(size).Local(PhaseMenu.FramePoint(m, size));
-                for (int row = 0; row <= BackRow; row++)
-                    for (int column = 0; column < 2; column++)
-                        if (Cell(row, column).Contains(at)) { Row = row; Column = column; return Confirm(); }
+                for (int row = 0; row <= ControlsRow; row++)
+                    for (int column = 0; column < Columns(row); column++)
+                    {
+                        var cell = Cell(row, column);
+                        if (!cell.Contains(at)) continue;
+                        Row = row; Column = column;
+                        if (row is not (SfxRow or MusicRow)) return Confirm();
+                        PhaseAudio.SetLevel(row == SfxRow, Mathf.RoundToInt((at.x - cell.x - 1) * (float)PhaseAudio.MaxLevel / (cell.width - 2)));
+                        return false;
+                    }
             }
             else if (PhaseMenu.Confirmed(k)) return Confirm();
-            else if (k.backspaceKey.wasPressedThisFrame && Row < RestoreRow) Set("");
+            else if (k.backspaceKey.wasPressedThisFrame && Row < SfxRow) Set("");
             return false;
         }
         bool Confirm()
         {
-            if (Row == BackRow) return true;
-            if (Row == FullScreenRow) SetFullScreen(!IsFullScreen());
-            else if (Row == RestoreRow) { PhaseSandbox.ApplyControls(PhaseSandbox.DefaultSlots); PhaseSandbox.SaveControls(); }
+            if (Row >= SfxRow && Row < ControlsRow) return false;
+            if (Row == ControlsRow)
+            {
+                if (Column == BackColumn) return true;
+                if (Column == FullScreenColumn) SetFullScreen(!IsFullScreen());
+                else { PhaseSandbox.ApplyControls(PhaseSandbox.DefaultSlots); PhaseSandbox.SaveControls(); }
+            }
             else Capturing = true;
             return false;
         }
@@ -301,20 +329,22 @@ namespace Phase
                     page.Text(label, cap.x + (CapWidth - PixelFrame.TextWidth(label) + 1) / 2, cap.y + 2);
                 }
             }
-            Control(page, RestoreRow, PhaseMenu.RetryIcon);
-            // Screen corners, then a switch whose knob sits right on a lit track when fullscreen.
-            var full = Control(page, FullScreenRow, fullScreenIcon); bool on = IsFullScreen(); float amount = Row == FullScreenRow ? 1 : .35f;
-            page.Outline(full.x + 16, full.y + 4, 13, 7, PixelFrame.Light, amount);
-            if (on) page.Fill(full.x + 17, full.y + 5, 11, 5, PixelFrame.Light, amount * .35f);
-            page.Fill(full.x + (on ? 23 : 18), full.y + 6, 4, 3, PixelFrame.Light, amount);
-            Control(page, BackRow, PhaseMenu.CloseIcon);
+            for (int row = SfxRow; row < ControlsRow; row++)
+            {
+                var track = Cell(row, 0); float amount = Row == row ? 1 : .35f;
+                page.Blit(row == SfxRow ? soundIcon : musicIcon, 0, track.y + 1, PixelFrame.Light);
+                page.Outline(track.x, track.y, track.width, track.height, PixelFrame.Light, amount);
+                page.Fill(track.x + 1, track.y + 1, (track.width - 2) * Level(row) / PhaseAudio.MaxLevel, track.height - 2, PixelFrame.Light, amount);
+            }
+            Control(page, RestoreColumn, resetIcon);
+            Control(page, FullScreenColumn, IsFullScreen() ? exitFullScreenIcon : enterFullScreenIcon);
+            Control(page, BackColumn, PhaseMenu.CloseIcon);
         }
-        RectInt Control(PixelFrame page, int row, string[] icon)
+        void Control(PixelFrame page, int column, string[] icon)
         {
-            var box = Cell(row, 0);
-            page.Blit(icon, box.x + 2, box.y + 2, PixelFrame.Light, amount: Row == row ? 1 : .35f);
-            if (Row == row) page.Outline(box.x, box.y, box.width, box.height, PixelFrame.Light);
-            return box;
+            var box = Cell(ControlsRow, column); bool selected = Row == ControlsRow && Column == column;
+            page.Blit(icon, box.x + 2, box.y + 2, PixelFrame.Light, amount: selected ? 1 : .35f);
+            if (selected) page.Outline(box.x, box.y, box.width, box.height, PixelFrame.Light);
         }
     }
 }

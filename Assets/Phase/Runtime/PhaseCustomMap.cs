@@ -172,7 +172,7 @@ namespace Phase
                 AddCells(block.x, block.y, block.w, block.h, occupied);
                 if (block.ActiveInPhase(0) && Hits(block))
                     throw new ArgumentException("出生點與紅色模式的實體地形重疊。");
-                if (block.spiked && block.ActiveInPhase(0) && Hits(PhaseController.Reach(block)))
+                if (block.spiked && block.ActiveInPhase(0) && PhaseController.Teeth(block).Any(Hits))
                     throw new ArgumentException("出生點碰到紅色模式的尖刺覆蓋地形。");
             }
             foreach (var item in room.platforms ?? Array.Empty<DemoPlatform>())
@@ -184,7 +184,7 @@ namespace Phase
                     AddCells(teeth.x, teeth.y, teeth.w, teeth.h, occupied);
                     if (teeth.ActiveInPhase(0) && Hits(teeth.Hitbox)) throw new ArgumentException("出生點與紅色模式的尖刺重疊。");
                 }
-                if (platform.ActiveInPhase(0) && Hits(platform.spiked ? PhaseController.Reach(platform) : platform))
+                if (platform.ActiveInPhase(0) && (platform.spiked ? PhaseController.Teeth(platform).Any(Hits) : Hits(platform)))
                     throw new ArgumentException("出生點與紅色模式的平台重疊。");
             }
             foreach (var spike in room.spikes ?? Array.Empty<DemoSpike>())

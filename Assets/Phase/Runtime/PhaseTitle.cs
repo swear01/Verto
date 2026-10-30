@@ -21,6 +21,7 @@ namespace Phase
         public PhaseKeys Keys { get; private set; }
         public PhaseLevels LevelSelect { get; private set; }
         PhaseController backdrop;
+        int shown;
 
         // The 44-row banner (title at rows 8–21, icons centered on row 33) at the UI scale that fits the view.
         int Scale => UiZoom.Fit(new Vector2Int(pixels.Width, pixels.Height), 80, 44).Scale;
@@ -54,12 +55,14 @@ namespace Phase
                 int level = LevelSelect.Tick(k, m, new Vector2Int(pixels.Width, pixels.Height));
                 if (level == 0) LevelSelect = null;
                 else if (level > 0) { SelectDemoRoom(level.ToString()); return; }
-                Refresh(); return;
+                int signature = LevelSelect?.Signature(new Vector2Int(pixels.Width, pixels.Height)) ?? 0;
+                if (LevelSelect == null || signature != shown) Refresh();
+                shown = signature; return;
             }
             int chosen = menu.Tick(k, m, new Vector2Int(pixels.Width, pixels.Height), MenuMiddle, out bool changed, Scale);
             if (changed) Refresh();
             if (chosen == 0) SelectDemoRoom("1");
-            else if (chosen == 1) { LevelSelect = new PhaseLevels(); Refresh(); }
+            else if (chosen == 1) { LevelSelect = new PhaseLevels(); shown = LevelSelect.Signature(new Vector2Int(pixels.Width, pixels.Height)); Refresh(); }
             else if (chosen == 2) Open(PhaseEditor.Scene);
             else if (chosen == 3) { Keys = new PhaseKeys(); Refresh(); }
         }

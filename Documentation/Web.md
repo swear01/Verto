@@ -52,8 +52,8 @@ Level select, pause and keyboard bindings are in-game screens, the same as in na
 builds (see [Development](Development.md)). Opening level select or settings replaces the
 screen behind it. Both scale by whole pixels so the screen fills most of the view; each
 level tile is a thumbnail of that room. The build opens on the Verto title; its icons
-start level1, open the level select, the in-game level editor or settings (key bindings
-and fullscreen). Escape in a level pauses. Bindings are stored with Unity PlayerPrefs (`phase.keys.v1`) in this
+start level1, open the level select, the in-game level editor or settings (key bindings, effect and music volume
+and fullscreen). Escape in a level pauses. Bindings (`phase.keys.v1`) and volume levels (`phase.volume.v1`) are stored with Unity PlayerPrefs in this
 browser's IndexedDB; bindings saved by the old page dialog (`phase.controls.v2`) are not
 migrated. Right-click on the canvas never opens the browser menu (it erases in the
 editor). Only the focused game canvas sends keys to Unity, and leaving the page
