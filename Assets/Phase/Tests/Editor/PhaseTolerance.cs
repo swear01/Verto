@@ -391,16 +391,17 @@ public static class PhaseTolerance
         var watch = System.Diagnostics.Stopwatch.StartNew();
         Result best = null; int expansions = 0;
         var tried = new HashSet<string>();
+        bool stale = recorded != null && !Wins(c, recorded);
         foreach (var (macro, jumpCost, turnCost) in new[] { (0, 0.0, 0.0) }.Concat(Searches))
         {
             int searched = 0;
-            var route = macro == 0 ? (recorded != null && Wins(c, recorded) ? recorded : null) : Solve(c, out searched, macro, budget, jumpCost: jumpCost, turnCost: turnCost);
+            var route = macro == 0 ? (stale ? null : recorded) : Solve(c, out searched, macro, budget, jumpCost: jumpCost, turnCost: turnCost);
             expansions += searched;
             if (route == null) continue;
             var r = DropDetours(c, Trace(c, Simplify(c, route)));
-            if (!tried.Add(string.Join(",", r.events.Select(e => $"{e.kind}{e.frame}")))) continue;
+            if (!tried.Add(string.Join(",", r.events.Select(e => $"{e.kind}{e.frame}:{e.value}")))) continue;
             var result = Measure(level, c, r);
-            result.source = macro == 0 ? "the recorded route" : $"a {macro}-frame search";
+            result.source = macro == 0 ? "the recorded route" : $"a {macro}-frame search" + (stale ? " (the recorded route no longer wins)" : "");
             if (best == null || (result.error == null && (best.error != null || Score(result).CompareTo(Score(best)) > 0))) best = result;
         }
         best = best ?? new Result { level = level, error = $"no route within {budget} expanded states per search" };
@@ -429,7 +430,7 @@ public static class PhaseTolerance
             }
             bool loCapped = early || lo <= Math.Max(-Reach, min), hiCapped = late || hi >= Reach;
             // An input on the first frame can be held from before the start, so its early side is open.
-            if (e.frame == 0) lo = -Reach;
+            if (e.frame == 0) { lo = Math.Min(lo, hi + 1 - Enough); loCapped = true; }
             // Recentre the input in its window, as a careful player would, before measuring the inputs after it.
             int centre = (lo + hi) / 2;
             if (centre != 0 && e.frame + centre >= 0 && Recover(c, r, p, centre, out _, int.MaxValue) is List<Input> relaxed)

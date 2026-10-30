@@ -21,8 +21,10 @@ static class Program
     static PhaseController Build(string level)
     {
         string json = File.ReadAllText(Maps[level]);
-        var c = level == "PhaseDemo1" ? JObject.Parse(json)["rooms"][0].ToObject<PhaseDemoRoom>().CreateController()
-            : PhaseCustomMap.Parse(json).rooms[0].CreateController();
+        var room = level == "PhaseDemo1" ? JObject.Parse(json)["rooms"][0].ToObject<PhaseDemoRoom>() : PhaseCustomMap.Parse(json).rooms[0];
+        // The scene has no goal object (PhaseSandboxBuilder.CreateDemoRooms); it ends at the right edge.
+        room.goal = null;
+        var c = room.CreateController();
         c.exitRight = true;
         return c;
     }
@@ -48,7 +50,9 @@ static class Program
         }
         var results = levels.Select(level =>
         {
-            var result = PhaseTolerance.Analyze(level, Build(level), recorded: Recorded(level));
+            PhaseTolerance.Result result;
+            try { result = PhaseTolerance.Analyze(level, Build(level), recorded: Recorded(level)); }
+            catch (Exception error) { result = new PhaseTolerance.Result { level = level, error = error.Message }; }
             Console.WriteLine($"{level}: {result.Verdict}, {result.steps.Count} steps, tight {result.Count("tight")}, {result.seconds:F0}s {result.error}");
             return result;
         }).ToList();

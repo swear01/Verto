@@ -19,7 +19,7 @@ Histogram: 1–3f 0, 4–6f 1, 7–9f 0, 10–12f 0, 13+f 5
 
 | # | Frame | Input | x | Contact | Color | Window (frames) | Window (px) | Grade |
 |---|---|---|---|---|---|---|---|---|
-| 1 | 0 | jump | 24 | ground | blue | 25 (≤-20..+4) | 3 | free |
+| 1 | 0 | jump | 24 | ground | blue | 17 (≤-12..+4) | 3 | free |
 | 2 | 51 | release | 99 | ground |  | 17 (≤-8..+8) | 24 | free |
 | 3 | 61 | jump | 114 | ground | green | 5 (-2..+2) | 6 | moderate |
 | 4 | 89 | release | 146 | air |  | 17 (≤-8..+8) | 24 | free |
@@ -129,7 +129,7 @@ Histogram: 1–3f 0, 4–6f 0, 7–9f 0, 10–12f 2, 13+f 20
 
 ## PhaseUmbrella
 
-Route 836 frames (13.9s), 15 jumps; from a 4-frame search, the most forgiving of 3 routes (18992 searched states, 387s).
+Route 836 frames (13.9s), 15 jumps; from a 4-frame search, the most forgiving of 3 routes (18992 searched states, 390s).
 
 Histogram: 1–3f 0, 4–6f 0, 7–9f 1, 10–12f 6, 13+f 25
 
@@ -170,13 +170,13 @@ Histogram: 1–3f 0, 4–6f 0, 7–9f 1, 10–12f 6, 13+f 25
 
 ## PhaseGear
 
-Route 221 frames (3.7s), 8 jumps; from a 4-frame search, the most forgiving of 1 routes (163429 searched states, 51s).
+Route 221 frames (3.7s), 8 jumps; from a 4-frame search, the most forgiving of 1 routes (163429 searched states, 50s).
 
 Histogram: 1–3f 0, 4–6f 1, 7–9f 4, 10–12f 2, 13+f 16
 
 | # | Frame | Input | x | Contact | Color | Window (frames) | Window (px) | Grade |
 |---|---|---|---|---|---|---|---|---|
-| 1 | 0 | jump | 16 | ground | blue | 22 (≤-20..+1) | 0 | free |
+| 1 | 0 | jump | 16 | ground | blue | 17 (≤-15..+1) | 0 | free |
 | 2 | 47 | release | 85 | ground |  | 17 (≤-8..+8) | 24 | free |
 | 3 | 55 | jump | 97 | ground | green | 4 (-2..+1) | 4 | moderate |
 | 4 | 75 | release | 130 | air |  | 12 (-8..+3) | 17 | moderate |

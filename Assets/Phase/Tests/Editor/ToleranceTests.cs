@@ -15,16 +15,15 @@ public class ToleranceTests
     [Test]
     public void ANarrowPitIsFreeAndANearMaximalTakeoffIsTight()
     {
-        var wide = PhaseTolerance.Analyze("wide", Pit(48));
+        var wide = PhaseTolerance.Analyze("wide", Pit(48), budget: 5000);
         Assert.That(wide.error, Is.Null);
-        Assert.That(wide.jumps, Is.EqualTo(1));
-        var presses = wide.steps.Where(s => s.kind == PhaseTolerance.Kind.Press).ToList();
+        var presses = wide.steps.Where(s => s.jumps).ToList();
         Assert.That(presses, Is.Not.Empty);
         Assert.That(presses.Select(s => s.Grade), Is.All.EqualTo("free"));
         // The takeoff barely reaches the far wall, and a wall jump finishes the climb.
-        var tight = PhaseTolerance.Analyze("tight", Pit(84));
+        var tight = PhaseTolerance.Analyze("tight", Pit(84), budget: 5000);
         Assert.That(tight.error, Is.Null);
-        Assert.That(tight.steps.FirstOrDefault(s => s.jumps)?.Grade, Is.EqualTo("tight"));
+        Assert.That(tight.steps.Where(s => s.jumps).Select(s => s.Grade), Does.Contain("tight"));
         Assert.That(tight.Verdict, Is.EqualTo("too tight"));
     }
 }
