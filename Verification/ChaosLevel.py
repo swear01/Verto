@@ -48,7 +48,7 @@ for c in range(W):
     if g is not None:
         for r in range(g,H): grid[r][c]='7'
 for w in WALLS:
-    bottom=min(ground[c] for c in (w,w+1))-3
+    bottom=min(ground[c] for c in (w,w+1) if ground[c] is not None)-3
     for r in range(0,bottom+1): grid[r][w]=grid[r][w+1]='7'
 for c,m in SHIELDS:
     laser(c,0,'down',7); cell(c,11,str(m))

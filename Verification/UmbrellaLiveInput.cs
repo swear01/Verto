@@ -28,7 +28,7 @@ public static class UmbrellaLiveInput
         return result.Task;
     }
 
-    static IEnumerator Check(PhaseSandbox sandbox, double[] Jumps, string folder, TaskCompletionSource<string> result)
+    static IEnumerator Check(PhaseSandbox sandbox, double[] jumps, string folder, TaskCompletionSource<string> result)
     {
         var background = Application.runInBackground;
         var focus = InputSystem.settings.backgroundBehavior;
@@ -52,7 +52,7 @@ public static class UmbrellaLiveInput
                 var p = sandbox.Controller.player;
                 if (sandbox.Controller.deaths > deaths) { result.SetException(new InvalidOperationException($"Died at x={p.x:F0} in phase {sandbox.Controller.phase} after {next} jumps.")); yield break; }
                 bool rising = !p.grounded && p.vy < 0;
-                bool jump = next < Jumps.Length && p.grounded && p.x >= Jumps[next];
+                bool jump = next < jumps.Length && p.grounded && p.x >= jumps[next];
                 if (jump) next++;
                 // A player holds the key through the rise; a tap is a 26px hop that cannot clear a pit.
                 InputSystem.QueueStateEvent(keyboard, jump || rising ? new KeyboardState(Key.RightArrow, Key.Z) : new KeyboardState(Key.RightArrow));
