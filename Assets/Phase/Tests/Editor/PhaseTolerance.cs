@@ -32,7 +32,7 @@ public static class PhaseTolerance
 
     public sealed class Result
     {
-        public string level, error;
+        public string level, error, source;
         public List<Input> route;
         public List<Step> steps = new List<Step>();
         public int expansions, jumps, routes;
@@ -367,20 +367,23 @@ public static class PhaseTolerance
 
     // ---- Analysis.
 
-    // Analyzes the route of each search setting and keeps the one with the fewest tight steps, then the widest tightest window.
-    public static Result Analyze(string level, PhaseController c, int budget = 60000)
+    // Analyzes a recorded route, when given, and the route of each search setting, and keeps the one with the fewest tight
+    // steps, then the widest tightest window.
+    public static Result Analyze(string level, PhaseController c, int budget = 60000, List<Input> recorded = null)
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
         Result best = null; int expansions = 0;
         var tried = new HashSet<string>();
-        foreach (var (macro, jumpCost, turnCost) in Searches)
+        foreach (var (macro, jumpCost, turnCost) in new[] { (0, 0.0, 0.0) }.Concat(Searches))
         {
-            var route = Solve(c, out int searched, macro, budget, jumpCost: jumpCost, turnCost: turnCost);
+            int searched = 0;
+            var route = macro == 0 ? (recorded != null && Wins(c, recorded) ? recorded : null) : Solve(c, out searched, macro, budget, jumpCost: jumpCost, turnCost: turnCost);
             expansions += searched;
             if (route == null) continue;
             var r = DropDetours(c, Trace(c, Simplify(c, route)));
             if (!tried.Add(string.Join(",", r.events.Select(e => $"{e.kind}{e.frame}")))) continue;
             var result = Measure(level, c, r);
+            result.source = macro == 0 ? "the recorded route" : $"a {macro}-frame search";
             if (best == null || (result.error == null && (best.error != null || Score(result).CompareTo(Score(best)) > 0))) best = result;
         }
         best = best ?? new Result { level = level, error = $"no route within {budget} expanded states per search" };
@@ -451,7 +454,7 @@ public static class PhaseTolerance
             text.AppendLine().AppendLine($"## {r.level}").AppendLine();
             if (r.error != null) text.AppendLine($"Problem: {r.error}.").AppendLine();
             if (r.route == null) { text.AppendLine($"Search time {r.seconds:F1}s, {r.expansions} states."); continue; }
-            text.AppendLine($"Route {r.route.Count} frames ({r.route.Count / 60.0:F1}s), {r.jumps} jumps; most forgiving of {r.routes} routes from {r.expansions} searched states, {r.seconds:F0}s.").AppendLine();
+            text.AppendLine($"Route {r.route.Count} frames ({r.route.Count / 60.0:F1}s), {r.jumps} jumps; from {r.source}, the most forgiving of {r.routes} routes ({r.expansions} searched states, {r.seconds:F0}s).").AppendLine();
             var bins = new[] { (1, 3), (4, 6), (7, 9), (10, 12), (13, 2 * Reach + 1) };
             text.AppendLine("Histogram: " + string.Join(", ", bins.Select(b => $"{(b.Item2 > 40 ? $"{b.Item1}+" : $"{b.Item1}–{b.Item2}")}f {r.steps.Count(s => s.Window >= b.Item1 && s.Window <= b.Item2)}"))).AppendLine();
             text.AppendLine("| # | Frame | Input | x | Contact | Color | Window (frames) | Window (px) | Grade |").AppendLine("|---|---|---|---|---|---|---|---|---|");
@@ -467,24 +470,28 @@ public static class PhaseTolerance
 
 #if UNITY_EDITOR
     // Builds each level scene's controller as Play does, then analyzes them off the main thread and writes the report.
-    // Classmate levels are skipped. The scene that was open is reopened.
-    public static readonly string[] Classmate = { "PhaseDemo1.1", "PhaseDemo12", "PhaseDemo13", "PhaseDemo14" };
+    // A level's recorded route (Verification/Routes) is measured too. Classmate levels are skipped; level-a (PhaseDemo13) was
+    // reworked for run and jump and is ours now. The scene that was open is reopened.
+    public static readonly string[] Classmate = { "PhaseDemo1.1", "PhaseDemo14" };
     public static System.Threading.Tasks.Task<string> WriteReport(string path = "Verification/ToleranceReport.md", params string[] levels)
     {
         if (levels.Length == 0) levels = PhaseSandbox.Levels.Except(Classmate).ToArray();
         string open = UnityEngine.SceneManagement.SceneManager.GetActiveScene().path;
-        var controllers = new List<(string level, PhaseController controller)>();
+        var controllers = new List<(string level, PhaseController controller, List<Input> recorded)>();
         foreach (var level in levels)
         {
             UnityEditor.SceneManagement.EditorSceneManager.OpenScene($"Assets/Scenes/{level}.unity");
-            controllers.Add((level, UnityEngine.Object.FindAnyObjectByType<PhaseSandbox>().CreateController()));
+            string route = PhaseRoute.RoutePath(level);
+            var recorded = System.IO.File.Exists(route) ? PhaseRoute.Inputs(PhaseRoute.Parse(System.IO.File.ReadAllText(route)))
+                .Select(i => new Input { x = i.x, held = i.jumpHeld }).ToList() : null;
+            controllers.Add((level, UnityEngine.Object.FindAnyObjectByType<PhaseSandbox>().CreateController(), recorded));
         }
         if (!string.IsNullOrEmpty(open)) UnityEditor.SceneManagement.EditorSceneManager.OpenScene(open);
         return System.Threading.Tasks.Task.Run(() =>
         {
             var results = controllers.Select(l =>
             {
-                var result = Analyze(l.level, l.controller);
+                var result = Analyze(l.level, l.controller, recorded: l.recorded);
                 UnityEngine.Debug.Log($"{l.level}: {result.Verdict}, {result.steps.Count} steps, tight {result.Count("tight")}, {result.seconds:F0}s");
                 return result;
             }).ToList();

@@ -51,6 +51,7 @@ unity command run_script --project-path "$PWD" --timeout 900 -- --file Verificat
 
 `PhaseTolerance.WriteReport(path, levels…)` takes other paths and level lists. `eval` cannot run it: Pipeline stops
 main-thread work after 5 s, so the report builds the controllers on the main thread and analyzes them on a worker thread.
+Do not recompile while a report runs: the domain reload waits for the worker thread, so the Editor stalls until it ends.
 `Run` opens each level scene, builds its controller as Play does, reopens the scene that was open and writes
 `Verification/ToleranceReport.md`; `Smoke` writes PhaseDemo1 and the chaos level to `Temp/tolerance-smoke.md`: a summary
 table, then per level the route length, a window histogram and one row per input with its frame, x, contact, the
