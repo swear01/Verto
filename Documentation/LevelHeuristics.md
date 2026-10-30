@@ -97,6 +97,7 @@
 - 縮圖像刻意的圖案。
 - 一進房間就看得到整個挑戰。
 - 難在想通，不在像素級的操作。
+- Run the [input tolerance report](Tolerance.md): aim for "in band", with moderate (4–12 frame) steps and no tight (≤ 3 frame) ones.
 - 實際玩過能過。這是最後一步，不是第一步。
 
 通關路線之後可以錄下來，防止改程式時把房間弄壞；但它是回歸測試，不是設計的依據。同學做的房間照例不需要錄路線。

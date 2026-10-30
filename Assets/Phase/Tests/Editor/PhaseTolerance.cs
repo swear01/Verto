@@ -10,7 +10,12 @@ using Phase;
 public static class PhaseTolerance
 {
     // Window grades in frames at 60 Hz: tight is near frame-perfect, free needs no precision.
-    public const int TightMax = 3, FreeMin = 13, Reach = 20;
+    // A window stops growing at Enough frames or Reach frames to one side; either is reported as a lower bound.
+    public const int TightMax = 3, FreeMin = 13, Enough = 17, Reach = 20;
+    // A moved input counts as recovered once this many later jumps fire and the player lives half a second more.
+    public const int Horizon = 2;
+    // Route searches tried per level as (decision frames, cost per jump, cost per direction change); the most forgiving route is kept.
+    static readonly (int macro, double jumpCost, double turnCost)[] Searches = { (4, 6, 8), (4, 6, 0), (6, 20, 8) };
     public enum Kind { Press, Release, Turn }
     public struct Input { public int x; public bool held; }
 
@@ -18,7 +23,7 @@ public static class PhaseTolerance
     {
         public Kind kind;
         public int frame, value, lo, hi, phase;
-        public bool loCapped, hiCapped;
+        public bool loCapped, hiCapped, jumps;
         public string contact;
         public double x, xLo, xHi;
         public int Window => hi - lo + 1;
@@ -30,7 +35,7 @@ public static class PhaseTolerance
         public string level, error;
         public List<Input> route;
         public List<Step> steps = new List<Step>();
-        public int expansions, jumps;
+        public int expansions, jumps, routes;
         public double seconds;
         public Step Tightest => steps.OrderBy(s => s.Window).ThenBy(s => s.frame).FirstOrDefault();
         public int Count(string grade) => steps.Count(s => s.Grade == grade);
@@ -105,12 +110,15 @@ public static class PhaseTolerance
         return h;
     }
 
-    public static List<Input> Solve(PhaseController c, out int expansions, int macro = 4, int budget = 150000, double greed = 3, double jumpCost = 6)
+    public static List<Input> Solve(PhaseController c, out int expansions, int macro = 4, int budget = 60000, double greed = 3, double jumpCost = 6, double turnCost = 8)
     {
         var start = Save(c, false); int deaths = c.deaths;
-        var nodes = new List<(State state, int parent, Input input, int frames)> { (start, -1, default, 0) };
+        var nodes = new List<(State state, int parent, Input input, int frames, int turns)> { (start, -1, new Input { x = 1 }, 0, 0) };
         var open = new SortedSet<(double f, int id)> { (0, 0) };
         var seen = new HashSet<long> { Key(c, false) };
+        // Frames to the nearest standing spot on the right edge, as the crow flies at running speed.
+        var exits = c.blocks.Where(b => b.x + b.w >= c.Width && b.y >= 11).Select(b => b.y - 11).Distinct().ToList();
+        double Distance(Player p) => (c.Width - p.x + (exits.Count == 0 ? 0 : exits.Min(y => Math.Abs(y - p.y)))) / 1.5;
         expansions = 0;
         try
         {
@@ -135,9 +143,9 @@ public static class PhaseTolerance
                         return route;
                     }
                     if (!seen.Add(Key(c, input.held))) continue;
-                    int frames = node.frames + macro;
-                    nodes.Add((Save(c, input.held), top.id, input, frames));
-                    open.Add((frames + jumpCost * c.jumps + greed * (c.Width - c.player.x) / 1.5, nodes.Count - 1));
+                    int frames = node.frames + macro, turns = node.turns + (input.x != node.input.x ? 1 : 0);
+                    nodes.Add((Save(c, input.held), top.id, input, frames, turns));
+                    open.Add((frames + jumpCost * c.jumps + turnCost * turns + greed * Distance(c.player), nodes.Count - 1));
                 }
             }
             return null;
@@ -203,29 +211,39 @@ public static class PhaseTolerance
     }
 
     sealed class Event { public Kind kind; public int frame, value, pair = -1; public bool byTime; }
+    // Whether the press at `frame` starts a jump, at once or from the jump buffer.
+    static bool Jumps(Reference r, int frame) => Enumerable.Range(frame + 1, 6).Any(f => f < r.phase.Length && r.phase[f] != r.phase[frame]);
 
     sealed class Reference
     {
         public List<Input> route;
         public List<Event> events = new List<Event>();
         public State[] states;
-        public double[] x, y, vx;
+        public double[] x, y, vx, vy;
         public bool[] grounded;
         public int[] wall, phase;
     }
 
     static string Contact(bool grounded, int wall) => grounded ? "ground" : wall != 0 ? "wall" : "air";
 
-    static Reference Trace(PhaseController c, List<Input> route)
+    // Records the state before every frame; with `prior`, frames before `from` are copied from it because the routes share them.
+    static Reference Trace(PhaseController c, List<Input> route, Reference prior = null, int from = 0)
     {
         var r = new Reference { route = route, states = new State[route.Count + 1], x = new double[route.Count + 1], y = new double[route.Count + 1],
-            vx = new double[route.Count + 1], grounded = new bool[route.Count + 1], wall = new int[route.Count + 1], phase = new int[route.Count + 1] };
+            vx = new double[route.Count + 1], vy = new double[route.Count + 1], grounded = new bool[route.Count + 1], wall = new int[route.Count + 1], phase = new int[route.Count + 1] };
         var start = Save(c, false);
-        bool previous = false;
-        for (int i = 0; i <= route.Count; i++)
+        if (prior == null) from = 0;
+        else
+        {
+            Array.Copy(prior.states, r.states, from); Array.Copy(prior.x, r.x, from); Array.Copy(prior.y, r.y, from); Array.Copy(prior.vx, r.vx, from); Array.Copy(prior.vy, r.vy, from);
+            Array.Copy(prior.grounded, r.grounded, from); Array.Copy(prior.wall, r.wall, from); Array.Copy(prior.phase, r.phase, from);
+            Load(c, prior.states[from]);
+        }
+        bool previous = from > 0 && route[from - 1].held;
+        for (int i = from; i <= route.Count; i++)
         {
             var p = c.player;
-            r.states[i] = Save(c, previous); r.x[i] = p.x; r.y[i] = p.y; r.vx[i] = p.vx; r.grounded[i] = p.grounded || p.coyote > 0; r.wall[i] = p.wall; r.phase[i] = c.phase;
+            r.states[i] = Save(c, previous); r.x[i] = p.x; r.y[i] = p.y; r.vx[i] = p.vx; r.vy[i] = p.vy; r.grounded[i] = p.grounded || p.coyote > 0; r.wall[i] = p.wall; r.phase[i] = c.phase;
             if (i == route.Count) break;
             Tick(c, route[i], previous); previous = route[i].held;
         }
@@ -244,29 +262,32 @@ public static class PhaseTolerance
         for (int k = 0; k < r.events.Count; k++)
         {
             var e = r.events[k];
-            if (e.kind == Kind.Release || Math.Abs(r.vx[e.frame]) < 30) { e.byTime = true; continue; }
-            int from = k > 0 ? r.events[k - 1].frame : 0;
-            for (int f = from; f < e.frame && !e.byTime; f++) e.byTime = Anchored(r, e, r.x[f], r.y[f], r.grounded[f], r.wall[f]);
+            if (e.kind == Kind.Release || (Math.Abs(r.vx[e.frame]) < 30 && Math.Abs(r.vy[e.frame]) < 30)) { e.byTime = true; continue; }
+            int first = k > 0 ? r.events[k - 1].frame : 0;
+            for (int f = first; f < e.frame && !e.byTime; f++) e.byTime = Anchored(r, e, r.x[f], r.y[f], r.grounded[f], r.wall[f]);
         }
         return r;
     }
 
-    // Whether a position-anchored event is due for a player at (x, y) with this contact.
+    // Whether a position-anchored event is due for a player at (x, y) with this contact: the player has passed the reference
+    // spot along its main direction of travel there and is near it across that direction.
     static bool Anchored(Reference r, Event e, double x, double y, bool grounded, int wall)
     {
         int f = e.frame;
-        if ((x - r.x[f]) * Math.Sign(r.vx[f]) < 0 || Math.Abs(y - r.y[f]) > 16) return false;
+        bool across = Math.Abs(r.vx[f]) >= 30;
+        double along = across ? (x - r.x[f]) * Math.Sign(r.vx[f]) : (y - r.y[f]) * Math.Sign(r.vy[f]);
+        if (along < 0 || Math.Abs(across ? y - r.y[f] : x - r.x[f]) > 16) return false;
         if (e.kind != Kind.Press) return true;
         return r.grounded[f] ? grounded : r.wall[f] != 0 ? wall == r.wall[f] : true;
     }
 
     // Replays the reference with event `p` moved by `shift` frames. Later presses and turns follow the player: each fires where
     // the player reaches the reference spot; a release keeps its hold time. Returns the frame route played, or null on failure.
-    static List<Input> Play(PhaseController c, Reference r, int p, int shift, out double firedX)
+    static List<Input> Play(PhaseController c, Reference r, int p, int shift, out double firedX, int horizon = Horizon, int start = int.MaxValue)
     {
         firedX = double.NaN;
         var events = r.events; var target = events[p];
-        int begin = Math.Min(target.frame, target.frame + shift), deaths = c.deaths;
+        int begin = Math.Min(Math.Min(target.frame, target.frame + shift), start), deaths = c.deaths;
         var fired = new int[events.Count];
         int next = 0; while (next < events.Count && events[next].frame < begin) { fired[next] = events[next].frame; next++; }
         var played = r.route.Take(begin).ToList();
@@ -275,6 +296,7 @@ public static class PhaseTolerance
         bool previous = r.states[begin].held;
         int limit = r.route.Count + 600;
         bool done = false;
+        int jumps = 0, settled = int.MaxValue;
         try
         {
             for (int f = begin; f < limit; f++)
@@ -297,32 +319,79 @@ public static class PhaseTolerance
                         break;
                     }
                     Apply(e, ref input);
+                    if (e.kind == Kind.Press && ++jumps == horizon) settled = f + 30;
                     fired[next++] = f;
                 }
                 if (next >= events.Count && f >= r.route.Count + 30) input = new Input { x = 1 };
                 played.Add(input);
                 Tick(c, input, previous); previous = input.held;
                 if (c.deaths != deaths || c.respawn > 0) return null;
-                if (Won(c)) return played;
+                if (Won(c) || f >= settled) return played;
             }
             return null;
         }
         finally { Load(c, r.states[0]); }
     }
 
+    // The reference without the events at `a` and `b`; later inputs keep their position anchors.
+    static Reference Without(Reference r, int a, int b)
+    {
+        var copy = new Reference { route = r.route, states = r.states, x = r.x, y = r.y, vx = r.vx, vy = r.vy, grounded = r.grounded, wall = r.wall, phase = r.phase };
+        copy.events = r.events.Where((e, i) => i != a && i != b).Select(e => new Event { kind = e.kind, frame = e.frame, value = e.value, byTime = e.byTime,
+            pair = e.pair < 0 ? -1 : e.pair - (e.pair > a ? 1 : 0) - (e.pair > b ? 1 : 0) }).ToList();
+        return copy;
+    }
+
+    // Drops each detour (a stop or step back and the return to running right, or a release and the next press) when the route
+    // still wins with later inputs fired at the same places, so the measured route keeps only the inputs it needs.
+    static Reference DropDetours(PhaseController c, Reference r)
+    {
+        for (int a = 0; a < r.events.Count; a++)
+        {
+            var kind = r.events[a].kind;
+            if (kind == Kind.Press || (kind == Kind.Turn && r.events[a].value == 1)) continue;
+            int b = a + 1; while (b < r.events.Count && (r.events[b].kind == Kind.Turn) != (kind == Kind.Turn)) b++;
+            if (b >= r.events.Count || (kind == Kind.Turn && r.events[b].value != 1)) continue;
+            var without = Without(r, a, b);
+            int from = r.events[a].frame, p = without.events.FindIndex(e => e.frame >= from);
+            var route = p < 0 ? null : Play(c, without, p, 0, out _, int.MaxValue, from);
+            if (route == null) continue;
+            var next = Trace(c, route, r, from);
+            if (next.events.Count != r.events.Count - 2) continue;
+            r = next; a--;
+        }
+        return r;
+    }
+
     static void Apply(Event e, ref Input input) { if (e.kind == Kind.Turn) input.x = e.value; else input.held = e.value == 1; }
 
     // ---- Analysis.
 
-    public static Result Analyze(string level, PhaseController c, int macro = 4, int budget = 150000)
+    // Analyzes the route of each search setting and keeps the one with the fewest tight steps, then the widest tightest window.
+    public static Result Analyze(string level, PhaseController c, int budget = 60000)
     {
         var watch = System.Diagnostics.Stopwatch.StartNew();
+        Result best = null; int expansions = 0;
+        var tried = new HashSet<string>();
+        foreach (var (macro, jumpCost, turnCost) in Searches)
+        {
+            var route = Solve(c, out int searched, macro, budget, jumpCost: jumpCost, turnCost: turnCost);
+            expansions += searched;
+            if (route == null) continue;
+            var r = DropDetours(c, Trace(c, Simplify(c, route)));
+            if (!tried.Add(string.Join(",", r.events.Select(e => $"{e.kind}{e.frame}")))) continue;
+            var result = Measure(level, c, r);
+            if (best == null || (result.error == null && (best.error != null || Score(result).CompareTo(Score(best)) > 0))) best = result;
+        }
+        best = best ?? new Result { level = level, error = $"no route within {budget} expanded states per search" };
+        best.expansions = expansions; best.routes = tried.Count; best.seconds = watch.Elapsed.TotalSeconds;
+        return best;
+    }
+    static (int, int, int) Score(Result r) => (-r.Count("tight"), r.Tightest?.Window ?? int.MaxValue, -r.Count("moderate") - r.Count("tight"));
+
+    static Result Measure(string level, PhaseController c, Reference r)
+    {
         var result = new Result { level = level };
-        var route = Solve(c, out result.expansions, macro, budget);
-        if (route == null && macro > 2) route = Solve(c, out result.expansions, 2, budget);
-        if (route == null) { result.error = $"no route within {result.expansions} expanded states"; result.seconds = watch.Elapsed.TotalSeconds; return result; }
-        route = Simplify(c, route);
-        var r = Trace(c, route);
         for (int p = 0; p < r.events.Count; p++)
         {
             var e = r.events[p];
@@ -332,39 +401,42 @@ public static class PhaseTolerance
             for (int k = p - 1; k >= 0; k--)
                 if ((r.events[k].kind == Kind.Turn) == (e.kind == Kind.Turn)) { min = r.events[k].frame + 1 - e.frame; break; }
             int lo = 0, hi = 0; double xLo = r.x[e.frame], xHi = xLo;
-            while (hi < Reach && Play(c, r, p, hi + 1, out double fx) != null) { hi++; xHi = fx; }
-            while (lo > Math.Max(-Reach, min) && Play(c, r, p, lo - 1, out double fx) != null) { lo--; xLo = fx; }
-            bool loCapped = lo <= Math.Max(-Reach, min), hiCapped = hi >= Reach;
+            bool late = true, early = lo > Math.Max(-Reach, min);
+            while ((late || early) && hi - lo + 1 < Enough)
+            {
+                if (late) { if (hi < Reach && Play(c, r, p, hi + 1, out double fx) != null) { hi++; xHi = fx; } else late = false; }
+                if (early && hi - lo + 1 < Enough) { if (lo > Math.Max(-Reach, min) && Play(c, r, p, lo - 1, out double fx) != null) { lo--; xLo = fx; } else early = false; }
+            }
+            bool loCapped = early || lo <= Math.Max(-Reach, min), hiCapped = late || hi >= Reach;
             // Recentre the input in its window, as a careful player would, before measuring the inputs after it.
             int centre = (lo + hi) / 2;
-            if (centre != 0 && Play(c, r, p, centre, out _) is List<Input> relaxed)
+            if (centre != 0 && Play(c, r, p, centre, out _, int.MaxValue) is List<Input> relaxed)
             {
                 int count = r.events.Count;
-                var moved = Trace(c, relaxed);
+                var moved = Trace(c, relaxed, r, Math.Min(e.frame, e.frame + centre));
                 if (moved.events.Count == count) { r = moved; lo -= centre; hi -= centre; e = r.events[p]; }
             }
             result.steps.Add(new Step { kind = e.kind, frame = e.frame, value = e.value, lo = lo, hi = hi, loCapped = loCapped, hiCapped = hiCapped,
                 contact = Contact(r.grounded[e.frame], r.wall[e.frame]), x = r.x[e.frame], xLo = Math.Min(xLo, xHi), xHi = Math.Max(xLo, xHi),
-                phase = r.phase[Math.Min(e.frame + 1, r.route.Count)] });
+                jumps = e.kind == Kind.Press && Jumps(r, e.frame), phase = r.phase[Math.Min(e.frame + 6, r.route.Count)] });
         }
         result.route = r.route;
-        result.jumps = r.events.Count(e => e.kind == Kind.Press);
+        result.jumps = r.events.Count(e => e.kind == Kind.Press && Jumps(r, e.frame));
         if (result.error == null && !Wins(c, r.route)) result.error = "final route does not win";
-        result.seconds = watch.Elapsed.TotalSeconds;
         return result;
     }
 
     // ---- Report.
 
     static readonly string[] Colors = { "red", "blue", "green" };
-    static string Describe(Step s) => s.kind == Kind.Press ? "jump" : s.kind == Kind.Release ? "release" : s.value > 0 ? "right" : s.value < 0 ? "left" : "stop";
+    static string Describe(Step s) => s.kind == Kind.Press ? (s.jumps ? "jump" : "press") : s.kind == Kind.Release ? "release" : s.value > 0 ? "right" : s.value < 0 ? "left" : "stop";
 
     public static string Markdown(IEnumerable<Result> results)
     {
         var text = new StringBuilder();
         text.AppendLine("# Input tolerance report").AppendLine()
             .AppendLine($"Window = frames (60 Hz) an input may move and still win; tight ≤ {TightMax}, moderate {TightMax + 1}–{FreeMin - 1}, free ≥ {FreeMin}. " +
-                $"Search reach is ±{Reach} frames. See Documentation/Tolerance.md.").AppendLine()
+                $"A window stops growing at {Enough} frames or ±{Reach}; ≤/≥ mark such bounds. See Documentation/Tolerance.md.").AppendLine()
             .AppendLine("| Level | Verdict | Jumps | Steps | Free | Moderate | Tight | Tightest step |").AppendLine("|---|---|---|---|---|---|---|---|");
         var list = results.ToList();
         foreach (var r in list)
@@ -379,14 +451,14 @@ public static class PhaseTolerance
             text.AppendLine().AppendLine($"## {r.level}").AppendLine();
             if (r.error != null) text.AppendLine($"Problem: {r.error}.").AppendLine();
             if (r.route == null) { text.AppendLine($"Search time {r.seconds:F1}s, {r.expansions} states."); continue; }
-            text.AppendLine($"Route {r.route.Count} frames ({r.route.Count / 60.0:F1}s), {r.jumps} jumps; {r.expansions} states searched, {r.seconds:F1}s.").AppendLine();
+            text.AppendLine($"Route {r.route.Count} frames ({r.route.Count / 60.0:F1}s), {r.jumps} jumps; most forgiving of {r.routes} routes from {r.expansions} searched states, {r.seconds:F0}s.").AppendLine();
             var bins = new[] { (1, 3), (4, 6), (7, 9), (10, 12), (13, 2 * Reach + 1) };
             text.AppendLine("Histogram: " + string.Join(", ", bins.Select(b => $"{(b.Item2 > 40 ? $"{b.Item1}+" : $"{b.Item1}–{b.Item2}")}f {r.steps.Count(s => s.Window >= b.Item1 && s.Window <= b.Item2)}"))).AppendLine();
             text.AppendLine("| # | Frame | Input | x | Contact | Color | Window (frames) | Window (px) | Grade |").AppendLine("|---|---|---|---|---|---|---|---|---|");
             for (int i = 0; i < r.steps.Count; i++)
             {
                 var s = r.steps[i];
-                text.AppendLine($"| {i + 1} | {s.frame} | {Describe(s)} | {s.x:F0} | {s.contact} | {(s.kind == Kind.Press && s.phase >= 0 ? Colors[s.phase] : "")} | " +
+                text.AppendLine($"| {i + 1} | {s.frame} | {Describe(s)} | {s.x:F0} | {s.contact} | {(s.jumps ? Colors[s.phase] : "")} | " +
                     $"{s.Window} ({(s.loCapped ? "≤" : "")}{s.lo}..{(s.hiCapped ? "≥" : "")}+{s.hi}) | {s.xHi - s.xLo:F0} | {s.Grade} |");
             }
         }
@@ -394,22 +466,31 @@ public static class PhaseTolerance
     }
 
 #if UNITY_EDITOR
-    // Builds each level scene's controller as Play does and writes the report. Classmate levels are skipped.
+    // Builds each level scene's controller as Play does, then analyzes them off the main thread and writes the report.
+    // Classmate levels are skipped. The scene that was open is reopened.
     public static readonly string[] Classmate = { "PhaseDemo1.1", "PhaseDemo12", "PhaseDemo13", "PhaseDemo14" };
-    public static string WriteReport(string path = "Verification/ToleranceReport.md", params string[] levels)
+    public static System.Threading.Tasks.Task<string> WriteReport(string path = "Verification/ToleranceReport.md", params string[] levels)
     {
         if (levels.Length == 0) levels = PhaseSandbox.Levels.Except(Classmate).ToArray();
-        var results = new List<Result>();
+        string open = UnityEngine.SceneManagement.SceneManager.GetActiveScene().path;
+        var controllers = new List<(string level, PhaseController controller)>();
         foreach (var level in levels)
         {
             UnityEditor.SceneManagement.EditorSceneManager.OpenScene($"Assets/Scenes/{level}.unity");
-            var sandbox = UnityEngine.Object.FindAnyObjectByType<PhaseSandbox>();
-            var result = Analyze(level, sandbox.CreateController());
-            UnityEngine.Debug.Log($"{level}: {result.Verdict}, {result.steps.Count} steps, tight {result.Count("tight")}, {result.seconds:F1}s");
-            results.Add(result);
+            controllers.Add((level, UnityEngine.Object.FindAnyObjectByType<PhaseSandbox>().CreateController()));
         }
-        System.IO.File.WriteAllText(path, Markdown(results));
-        return string.Join("\n", results.Select(r => $"{r.level}: {r.Verdict}"));
+        if (!string.IsNullOrEmpty(open)) UnityEditor.SceneManagement.EditorSceneManager.OpenScene(open);
+        return System.Threading.Tasks.Task.Run(() =>
+        {
+            var results = controllers.Select(l =>
+            {
+                var result = Analyze(l.level, l.controller);
+                UnityEngine.Debug.Log($"{l.level}: {result.Verdict}, {result.steps.Count} steps, tight {result.Count("tight")}, {result.seconds:F0}s");
+                return result;
+            }).ToList();
+            System.IO.File.WriteAllText(path, Markdown(results));
+            return string.Join("\n", results.Select(r => $"{r.level}: {r.Verdict}"));
+        });
     }
 #endif
 }

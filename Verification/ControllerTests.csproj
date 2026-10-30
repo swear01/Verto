@@ -24,6 +24,8 @@
     <Compile Include="../Assets/Phase/Tests/Editor/PlatformTests.cs" />
     <Compile Include="../Assets/Phase/Tests/Editor/ScrollRoomTests.cs" />
     <Compile Include="../Assets/Phase/Tests/Editor/WorldTests.cs" />
+    <Compile Include="../Assets/Phase/Tests/Editor/PhaseTolerance.cs" />
+    <Compile Include="../Assets/Phase/Tests/Editor/ToleranceTests.cs" />
     <None Include="../Assets/Phase/CrystalRooms.json" Link="Assets/Phase/CrystalRooms.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../Assets/Phase/DemoRooms.json" Link="Assets/Phase/DemoRooms.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../Assets/Phase/Tests/Fixtures/*.json"
