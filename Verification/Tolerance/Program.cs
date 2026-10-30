@@ -10,12 +10,11 @@ using Phase;
 // root: dotnet run -c Release --project Verification/Tolerance [-- PhaseGear ...]. See Documentation/Tolerance.md.
 static class Program
 {
-    // Each level scene is built from these files by PhaseSandboxBuilder; the classmate levels PhaseDemo1.1 and PhaseDemo14
-    // are left out. A new level needs a line here.
+    // Each level scene is built from these files by PhaseSandboxBuilder; the classmate level PhaseDemo1.1 is left out. A new level needs a line here.
     static readonly Dictionary<string, string> Maps = new Dictionary<string, string>
     {
         ["PhaseDemo1"] = "Assets/Phase/DemoRooms.json", ["PhaseDemo13"] = "Assets/Phase/Imported/level-a.json",
-        ["PhaseDemo15"] = "Assets/Phase/Imported/chaos.json", ["PhaseUmbrella"] = "Assets/Phase/Imported/umbrella.json",
+        ["PhaseDemo14"] = "Assets/Phase/Imported/level-b.json",        ["PhaseDemo15"] = "Assets/Phase/Imported/chaos.json", ["PhaseUmbrella"] = "Assets/Phase/Imported/umbrella.json",
         ["PhaseGear"] = "Assets/Phase/Imported/level-gear.json",
     };
 

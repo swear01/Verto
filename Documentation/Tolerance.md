@@ -55,7 +55,7 @@ It builds each level from the map file its scene is built from (the table in `Ve
 new level there), measures its recorded route in `Verification/Routes` when there is one, and writes
 `Verification/ToleranceReport.md`: a summary table, then per level the route length, a window histogram and one row per
 input with its frame, x, contact, the color a jump gives, the window in frames and in pixels and its grade. The classmate
-levels PhaseDemo1.1 and PhaseDemo14 are left out. A level takes seconds to a few minutes; the Umbrella level is the
+level PhaseDemo1.1 is left out. A level takes seconds to a few minutes; the Umbrella level is the
 slowest because each of its frames checks 160 lasers.
 It runs outside Unity on purpose: Pipeline `run_script` and `eval` hold the Editor's main thread for the whole run.
 `ToleranceTests` (Edit Mode and the .NET controller tests) checks that a 48 px pit grades free and an 84 px one tight.
