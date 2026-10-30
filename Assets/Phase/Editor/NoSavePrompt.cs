@@ -11,30 +11,32 @@ static class NoSavePrompt
     static readonly System.Reflection.MethodInfo Clear = typeof(EditorSceneManager).GetMethod("ClearSceneDirtiness",
         System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
 
+    static string watched;
+    static System.DateTime written;
+
     static NoSavePrompt()
     {
-        EditorApplication.update += ClearDirty;
+        EditorApplication.update += Tick;
+        EditorSceneManager.sceneSaved += scene => written = System.IO.File.GetLastWriteTimeUtc(scene.path);
     }
 
-    static void ClearDirty()
+    static void Tick()
     {
-        if (Clear == null || EditorApplication.isPlayingOrWillChangePlaymode) return;
+        if (EditorApplication.isPlayingOrWillChangePlaymode) return;
         for (int i = 0; i < SceneManager.sceneCount; i++)
         {
             var scene = SceneManager.GetSceneAt(i);
-            if (scene.isDirty) Clear.Invoke(null, new object[] { scene });
+            if (Clear != null && scene.IsValid() && scene.isLoaded && scene.isDirty) Clear.Invoke(null, new object[] { scene });
         }
-    }
-
-    class Reloader : AssetPostprocessor
-    {
-        static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
+        if (SceneManager.sceneCount != 1) return;
+        var path = SceneManager.GetSceneAt(0).path;
+        if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path)) return;
+        var now = System.IO.File.GetLastWriteTimeUtc(path);
+        if (path != watched) { watched = path; written = now; }
+        else if (now != written)
         {
-            if (EditorApplication.isPlayingOrWillChangePlaymode || SceneManager.sceneCount != 1) return;
-            var scene = SceneManager.GetSceneAt(0);
-            if (string.IsNullOrEmpty(scene.path) || System.Array.IndexOf(imported, scene.path) < 0) return;
-            var path = scene.path;
-            EditorApplication.delayCall += () => EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
+            written = now;
+            EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
         }
     }
 }
