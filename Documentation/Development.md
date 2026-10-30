@@ -17,8 +17,13 @@ first Play Mode test run. The Editor resolves the committed package manifest its
 On macOS, launch a new agent Editor hidden and without activating it:
 
 ```sh
-open -g -j -n -a /Applications/Unity/Hub/Editor/6000.6.7f1/Unity.app --args -projectPath "$PWD"
+open -g -j -n -a /Applications/Unity/Hub/Editor/6000.6.7f1/Unity.app --args -projectPath "$PWD" -ignoreCompilerErrors
 ```
+
+`-ignoreCompilerErrors` skips the "Enter Safe Mode?" prompt that a project with compile
+errors would raise at launch; read the errors through the Console after launch. A fresh
+worktree with a cloned `Library` can compile once before its packages resolve; relaunch
+the Editor if the Console shows missing `Keyboard` / `JObject` / `BoxCollider2D` types.
 
 This macOS launch only controls window activation; all Editor operations below
 use the official Unity CLI and Pipeline. `unity open` currently has no background
@@ -49,8 +54,14 @@ unity command test_status
 ```
 
 To recreate the sandbox, call its existing builder through the connected Editor:
-`unity command eval 'PhaseSandboxBuilder.Create();'`. Save any intentional scene
-edits first; the builder preserves Unity's unsaved-scene confirmation.
+`unity command eval 'PhaseSandboxBuilder.Create();'`. The builder saves its own scenes.
+
+The Editor never prompts about scenes. `Assets/Phase/Editor/NoSavePrompt.cs` clears every
+loaded scene's dirty flag while Play is stopped (so "Scene(s) Have Been Modified" never
+opens before Play Mode tests or `OpenScene`) and reloads the open scene from disk when its
+file changes (no "modified externally" dialog). Unsaved edits are therefore dropped like
+"Don't Save"; AI sessions must save any scene edit that has to persist explicitly with
+`EditorSceneManager.SaveScene` in the same `eval` or script.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 16 controller cases, 7 laser cases, 8 crystal cases, 15 pixel cases, 12 platform cases,
