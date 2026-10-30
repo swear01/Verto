@@ -146,6 +146,9 @@ public class PlatformTests
             c.player.x = x; c.player.y = y;
             Assert.That(c.CheckHazards(), Is.True, $"touching the face at {x},{y} in blue kills");
         }
+        var graze = new PhaseController(new[] { new Block(0, 160, 320, 24), covered }, 32, 149); graze.phase = 1;
+        graze.player.x = 92; graze.player.y = 130;
+        Assert.That(graze.CheckHazards(), Is.False, "brushing a corner beside the teeth does not kill");
         var red = new PhaseController(new[] { new Block(0, 160, 320, 24), covered }, 32, 149);
         red.player.x = 92; red.player.y = 149;
         Assert.That((red.CheckHazards(), red.Solid().Contains(covered)), Is.EqualTo((false, false)), "dark spike-covered blocks are harmless and passable");

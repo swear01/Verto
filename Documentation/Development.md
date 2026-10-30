@@ -55,11 +55,11 @@ edits first; the builder preserves Unity's unsaved-scene confirmation.
 Wait for each `test_status` result to be `completed` and inspect its summary before
 starting the next test run. There are 18 controller cases, 7 laser cases, 8 crystal cases, 15 pixel cases, 12 platform cases,
 4 Grid authoring cases, 10 custom-map cases (validation, version migration, newer-version refusal, round trips), 6 scrolling-room cases, 17 world cases
-(map format v3, room changes, open top, respawns, goal, camera) and 3 key-binding cases
-(validation, PlayerPrefs persistence, key caps) in Edit Mode. The 30 Play Mode cases cover a big-room camera
+(map format v3, room changes, open top, respawns, goal, camera) and 4 key-binding cases
+(validation, PlayerPrefs persistence, key caps, volume levels) in Edit Mode. The 30 Play Mode cases cover a big-room camera
 following a keyboard run, bindings, pause/release gating, room persistence, crystal triggers, imported maps and jump platforms, the
 title/editor flow, the editor's fixed tool panel under mouse input, room creation, merging, splitting and moving in the editor, the pause menu with key
-settings, the fullscreen switch, and level select from the title, pause and victory screens.
+settings, the fullscreen control, and level select from the title, pause and victory screens.
 The two reference files preserve 12 movement traces (running, jumps, buffers, coyote time, falling, wall
 slide and wall jump) recorded before dash and climbing were removed; their expectations are unchanged.
 Production steps at 1/60 s; reference replays use the recorded 0.0166667 s.

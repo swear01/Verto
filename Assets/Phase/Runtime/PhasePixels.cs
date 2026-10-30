@@ -16,7 +16,7 @@ namespace Phase
             if (mask < 1 || mask > 7) throw new ArgumentOutOfRangeException(nameof(mask));
             return Hex(Highlights[surfaceIndices[mask]]);
         }
-        const string Ink = "0b0f16", Glow = "4fe8ff", Danger = "ff2d3d";
+        const string Ink = "0b0f16", Glow = "4fe8ff", Tooth = "f5f1e4";
         static readonly Dictionary<string, Color32> colors = new Dictionary<string, Color32>();
         Color32[] view = new Color32[320 * 180], buffer;
         public int Width => Texture.width;
@@ -237,7 +237,7 @@ namespace Phase
         static Dictionary<char,Color32> SpikePalette(int mask,bool active)
         {
             int color=surfaceIndices[mask];var cap=Color(Highlights[color]);var rim=Color(Edges[color]);var body=Color(Fills[color]);
-            var palette=new Dictionary<char,Color32>{['T']=active?Color(Danger):Mix(rim,Color("101a26"),.45),['L']=active?cap:Mix(body,Color("101a26"),.4),['M']=active?rim:Mix(body,Color("101a26"),.6),['D']=active?body:Mix(body,Color("101a26"),.6)};
+            var palette=new Dictionary<char,Color32>{['T']=active?Color(Tooth):Mix(rim,Color("101a26"),.45),['L']=active?cap:Mix(body,Color("101a26"),.4),['M']=active?rim:Mix(body,Color("101a26"),.6),['D']=active?body:Mix(body,Color("101a26"),.6)};
             if(active)palette['o']=Color(Ink);
             return palette;
         }

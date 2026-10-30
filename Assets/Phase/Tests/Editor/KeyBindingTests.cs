@@ -74,4 +74,23 @@ public class KeyBindingTests
         }
         finally { UnityEngine.Object.DestroyImmediate(texture); }
     }
+
+    [Test]
+    public void VolumeLevelsClampAndPersist()
+    {
+        int sfx = PhaseAudio.SfxLevel, music = PhaseAudio.MusicLevel;
+        string old = PlayerPrefs.GetString(PhaseAudio.VolumeKey, null);
+        try
+        {
+            PhaseAudio.SetLevel(true, 99); PhaseAudio.SetLevel(false, -3);
+            Assert.That((PhaseAudio.SfxLevel, PhaseAudio.MusicLevel), Is.EqualTo((PhaseAudio.MaxLevel, 0)));
+            Assert.That(PlayerPrefs.GetString(PhaseAudio.VolumeKey), Is.EqualTo(PhaseAudio.MaxLevel + ",0"));
+        }
+        finally
+        {
+            PhaseAudio.SetLevel(true, sfx); PhaseAudio.SetLevel(false, music);
+            if (old == null) PlayerPrefs.DeleteKey(PhaseAudio.VolumeKey); else PlayerPrefs.SetString(PhaseAudio.VolumeKey, old);
+            PlayerPrefs.Save();
+        }
+    }
 }
