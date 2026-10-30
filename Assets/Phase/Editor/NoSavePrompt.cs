@@ -11,6 +11,7 @@ static class NoSavePrompt
     static readonly System.Reflection.MethodInfo Clear = typeof(EditorSceneManager).GetMethod("ClearSceneDirtiness",
         System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
 
+    static readonly object[] ClearArgs = new object[1];
     static string watched;
     static System.DateTime written;
 
@@ -26,7 +27,11 @@ static class NoSavePrompt
         for (int i = 0; i < SceneManager.sceneCount; i++)
         {
             var scene = SceneManager.GetSceneAt(i);
-            if (Clear != null && scene.IsValid() && scene.isLoaded && scene.isDirty) Clear.Invoke(null, new object[] { scene });
+            if (Clear != null && scene.IsValid() && scene.isLoaded && scene.isDirty)
+            {
+                ClearArgs[0] = scene;
+                Clear.Invoke(null, ClearArgs);
+            }
         }
         if (SceneManager.sceneCount != 1) return;
         var path = SceneManager.GetSceneAt(0).path;
