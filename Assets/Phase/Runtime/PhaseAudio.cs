@@ -9,7 +9,7 @@ namespace Phase
         const int Rate = 44100;
         const float MusicBase = .1f;
         public const int MaxLevel = 10;
-        const string VolumeKey = "phase.volume.v1";
+        public const string VolumeKey = "phase.volume.v1";
         static AudioSource source;
         static AudioClip[] jump;
         static AudioClip land, death, crystal;
@@ -21,6 +21,7 @@ namespace Phase
         // Sound-effect and music levels, 0..MaxLevel each, saved as "sfx,music".
         static int sfxLevel = MaxLevel, musicLevel = MaxLevel;
         static bool loaded;
+        static int activeMusicLayer;
         public static int SfxLevel { get { Load(); return sfxLevel; } }
         public static int MusicLevel { get { Load(); return musicLevel; } }
         static void Load()
@@ -36,12 +37,13 @@ namespace Phase
         {
             Load();
             level = Mathf.Clamp(level, 0, MaxLevel);
+            if (level == (sfx ? sfxLevel : musicLevel)) return;
             if (sfx) sfxLevel = level; else musicLevel = level;
             PlayerPrefs.SetString(VolumeKey, sfxLevel + "," + musicLevel); PlayerPrefs.Save();
             if (!Application.isPlaying) return;
             Init();
             if (sfx) Play(jump[0]);
-            else foreach (var m in music) if (m.volume > 0) m.volume = MusicBase * musicLevel / MaxLevel;
+            else music[activeMusicLayer].volume = MusicBase * musicLevel / MaxLevel;
         }
 
         static AudioClip Tone(string name, float seconds, Func<float, float> pitch, float volume, bool square = true, float noise = 0)
@@ -115,9 +117,10 @@ namespace Phase
             var p = c.player;
             // Each jump moves the music to that phase's layer.
             const float MusicFadeSeconds = .5f;
+            activeMusicLayer = Math.Max(0, c.phase) % 3;
             float musicVolume = MusicBase * MusicLevel / MaxLevel;
             for (int i = 0; i < 3; i++)
-                music[i].volume = Mathf.MoveTowards(music[i].volume, i == Math.Max(0, c.phase) % 3 ? musicVolume : 0, MusicBase / MusicFadeSeconds * (float)PhaseController.Dt);
+                music[i].volume = Mathf.MoveTowards(music[i].volume, i == activeMusicLayer ? musicVolume : 0, MusicBase / MusicFadeSeconds * (float)PhaseController.Dt);
             if (c.deaths > was.deaths) Play(death);
             else if (c.jumps > was.jumps) Play(jump[Math.Max(0, c.phase) % 3]);
             else if (p.grounded && !was.grounded && c.respawn <= 0) Play(land);

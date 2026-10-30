@@ -101,7 +101,7 @@ public static class KeysLiveInput
             Capture(level, "keys-restored");
             int sfx = PhaseAudio.SfxLevel, music = PhaseAudio.MusicLevel;
             await Tap(keyboard, Key.UpArrow); await Repeat(keyboard, Key.LeftArrow, 3);
-            Require(level.Keys.Row == PhaseKeys.MusicRow && PhaseAudio.MusicLevel == music - 3, "Left on the music slider did not lower it.");
+            Require(level.Keys.Row == PhaseKeys.MusicRow && PhaseAudio.MusicLevel == Mathf.Max(0, music - 3), "Left on the music slider did not lower it.");
             await Tap(keyboard, Key.UpArrow); await Repeat(keyboard, Key.LeftArrow, 6);
             Require(level.Keys.Row == PhaseKeys.SfxRow && PhaseAudio.SfxLevel == Mathf.Max(0, sfx - 6), "Left on the effects slider did not lower it.");
             Capture(level, "settings-volume");

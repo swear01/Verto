@@ -189,7 +189,7 @@ namespace Phase
 
     // Settings: three action rows (left, right, jump) with two key slots each, effect and music volume sliders,
     // then a row of three controls: restore default keys, fullscreen and close.
-    // Arrows move; left and right also step a slider; Enter, jump or a click captures the next key or uses the control; Backspace clears; Escape cancels or closes.
+    // Arrows move; left and right (or a click) set a slider; Enter, jump or a click captures the next key or uses the control; Backspace clears; Escape cancels or closes.
     public sealed class PhaseKeys
     {
         public const int SfxRow = 3, MusicRow = 4, ControlsRow = 5, RestoreColumn = 0, FullScreenColumn = 1, BackColumn = 2;
