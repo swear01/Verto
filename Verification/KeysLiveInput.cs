@@ -96,13 +96,22 @@ public static class KeysLiveInput
 
             await Tap(keyboard, Key.Escape); await Repeat(keyboard, Key.RightArrow, 2); await Tap(keyboard, Key.Enter);
             Require(level.Keys != null, "Pause gear did not open settings.");
-            await Repeat(keyboard, Key.DownArrow, PhaseKeys.RestoreRow); await Tap(keyboard, Key.Enter);
+            await Repeat(keyboard, Key.DownArrow, PhaseKeys.ControlsRow); await Tap(keyboard, Key.Enter);
             Require(PhaseSandbox.Slots.SequenceEqual(PhaseSandbox.DefaultSlots), "Restore did not reset the bindings.");
             Capture(level, "keys-restored");
+            int sfx = PhaseAudio.SfxLevel, music = PhaseAudio.MusicLevel;
+            await Tap(keyboard, Key.UpArrow); await Repeat(keyboard, Key.LeftArrow, 3);
+            Require(level.Keys.Row == PhaseKeys.MusicRow && PhaseAudio.MusicLevel == music - 3, "Left on the music slider did not lower it.");
+            await Tap(keyboard, Key.UpArrow); await Repeat(keyboard, Key.LeftArrow, 6);
+            Require(level.Keys.Row == PhaseKeys.SfxRow && PhaseAudio.SfxLevel == Mathf.Max(0, sfx - 6), "Left on the effects slider did not lower it.");
+            Capture(level, "settings-volume");
+            PhaseAudio.SetLevel(true, sfx); PhaseAudio.SetLevel(false, music);
+            await Repeat(keyboard, Key.DownArrow, 3);
+            Require(level.Keys.Row == PhaseKeys.ControlsRow && level.Keys.Column == PhaseKeys.RestoreColumn, "Down did not return to the controls row.");
             // The Editor ignores Screen.fullScreen; a stand-in records the switch's requests.
             bool full = false; PhaseKeys.IsFullScreen = () => full; PhaseKeys.SetFullScreen = on => full = on;
-            await Tap(keyboard, Key.DownArrow); await Tap(keyboard, Key.Enter); await Frames(2);
-            Require(level.Keys.Row == PhaseKeys.FullScreenRow && full, "Enter on the last row did not request fullscreen.");
+            await Tap(keyboard, Key.RightArrow); await Tap(keyboard, Key.Enter); await Frames(2);
+            Require(level.Keys.Row == PhaseKeys.ControlsRow && level.Keys.Column == PhaseKeys.FullScreenColumn && full, "Enter on the fullscreen control did not request fullscreen.");
             Capture(level, "settings-fullscreen");
             await Tap(keyboard, Key.Z);
             Require(!full, "Jump on the switch did not leave fullscreen.");
@@ -111,7 +120,7 @@ public static class KeysLiveInput
             await Tap(keyboard, Key.Enter);
             await Scene(PhaseTitle.Scene);
             string report = "passed: title settings bind J + duplicate rejected, title level select→level1, J jumps " + played +
-                ", Escape pause freezes play, pause level select→next level, pause settings restore defaults, fullscreen on/off, pause→title";
+                ", Escape pause freezes play, pause level select→next level, pause settings restore defaults, volume sliders, fullscreen on/off, pause→title";
             File.WriteAllText(Reports + "live-input.txt", report); return report;
         }
         finally

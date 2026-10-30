@@ -7,6 +7,9 @@ namespace Phase
     public static class PhaseAudio
     {
         const int Rate = 44100;
+        const float MusicBase = .1f;
+        public const int MaxLevel = 10;
+        const string VolumeKey = "phase.volume.v1";
         static AudioSource source;
         static AudioClip[] jump;
         static AudioClip land, death, crystal;
@@ -14,6 +17,32 @@ namespace Phase
         static readonly int[] Bass = { 45, 41, 48, 43 };
         static readonly int[][] Chord = { new[] { 57, 60, 64 }, new[] { 53, 57, 60 }, new[] { 60, 64, 67 }, new[] { 55, 59, 62 } };
         static readonly int[] Lead = { 76, 0, 72, 0, 69, 0, 72, 76, 77, 0, 74, 0, 72, 0, 69, 72, 76, 0, 72, 0, 67, 0, 72, 76, 74, 0, 71, 0, 67, 0, 71, 74 };
+
+        // Sound-effect and music levels, 0..MaxLevel each, saved as "sfx,music".
+        static int sfxLevel = MaxLevel, musicLevel = MaxLevel;
+        static bool loaded;
+        public static int SfxLevel { get { Load(); return sfxLevel; } }
+        public static int MusicLevel { get { Load(); return musicLevel; } }
+        static void Load()
+        {
+            if (loaded) return;
+            loaded = true;
+            var parts = PlayerPrefs.GetString(VolumeKey, "").Split(',');
+            if (parts.Length == 2 && int.TryParse(parts[0], out int sfx) && int.TryParse(parts[1], out int bgm))
+            { sfxLevel = Mathf.Clamp(sfx, 0, MaxLevel); musicLevel = Mathf.Clamp(bgm, 0, MaxLevel); }
+        }
+        // Saves the new level and applies it at once: effects answer with a blip, playing music jumps to the new volume.
+        public static void SetLevel(bool sfx, int level)
+        {
+            Load();
+            level = Mathf.Clamp(level, 0, MaxLevel);
+            if (sfx) sfxLevel = level; else musicLevel = level;
+            PlayerPrefs.SetString(VolumeKey, sfxLevel + "," + musicLevel); PlayerPrefs.Save();
+            if (!Application.isPlaying) return;
+            Init();
+            if (sfx) Play(jump[0]);
+            else foreach (var m in music) if (m.volume > 0) m.volume = MusicBase * musicLevel / MaxLevel;
+        }
 
         static AudioClip Tone(string name, float seconds, Func<float, float> pitch, float volume, bool square = true, float noise = 0)
         {
@@ -77,7 +106,7 @@ namespace Phase
             foreach (var m in music) m.Play();
         }
 
-        static void Play(AudioClip clip) { if (clip != null) source.PlayOneShot(clip); }
+        static void Play(AudioClip clip) { if (clip != null) source.PlayOneShot(clip, SfxLevel / (float)MaxLevel); }
 
         // Compares controller state across one step and plays what changed.
         public static void Step(PhaseController c, (int jumps, int deaths, bool grounded, int airJump) was)
@@ -85,9 +114,10 @@ namespace Phase
             Init();
             var p = c.player;
             // Each jump moves the music to that phase's layer.
-            const float MusicVolume = .1f, MusicFadeSeconds = .5f;
+            const float MusicFadeSeconds = .5f;
+            float musicVolume = MusicBase * MusicLevel / MaxLevel;
             for (int i = 0; i < 3; i++)
-                music[i].volume = Mathf.MoveTowards(music[i].volume, i == Math.Max(0, c.phase) % 3 ? MusicVolume : 0, MusicVolume / MusicFadeSeconds * (float)PhaseController.Dt);
+                music[i].volume = Mathf.MoveTowards(music[i].volume, i == Math.Max(0, c.phase) % 3 ? musicVolume : 0, MusicBase / MusicFadeSeconds * (float)PhaseController.Dt);
             if (c.deaths > was.deaths) Play(death);
             else if (c.jumps > was.jumps) Play(jump[Math.Max(0, c.phase) % 3]);
             else if (p.grounded && !was.grounded && c.respawn <= 0) Play(land);
