@@ -467,37 +467,4 @@ public static class PhaseTolerance
         }
         return text.ToString();
     }
-
-#if UNITY_EDITOR
-    // Builds each level scene's controller as Play does, then analyzes them off the main thread and writes the report.
-    // A level's recorded route (Verification/Routes) is measured too. Classmate levels are skipped; level-a (PhaseDemo13) was
-    // reworked for run and jump and is ours now. The scene that was open is reopened.
-    public static readonly string[] Classmate = { "PhaseDemo1.1", "PhaseDemo14" };
-    public static System.Threading.Tasks.Task<string> WriteReport(string path = "Verification/ToleranceReport.md", params string[] levels)
-    {
-        if (levels.Length == 0) levels = PhaseSandbox.Levels.Except(Classmate).ToArray();
-        string open = UnityEngine.SceneManagement.SceneManager.GetActiveScene().path;
-        var controllers = new List<(string level, PhaseController controller, List<Input> recorded)>();
-        foreach (var level in levels)
-        {
-            UnityEditor.SceneManagement.EditorSceneManager.OpenScene($"Assets/Scenes/{level}.unity");
-            string route = PhaseRoute.RoutePath(level);
-            var recorded = System.IO.File.Exists(route) ? PhaseRoute.Inputs(PhaseRoute.Parse(System.IO.File.ReadAllText(route)))
-                .Select(i => new Input { x = i.x, held = i.jumpHeld }).ToList() : null;
-            controllers.Add((level, UnityEngine.Object.FindAnyObjectByType<PhaseSandbox>().CreateController(), recorded));
-        }
-        if (!string.IsNullOrEmpty(open)) UnityEditor.SceneManagement.EditorSceneManager.OpenScene(open);
-        return System.Threading.Tasks.Task.Run(() =>
-        {
-            var results = controllers.Select(l =>
-            {
-                var result = Analyze(l.level, l.controller, recorded: l.recorded);
-                UnityEngine.Debug.Log($"{l.level}: {result.Verdict}, {result.steps.Count} steps, tight {result.Count("tight")}, {result.seconds:F0}s");
-                return result;
-            }).ToList();
-            System.IO.File.WriteAllText(path, Markdown(results));
-            return string.Join("\n", results.Select(r => $"{r.level}: {r.Verdict}"));
-        });
-    }
-#endif
 }
