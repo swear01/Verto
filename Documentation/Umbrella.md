@@ -1,4 +1,4 @@
-# Umbrella (level 17)
+# Umbrella (level 6)
 
 `PhaseUmbrella` is one scrolling room four screens wide (160×22 cells), built from `Assets/Phase/Imported/umbrella.json`.
 Leaving its right edge leads to `PhaseGear`.

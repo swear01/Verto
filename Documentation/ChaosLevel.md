@@ -1,6 +1,6 @@
 # Chaos level: segmented laser walls
 
-`PhaseDemo15` is a four-screen (160×22 cell) horizontal level that looks crowded but runs on one rule:
+Level 5 (`PhaseDemo15`) is a four-screen (160×22 cell) horizontal level that looks crowded but runs on one rule:
 **a beam reaches only as far as the first block solid in your colour.**
 Every beat asks a different question about that rule, so an obstacle on the floor is not by itself a reason to jump.
 Leaving the room to the right wins.

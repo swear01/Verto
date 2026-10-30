@@ -266,8 +266,18 @@ public class SandboxTests : InputTestFixture
     [UnityTest]
     public IEnumerator CrystalNativeTriggerTracksPhasePickupAndReset()
     {
-        yield return SceneManager.LoadSceneAsync("PhaseCrystal1");
-        var sandbox = Object.FindAnyObjectByType<PhaseSandbox>();
+        yield return SceneManager.LoadSceneAsync("PhaseDemo1");
+        // No remaining level holds a crystal, so the probe room gets a floor and one blue crystal.
+        var original = Object.FindAnyObjectByType<PhaseSandbox>();
+        var root = new GameObject("Crystal probe"); root.SetActive(false);
+        root.AddComponent<Grid>().cellSize = new Vector3(8, 8, 1); root.AddComponent<PhaseGrid>();
+        var floor = new GameObject("Floor"); floor.transform.SetParent(root.transform); floor.transform.position = new Vector3(0, -160);
+        floor.AddComponent<PhaseTerrain>().size = new Vector2Int(320, 24);
+        var item = new GameObject("Crystal"); item.transform.SetParent(root.transform); item.transform.position = new Vector3(120, -96);
+        item.AddComponent<PhaseCrystal>().phaseMask = 2;
+        var sandbox = root.AddComponent<PhaseSandbox>(); sandbox.pixelCamera = original.pixelCamera; sandbox.pixelMaterial = original.pixelMaterial;
+        if (original.pixelCamera.transform.IsChildOf(original.transform)) original.pixelCamera.transform.SetParent(null, true);
+        original.gameObject.SetActive(false); root.SetActive(true);
         sandbox.SetControlsOpen("true");
         try
         {
@@ -291,7 +301,7 @@ public class SandboxTests : InputTestFixture
             Assert.That(crystal.collected, Is.False); Assert.That(shape.enabled, Is.True);
             CheckNativeShapes(sandbox); LogAssert.NoUnexpectedReceived();
         }
-        finally { if (sandbox != null) sandbox.SetControlsOpen("false"); }
+        finally { sandbox.SetControlsOpen("false"); Object.Destroy(root); }
     }
 
 
@@ -312,8 +322,8 @@ public class SandboxTests : InputTestFixture
     [UnityTest]
     public IEnumerator SelectionDuringPausedArrivalIsAcknowledgedOncePerRequest()
     {
-        yield return SceneManager.LoadSceneAsync("PhaseDemo2");
-        string previous = PhaseSandbox.Levels[System.Array.IndexOf(PhaseSandbox.Levels, "PhaseDemo2") - 1];
+        yield return SceneManager.LoadSceneAsync("PhaseDemo1.1");
+        string previous = PhaseSandbox.Levels[System.Array.IndexOf(PhaseSandbox.Levels, "PhaseDemo1.1") - 1];
         var k = InputSystem.AddDevice<Keyboard>();
         UnityEngine.Events.UnityAction<Scene, LoadSceneMode> pauseArrival = (scene, mode) =>
         { if (scene.name == previous) Object.FindAnyObjectByType<PhaseSandbox>().SetControlsOpen("true"); };
@@ -331,7 +341,7 @@ public class SandboxTests : InputTestFixture
             yield return new WaitForSeconds(PhaseSandbox.TransitionDuration * 2);
             Assert.That(sandbox.InTransition, Is.True, "a dialog pauses the arrival slide");
             int count = PhaseSandbox.MapResultCount;
-            foreach (var room in new[] { "5", "5", "13" }.Select(n => (n, PhaseSandbox.Levels[int.Parse(n) - 1])))
+            foreach (var room in new[] { "5", "5", "6" }.Select(n => (n, PhaseSandbox.Levels[int.Parse(n) - 1])))
             {
                 sandbox.SetControlsOpen("true"); sandbox.SelectDemoRoom(room.Item1);
                 Assert.That(PhaseSandbox.MapResultCount, Is.EqualTo(count), "success waits for the async load");

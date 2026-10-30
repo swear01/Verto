@@ -22,7 +22,7 @@ public class MapBridgeTests : InputTestFixture
         yield return SceneManager.LoadSceneAsync("PhaseDemo1");
         var original=Object.FindAnyObjectByType<PhaseSandbox>();var controller=original.Controller;
         original.SetControlsOpen("true");
-        foreach(string value in new[]{null,"","02","09",(PhaseSandbox.Levels.Length+1).ToString(),"10 ","+10","PhaseDemo2"}) original.SelectDemoRoom(value);
+        foreach(string value in new[]{null,"","02","09",(PhaseSandbox.Levels.Length+1).ToString(),"10 ","+10","PhaseDemo13"}) original.SelectDemoRoom(value);
         foreach(string json in new[]{null,"{}",new string(' ',PhaseCustomMap.MaxJsonLength+1),
             "{\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phase\":-1,\"phaseMask\":7}],\"spawnX\":1,\"spawnY\":152}",
             "{\"blocks\":[{\"x\":0,\"y\":168,\"w\":320,\"h\":8,\"phase\":-1,\"phaseMask\":7}],\"spawnX\":24,\"spawnY\":152,\"movers\":[{}]}",
@@ -67,12 +67,12 @@ public class MapBridgeTests : InputTestFixture
             yield return new WaitForSeconds(.4f);
             Assert.That(sandbox.Controller.deaths,Is.EqualTo(1));Assert.That(sandbox.Controller.player.x,Is.EqualTo(24));
             sandbox.SelectDemoRoom("3");double deadline=Time.realtimeSinceStartupAsDouble+5;
-            while(SceneManager.GetActiveScene().name!="PhaseDemo2"&&Time.realtimeSinceStartupAsDouble<deadline)yield return null;
-            Assert.That(SceneManager.GetActiveScene().name,Is.EqualTo("PhaseDemo2"));
+            while(SceneManager.GetActiveScene().name!="PhaseDemo13"&&Time.realtimeSinceStartupAsDouble<deadline)yield return null;
+            Assert.That(SceneManager.GetActiveScene().name,Is.EqualTo("PhaseDemo13"));
             yield return null;var next=Object.FindAnyObjectByType<PhaseSandbox>();
             Assert.That(next.Controller.phase,Is.Zero);Assert.That(next.Frame,Is.Not.Null);
             Assert.That(Object.FindObjectsByType<PhaseSandbox>(FindObjectsSortMode.None).Length,Is.EqualTo(1));
-            foreach (var room in new[] { ("10", "PhaseCrystal1", 1), ("11", "PhaseCrystal2", 2), ("12", "PhaseCrystal3", 1), ("13", "PhaseDemo12", 0) })
+            foreach (var room in new[] { ("4", "PhaseDemo14", 0), ("7", "PhaseGear", 0) })
             {
                 next.SelectDemoRoom(room.Item1); deadline = Time.realtimeSinceStartupAsDouble + 5;
                 while (SceneManager.GetActiveScene().name != room.Item2 && Time.realtimeSinceStartupAsDouble < deadline) yield return null;

@@ -7,7 +7,7 @@ import time
 
 PROJECT = Path(__file__).resolve().parent.parent
 REPORTS = PROJECT / "TestResults/Web"
-SCENES = ["Assets/Scenes/PhaseTitle.unity", "Assets/Scenes/PhaseDemo1.unity", "Assets/Scenes/PhaseDemo1.1.unity"] + [f"Assets/Scenes/PhaseDemo{i}.unity" for i in range(2, 9)] + [f"Assets/Scenes/PhaseCrystal{i}.unity" for i in range(1, 4)] + ["Assets/Scenes/PhaseDemo12.unity", "Assets/Scenes/PhaseDemo13.unity", "Assets/Scenes/PhaseDemo14.unity", "Assets/Scenes/PhaseDemo15.unity", "Assets/Scenes/PhaseUmbrella.unity", "Assets/Scenes/PhaseGear.unity", "Assets/Scenes/PhaseEditor.unity"]
+SCENES = ["Assets/Scenes/PhaseTitle.unity", "Assets/Scenes/PhaseDemo1.unity", "Assets/Scenes/PhaseDemo1.1.unity", "Assets/Scenes/PhaseDemo13.unity", "Assets/Scenes/PhaseDemo14.unity", "Assets/Scenes/PhaseDemo15.unity", "Assets/Scenes/PhaseUmbrella.unity", "Assets/Scenes/PhaseGear.unity", "Assets/Scenes/PhaseEditor.unity"]
 
 
 def command(name, *args):
@@ -82,7 +82,7 @@ def main():
         ("editor", "ControllerTests", 16), ("editor", "LaserTests", 7),
         ("editor", "CrystalTests", 8),
         ("editor", "PixelTests", 15), ("editor", "GridGeometryTests", 4),
-        ("editor", "CustomMapTests", 11), ("editor", "PlatformTests", 12), ("editor", "KeyBindingTests", 4), ("editor", "ScrollRoomTests", 6), ("editor", "WorldTests", 17),
+        ("editor", "CustomMapTests", 11), ("editor", "PlatformTests", 12), ("editor", "KeyBindingTests", 4), ("editor", "ScrollRoomTests", 6), ("editor", "WorldTests", 17), ("editor", "LevelRouteTests", 1),
         ("playmode", "SandboxTests", 12), ("playmode", "MapBridgeTests", 1), ("playmode", "MenuTests", 16),
     ]:
         wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)
