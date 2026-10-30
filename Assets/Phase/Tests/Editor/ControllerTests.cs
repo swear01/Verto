@@ -208,7 +208,7 @@ public class ControllerTests
                 if (hit >= 0 && i <= hit + 1) Assert.That(p.vy, Is.LessThan(20), $"underside {underside}: no downward kick on impact");
             }
             Assert.That(hit, Is.GreaterThan(0), $"underside {underside}: the rise ends at the ceiling");
-            Assert.That(falling - hit, Is.LessThanOrEqualTo(1), $"underside {underside}: gravity takes over at once, no sticking");
+            Assert.That(falling, Is.InRange(hit, hit + 1), $"underside {underside}: gravity takes over at once, no sticking");
         }
     }
     [Test]
