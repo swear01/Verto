@@ -5,15 +5,10 @@ using UnityEngine;
 
 public static class PhaseSandboxBuilder
 {
-    [MenuItem("PHASE/Create eight-room demo")]
+    [MenuItem("PHASE/Create opening room")]
     public static void CreateDemoRooms()
     {
-        CreateRooms("Assets/Phase/DemoRooms.json", "PhaseDemo", 8);
-    }
-    [MenuItem("PHASE/Create crystal rooms")]
-    public static void CreateCrystalRooms()
-    {
-        CreateRooms("Assets/Phase/CrystalRooms.json", "PhaseCrystal", 3);
+        CreateRooms("Assets/Phase/DemoRooms.json", "PhaseDemo", 1);
     }
     static void CreateRooms(string source, string prefix, int count)
     {

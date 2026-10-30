@@ -18,7 +18,7 @@ python3 -m http.server 8765 --bind 127.0.0.1 --directory Builds/Web
 
 Open <http://127.0.0.1:8765/>. Click the canvas for keyboard focus: ←/→ or A/D
 move and Space/Z jumps. Cross each room’s right
-edge to continue through the fifteen rooms. Each arrival resets the phase to red
+edge to continue through the seven levels. Each arrival resets the phase to red
 while preserving run statistics. Room changes use a
 0.18-second horizontal pixel slide; input/physics pause until it finishes.
 The Unity splash screen and logo are disabled in PlayerSettings.
@@ -72,7 +72,7 @@ Geometry occupies non-overlapping cells inside the room, 320×176 unless `width`
 including any red laser beam not stopped by red-active terrain.
 Masks are 1 red, 2 blue, 4 green, 3 magenta, 5 yellow, 6 cyan and 7 permanent white.
 Dash platforms (`platforms`), gears (`gears`), dash crystals (`kind` 1) and JSON over 2,000,000 characters are rejected.
-`PHASE.SelectDemoRoom("1".."18")` and `PHASE.LoadCustomMap(json)` remain Unity bridge
+`PHASE.SelectDemoRoom("1".."7")` and `PHASE.LoadCustomMap(json)` remain Unity bridge
 methods, but the page no longer sends them; `phase-map-result` still reports each
 completed load and the browser smoke test waits for it.
 The in-game editor's import/export icons raise `phase-map-import` / `phase-map-export`
@@ -81,20 +81,6 @@ sends the chosen file to `PHASE.ImportDraft`.
 `WebPageBrowser.cjs` verifies page events using a mock Unity bridge; it does not
 prove native map loading. Verify the native bridge through Pipeline and the final
 built Web Player before publishing.
-`DemoWebSmoke.cjs` still expects the jam's routes and cloak colors, fails on Verto's levels and does not
-gate publishing. It selects all fifteen rooms through the pause menu's level select,
-reaches the victory banner and replays through its level select, rebinds keys in the
-in-game settings and checks they persist across reload, then checks in-game editor
-laser/crystal import and export, panel clicks, panel drags and grid strokes at 960×540, 2560×1080 and
-390×844 (saving `demo-editor-*.png`), draft persistence across reload, playing that draft
-as a custom map, and fullscreen on and off through the in-game settings by keyboard,
-followed by movement. Room 1 synchronizes its staircase landings, Room 5 its low-ceiling jump/dash, and
-Room 8 its gear lift and ferry stops with visible phase/position checkpoints.
-Short walking pulses preserve narrow checkpoints; the final Room8 approach releases
-right before the linked crystal-room exit.
-For an isolated diagnostic, append `--room=1`, `--room=5` or `--room=8` to the
-local verifier command; a calibration report is not a complete release check.
-
 The custom `Phase` template uses Brotli with Unity's decompression fallback, so a
 static host does not need custom `Content-Encoding` headers. The build uses High
 managed stripping, IL2CPP OptimizeSize and Web code optimization `DiskSize`, keeping
@@ -137,15 +123,8 @@ The template keeps automatic sizing disabled and sets the backing store to the d
 therefore reports real pixels, and each scene picks its native-pixel view from the aspect,
 including the in-game editor's wider view.
 
-## Crystal course
+## Level order
 
-The source build appends `PhaseCrystal1` through `PhaseCrystal3` after the eight demo scenes.
-The in-game level select exposes them as10–12. The crystal rooms are authored through Unity
-scenes and `CrystalRooms.json`; custom maps place single crystals from the in-game editor.
-The three crystal routes and the last level use controlled browser time to prevent capture latency
-from extending held keys. Existing visible-checkpoint routes and UI checks use
-real time. This is functional verification, not a human timing/playtest.
+The level select lists **1** `PhaseDemo1`, **2** the classmate color room `PhaseDemo1.1`, **3** and **4** the laser rooms `PhaseDemo13` and `PhaseDemo14`, **5** the chaos level `PhaseDemo15`, **6** the four-screen [Umbrella](Umbrella.md) level `PhaseUmbrella`, then **7** the moving-platform room `PhaseGear`.
 
-The level select also includes **2**, the classmate color room `PhaseDemo1.1`, and **13**, the classmate dash-platform scene `PhaseDemo12` (formerly `PhaseDemo1.2`). `PhaseDemo13` and `PhaseDemo14` (select **14** and **15**) are the later laser rooms and stay after that course; **16** is the chaos level `PhaseDemo15` and **17** the four-screen [Umbrella](Umbrella.md) level `PhaseUmbrella`, then **18** the moving-platform room `PhaseGear`. Routes for levels 2 and 14 are recorded. Level 15 does not yet have a 0-death route. Crystal levels10–12 now require distinct jump/dash/refill combinations and keep safe permanent edge landings.
-
-Built-in levels run in order1–18. Walking through the left edge returns to the previous level; level1’s left edge stays closed. Leaving level18 to the right shows “你贏了”, with replay-level1 and level-select icons.
+Built-in levels run in order 1–7. Walking through the left edge returns to the previous level; level 1’s left edge stays closed. Leaving level 7 to the right shows “你贏了”, with replay-level1 and level-select icons.

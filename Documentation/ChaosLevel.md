@@ -1,6 +1,6 @@
 # Chaos level: segmented laser walls
 
-Level 16 (`PhaseDemo15`) is a four-screen (160×22 cell) horizontal level that looks crowded but runs on one rule:
+Level 5 (`PhaseDemo15`) is a four-screen (160×22 cell) horizontal level that looks crowded but runs on one rule:
 **a beam reaches only as far as the first block that is solid in its colour.**
 The player only has to jump at the right places. The colour after each jump decides which beams are live.
 Leaving the room to the right wins.

@@ -341,7 +341,7 @@ MonoBehaviour:
   pixelCamera: {fileID: 1147179722}
   pixelMaterial: {fileID: 2100000, guid: 5bd270b87f0174a5f9797bc29eed0fbe, type: 2}
   leftScene: 
-  rightScene: PhaseDemo2
+  rightScene: PhaseDemo1.1
   checkpointOnEntry: 1
   spawn: {x: 24, y: 149}
 --- !u!114 &843368912

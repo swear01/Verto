@@ -767,7 +767,7 @@ public class MenuTests : InputTestFixture
         yield return Tap(Key.Escape);
         Assert.That(title.LevelSelect, Is.Null);
         yield return Tap(Key.Enter);
-        int columns = PhaseLevels.Columns(PhaseSandbox.ViewSize(Screen.width, Screen.height)), second = columns + 1;
+        int columns = PhaseLevels.Columns(PhaseSandbox.ViewSize(Screen.width, Screen.height)), second = columns + 1 < PhaseSandbox.Levels.Length ? columns + 1 : 1;
         yield return Tap(Key.RightArrow); yield return Tap(Key.DownArrow);
         Assert.That(title.LevelSelect.Choice, Is.EqualTo(second));
         yield return Tap(Key.Enter);
@@ -785,7 +785,7 @@ public class MenuTests : InputTestFixture
         yield return Tap(Key.Z);
         yield return WaitFor(PhaseSandbox.Levels[row * columns + column]);
 
-        yield return SceneManager.LoadSceneAsync("PhaseDemo12"); yield return null;
+        yield return SceneManager.LoadSceneAsync("PhaseDemo13"); yield return null;
         var sandbox = Sandbox();
         typeof(PhaseSandbox).GetMethod("Win", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).Invoke(sandbox, null);
         yield return null;
