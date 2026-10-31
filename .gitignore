@@ -114,8 +114,11 @@ InitTestScene*.unity*
 /[Aa]ssets/[Ss]ceneDependencyCache*
 
 !Verification/ControllerTests.csproj
+!Verification/Tolerance/Tolerance.csproj
 /Verification/bin/
 /Verification/obj/
+/Verification/Tolerance/bin/
+/Verification/Tolerance/obj/
 /Verification/node_modules/
 /Verification/__pycache__/
 /TestResults/
