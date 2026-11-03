@@ -103,6 +103,9 @@ public class PixelTests
             var rightRed = new Laser(8, 80, LaserDirection.Right, 3);
             var downRed = new Laser(100, 40, LaserDirection.Down, 5);
             var crossed = Drawn(rightRed, downRed);
+            Assert.That(At(101, 83), Is.EqualTo(At(97, 83)), "a beam's outline never cuts across the beam it crosses");
+            Assert.That(At(102, 82), Is.EqualTo(crossed), "the crossing is one shape: no border at the corners");
+            Assert.That(At(105, 85), Is.EqualTo(crossed), "the crossing is one shape: no border at the corners");
             Assert.That(crossed, Is.EqualTo(Drawn(new Laser(8, 80, LaserDirection.Right, 7))), "the overlap takes the colour of the joined masks");
             Assert.That(crossed, Is.EqualTo(Drawn(downRed, rightRed)), "the order lasers are listed in does not matter");
             Assert.That(crossed, Is.Not.EqualTo(Drawn(rightRed)));

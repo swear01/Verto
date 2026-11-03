@@ -309,11 +309,23 @@ namespace Phase
             {
                 if (kv.Value.count < 2) continue;
                 var edge = Color(Highlights[surfaceIndices[kv.Value.mask]]);
-                Rect(kv.Key.Item1, kv.Key.Item2, 1, 1, kv.Value.core ? Mix(edge, Color("ffffff"), .6) : edge);
+                int x = kv.Key.Item1, y = kv.Key.Item2;
+                // Inside the joined shape no beam keeps its border: only the outer edge of the union stays an edge.
+                bool inside = beamMasks.ContainsKey((x - 1, y)) && beamMasks.ContainsKey((x + 1, y)) && beamMasks.ContainsKey((x, y - 1)) && beamMasks.ContainsKey((x, y + 1));
+                Rect(x, y, 1, 1, kv.Value.core || inside ? Mix(edge, Color("ffffff"), .6) : edge);
             }
         }
         void Lasers(PhaseController s, Block[] beams)
         {
+            // Outlines first, so a beam's fill covers the outline of any beam crossing it.
+            for (int n = 0; n < s.lasers.Count; n++)
+            {
+                var laser = s.lasers[n]; var beam = beams[n];
+                if (!laser.ActiveInPhase(s.phase) || beam.w <= 0 || beam.h <= 0) continue;
+                bool horizontal = laser.direction == LaserDirection.Left || laser.direction == LaserDirection.Right;
+                Rect(beam.x - (horizontal ? 0 : 1), beam.y - (horizontal ? 1 : 0),
+                    beam.w + (horizontal ? 0 : 2), beam.h + (horizontal ? 2 : 0), Ink);
+            }
             for (int n = 0; n < s.lasers.Count; n++)
             {
                 var laser = s.lasers[n]; var beam = beams[n]; bool active = laser.ActiveInPhase(s.phase);
@@ -322,8 +334,6 @@ namespace Phase
                 var core = Mix(edge, Color("ffffff"), .6);
                 if (beam.w > 0 && beam.h > 0)
                 {
-                    if (active) Rect(beam.x - (horizontal ? 0 : 1), beam.y - (horizontal ? 1 : 0),
-                        beam.w + (horizontal ? 0 : 2), beam.h + (horizontal ? 2 : 0), Ink);
                     Rect(beam.x, beam.y, beam.w, beam.h, edge, active ? 1 : .2);
                     Rect(beam.x + (horizontal ? 0 : 1), beam.y + (horizontal ? 1 : 0),
                         beam.w - (horizontal ? 0 : 2), beam.h - (horizontal ? 2 : 0), core, active ? 1 : .28);
