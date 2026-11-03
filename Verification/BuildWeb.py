@@ -81,7 +81,7 @@ def main():
     for mode, test_filter, expected in [
         ("editor", "ControllerTests", 18), ("editor", "LaserTests", 7),
         ("editor", "CrystalTests", 8),
-        ("editor", "PixelTests", 15), ("editor", "GridGeometryTests", 4),
+        ("editor", "PixelTests", 16), ("editor", "GridGeometryTests", 4),
         ("editor", "CustomMapTests", 11), ("editor", "PlatformTests", 12), ("editor", "KeyBindingTests", 4), ("editor", "ScrollRoomTests", 6), ("editor", "WorldTests", 17), ("editor", "LevelRouteTests", 2), ("editor", "ToleranceTests", 1),
         ("playmode", "SandboxTests", 12), ("playmode", "MapBridgeTests", 1), ("playmode", "MenuTests", 16),
     ]:
