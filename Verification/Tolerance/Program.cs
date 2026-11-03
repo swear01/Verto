@@ -15,7 +15,8 @@ static class Program
     {
         ["PhaseDemo1"] = "Assets/Phase/DemoRooms.json", ["PhaseDemo13"] = "Assets/Phase/Imported/level-a.json",
         ["PhaseDemo14"] = "Assets/Phase/Imported/level-b.json", ["PhaseDemo15"] = "Assets/Phase/Imported/chaos.json",
-        ["PhaseUmbrella"] = "Assets/Phase/Imported/umbrella.json", ["PhaseGear"] = "Assets/Phase/Imported/level-gear.json",
+        ["PhaseUmbrella"] = "Assets/Phase/Imported/umbrella.json", ["PhaseTurnaround"] = "Assets/Phase/Imported/turnaround.json",
+        ["PhaseGear"] = "Assets/Phase/Imported/level-gear.json",
     };
 
     static PhaseController Build(string level)

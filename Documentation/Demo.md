@@ -13,10 +13,11 @@ tutorial messages.
 | 4 | `PhaseDemo14` | `Assets/Phase/Imported/level-b.json` |
 | 5 | `PhaseDemo15` | [chaos level](ChaosLevel.md), `Assets/Phase/Imported/chaos.json` |
 | 6 | `PhaseUmbrella` | [Umbrella](Umbrella.md), `Assets/Phase/Imported/umbrella.json` |
-| 7 | `PhaseGear` | `Assets/Phase/Imported/level-gear.json` |
+| 7 | `PhaseTurnaround` | [Turnaround](Turnaround.md), `Assets/Phase/Imported/turnaround.json` |
+| 8 | `PhaseGear` | `Assets/Phase/Imported/level-gear.json` |
 
 `PhaseSandbox.Levels` defines this order, the level select and both horizontal links.
-`PhaseSandboxBuilder.CreateImportedLevels()` rebuilds levels 3–7 through the connected Editor.
+`PhaseSandboxBuilder.CreateImportedLevels()` rebuilds levels 3–8 through the connected Editor.
 
 Level 3 (level-a) keeps the classmates' premise: three floors striped red→blue→green, with a white laser
 along each upper floor that colored terrain stops only in its own color, so its reach depends on the
