@@ -32,6 +32,23 @@ jobs:
           --logger 'trx;LogFileName=controller-tests.trx'
           --results-directory TestResults
           --verbosity minimal
+      - name: Run slow controller tests
+        run: >-
+          dotnet test Verification/ControllerTests.csproj
+          --configuration Release --no-build
+          --filter 'TestCategory=Slow'
+          --logger 'trx;LogFileName=controller-slow.trx'
+          --results-directory TestResults
+          --verbosity minimal
+          -- NUnit.RunExplicit=true
+      - name: Require executed slow tests
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          counters = ET.parse('TestResults/controller-slow.trx').find('.//{*}Counters')
+          assert counters is not None and int(counters.attrib['executed']) >= 2
+          assert int(counters.attrib['failed']) == 0
+          PY
       - name: Require executed tests
         run: |
           python3 - <<'PY'
