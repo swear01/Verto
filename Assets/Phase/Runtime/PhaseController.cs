@@ -357,7 +357,7 @@ namespace Phase
                 if (input.x != 0) { p.forceX = -wall; p.wallLock = .16; }
             }
             else p.vx += input.x * 40;
-            p.vy = p.varSpeed = -105; p.varTime = .2;
+            p.vy = p.varSpeed = -105; p.varTime = 13 * Dt;
             p.grounded = false; p.coyote = p.buffer = 0; p.slide = 0; p.hang = 0;
             jumps++; foreach (var platform in platforms) platform.queued++;
             Shift(); Burst(p.x + 4, p.y + 11, -1, 4);
