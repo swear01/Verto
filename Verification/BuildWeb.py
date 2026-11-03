@@ -7,7 +7,7 @@ import time
 
 PROJECT = Path(__file__).resolve().parent.parent
 REPORTS = PROJECT / "TestResults/Web"
-SCENES = ["Assets/Scenes/PhaseTitle.unity", "Assets/Scenes/PhaseDemo1.unity", "Assets/Scenes/PhaseDemo1.1.unity", "Assets/Scenes/PhaseDemo13.unity", "Assets/Scenes/PhaseDemo14.unity", "Assets/Scenes/PhaseDemo15.unity", "Assets/Scenes/PhaseUmbrella.unity", "Assets/Scenes/PhaseGear.unity", "Assets/Scenes/PhaseEditor.unity"]
+SCENES = ["Assets/Scenes/PhaseTitle.unity", "Assets/Scenes/PhaseDemo1.unity", "Assets/Scenes/PhaseDemo1.1.unity", "Assets/Scenes/PhaseDemo13.unity", "Assets/Scenes/PhaseDemo14.unity", "Assets/Scenes/PhaseDemo15.unity", "Assets/Scenes/PhaseUmbrella.unity", "Assets/Scenes/PhaseTurnaround.unity", "Assets/Scenes/PhaseGear.unity", "Assets/Scenes/PhaseEditor.unity"]
 
 
 def command(name, *args):
@@ -82,7 +82,7 @@ def main():
         ("editor", "ControllerTests", 18), ("editor", "LaserTests", 7),
         ("editor", "CrystalTests", 8),
         ("editor", "PixelTests", 16), ("editor", "GridGeometryTests", 4),
-        ("editor", "CustomMapTests", 11), ("editor", "PlatformTests", 12), ("editor", "KeyBindingTests", 4), ("editor", "ScrollRoomTests", 6), ("editor", "WorldTests", 17), ("editor", "LevelRouteTests", 2), ("editor", "ToleranceTests", 1),
+        ("editor", "CustomMapTests", 11), ("editor", "PlatformTests", 12), ("editor", "KeyBindingTests", 4), ("editor", "ScrollRoomTests", 6), ("editor", "WorldTests", 17), ("editor", "LevelRouteTests", 3), ("editor", "ToleranceTests", 1),
         ("playmode", "SandboxTests", 12), ("playmode", "MapBridgeTests", 1), ("playmode", "MenuTests", 18),
     ]:
         wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)
