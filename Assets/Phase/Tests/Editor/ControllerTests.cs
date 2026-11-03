@@ -25,7 +25,7 @@ public class ControllerTests
             var blocks = new List<Block>();
             foreach (var b in c.solids ?? new[] { c.floor }) for (int phase = 0; phase < 3; phase++) blocks.Add(new Block(b.x, b.y, b.width, b.height, phase));
             var init = c.initial; var s = new PhaseController(blocks, init.pos.x - 4, init.pos.y - 11);
-            var p = s.player; p.vx = init.speed.x; p.vy = init.speed.y; p.grounded = init.on_ground;
+            s.holdTime = .2; var p = s.player; p.vx = init.speed.x; p.vy = init.speed.y; p.grounded = init.on_ground;
             p.coyote = p.grounded ? .1 : 0; p.facing = init.facing ? 1 : -1;
             var previous = new Input();
             for (int i = 0; i < c.inputs.Length; i++)

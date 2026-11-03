@@ -88,6 +88,7 @@ namespace Phase
     public sealed class PhaseController
     {
         public const double Dt = 1.0 / 60;
+        public double holdTime = 13 * Dt; // full-jump hold window; the Celeste reference traces use .2
         public readonly List<Block> blocks;
         public readonly List<Spike> spikes;
         public readonly List<Laser> lasers;
@@ -357,7 +358,7 @@ namespace Phase
                 if (input.x != 0) { p.forceX = -wall; p.wallLock = .16; }
             }
             else p.vx += input.x * 40;
-            p.vy = p.varSpeed = -105; p.varTime = 13 * Dt;
+            p.vy = p.varSpeed = -105; p.varTime = holdTime;
             p.grounded = false; p.coyote = p.buffer = 0; p.slide = 0; p.hang = 0;
             jumps++; foreach (var platform in platforms) platform.queued++;
             Shift(); Burst(p.x + 4, p.y + 11, -1, 4);
