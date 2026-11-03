@@ -285,6 +285,33 @@ namespace Phase
                 }
             }
         }
+        readonly Dictionary<(int,int),(int mask,int count,bool core)> beamMasks = new Dictionary<(int,int),(int,int,bool)>();
+        // Pixels lit by two or more live beams show the mixed colour of their phases, like overlapping blocks.
+        void MixBeamOverlaps(PhaseController s, Block[] beams)
+        {
+            beamMasks.Clear();
+            for (int n = 0; n < s.lasers.Count; n++)
+            {
+                var laser = s.lasers[n]; var beam = beams[n];
+                if (!laser.ActiveInPhase(s.phase) || beam.w <= 0 || beam.h <= 0) continue;
+                bool horizontal = laser.direction == LaserDirection.Left || laser.direction == LaserDirection.Right;
+                int bx = Round(beam.x), by = Round(beam.y), bw = Round(beam.w), bh = Round(beam.h);
+                for (int y = by; y < by + bh; y++) for (int x = bx; x < bx + bw; x++)
+                {
+                    int across = horizontal ? y - by : x - bx, along = horizontal ? x - bx : y - by, length = horizontal ? bw : bh;
+                    bool end = along == (laser.direction == LaserDirection.Left || laser.direction == LaserDirection.Up ? 0 : length - 1);
+                    bool core = end || (across > 0 && across < 3);
+                    beamMasks.TryGetValue((x, y), out var m);
+                    beamMasks[(x, y)] = (m.mask | laser.Mask, m.count + 1, m.core || core);
+                }
+            }
+            foreach (var kv in beamMasks)
+            {
+                if (kv.Value.count < 2) continue;
+                var edge = Color(Highlights[surfaceIndices[kv.Value.mask]]);
+                Rect(kv.Key.Item1, kv.Key.Item2, 1, 1, kv.Value.core ? Mix(edge, Color("ffffff"), .6) : edge);
+            }
+        }
         void Lasers(PhaseController s, Block[] beams)
         {
             for (int n = 0; n < s.lasers.Count; n++)
@@ -305,6 +332,13 @@ namespace Phase
                     Rect(horizontal ? endX : beam.x, horizontal ? beam.y : endY,
                         horizontal ? 1 : beam.w, horizontal ? beam.h : 1, core, active ? 1 : .28);
                 }
+            }
+            MixBeamOverlaps(s, beams);
+            for (int n = 0; n < s.lasers.Count; n++)
+            {
+                var laser = s.lasers[n];
+                bool horizontal = laser.direction == LaserDirection.Left || laser.direction == LaserDirection.Right;
+                var edge = Color(Highlights[surfaceIndices[laser.Mask]]);
                 var rows = new[] { "ss......", "sshhh...", "ssddhl..", "ssdddl..", "ssdddl..", "ssddhl..", "sshhh...", "ss......" };
                 for (int v = 0; v < 8; v++) for (int u = 0; u < 8; u++)
                 {
