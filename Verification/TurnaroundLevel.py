@@ -23,13 +23,14 @@ for c in range(SPLIT,W): grid[EXIT][c]='7'
 
 # Beam colours per row. Ledge k (the floor is ledge 0, the shelf ledge LEDGES+1) is reached in COLOURS[k], and you
 # leave it in the next colour. Its own row only meets you in its colour; the two rows above it meet you in its colour
-# and the next one, so they take the colour before it. Over the shelf only the shelf colour is excluded.
+# and the next one, so they take the colour before it. Over the shelf they take the one colour that leaves a red
+# arrival from the right edge (backward travel) safe too.
 objs=[{"type":"spawn","cell":[2,FLOOR-2]}]
 def laser(c,r,d,m): objs.append({"type":"laser","cell":[c,r],"dir":d,"mask":m})
 for k in range(LEDGES+2):
     s=FLOOR-3*k; here=k%3
     for r in (s-1,s-2):
-        free=[COLOURS[(here+1)%3],COLOURS[(here+2)%3]] if k>LEDGES else [COLOURS[(here+2)%3]]
+        free=[COLOURS[(here+1)%3]] if k>LEDGES else [COLOURS[(here+2)%3]]
         left,right=free[0],free[-1]
         if r>=0: laser(0,r,'right',left); laser(W-1,r,'left',right)
     if 0<k<=LEDGES:                      # the ledge row: the band colour below on the ledge's side, the one above opposite
