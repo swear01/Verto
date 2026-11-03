@@ -11,13 +11,13 @@ FLOOR=43                                 # white floor row; the floor ends where
 FLOOR_END=17
 LEDGES=12                                # ledge k sits 3 rows above ledge k-1; odd k on the B side
 EXIT=FLOOR-3*(LEDGES+1)                  # a white shelf out to the right edge
-def width(k): return 4 if k<=4 else 3 if k<=8 else 2   # A width; B is one wider, as the B landing sits further out
+def width(k): return 5 if k<=4 else 4 if k<=8 else 3   # ledges narrow on the way up
 
 grid=[['.']*W for _ in range(H)]
 for c in range(FLOOR_END): grid[FLOOR][c]='7'
 for k in range(1,LEDGES+1):
     r=FLOOR-3*k; w=width(k)
-    cols=range(SPLIT,SPLIT+w+1) if k%2 else range(SPLIT-w,SPLIT)
+    cols=range(SPLIT,SPLIT+w) if k%2 else range(SPLIT-w,SPLIT)
     for c in cols: grid[r][c]=str(COLOURS[k%3])
 for c in range(SPLIT,W): grid[EXIT][c]='7'
 

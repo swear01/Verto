@@ -20,16 +20,16 @@ jump back the other way is the path.
 - The ledge directly overhead is never your color during a jump, so the climb never hits its head.
 - Beams come in bands: two rows of one color, then a ledge row whose two halves differ. The band colors rotate every
   three rows, so the sheet is striped diagonally.
-- Ledges narrow on the way up: four cells (B side five) for the first four, then three, then two. The last jump lands on a
+- Ledges narrow on the way up: five cells for the first four, then four, then three. The last jump lands on a
   long white shelf at the top that runs out of the right edge.
 - Jumping in place, walking off a ledge or jumping outward drops you through a band of your own color.
 
 ## Route and margins
 
 The recorded route `Verification/Routes/PhaseTurnaround.json` holds right, jumps at x = 116 px onto the first ledge,
-then reverses direction with every jump on the frame it lands, with full-height jumps: 13 jumps in about 8.5 seconds.
+then reverses direction with every jump two frames after it lands, with full-height jumps: 13 jumps in about 9 seconds.
 `dotnet run -c Release --project Verification/Tolerance -- PhaseTurnaround` grades it in band with no tight step;
-the two-cell ledges at the top are the tightest (6 frames).
+see `Verification/ToleranceReport.md`.
 
 ## Editing
 

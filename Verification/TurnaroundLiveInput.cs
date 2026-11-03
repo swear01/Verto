@@ -42,21 +42,23 @@ public static class TurnaroundLiveInput
             keyboard = InputSystem.AddDevice<Keyboard>("PhaseLiveVerification");
             var c = sandbox.Controller; c.Reset(); int deaths = c.deaths;
             string directory = Path.Combine("TestResults", "Turnaround"); Directory.CreateDirectory(directory);
-            int jumps = 0, dir = 1, screen = 0; bool air = false;
+            int jumps = 0, dir = 1, screen = 0; bool air = false, pending = false; var landings = new System.Text.StringBuilder();
             double deadline = Time.realtimeSinceStartupAsDouble + 30;
             while (!sandbox.Won && sandbox.Controller.ExitDirection == 0 && Time.realtimeSinceStartupAsDouble < deadline)
             {
                 var p = sandbox.Controller.player;
-                if (sandbox.Controller.deaths > deaths) { result.SetException(new InvalidOperationException($"Died at ({p.x:F0},{p.y:F0}) in phase {sandbox.Controller.phase} after {jumps} jumps.")); yield break; }
+                if (sandbox.Controller.deaths > deaths) { result.SetException(new InvalidOperationException($"Died at ({p.x:F0},{p.y:F0}) in phase {sandbox.Controller.phase} after {jumps} jumps; landings{landings}.")); yield break; }
                 bool jump = false;
                 if (p.grounded && jumps == 0 && p.x >= FirstJump) jump = true;
-                else if (p.grounded && air && jumps > 0 && jumps < Jumps) { dir = -dir; jump = true; }
+                else if (p.grounded && air && jumps > 0 && jumps < Jumps) { dir = -dir; jump = true; landings.Append($" {p.x:F0},{p.y:F0}"); }
                 else if (p.grounded && jumps == Jumps) dir = 1;
-                if (jump) jumps++;
+                if (jump) { jumps++; pending = true; }
+                // Keep the key down until the jump has fired: a frame can pass without a controller step.
+                if (!p.grounded) pending = false;
                 air = !p.grounded;
                 bool rising = !p.grounded && p.vy < 0;
                 var move = dir > 0 ? Key.RightArrow : Key.LeftArrow;
-                InputSystem.QueueStateEvent(keyboard, jump || rising ? new KeyboardState(move, Key.Z) : new KeyboardState(move));
+                InputSystem.QueueStateEvent(keyboard, pending || rising ? new KeyboardState(move, Key.Z) : new KeyboardState(move));
                 if (p.y <= 352 - 176 * screen - 88 && screen < 2) File.WriteAllBytes(Path.Combine(directory, $"screen-{++screen}.png"), sandbox.Frame.EncodeToPNG());
                 yield return null;
             }
