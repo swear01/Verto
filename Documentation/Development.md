@@ -75,7 +75,7 @@ Wait for each `test_status` result to be `completed` and inspect its summary bef
 starting the next test run (no `--filter` runs every non-explicit test of the mode). There are 18 controller cases, 7 laser cases, 8 crystal cases, 16 pixel cases, 12 platform cases,
 4 Grid authoring cases, 11 custom-map cases (validation, version migration, newer-version refusal, round trips, the chaos route), 6 scrolling-room cases, 17 world cases
 (map format v3, room changes, open top, respawns, goal, camera), 4 key-binding cases
-(validation, PlayerPrefs persistence, key caps, volume levels), 2 level-route cases and 1 [input tolerance](Tolerance.md) case in Edit Mode. The 32 Play Mode cases cover a big-room camera
+(validation, PlayerPrefs persistence, key caps, volume levels), 3 level-route cases and 1 [input tolerance](Tolerance.md) case in Edit Mode. The 32 Play Mode cases cover a big-room camera
 following a keyboard run, bindings, pause/release gating, room persistence, crystal triggers, imported maps and jump platforms, the
 title/editor flow, the editor's fixed tool panel under mouse input, room creation, merging, splitting and moving in the editor, the pause menu with key
 settings, the fullscreen control, and level select from the title, pause and victory screens.
@@ -189,9 +189,9 @@ Open `Assets/Scenes/PhaseDemo1.unity`. Rebuild this opening room from
 `unity command eval 'PhaseSandboxBuilder.CreateDemoRooms();'`.
 Each level uses `checkpointOnEntry`, resetting the player color while preserving elapsed time and
 jump/death counts.
-Built-in levels link in both directions: Demo1, the classmate color room Demo1.1, the laser rooms Demo13 and Demo14, the chaos level Demo15, Umbrella, then the moving-platform room Gear. Backward travel enters a safe standing position near the previous room’s right side. The last level’s right exit freezes play and shows the victory screen; jump restarts level 1 in native Play, and Web also offers replay or level selection. Custom maps have no level links. The original sandbox links retain their momentum/color carry behavior.
+Built-in levels link in both directions: Demo1, the classmate color room Demo1.1, the laser rooms Demo13 and Demo14, the chaos level Demo15, Umbrella, the turnaround shaft, then the moving-platform room Gear. Backward travel enters a safe standing position near the previous room’s right side. The last level’s right exit freezes play and shows the victory screen; jump restarts level 1 in native Play, and Web also offers replay or level selection. Custom maps have no level links. The original sandbox links retain their momentum/color carry behavior.
 See [the level course](Demo.md).
-`BuildWeb.py` verifies these tests and builds `PhaseDemo1`, `PhaseDemo1.1`, `PhaseDemo13`, `PhaseDemo14`, the chaos level `PhaseDemo15`, `PhaseUmbrella`, and `PhaseGear`.
+`BuildWeb.py` verifies these tests and builds `PhaseDemo1`, `PhaseDemo1.1`, `PhaseDemo13`, `PhaseDemo14`, the chaos level `PhaseDemo15`, `PhaseUmbrella`, `PhaseTurnaround`, and `PhaseGear`.
 In PhaseGear Play, `Verification/GearLiveInput.cs` (entry `GearLiveInput.Run`) plays the intended route, every floor
 blue bar, green platform, red bar or platform, with the virtual keyboard; it fails on a death or a ceiling bonk.
 
@@ -289,8 +289,8 @@ jump activation/death and respawn.
 
 ## Runtime map bridge
 
-The active `PHASE` object accepts `SelectDemoRoom("1".."7")` and
-`LoadCustomMap(json)`. Scene selection uses `PhaseSandbox.Levels` (Demo1, Demo1.1, Demo13–15, Umbrella, Gear), which also defines both horizontal links.
+The active `PHASE` object accepts `SelectDemoRoom("1".."8")` and
+`LoadCustomMap(json)`. Scene selection uses `PhaseSandbox.Levels` (Demo1, Demo1.1, Demo13–15, Umbrella, Turnaround, Gear), which also defines both horizontal links.
 Custom maps are version 2 JSON (`format` `verto-map`, `version`, `generator`, `name`, `size` and `spawn` in cells, `terrain` rows
 of `.`, `1`–`7` and spike-covered `A`–`G`, and typed `objects`: spike, laser, crystal, platform; see
 [the spec](JumpPlatformSpec.md)). Files without a version are v1 (`blocks`, `spikes`, `lasers`, `crystals`, `spawnX`, `spawnY` in
@@ -477,7 +477,7 @@ collects pickups; lethal hazards take priority.
 No built-in level places a crystal; custom maps place them from the in-game editor.
 The manually edited `PhaseDemo1.1` is separate from the builders.
 
-`PhaseDemo13` and `PhaseDemo14` are the later classmate laser rooms (`Assets/Phase/Imported/level-a.json` and `level-b.json`). They follow the color room, selectable as **3** and **4**. `PhaseDemo15` (select **5**) is the four-screen chaos level from `Assets/Phase/Imported/chaos.json`, which `python3 Verification/ChaosLevel.py Assets/Phase/Imported/chaos.json` generates ([design](ChaosLevel.md)). The four-screen [Umbrella](Umbrella.md) level `PhaseUmbrella` (`Assets/Phase/Imported/umbrella.json`) follows as **6**, then `PhaseGear` (**7**, `Assets/Phase/Imported/level-gear.json`), a moving-platform room on `PhaseDemo1.1`'s layout; the builder also imports jump platforms. Leaving level 7 to the right wins. Levels 3 and 4 have recorded routes, `Verification/Routes/PhaseDemo13.json` and `PhaseDemo14.json`; `LevelRouteTests` replays each on its saved scene and expects the right exit with no deaths. Re-record a route whenever its `level-a.json` or `level-b.json` changes. Recreate the five scenes through Pipeline with `unity command eval 'PhaseSandboxBuilder.CreateImportedLevels();'`; it rewrites `PhaseDemo13` and `PhaseDemo14` with new object IDs, so discard those diffs when only the chaos, umbrella or gear level changed.
+`PhaseDemo13` and `PhaseDemo14` are the later classmate laser rooms (`Assets/Phase/Imported/level-a.json` and `level-b.json`). They follow the color room, selectable as **3** and **4**. `PhaseDemo15` (select **5**) is the four-screen chaos level from `Assets/Phase/Imported/chaos.json`, which `python3 Verification/ChaosLevel.py Assets/Phase/Imported/chaos.json` generates ([design](ChaosLevel.md)). The four-screen [Umbrella](Umbrella.md) level `PhaseUmbrella` (`Assets/Phase/Imported/umbrella.json`) follows as **6**, then the two-screen-tall [turnaround](Turnaround.md) shaft `PhaseTurnaround` (**7**, `Assets/Phase/Imported/turnaround.json`, generated by `python3 Verification/TurnaroundLevel.py`) and `PhaseGear` (**8**, `Assets/Phase/Imported/level-gear.json`), a moving-platform room on `PhaseDemo1.1`'s layout; the builder also imports jump platforms. Leaving level 8 to the right wins. Levels 3, 4 and 7 have recorded routes, `Verification/Routes/PhaseDemo13.json`, `PhaseDemo14.json` and `PhaseTurnaround.json`; `LevelRouteTests` replays each on its saved scene and expects the right exit with no deaths. Re-record a route whenever its map changes. Recreate the six scenes through Pipeline with `unity command eval 'PhaseSandboxBuilder.CreateImportedLevels();'`; it rewrites `PhaseDemo13` and `PhaseDemo14` with new object IDs, so discard those diffs when only the chaos, umbrella, turnaround or gear level changed.
 
 ## Press images
 

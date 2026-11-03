@@ -9,6 +9,7 @@ Window = frames (60 Hz) an input may move and still win; tight ≤ 3, moderate 4
 | PhaseDemo14 | in band | 10 | 22 | 17 | 5 | 0 | release at x=106: 7f |
 | PhaseDemo15 | in band | 10 | 22 | 20 | 2 | 0 | release at x=398: 10f |
 | PhaseUmbrella | in band | 15 | 32 | 25 | 7 | 0 | jump at x=1051: 9f |
+| PhaseTurnaround | in band | 13 | 38 | 37 | 1 | 0 | jump at x=164: 11f |
 | PhaseGear | in band | 8 | 23 | 16 | 7 | 0 | jump at x=97: 4f |
 
 ## PhaseDemo1
@@ -28,7 +29,7 @@ Histogram: 1–3f 0, 4–6f 1, 7–9f 0, 10–12f 0, 13+f 5
 
 ## PhaseDemo13
 
-Route 410 frames (6.8s), 10 jumps; from the recorded route, the most forgiving of 1 routes (180000 searched states, 17s).
+Route 410 frames (6.8s), 10 jumps; from the recorded route, the most forgiving of 1 routes (180000 searched states, 42s).
 
 Histogram: 1–3f 0, 4–6f 1, 7–9f 3, 10–12f 3, 13+f 23
 
@@ -67,7 +68,7 @@ Histogram: 1–3f 0, 4–6f 1, 7–9f 3, 10–12f 3, 13+f 23
 
 ## PhaseDemo14
 
-Route 461 frames (7.7s), 10 jumps; from the recorded route, the most forgiving of 1 routes (180000 searched states, 50s).
+Route 461 frames (7.7s), 10 jumps; from the recorded route, the most forgiving of 1 routes (180000 searched states, 130s).
 
 Histogram: 1–3f 0, 4–6f 0, 7–9f 4, 10–12f 1, 13+f 17
 
@@ -98,7 +99,7 @@ Histogram: 1–3f 0, 4–6f 0, 7–9f 4, 10–12f 1, 13+f 17
 
 ## PhaseDemo15
 
-Route 836 frames (13.9s), 10 jumps; from a 4-frame search, the most forgiving of 3 routes (1216 searched states, 20s).
+Route 836 frames (13.9s), 10 jumps; from a 4-frame search, the most forgiving of 3 routes (1216 searched states, 58s).
 
 Histogram: 1–3f 0, 4–6f 0, 7–9f 0, 10–12f 2, 13+f 20
 
@@ -129,7 +130,7 @@ Histogram: 1–3f 0, 4–6f 0, 7–9f 0, 10–12f 2, 13+f 20
 
 ## PhaseUmbrella
 
-Route 836 frames (13.9s), 15 jumps; from a 4-frame search, the most forgiving of 3 routes (18992 searched states, 405s).
+Route 836 frames (13.9s), 15 jumps; from a 4-frame search, the most forgiving of 3 routes (18992 searched states, 871s).
 
 Histogram: 1–3f 0, 4–6f 0, 7–9f 1, 10–12f 6, 13+f 25
 
@@ -168,9 +169,56 @@ Histogram: 1–3f 0, 4–6f 0, 7–9f 1, 10–12f 6, 13+f 25
 | 31 | 772 | right | 1183 | air |  | 17 (≤-8..≥+8) | 0 | free |
 | 32 | 778 | release | 1187 | air |  | 17 (-8..≥+8) | 15 | free |
 
+## PhaseTurnaround
+
+Route 602 frames (10.0s), 13 jumps; from the recorded route, the most forgiving of 1 routes (180000 searched states, 156s).
+
+Histogram: 1–3f 0, 4–6f 0, 7–9f 0, 10–12f 1, 13+f 37
+
+| # | Frame | Input | x | Contact | Color | Window (frames) | Window (px) | Grade |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 70 | jump | 116 | ground | blue | 17 (≤-8..≥+8) | 24 | free |
+| 2 | 90 | release | 149 | air |  | 17 (≤-8..≥+8) | 24 | free |
+| 3 | 98 | left | 161 | ground |  | 17 (-8..≥+8) | 24 | free |
+| 4 | 103 | jump | 164 | ground | green | 11 (-5..+5) | 0 | moderate |
+| 5 | 123 | release | 146 | air |  | 17 (≤-8..≥+8) | 18 | free |
+| 6 | 134 | right | 129 | ground |  | 17 (≤-8..≥+8) | 24 | free |
+| 7 | 141 | jump | 126 | ground | red | 15 (-7..+7) | 6 | free |
+| 8 | 161 | release | 156 | air |  | 17 (≤-8..≥+8) | 24 | free |
+| 9 | 167 | left | 165 | air |  | 17 (-8..≥+8) | 24 | free |
+| 10 | 172 | jump | 169 | ground | blue | 17 (-8..≥+8) | 0 | free |
+| 11 | 192 | release | 141 | air |  | 17 (≤-8..≥+8) | 24 | free |
+| 12 | 202 | right | 126 | ground |  | 16 (-8..+7) | 22 | free |
+| 13 | 210 | jump | 124 | ground | green | 17 (-8..≥+8) | 9 | free |
+| 14 | 230 | release | 154 | air |  | 17 (-3..≥+13) | 24 | free |
+| 15 | 236 | left | 163 | ground |  | 17 (-8..≥+8) | 24 | free |
+| 16 | 240 | jump | 167 | ground | red | 17 (-8..≥+8) | 3 | free |
+| 17 | 260 | release | 142 | air |  | 17 (≤-8..≥+8) | 22 | free |
+| 18 | 270 | right | 127 | ground |  | 17 (≤-8..+8) | 24 | free |
+| 19 | 277 | jump | 125 | ground | blue | 16 (-7..+8) | 8 | free |
+| 20 | 297 | release | 155 | air |  | 17 (≤-8..≥+8) | 24 | free |
+| 21 | 303 | left | 164 | ground |  | 17 (-8..≥+8) | 24 | free |
+| 22 | 307 | jump | 167 | ground | green | 17 (-8..≥+8) | 2 | free |
+| 23 | 327 | release | 140 | air |  | 17 (≤-8..≥+8) | 24 | free |
+| 24 | 336 | right | 126 | ground |  | 14 (-6..+7) | 19 | free |
+| 25 | 344 | jump | 124 | ground | red | 17 (-8..≥+8) | 10 | free |
+| 26 | 364 | release | 155 | air |  | 17 (≤-8..≥+8) | 24 | free |
+| 27 | 369 | left | 162 | air |  | 17 (-8..≥+8) | 24 | free |
+| 28 | 373 | jump | 166 | ground | blue | 16 (-7..+8) | 2 | free |
+| 29 | 393 | release | 142 | air |  | 17 (≤-8..≥+8) | 22 | free |
+| 30 | 403 | right | 127 | ground |  | 16 (-8..+7) | 22 | free |
+| 31 | 410 | jump | 125 | ground | green | 16 (-7..+8) | 8 | free |
+| 32 | 430 | release | 155 | air |  | 17 (≤-8..≥+8) | 24 | free |
+| 33 | 435 | left | 162 | air |  | 17 (-8..≥+8) | 24 | free |
+| 34 | 439 | jump | 166 | ground | red | 16 (-7..+8) | 2 | free |
+| 35 | 459 | release | 142 | air |  | 17 (≤-8..≥+8) | 22 | free |
+| 36 | 469 | right | 127 | ground |  | 16 (-8..+7) | 22 | free |
+| 37 | 476 | jump | 125 | ground | blue | 16 (-7..+8) | 8 | free |
+| 38 | 496 | release | 155 | air |  | 17 (≤-8..≥+8) | 24 | free |
+
 ## PhaseGear
 
-Route 221 frames (3.7s), 8 jumps; from a 4-frame search, the most forgiving of 1 routes (163429 searched states, 51s).
+Route 221 frames (3.7s), 8 jumps; from a 4-frame search, the most forgiving of 1 routes (163429 searched states, 123s).
 
 Histogram: 1–3f 0, 4–6f 2, 7–9f 3, 10–12f 2, 13+f 16
 
