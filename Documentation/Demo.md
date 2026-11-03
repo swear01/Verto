@@ -29,13 +29,13 @@ color in between sits on the seam, so the extra jump lands on it. Nothing hangs 
 `Verification/Routes/PhaseDemo1.1.json` is its recorded route.
 
 Level 3 (level-a) keeps the classmates' premise: a white laser's reach depends on the player's color, because
-colored terrain stops it only in its own color. It is now a left-right cycle that finally goes up: three white
-shelves, run right, left, then right, with a white laser at body height fired from the far end of each. Colored
-posts stand in the beam's path. A post of the player's color is a wall and a shield; jumping through it turns the
-next color, so the next post in red→blue→green order takes over. Each shelf ends with a two-cell post the last jump
-lands on, above the beam, from where the next jump climbs past the shelf end to the one above; the middle shelf
-also has one halfway, because no green post is left after it. The top shelf starts with red and blue posts the
-green player walks through. The last climb reaches a white ledge at the top right.
+colored terrain stops it only in its own color. It keeps the original look, rows of floating red, blue and green
+bars, without the red steps later added for run and jump. The rows are now four cells apart, so no row can be
+reached from the one below, and the route runs right, left, then right, climbing at each end by a two-cell step.
+Each upper row has a white laser along it, fired from the left, the right, then the left. A big jump crosses the
+laser of the row above; only a bar of the player's color between the gun and the player stops it, so on each
+row one color's jumps must stay low until its bar is passed, and the side doing the shielding flips with the
+direction of travel. The top row holds only the shields and the white exit ledge.
 `Verification/Routes/PhaseDemo13.json` is its recorded route.
 
 Level 4 (level-b) keeps the classmates' premise: you climb between a red pillar and a green pillar past
