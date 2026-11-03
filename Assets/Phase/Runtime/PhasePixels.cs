@@ -295,7 +295,7 @@ namespace Phase
                 var laser = s.lasers[n]; var beam = beams[n];
                 if (!laser.ActiveInPhase(s.phase) || beam.w <= 0 || beam.h <= 0) continue;
                 bool horizontal = laser.direction == LaserDirection.Left || laser.direction == LaserDirection.Right;
-                int bx = Round(beam.x), by = Round(beam.y), bw = Round(beam.w), bh = Round(beam.h);
+                int bx = Round(beam.x), by = Round(beam.y), bw = (int)Math.Ceiling(beam.w), bh = (int)Math.Ceiling(beam.h);
                 for (int y = by; y < by + bh; y++) for (int x = bx; x < bx + bw; x++)
                 {
                     int across = horizontal ? y - by : x - bx, along = horizontal ? x - bx : y - by, length = horizontal ? bw : bh;
