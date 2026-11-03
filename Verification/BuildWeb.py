@@ -92,7 +92,7 @@ def main():
         save(name, result)
         counts, failed = {}, 0
         for test in result["results"]:
-            fixture = test["FullName"].split("(")[0].split(".")[0]
+            fixture = test["FullName"].split("(")[0].split(".")[-2]
             counts[fixture] = counts.get(fixture, 0) + 1
             failed += test["Status"] != "Passed"
         if failed or counts != expected:
