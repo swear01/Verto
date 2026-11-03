@@ -8,24 +8,34 @@ tutorial messages.
 | Select | Scene | Source |
 | --- | --- | --- |
 | 1 | `PhaseDemo1` — 換色階梯 | `Assets/Phase/DemoRooms.json`, rebuilt with `PhaseSandboxBuilder.CreateDemoRooms()` |
-| 2 | `PhaseDemo1.1` | classmate color room, hand-authored scene |
+| 2 | `PhaseDemo1.1` | `Assets/Phase/Imported/level-stairs.json` |
 | 3 | `PhaseDemo13` | `Assets/Phase/Imported/level-a.json` |
 | 4 | `PhaseDemo14` | `Assets/Phase/Imported/level-b.json` |
 | 5 | `PhaseDemo15` | [chaos level](ChaosLevel.md), `Assets/Phase/Imported/chaos.json` |
 | 6 | `PhaseUmbrella` | [Umbrella](Umbrella.md), `Assets/Phase/Imported/umbrella.json` |
-| 7 | `PhaseTurnaround` | [Turnaround](Turnaround.md), `Assets/Phase/Imported/turnaround.json` |
-| 8 | `PhaseGear` | `Assets/Phase/Imported/level-gear.json` |
+| 7 | `PhaseLadder` | `Assets/Phase/Imported/level-ladder.json` |
+| 8 | `PhaseTurnaround` | [Turnaround](Turnaround.md), `Assets/Phase/Imported/turnaround.json` |
+| 9 | `PhaseGear` | `Assets/Phase/Imported/level-gear.json` |
 
 `PhaseSandbox.Levels` defines this order, the level select and both horizontal links.
-`PhaseSandboxBuilder.CreateImportedLevels()` rebuilds levels 3–8 through the connected Editor.
+`PhaseSandboxBuilder.CreateImportedLevels()` rebuilds levels 2–9 through the connected Editor.
 
-Level 3 (level-a) keeps the classmates' premise: three floors striped red→blue→green, with a white laser
-along each upper floor that colored terrain stops only in its own color, so its reach depends on the
-player's color, and red, green and blue lasers falling from the ceiling. Climbing was its way up, so the
-upper floors now sit one and two cells lower, the middle floor gains a trailing blue segment like the
-bottom one, and three red steps lead up the right side: each floor ends green, a jump turns red onto the
-step, the next jump turns blue onto the floor above, right of where the white laser reaches. The exit
-gate moved down one cell so the last jump clears it from the right of the blue ceiling laser.
+Level 2 (stairs) keeps the classmates' color-room premise: a jump turns red→blue→green, so going back one color
+takes two jumps. It used to stack five bars three cells apart and climb them by jumping up through the bar overhead;
+that move now has its own level (7). The bars are now one staircase of three-cell steps rising from the bottom left
+to a white pillar at the top right, each step one jump in color order, short hops along and big hops up. Where the
+next step is the color before the current one (green to blue, red to green, blue to red), a two-cell bump of the
+color in between sits on the seam, so the extra jump lands on it. Nothing hangs over a landing.
+`Verification/Routes/PhaseDemo1.1.json` is its recorded route.
+
+Level 3 (level-a) keeps the classmates' premise: a white laser's reach depends on the player's color, because
+colored terrain stops it only in its own color. It is now a left-right cycle that finally goes up: three white
+shelves, run right, left, then right, with a white laser at body height fired from the far end of each. Colored
+posts stand in the beam's path. A post of the player's color is a wall and a shield; jumping through it turns the
+next color, so the next post in red→blue→green order takes over. Each shelf ends with a two-cell post the last jump
+lands on, above the beam, from where the next jump climbs past the shelf end to the one above; the middle shelf
+also has one halfway, because no green post is left after it. The top shelf starts with red and blue posts the
+green player walks through. The last climb reaches a white ledge at the top right.
 `Verification/Routes/PhaseDemo13.json` is its recorded route.
 
 Level 4 (level-b) keeps the classmates' premise: you climb between a red pillar and a green pillar past
@@ -38,6 +48,12 @@ red, blue, green, and a wall jump off the red pillar onto a long blue walkway. T
 green beam, so the last stretch is walked, not jumped, through the green pillar to the white exit ledge.
 A white wall right of the green pillar closes the drop below the ledge.
 `Verification/Routes/PhaseDemo14.json` is its recorded route.
+
+Level 7 (ladder) is built around the move level 2 dropped: jumping up through the bar overhead. Six bars three cells
+apart span wall to wall in a running bond of six-cell red, blue and green bricks, so the only way up is through a
+brick. A jump changes the color, so a brick of another color overhead lets the player through while the brick
+beside it, in the new color, becomes the landing; a brick of the new color overhead blocks the jump. White ledges
+at the top right lead out. `Verification/Routes/PhaseLadder.json` is its recorded route.
 
 The jam rooms Demo2–8, Crystal1–3 and the classmate dash-platform room Demo12 were removed: they were built
 around dash, climbing, gears and dash crystals, which Verto no longer has.

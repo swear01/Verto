@@ -10,13 +10,13 @@ using Phase;
 // root: dotnet run -c Release --project Verification/Tolerance [-- PhaseGear ...]. See Documentation/Tolerance.md.
 static class Program
 {
-    // Each level scene is built from these files by PhaseSandboxBuilder; the classmate level PhaseDemo1.1 is left out. A new level needs a line here.
+    // Each level scene is built from these files by PhaseSandboxBuilder. A new level needs a line here.
     static readonly Dictionary<string, string> Maps = new Dictionary<string, string>
     {
-        ["PhaseDemo1"] = "Assets/Phase/DemoRooms.json", ["PhaseDemo13"] = "Assets/Phase/Imported/level-a.json",
+        ["PhaseDemo1"] = "Assets/Phase/DemoRooms.json", ["PhaseDemo1.1"] = "Assets/Phase/Imported/level-stairs.json", ["PhaseDemo13"] = "Assets/Phase/Imported/level-a.json",
         ["PhaseDemo14"] = "Assets/Phase/Imported/level-b.json", ["PhaseDemo15"] = "Assets/Phase/Imported/chaos.json",
-        ["PhaseUmbrella"] = "Assets/Phase/Imported/umbrella.json", ["PhaseTurnaround"] = "Assets/Phase/Imported/turnaround.json",
-        ["PhaseGear"] = "Assets/Phase/Imported/level-gear.json",
+        ["PhaseUmbrella"] = "Assets/Phase/Imported/umbrella.json", ["PhaseLadder"] = "Assets/Phase/Imported/level-ladder.json",
+        ["PhaseTurnaround"] = "Assets/Phase/Imported/turnaround.json", ["PhaseGear"] = "Assets/Phase/Imported/level-gear.json",
     };
 
     static PhaseController Build(string level)

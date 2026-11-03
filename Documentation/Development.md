@@ -75,7 +75,7 @@ Wait for each `test_status` result to be `completed` and inspect its summary bef
 starting the next test run (no `--filter` runs every non-explicit test of the mode). There are 18 controller cases, 7 laser cases, 8 crystal cases, 16 pixel cases, 12 platform cases,
 4 Grid authoring cases, 11 custom-map cases (validation, version migration, newer-version refusal, round trips, the chaos route), 6 scrolling-room cases, 17 world cases
 (map format v3, room changes, open top, respawns, goal, camera), 4 key-binding cases
-(validation, PlayerPrefs persistence, key caps, volume levels), 3 level-route cases and 1 [input tolerance](Tolerance.md) case in Edit Mode. The 32 Play Mode cases cover a big-room camera
+(validation, PlayerPrefs persistence, key caps, volume levels), 5 level-route cases and 1 [input tolerance](Tolerance.md) case in Edit Mode. The 32 Play Mode cases cover a big-room camera
 following a keyboard run, bindings, pause/release gating, room persistence, crystal triggers, imported maps and jump platforms, the
 title/editor flow, the editor's fixed tool panel under mouse input, room creation, merging, splitting and moving in the editor, the pause menu with key
 settings, the fullscreen control, and level select from the title, pause and victory screens.
@@ -189,9 +189,12 @@ Open `Assets/Scenes/PhaseDemo1.unity`. Rebuild this opening room from
 `unity command eval 'PhaseSandboxBuilder.CreateDemoRooms();'`.
 Each level uses `checkpointOnEntry`, resetting the player color while preserving elapsed time and
 jump/death counts.
-Built-in levels link in both directions: Demo1, the classmate color room Demo1.1, the laser rooms Demo13 and Demo14, the chaos level Demo15, Umbrella, the turnaround shaft, then the moving-platform room Gear. Backward travel enters a safe standing position near the previous room’s right side. The last level’s right exit freezes play and shows the victory screen; jump restarts level 1 in native Play, and Web also offers replay or level selection. Custom maps have no level links. The original sandbox links retain their momentum/color carry behavior.
+Built-in levels link in both directions: Demo1, the stairs Demo1.1, the laser rooms Demo13 and Demo14, the chaos level Demo15, Umbrella, Ladder, the turnaround shaft, then the moving-platform room Gear. Backward travel enters a safe standing position near the previous room’s right side. The last level’s right exit freezes play and shows the victory screen; jump restarts level 1 in native Play, and Web also offers replay or level selection. Custom maps have no level links. The original sandbox links retain their momentum/color carry behavior.
 See [the level course](Demo.md).
-`BuildWeb.py` verifies these tests and builds `PhaseDemo1`, `PhaseDemo1.1`, `PhaseDemo13`, `PhaseDemo14`, the chaos level `PhaseDemo15`, `PhaseUmbrella`, `PhaseTurnaround`, and `PhaseGear`.
+`BuildWeb.py` verifies these tests and builds `PhaseDemo1`, `PhaseDemo1.1`, `PhaseDemo13`, `PhaseDemo14`, the chaos level `PhaseDemo15`, `PhaseUmbrella`, `PhaseLadder`, `PhaseTurnaround`, and `PhaseGear`.
+In any level with a recorded route, `Verification/RouteLiveInput.cs` (entry `RouteLiveInput.Run`, script `--timeout_ms 60000`) plays
+`Verification/Routes/<scene>.json` with the virtual keyboard, following the controller's frame count; it fails on a death
+and saves frames to `TestResults/Route/`.
 In PhaseGear Play, `Verification/GearLiveInput.cs` (entry `GearLiveInput.Run`) plays the intended route, every floor
 blue bar, green platform, red bar or platform, with the virtual keyboard; it fails on a death or a ceiling bonk.
 
@@ -289,8 +292,8 @@ jump activation/death and respawn.
 
 ## Runtime map bridge
 
-The active `PHASE` object accepts `SelectDemoRoom("1".."8")` and
-`LoadCustomMap(json)`. Scene selection uses `PhaseSandbox.Levels` (Demo1, Demo1.1, Demo13–15, Umbrella, Turnaround, Gear), which also defines both horizontal links.
+The active `PHASE` object accepts `SelectDemoRoom("1".."9")` and
+`LoadCustomMap(json)`. Scene selection uses `PhaseSandbox.Levels` (Demo1, Demo1.1, Demo13–15, Umbrella, Ladder, Turnaround, Gear), which also defines both horizontal links.
 Custom maps are version 2 JSON (`format` `verto-map`, `version`, `generator`, `name`, `size` and `spawn` in cells, `terrain` rows
 of `.`, `1`–`7` and spike-covered `A`–`G`, and typed `objects`: spike, laser, crystal, platform; see
 [the spec](JumpPlatformSpec.md)). Files without a version are v1 (`blocks`, `spikes`, `lasers`, `crystals`, `spawnX`, `spawnY` in
