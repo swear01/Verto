@@ -49,8 +49,9 @@ public class ControllerTests
             for (int i = 0; i < 150; i++) { room.Step(new Controls { jump = i == 0, jumpHeld = i < hold }); top = Math.Min(top, room.player.y); }
             return start - top;
         }
-        Assert.That(Rise(12), Is.EqualTo(26), "a 12-frame hold is the short-hop height");
-        Assert.That(Rise(60), Is.EqualTo(28), "a full hold rises two pixels more");
+        Assert.That(Rise(12), Is.EqualTo(26), "a 12-frame hold keeps the old height");
+        Assert.That(Rise(13), Is.EqualTo(28), "the 13th held frame counts");
+        Assert.That(Rise(60), Is.EqualTo(28), "holding longer adds nothing");
     }
     [Test]
     public void PhaseMasksKeepLegacyAndAllSevenCombinations()
