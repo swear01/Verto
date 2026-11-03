@@ -204,8 +204,8 @@ namespace Phase
         // Corner brackets pointing out to enter fullscreen, and in to leave it.
         static readonly string[] enterFullScreenIcon = { "####...####", "#.........#", "#.........#", "#.........#", "...........", "...........", "...........", "#.........#", "#.........#", "#.........#", "####...####" },
             exitFullScreenIcon = { "...#...#...", "...#...#...", "...#...#...", "####...####", "...........", "...........", "...........", "####...####", "...#...#...", "...#...#...", "...#...#..." },
-            // An arrow curling back counter-clockwise, as on every "reset to default" button.
-            resetIcon = { "..#........", ".##........", "###.#####..", ".##.....##.", "..#......##", "..........#", "..........#", ".........##", ".......##..", "...#####...", "..........." },
+            // A circle open at the top right, closed by an arrowhead pointing clockwise: "restart".
+            resetIcon = { "......#....", "......##...", "...######..", "..#...##...", ".#....#....", ".#.........", ".#.......#.", ".#.......#.", ".#.......#.", "..#.....#..", "...#####..." },
             soundIcon = { "...#...", "..##.#.", "####..#", "####..#", "####..#", "..##.#.", "...#..." },
             musicIcon = { "..#####", "..#...#", "..#...#", "..#...#", "###..##", "###..##", ".#...#." };
         // Unity applies Screen.fullScreen natively and, within the confirming key or click, on Web; the Editor ignores it, so tests swap these.
@@ -214,7 +214,7 @@ namespace Phase
         static readonly string[] arrowLeft = { "...#...", "..#....", ".#.....", "#######", ".#.....", "..#....", "...#..." };
         static readonly string[][] actionIcons = {
             arrowLeft, arrowLeft.Select(r => new string(r.Reverse().ToArray())).ToArray(),
-            new[] { "...#...", "..#.#..", ".#...#.", "...#...", "..#.#..", ".#...#.", "#######" }
+            new[] { "...#...", "..#.#..", ".#...#.", ".......", "...#...", "..#.#..", ".#...#." }
         };
         // Bindable key names (Unity Key names, plus Shift for both Shift keys) and their key-cap labels.
         // Up and down arrows stay reserved for menu and editor navigation.

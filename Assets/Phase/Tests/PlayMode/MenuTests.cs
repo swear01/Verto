@@ -820,6 +820,60 @@ public class MenuTests : InputTestFixture
         finally { Object.Destroy(texture); }
     }
     [UnityTest]
+    public IEnumerator SettingsBackReturnsByKeyAndClick()
+    {
+        yield return OpenTitle();
+        var title = Object.FindAnyObjectByType<PhaseTitle>();
+        var mouse = InputSystem.AddDevice<Mouse>();
+        for (int round = 0; round < 3; round++)
+        {
+            for (int i = 0; i < 3; i++) yield return Tap(Key.RightArrow);
+            yield return Tap(Key.Z);
+            Assert.That(title.Keys, Is.Not.Null, "jump on the gear opens settings");
+            if (round == 2)
+            {
+                var size = PhaseSandbox.ViewSize(Screen.width, Screen.height); var c = PhaseKeys.Area(size, PhaseKeys.ControlsRow, PhaseKeys.BackColumn).center;
+                yield return Click(mouse, new Vector2(c.x / size.x * Screen.width, (1 - c.y / size.y) * Screen.height));
+            }
+            else
+            {
+                for (int i = 0; i < PhaseKeys.ControlsRow; i++) yield return Tap(Key.DownArrow);
+                yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow);
+                yield return Tap(round == 0 ? Key.Enter : Key.Z);
+            }
+            Assert.That(title.Keys, Is.Null, "Back closes settings, round " + round);
+        }
+        LogAssert.NoUnexpectedReceived();
+    }
+    [UnityTest]
+    public IEnumerator PauseSettingsBackReturnsByKeyAndClick()
+    {
+        yield return OpenTitle();
+        yield return Tap(Key.Z);
+        yield return WaitFor("PhaseDemo1");
+        var sandbox = Sandbox();
+        var mouse = InputSystem.AddDevice<Mouse>();
+        for (int round = 0; round < 3; round++)
+        {
+            yield return Tap(Key.Escape); yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow); yield return Tap(Key.Enter);
+            Assert.That(sandbox.Keys, Is.Not.Null, "the gear opens settings");
+            if (round == 2)
+            {
+                var size = PhaseSandbox.ViewSize(Screen.width, Screen.height); var c = PhaseKeys.Area(size, PhaseKeys.ControlsRow, PhaseKeys.BackColumn).center;
+                yield return Click(mouse, new Vector2(c.x / size.x * Screen.width, (1 - c.y / size.y) * Screen.height));
+            }
+            else
+            {
+                for (int i = 0; i < PhaseKeys.ControlsRow; i++) yield return Tap(Key.DownArrow);
+                yield return Tap(Key.RightArrow); yield return Tap(Key.RightArrow);
+                yield return Tap(round == 0 ? Key.Enter : Key.Z);
+            }
+            Assert.That((sandbox.Keys, sandbox.Menu != null), Is.EqualTo(((PhaseKeys)null, true)), "Back returns to the pause menu, round " + round);
+            yield return Tap(Key.Escape);
+        }
+        LogAssert.NoUnexpectedReceived();
+    }
+    [UnityTest]
     public IEnumerator SettingsFullScreenSwitchFollowsKeysClicksAndScenes()
     {
         // Screen.fullScreen does nothing in the Editor, so the switch drives a stand-in here.

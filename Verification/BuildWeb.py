@@ -83,7 +83,7 @@ def main():
         ("editor", "CrystalTests", 8),
         ("editor", "PixelTests", 16), ("editor", "GridGeometryTests", 4),
         ("editor", "CustomMapTests", 11), ("editor", "PlatformTests", 12), ("editor", "KeyBindingTests", 4), ("editor", "ScrollRoomTests", 6), ("editor", "WorldTests", 17), ("editor", "LevelRouteTests", 2), ("editor", "ToleranceTests", 1),
-        ("playmode", "SandboxTests", 12), ("playmode", "MapBridgeTests", 1), ("playmode", "MenuTests", 16),
+        ("playmode", "SandboxTests", 12), ("playmode", "MapBridgeTests", 1), ("playmode", "MenuTests", 18),
     ]:
         wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)
         command("run_tests", "--", "--mode", mode, "--filter", test_filter, "--async_tests")
