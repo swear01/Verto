@@ -78,21 +78,26 @@ def main():
     command("set_autotick")
     save("recompile", recompile())
     command("run_script", "--", "--file", "Verification/BackgroundEditor.cs", "--entry", "BackgroundEditor.Run")
-    for mode, test_filter, expected in [
-        ("editor", "ControllerTests", 18), ("editor", "LaserTests", 7),
-        ("editor", "CrystalTests", 8),
-        ("editor", "PixelTests", 16), ("editor", "GridGeometryTests", 4),
-        ("editor", "CustomMapTests", 11), ("editor", "PlatformTests", 12), ("editor", "KeyBindingTests", 4), ("editor", "ScrollRoomTests", 6), ("editor", "WorldTests", 17), ("editor", "LevelRouteTests", 2), ("editor", "ToleranceTests", 1),
-        ("playmode", "SandboxTests", 12), ("playmode", "MapBridgeTests", 1), ("playmode", "MenuTests", 18),
+    # One run_tests call per set: each call pays a few seconds of runner start-up. Counts are checked per fixture.
+    for name, mode, extra, expected in [
+        ("editor", "editor", [], {
+            "ControllerTests": 18, "LaserTests": 7, "CrystalTests": 8, "PixelTests": 16, "GridGeometryTests": 4,
+            "CustomMapTests": 10, "PlatformTests": 12, "KeyBindingTests": 4, "ScrollRoomTests": 6, "WorldTests": 17, "LevelRouteTests": 2}),
+        ("slow", "editor", ["--filter", "Slow", "--filter_type", "category", "--include_explicit"], {"CustomMapTests": 1, "ToleranceTests": 1}),
+        ("playmode", "playmode", [], {"SandboxTests": 12, "MapBridgeTests": 1, "MenuTests": 18, "AudioTests": 1}),
     ]:
         wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)
-        command("run_tests", "--", "--mode", mode, "--filter", test_filter, "--async_tests")
-        result = wait("test_status", lambda r: r.get("status") == "completed", 300)
-        save({"ControllerTests": "editor", "PixelTests": "pixels", "SandboxTests": "playmode"}.get(test_filter, test_filter), result)
-        summary = result["summary"]
-        if summary.get("total") != expected or summary.get("passed") != expected:
-            raise RuntimeError(f"{mode}: expected {expected} passing tests, got {summary}")
-        print(f"{test_filter}: {expected} passed", flush=True)
+        command("run_tests", "--", "--mode", mode, *extra, "--async_tests")
+        result = wait("test_status", lambda r: r.get("status") == "completed", 600)
+        save(name, result)
+        counts, failed = {}, 0
+        for test in result["results"]:
+            fixture = test["FullName"].split("(")[0].split(".")[0]
+            counts[fixture] = counts.get(fixture, 0) + 1
+            failed += test["Status"] != "Passed"
+        if failed or counts != expected:
+            raise RuntimeError(f"{name}: expected {expected} all passing, got {counts} with {failed} not passed: {result['summary']}")
+        print(f"{name}: {sum(counts.values())} passed", flush=True)
     wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)
     for scene in SCENES:
         if not (PROJECT / scene).is_file():

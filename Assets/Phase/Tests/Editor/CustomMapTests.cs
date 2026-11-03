@@ -295,7 +295,7 @@ public class CustomMapTests
         }
         return "stuck";
     }
-    [Test]
+    [Test, Explicit("slow: eight full-route simulations"), Category("Slow")]
     public void ChaosRouteWinsAndJumpingOnSightDies()
     {
         foreach(var shift in new[]{-6,-3,0,3,6})Assert.That(ChaosRun(ChaosJumps,shift),Is.EqualTo("exit"),$"route shifted {shift}px");
