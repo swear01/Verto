@@ -28,10 +28,10 @@ public static class RouteLiveInput
         var editorInput = InputSystem.settings.editorInputBehaviorInPlayMode;
         var slots = PhaseSandbox.Slots.ToArray();
         string scene = sandbox.gameObject.scene.name;
-        var inputs = PhaseRoute.Inputs(PhaseRoute.Parse(File.ReadAllText(PhaseRoute.RoutePath(scene)))).ToArray();
         Keyboard keyboard = null;
         try
         {
+            var inputs = PhaseRoute.Inputs(PhaseRoute.Parse(File.ReadAllText(PhaseRoute.RoutePath(scene)))).ToArray();
             Application.runInBackground = true;
             InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
             InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
