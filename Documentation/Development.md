@@ -45,13 +45,21 @@ unity command run_script -- --file Verification/BackgroundEditor.cs --entry Back
 unity command recompile -- --focus false
 unity command recompile_status
 unity command open_scene -- --path Assets/Scenes/PhaseSandbox.unity
-unity command run_tests -- --mode editor --filter ControllerTests --async_tests true
+unity command run_tests -- --mode editor --async_tests true
 unity command test_status
-unity command run_tests -- --mode editor --filter PixelTests --async_tests true
+unity command run_tests -- --mode editor --filter Slow --filter_type category --include_explicit true --async_tests true
 unity command test_status
-unity command run_tests -- --mode playmode --filter SandboxTests --async_tests true
+unity command run_tests -- --mode playmode --async_tests true
 unity command test_status
 ```
+
+The default Edit Mode run (no filter) is the fast set, about 8 s including the runner start-up; every
+`run_tests` call costs a few seconds before the first test, so run the whole mode in one call and
+filter only to debug one fixture. Tests that take seconds are `[Explicit]` with `[Category("Slow")]`
+(the chaos route and the [input tolerance](Tolerance.md) search); the default run skips them, and the
+second command above runs just those. `BuildWeb.py` runs the fast Edit Mode set, the slow set and the
+whole Play Mode set in three calls and checks the case count of each fixture. In Play Mode tests, wait for
+frames or conditions, not wall-clock time: `FastTime.cs` fixes every frame to 1/60 s of game time.
 
 To recreate the sandbox, call its existing builder through the connected Editor:
 `unity command eval 'PhaseSandboxBuilder.Create();'`. The builder saves its own scenes.
@@ -64,7 +72,7 @@ file changes (no "modified externally" dialog). Unsaved edits are therefore drop
 `EditorSceneManager.SaveScene` in the same `eval` or script.
 
 Wait for each `test_status` result to be `completed` and inspect its summary before
-starting the next test run. There are 18 controller cases, 7 laser cases, 8 crystal cases, 16 pixel cases, 12 platform cases,
+starting the next test run (no `--filter` runs every non-explicit test of the mode). There are 18 controller cases, 7 laser cases, 8 crystal cases, 16 pixel cases, 12 platform cases,
 4 Grid authoring cases, 11 custom-map cases (validation, version migration, newer-version refusal, round trips, the chaos route), 6 scrolling-room cases, 17 world cases
 (map format v3, room changes, open top, respawns, goal, camera), 4 key-binding cases
 (validation, PlayerPrefs persistence, key caps, volume levels), 3 level-route cases and 1 [input tolerance](Tolerance.md) case in Edit Mode. The 32 Play Mode cases cover a big-room camera

@@ -2,6 +2,7 @@ using System.Linq;
 using NUnit.Framework;
 using Phase;
 
+[Explicit("slow: budgeted state-space search"), Category("Slow")]
 public class ToleranceTests
 {
     // A floor with a pit of `gap` pixels at x=160; the right edge wins.
