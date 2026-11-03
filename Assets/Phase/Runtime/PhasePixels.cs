@@ -254,7 +254,7 @@ namespace Phase
             {
                 if (Gap(u, py, px) || Gap(d, 7 - py, px) || Gap(l, px, py) || Gap(r, 7 - px, py)) continue;
                 int k = TileEdge(px, py, u, d, l, r, true, true, true, true);
-                Rect(X + px, Y + py, 1, 1, k < 2 ? tooth : k < 4 ? cap : ((X - ox + px + Y - oy + py) & 7) < 4 ? rim : dark, a);
+                Rect(X + px, Y + py, 1, 1, k < 2 ? tooth : ((X - ox + px + Y - oy + py) & 7) < 4 ? rim : dark, a);
             }
         }
         static bool Mixed(int mask) => mask == 3 || mask == 5 || mask == 6;
