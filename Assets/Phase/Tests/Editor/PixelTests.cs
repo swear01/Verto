@@ -100,6 +100,33 @@ public class PixelTests
     }
 
     [Test]
+    public void CrossingBeamsMixTheirColoursWhereTheyOverlap()
+    {
+        var pixels = new PhasePixels();
+        Color32 At(int x, int y) => pixels.Texture.GetPixel(x, 179 - y);
+        Color32 Drawn(params Laser[] lasers)
+        {
+            var room = new PhaseController(new[] { new Block(0, 160, 320, 24) }, 32, 149, lasers: lasers); room.flash = 0;
+            pixels.Draw(room, false); return At(103, 83);
+        }
+        try
+        {
+            // Both beams are live in the red phase; their masks join to white where they cross.
+            var rightRed = new Laser(8, 80, LaserDirection.Right, 3);
+            var downRed = new Laser(100, 40, LaserDirection.Down, 5);
+            var crossed = Drawn(rightRed, downRed);
+            Assert.That(At(101, 83), Is.EqualTo(At(97, 83)), "a beam's outline never cuts across the beam it crosses");
+            Assert.That(At(102, 82), Is.EqualTo(crossed), "the crossing is one shape: no border at the corners");
+            Assert.That(At(105, 85), Is.EqualTo(crossed), "the crossing is one shape: no border at the corners");
+            Assert.That(crossed, Is.EqualTo(Drawn(new Laser(8, 80, LaserDirection.Right, 7))), "the overlap takes the colour of the joined masks");
+            Assert.That(crossed, Is.EqualTo(Drawn(downRed, rightRed)), "the order lasers are listed in does not matter");
+            Assert.That(crossed, Is.Not.EqualTo(Drawn(rightRed)));
+            Assert.That(crossed, Is.Not.EqualTo(Drawn(downRed)));
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
+    [Test]
     public void ExtraJumpRingChangesOnlyTheCloakAndClearsWhenSpent()
     {
         var pixels=new PhasePixels();
