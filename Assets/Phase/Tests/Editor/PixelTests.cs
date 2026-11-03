@@ -20,6 +20,12 @@ public class PixelTests
         Assert.That(PhasePixels.TileEdge(2, 0, false, true, true, true, false, false, true, true), Is.EqualTo(0));
     }
 
+    // One failure check per pixel is far cheaper than a constraint assertion per pixel.
+    // Color32 has no fast equality, so NUnit's collection compare falls back to reflection per pixel.
+    static bool Eq(Color32 a, Color32 b) => a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;
+    static bool Equal(Color32[] a, Color32[] b) { if (a.Length != b.Length) return false; for (int i = 0; i < a.Length; i++) if (!Eq(a[i], b[i])) return false; return true; }
+    static void Same(Color32[] expected, Color32[] actual, string message = null) => Assert.That(Equal(expected, actual), Is.True, message ?? "pixels match");
+    static void Every(int count, Func<int, bool> ok, string message) { for (int i = 0; i < count; i++) if (!ok(i)) Assert.Fail($"{message} (index {i})"); }
 
 
     [Test]
@@ -84,7 +90,7 @@ public class PixelTests
                     Assert.That(At(120,80),Is.EqualTo(background[(179-80)*320+120]),"round corners are cut away");
                 }
                 room.time=2;pixels.Draw(room,false);var active=pixels.Texture.GetPixels32();
-                room.time=5;pixels.Draw(room,false);CollectionAssert.AreEqual(active,pixels.Texture.GetPixels32(),"crystals do not blink or add competing motion");
+                room.time=5;pixels.Draw(room,false);Same(active,pixels.Texture.GetPixels32(),"crystals do not blink or add competing motion");
                 for(int phase=0;phase<3;phase++)if(!crystal.ActiveInPhase(phase))
                 {
                     room.phase=phase;pixels.Draw(room,false);
@@ -92,7 +98,7 @@ public class PixelTests
                     Assert.That(Distance(At(123,80),background[index]),Is.GreaterThan(0),"unavailable crystals remain discoverable");
                     Assert.That(Distance(At(123,80),background[index]),Is.LessThan(Distance(active[index],background[index])),"wrong-phase crystals are visibly translucent");
                 }
-                crystal.collected=true;pixels.Draw(room,false);CollectionAssert.AreEqual(background,pixels.Texture.GetPixels32(),"consumed crystals cannot look available");
+                crystal.collected=true;pixels.Draw(room,false);Same(background,pixels.Texture.GetPixels32(),"consumed crystals cannot look available");
             }
             var covered=new PhaseController(Array.Empty<Block>(),32,149,lasers:new[]{new Laser(8,80,LaserDirection.Right)},crystals:new[]{new Crystal(120,80)});covered.flash=0;
             pixels.Draw(covered,false);
@@ -150,7 +156,7 @@ public class PixelTests
                 }
                 Assert.That(changed,Is.GreaterThan(4));
                 Assert.That((Color32)pixels.Texture.GetPixel(123,179-(feet-6)),Is.EqualTo((Color32)PhasePixels.Hex("e8e8e8")),"bonus is a neutral ring independent of current phase and dash");
-                room.player.airJump=0;pixels.Draw(room);CollectionAssert.AreEqual(plain,pixels.Texture.GetPixels32(),"spending the jump restores original art exactly");
+                room.player.airJump=0;pixels.Draw(room);Same(plain,pixels.Texture.GetPixels32(),"spending the jump restores original art exactly");
             }
         }
         finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
@@ -172,8 +178,8 @@ public class PixelTests
                 pixels.Draw(s,false); var active=pixels.Texture.GetPixels32();
                 var b=s.LaserBeam(laser);
                 for(int y=(int)b.y;y<b.y+b.h;y++)for(int x=(int)b.x;x<b.x+b.w;x++)
-                    Assert.That(active[(179-y)*320+x],Is.Not.EqualTo(background[(179-y)*320+x]),"every lethal pixel is visible");
-                s.time+=3; pixels.Draw(s,false); CollectionAssert.AreEqual(active,pixels.Texture.GetPixels32(),"steady light has no time cycle");
+                    if(Eq(active[(179-y)*320+x],background[(179-y)*320+x]))Assert.Fail($"every lethal pixel is visible ({x},{y})");
+                s.time+=3; pixels.Draw(s,false); Same(active,pixels.Texture.GetPixels32(),"steady light has no time cycle");
                 for(int phase=0;phase<3;phase++)if(!laser.ActiveInPhase(phase))
                 {
                     s.phase=phase; pixels.Draw(s,false);var safe=pixels.Texture.GetPixels32();
@@ -200,7 +206,7 @@ public class PixelTests
             int before=(179-83)*320+60,after=(179-83)*320+100;
             Assert.That(solid[before],Is.EqualTo(ghost[before]),"beam stays bright before the blocker");
             Assert.That(solid[after],Is.Not.EqualTo(ghost[after]),"ghost terrain no longer truncates the drawn beam");
-            s.phase=0;s.time=5;pixels.Draw(s,false);CollectionAssert.AreEqual(solid,pixels.Texture.GetPixels32());
+            s.phase=0;s.time=5;pixels.Draw(s,false);Same(solid,pixels.Texture.GetPixels32());
         }
         finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
     }
@@ -229,9 +235,9 @@ public class PixelTests
                 var spike=new Spike(80,80,16,direction,3);var room=new PhaseController(Array.Empty<Block>(),32,40,spikes:new[]{spike});room.flash=0;
                 var empty=new PhaseController(Array.Empty<Block>(),32,40);empty.flash=0;pixels.Draw(empty,false);var background=pixels.Texture.GetPixels32();
                 room.phase=0;pixels.Draw(room,false);var active=pixels.Texture.GetPixels32();var hit=spike.Hitbox;
-                for(int y=(int)hit.y;y<hit.y+hit.h;y++)for(int x=(int)hit.x;x<hit.x+hit.w;x++)Assert.That(At(x,y),Is.Not.EqualTo(background[(179-y)*320+x]),"every lethal root pixel is drawn");
-                room.phase=2;pixels.Draw(room,false);var inactive=pixels.Texture.GetPixels32();Assert.That(inactive,Is.Not.EqualTo(active),"inactive spikes retain dark teeth");
-                room.phase=0;pixels.Draw(room,false);CollectionAssert.AreEqual(active,pixels.Texture.GetPixels32(),"phase changes recover the same cached spike art");
+                for(int y=(int)hit.y;y<hit.y+hit.h;y++)for(int x=(int)hit.x;x<hit.x+hit.w;x++)if(Eq(At(x,y),background[(179-y)*320+x]))Assert.Fail($"every lethal root pixel is drawn ({x},{y})");
+                room.phase=2;pixels.Draw(room,false);var inactive=pixels.Texture.GetPixels32();Assert.That(Equal(inactive,active),Is.False,"inactive spikes retain dark teeth");
+                room.phase=0;pixels.Draw(room,false);Same(active,pixels.Texture.GetPixels32(),"phase changes recover the same cached spike art");
             }
             Assert.That(PhasePixels.SurfaceColor(7),Is.EqualTo(PhasePixels.Hex("e8e8e8")),"permanent white remains neutral");
         }
@@ -255,17 +261,17 @@ public class PixelTests
         {
             foreach (int direction in new[] { -1, 1 })
             {
-                pixels.Slide(from, to, 0, direction); CollectionAssert.AreEqual(from, pixels.Texture.GetPixels32());
-                pixels.Slide(from, to, 1, direction); CollectionAssert.AreEqual(to, pixels.Texture.GetPixels32());
+                pixels.Slide(from, to, 0, direction); Same(from, pixels.Texture.GetPixels32());
+                pixels.Slide(from, to, 1, direction); Same(to, pixels.Texture.GetPixels32());
                 pixels.Slide(from, to, .5, direction);
                 var frame = pixels.Texture.GetPixels32();
                 int shift=(int)Math.Floor(width*.5+.5);
-                for (int y = 0; y < height; y++) for (int x = 0; x < width; x++)
+                Every(width * height, i =>
                 {
-                    int source = x + shift * direction;
+                    int y = i / width, x = i % width, source = x + shift * direction;
                     var expected = source >= 0 && source < width ? from[y * width + source] : to[y * width + source - width * direction];
-                    Assert.That(frame[y * width + x], Is.EqualTo(expected));
-                }
+                    return Eq(frame[i], expected);
+                }, "slide frame matches the shifted rows");
             }
         }
         finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
@@ -280,15 +286,15 @@ public class PixelTests
         {
             pixels.Draw(s); var original=pixels.Texture.GetPixels32();
             pixels.SetView(83,180,95);pixels.Draw(s);var narrow=pixels.Texture.GetPixels32();
-            for(int y=0;y<180;y++)for(int x=0;x<83;x++)Assert.That(narrow[y*83+x],Is.EqualTo(original[y*320+x+95]),"camera crop keeps native pixels");
+            Every(180*83,i=>Eq(narrow[i],original[i/83*320+i%83+95]),"camera crop keeps native pixels");
             s.ResizeRoom(427);pixels.SetView(427,180,0);pixels.Draw(s);
             Color32 floor=pixels.Texture.GetPixel(400,19);
             Assert.That(floor.r,Is.GreaterThan(150),"connected white floor reaches the wide edge");
             Assert.That(pixels.Texture.GetPixel(400,140).a,Is.EqualTo(1));
-            pixels.SetView(320,180,0);s.ResizeRoom(320);pixels.Draw(s);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32(),"resizing back restores the original room");
+            pixels.SetView(320,180,0);s.ResizeRoom(320);pixels.Draw(s);Same(original,pixels.Texture.GetPixels32(),"resizing back restores the original room");
             pixels.SetView(320,693,0);pixels.Draw(s);var portrait=pixels.Texture.GetPixels32();
-            for(int y=0;y<180;y++)for(int x=0;x<320;x++)Assert.That(portrait[y*320+x],Is.EqualTo(original[y*320+x]),"portrait keeps the room's pixels at the bottom");
-            foreach(var pixel in portrait)Assert.That(pixel.a,Is.EqualTo(255),"extended sky is opaque");
+            Every(180*320,i=>Eq(portrait[i],original[i]),"portrait keeps the room's pixels at the bottom");
+            Every(portrait.Length,i=>portrait[i].a==255,"extended sky is opaque");
             Assert.That(PhaseSandbox.ViewSize(390,844),Is.EqualTo(new Vector2Int(320,693)));
             Assert.That(PhaseSandbox.ViewSize(2560,1080),Is.EqualTo(new Vector2Int(427,180)));
             foreach(var viewport in new[]{new Vector2Int(320,180),new Vector2Int(800,600),new Vector2Int(390,844),new Vector2Int(320,1200)})
@@ -297,9 +303,9 @@ public class PixelTests
                 Assert.That(size.x,Is.GreaterThanOrEqualTo(320));Assert.That(size.y,Is.GreaterThanOrEqualTo(180));
             }
             pixels.SetView(320,694,0);pixels.Draw(s);var taller=pixels.Texture.GetPixels32();
-            for(int i=0;i<portrait.Length;i++)Assert.That(taller[i],Is.EqualTo(portrait[i]),"height resize keeps sky fixed in world coordinates");
-            for(int height=180;height<=1400;height++)Assert.That(PhaseSandbox.ViewSize(320,height),Is.EqualTo(new Vector2Int(320,height)),"native viewport size must not drift on repeat calculation");
-            pixels.SetView(320,180,0);pixels.Draw(s);CollectionAssert.AreEqual(original,pixels.Texture.GetPixels32(),"portrait resize restores the original art");
+            Every(portrait.Length,i=>Eq(taller[i],portrait[i]),"height resize keeps sky fixed in world coordinates");
+            Every(1221,i=>PhaseSandbox.ViewSize(320,180+i)==new Vector2Int(320,180+i),"native viewport size must not drift on repeat calculation");
+            pixels.SetView(320,180,0);pixels.Draw(s);Same(original,pixels.Texture.GetPixels32(),"portrait resize restores the original art");
             foreach(int phase in new[]{0,1,2})
             {
                 s.phase=phase;pixels.Draw(s);

@@ -248,7 +248,7 @@ public class SandboxTests : InputTestFixture
             Assert.That(Time.frameCount,Is.GreaterThan(frame));Assert.That(sandbox.Controller.time,Is.GreaterThan(time));
             Assert.That(sandbox.Controller.player.x,Is.GreaterThan(200));Assert.That(View().x,Is.GreaterThan(0),"the view follows the run");
             sandbox.Controller.player.x=624;
-            yield return new WaitForSeconds(2);
+            for(int i=0;i<120&&View().x!=640-size.x;i++)yield return null;
             Assert.That(View().x,Is.EqualTo(640-size.x),"the view stops at the room's right edge");
             Assert.That(sandbox.Controller.deaths,Is.Zero);
             LogAssert.NoUnexpectedReceived();
