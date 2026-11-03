@@ -39,6 +39,20 @@ public class ControllerTests
         }
     }
     [Test]
+    public void DefaultBigJumpHoldsThirteenFrames()
+    {
+        double Rise(int hold)
+        {
+            var room = new PhaseController(new[] { new Block(0, 160, 320, 24, phaseMask: 7) }, 32, 149);
+            for (int i = 0; i < 5; i++) room.Step(new Controls());
+            double start = room.player.y, top = start;
+            for (int i = 0; i < 150; i++) { room.Step(new Controls { jump = i == 0, jumpHeld = i < hold }); top = Math.Min(top, room.player.y); }
+            return start - top;
+        }
+        Assert.That(Rise(12), Is.EqualTo(26), "a 12-frame hold is the short-hop height");
+        Assert.That(Rise(60), Is.EqualTo(28), "a full hold rises two pixels more");
+    }
+    [Test]
     public void PhaseMasksKeepLegacyAndAllSevenCombinations()
     {
         foreach(int legacy in new[]{-1,0,1,2})foreach(int phase in new[]{0,1,2})
