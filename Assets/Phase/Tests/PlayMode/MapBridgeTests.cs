@@ -72,7 +72,7 @@ public class MapBridgeTests : InputTestFixture
             yield return null;var next=Object.FindAnyObjectByType<PhaseSandbox>();
             Assert.That(next.Controller.phase,Is.Zero);Assert.That(next.Frame,Is.Not.Null);
             Assert.That(Object.FindObjectsByType<PhaseSandbox>(FindObjectsSortMode.None).Length,Is.EqualTo(1));
-            foreach (var room in new[] { ("4", "PhaseDemo14", 0), ("8", "PhaseGear", 0) })
+            foreach (var room in new[] { ("4", "PhaseDemo14", 0), ("9", "PhaseGear", 0) })
             {
                 next.SelectDemoRoom(room.Item1); deadline = Time.realtimeSinceStartupAsDouble + 5;
                 while (SceneManager.GetActiveScene().name != room.Item2 && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
