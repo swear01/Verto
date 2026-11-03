@@ -210,7 +210,7 @@ namespace Phase
                 bool Neighbor(int dx, int dy) => isPlatform ? X + dx * 8 >= b.x && X + dx * 8 < b.x + b.w && Y + dy * 8 >= b.y && Y + dy * 8 < b.y + b.h
                     : cells.TryGetValue((X + dx * 8, Y + dy * 8), out var kind) && kind == b.Mask;
                 bool u = Neighbor(0,-1), d = Neighbor(0,1), l = Neighbor(-1,0), r = Neighbor(1,0);
-                if (b.spiked && active) { Spiked(X, Y, u, d, l, r, body, cap, rim, 1); continue; }
+                if (b.spiked && active) { Spiked(X, Y, u, d, l, r, body, cap, rim, 1, ox, oy); continue; }
                 if (!active)
                 {
                     Rect(X, Y, 8, 8, body, deferred ? .3 : .12);
@@ -223,13 +223,14 @@ namespace Phase
                         if (!l && dy) Rect(X, Y + n, 1, 1, rim, alpha);
                         if (!r && dy) Rect(X + 7, Y + n, 1, 1, rim, alpha);
                     }
-                    if (b.spiked) Spiked(X, Y, u, d, l, r, body, cap, rim, .35);
+                    if (b.spiked) Spiked(X, Y, u, d, l, r, body, cap, rim, .35, ox, oy);
                     continue;
                 }
                 // One tile for every colour, white included: outer frame, darker inner frame, darker centre.
+                bool ul = Neighbor(-1,-1), ur = Neighbor(1,-1), dl = Neighbor(-1,1), dr = Neighbor(1,1);
                 for (int py = 0; py < 8; py++) for (int px = 0; px < 8; px++)
                 {
-                    int edge = TileEdge(px, py, u, d, l, r, Neighbor(-1,-1), Neighbor(1,-1), Neighbor(-1,1), Neighbor(1,1));
+                    int edge = TileEdge(px, py, u, d, l, r, ul, ur, dl, dr);
                     Rect(X + px, Y + py, 1, 1, cap, edge < 2 ? .9 : edge < 4 ? .55 : .25);
                 }
             }
@@ -245,15 +246,15 @@ namespace Phase
             return edge;
         }
         // A spiked cell: hazard-striped body in the phase colour, a triangular tooth on every exposed side.
-        void Spiked(int X, int Y, bool u, bool d, bool l, bool r, Color32 body, Color32 cap, Color32 rim, double a)
+        void Spiked(int X, int Y, bool u, bool d, bool l, bool r, Color32 body, Color32 cap, Color32 rim, double a, int ox, int oy)
         {
             var dark = Mix(body, Color(Ink), .6); var tooth = Color(Tooth);
             bool Gap(bool side, int depth, int pos) => !side && depth < 3 && Math.Abs(2 * pos - 7) >= 2 * depth + 2;
             for (int py = 0; py < 8; py++) for (int px = 0; px < 8; px++)
             {
                 if (Gap(u, py, px) || Gap(d, 7 - py, px) || Gap(l, px, py) || Gap(r, 7 - px, py)) continue;
-                int k = Math.Min(Math.Min(u ? 8 : py, d ? 8 : 7 - py), Math.Min(l ? 8 : px, r ? 8 : 7 - px));
-                Rect(X + px, Y + py, 1, 1, k < 2 ? tooth : k < 4 ? cap : ((X + px + Y + py) & 7) < 4 ? rim : dark, a);
+                int k = TileEdge(px, py, u, d, l, r, true, true, true, true);
+                Rect(X + px, Y + py, 1, 1, k < 2 ? tooth : k < 4 ? cap : ((X - ox + px + Y - oy + py) & 7) < 4 ? rim : dark, a);
             }
         }
         static bool Mixed(int mask) => mask == 3 || mask == 5 || mask == 6;
