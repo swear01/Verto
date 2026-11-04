@@ -40,6 +40,7 @@ public class AudioTests
         Assert.AreEqual(3, music.Length);
         foreach (var m in music) Assert.IsTrue(m.isPlaying);
         var red = System.Array.Find(music, m => m.clip.name == "bgm0");
+        Assert.IsNotNull(red, "bgm0 is the title's layer");
         Assert.Greater(red.volume, 0f);
         var started = red.time;
         Object.FindAnyObjectByType<PhaseTitle>().SelectDemoRoom("1");

@@ -104,7 +104,7 @@ namespace Phase
                 music[i] = go.AddComponent<AudioSource>();
                 music[i].clip = Loop(i); music[i].loop = true; music[i].volume = 0;
             }
-            // Start together so the layers stay in step; Unity Web only reaches here after the first key press.
+            // Start together so the layers stay in step; Unity Web holds the audio context suspended and resumes it on the first key press or click.
             foreach (var m in music) m.Play();
         }
 
