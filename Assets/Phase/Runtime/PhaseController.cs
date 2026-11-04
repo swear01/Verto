@@ -9,7 +9,7 @@ namespace Phase
     {
         public double x, y, w, h;
         public int phase = -1, phaseMask;
-        // A block fully covered in spikes: active, it kills on any contact. It still blocks like terrain.
+        // A block fully covered in spikes: active, it kills on any contact. It is never solid (no standing, no wall), but it still stops laser beams.
         [NonSerialized] public bool spiked;
         public int Mask => phaseMask == 0 ? (phase < 0 ? 7 : 1 << phase) : phaseMask;
         public bool ActiveInPhase(int state) => (Mask & (1 << state)) != 0;
@@ -199,10 +199,10 @@ namespace Phase
         List<Block> Solid(int ph) => Stops(ph, false);
         // What stops a laser beam: every active block, spike-covered ones included.
         List<Block> BeamStops(int ph) => Stops(ph, true);
-        List<Block> Stops(int ph, bool spiked)
+        List<Block> Stops(int ph, bool includeSpiked)
         {
             var list = new List<Block>(blocks.Count);
-            for (int i = 0; i < blocks.Count; i++) if ((spiked || !blocks[i].spiked) && blocks[i].ActiveInPhase(ph) && (ph != phase || !blocked.Contains(i))) list.Add(blocks[i]);
+            for (int i = 0; i < blocks.Count; i++) if ((includeSpiked || !blocks[i].spiked) && blocks[i].ActiveInPhase(ph) && (ph != phase || !blocked.Contains(i))) list.Add(blocks[i]);
             return list;
         }
         static bool Collides(Player p, List<Block> solids, double x = 0, double y = 0) => solids.Any(b => Overlap(p, b, x, y));

@@ -133,7 +133,7 @@ public class ControllerTests
             for (int i = 0; i < 120 && s.deaths == 0; i++) s.Step(default);
             Assert.That(s.deaths, Is.EqualTo(1), $"landing at x={x} touches the covered block and kills");
         }
-        var side = new PhaseController(new[] { new Block(0, 112, 320, 8), new Block(100, 104, 8, 8) { spiked = true } }, 80, 104);
+        var side = new PhaseController(new[] { new Block(0, 112, 320, 8), new Block(100, 104, 8, 8) { spiked = true } }, 80, 101);
         for (int i = 0; i < 60 && side.deaths == 0; i++) side.Step(new Controls { x = 1 });
         Assert.That(side.deaths, Is.EqualTo(1), "walking into the side kills instead of stopping at a wall");
     }
