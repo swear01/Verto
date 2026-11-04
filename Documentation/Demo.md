@@ -20,22 +20,26 @@ tutorial messages.
 `PhaseSandbox.Levels` defines this order, the level select and both horizontal links.
 `PhaseSandboxBuilder.CreateImportedLevels()` rebuilds levels 2–9 through the connected Editor.
 
-Level 2 (stairs) keeps the classmates' color-room premise: a jump turns red→blue→green, so going back one color
-takes two jumps. It used to stack five bars three cells apart and climb them by jumping up through the bar overhead;
-that move now has its own level (7). The bars are now one staircase of three-cell steps rising from the bottom left
-to a white pillar at the top right, each step one jump in color order, short hops along and big hops up. Where the
-next step is the color before the current one (green to blue, red to green, blue to red), a two-cell bump of the
-color in between sits on the seam, so the extra jump lands on it. Nothing hangs over a landing.
+Level 2 (stairs) builds on level 1: a jump changes the color at takeoff, and walking keeps it, so the level asks
+when to jump and when to walk. Five floors four cells apart span the room, each made of red, blue and green
+stretches, and the route climbs them as a switchback: run along a floor, hop onto a small step at its end, turn
+around and jump up onto the floor above, which runs the other way. Each floor has two kinds of spikes. Spikes in
+your own color sit where the floor changes to the next color, so you jump them and land on that color. Spikes in
+the next color lie on your floor: walk across, because jumping on them turns you into their color. The top floor
+is one long walk over spikes in the next color to the white exit ledge. A full jump reaches the spikes on the floor
+above when that floor is not your color, so the spikes above each jump are never the color that jump turns you into.
 `Verification/Routes/PhaseDemo1.1.json` is its recorded route.
 
 Level 3 (level-a) keeps the classmates' premise: a white laser's reach depends on the player's color, because
 colored terrain stops it only in its own color. It keeps the original look, rows of floating red, blue and green
-bars, without the red steps later added for run and jump. The rows are now four cells apart, so no row can be
-reached from the one below, and the route runs right, left, then right, climbing at each end by a two-cell step.
-Each upper row has a white laser along it, fired from the left, the right, then the left. A big jump crosses the
-laser of the row above; only a bar of the player's color between the gun and the player stops it, so on each
-row one color's jumps must stay low until its bar is passed, and the side doing the shielding flips with the
-direction of travel. The top row holds only the shields and the white exit ledge.
+bars, now laid as three bands that run right, left, then right, each a lower row of landing bars and an upper row
+of bars, guns and spiked shields three cells above it. The bands are four cells apart, so the route turns at each
+end on a two-cell step by the wall and finishes on a white shelf at the top right. In each band the route goes
+up onto an upper bar, then over a gap and down onto the next lower bar, two jumps a bar. A gun at the far end of
+each upper bar fires back along the row, so in that bar's color the gap ahead is lit: walking off kills. The jump
+off turns the player the color of the spiked bar past the gap, which blocks the beam while the player drops
+through. Every bar's color lights the gap after it and the next one blocks it; walked along, each row runs the
+colors backward. The guns face the direction of travel, so they flip with it at each turn.
 `Verification/Routes/PhaseDemo13.json` is its recorded route.
 
 Level 4 (level-b) keeps the classmates' premise: you climb between a red pillar and a green pillar past

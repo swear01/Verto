@@ -210,8 +210,7 @@ namespace Phase
                 bool Neighbor(int dx, int dy) => isPlatform ? X + dx * 8 >= b.x && X + dx * 8 < b.x + b.w && Y + dy * 8 >= b.y && Y + dy * 8 < b.y + b.h
                     : cells.TryGetValue((X + dx * 8, Y + dy * 8), out var kind) && kind == b.Mask;
                 bool u = Neighbor(0,-1), d = Neighbor(0,1), l = Neighbor(-1,0), r = Neighbor(1,0);
-                if (b.spiked && active) { Rect(X, Y, 8, 8, Mix(body, Color("000000"), .5)); Blit(Covered(b.Mask, true), X - 1, Y - 1, SpikeAlpha);
-                    continue; }
+                if (b.spiked && active) { Spiked(X, Y, u, d, l, r, body, cap, rim, 1, ox, oy); continue; }
                 if (!active)
                 {
                     Rect(X, Y, 8, 8, body, deferred ? .3 : .12);
@@ -224,15 +223,38 @@ namespace Phase
                         if (!l && dy) Rect(X, Y + n, 1, 1, rim, alpha);
                         if (!r && dy) Rect(X + 7, Y + n, 1, 1, rim, alpha);
                     }
-                    if (b.spiked) Blit(Covered(b.Mask, false), X - 1, Y - 1, SpikeAlpha);
+                    if (b.spiked) Spiked(X, Y, u, d, l, r, body, cap, rim, .35, ox, oy);
                     continue;
                 }
                 // One tile for every colour, white included: outer frame, darker inner frame, darker centre.
+                bool ul = Neighbor(-1,-1), ur = Neighbor(1,-1), dl = Neighbor(-1,1), dr = Neighbor(1,1);
                 for (int py = 0; py < 8; py++) for (int px = 0; px < 8; px++)
                 {
-                    int edge = Math.Min(Math.Min(u ? 8 : py, d ? 8 : 7 - py), Math.Min(l ? 8 : px, r ? 8 : 7 - px));
+                    int edge = TileEdge(px, py, u, d, l, r, ul, ur, dl, dr);
                     Rect(X + px, Y + py, 1, 1, cap, edge < 2 ? .9 : edge < 4 ? .55 : .25);
                 }
+            }
+        }
+        // Distance from a tile pixel to the nearest outside; a missing diagonal between two present sides is an inner corner and lights its own corner.
+        public static int TileEdge(int px, int py, bool u, bool d, bool l, bool r, bool ul, bool ur, bool dl, bool dr)
+        {
+            int edge = Math.Min(Math.Min(u ? 8 : py, d ? 8 : 7 - py), Math.Min(l ? 8 : px, r ? 8 : 7 - px));
+            if (u && l && !ul) edge = Math.Min(edge, Math.Max(px, py));
+            if (u && r && !ur) edge = Math.Min(edge, Math.Max(7 - px, py));
+            if (d && l && !dl) edge = Math.Min(edge, Math.Max(px, 7 - py));
+            if (d && r && !dr) edge = Math.Min(edge, Math.Max(7 - px, 7 - py));
+            return edge;
+        }
+        // A spiked cell: hazard-striped body in the phase colour, a triangular tooth on every exposed side.
+        void Spiked(int X, int Y, bool u, bool d, bool l, bool r, Color32 body, Color32 cap, Color32 rim, double a, int ox, int oy)
+        {
+            var dark = Mix(body, Color(Ink), .6); var tooth = Color(Tooth);
+            bool Gap(bool side, int depth, int pos) => !side && depth < 3 && Math.Abs(2 * pos - 7) >= 2 * depth + 2;
+            for (int py = 0; py < 8; py++) for (int px = 0; px < 8; px++)
+            {
+                if (Gap(u, py, px) || Gap(d, 7 - py, px) || Gap(l, px, py) || Gap(r, 7 - px, py)) continue;
+                int k = TileEdge(px, py, u, d, l, r, true, true, true, true);
+                Rect(X + px, Y + py, 1, 1, k < 2 ? tooth : ((X - ox + px + Y - oy + py) & 7) < 4 ? rim : dark, a);
             }
         }
         static bool Mixed(int mask) => mask == 3 || mask == 5 || mask == 6;
@@ -243,14 +265,6 @@ namespace Phase
             var palette=new Dictionary<char,Color32>{['T']=active?Color(Tooth):Mix(rim,Color("101a26"),.45),['L']=active?cap:Mix(body,Color("101a26"),.4),['M']=active?rim:Mix(body,Color("101a26"),.6),['D']=active?body:Mix(body,Color("101a26"),.6)};
             if(active)palette['o']=Color(Ink);
             return palette;
-        }
-        // A spike-covered cell: teeth on all four sides.
-        static readonly string[] coveredRows = {"...TT...","..TTMM..",".oLLMMo.","TLLMMMTT","TLMMMDTT",".oMMDDo.","..MTTD..","...TT..."};
-        readonly Dictionary<(int,bool),Bitmap> coveredTiles = new Dictionary<(int,bool),Bitmap>();
-        Bitmap Covered(int mask,bool active)
-        {
-            if(!coveredTiles.TryGetValue((mask,active),out var tile))coveredTiles[(mask,active)]=tile=Paint(coveredRows,SpikePalette(mask,active));
-            return tile;
         }
         readonly Dictionary<(int,SpikeDirection,bool),Bitmap> spikeTiles = new Dictionary<(int,SpikeDirection,bool),Bitmap>();
         void Spikes(PhaseController s)
