@@ -257,12 +257,12 @@ namespace Phase
         // Hazard-striped body in the phase colour with cream teeth.
         void Spiked(int X, int Y, bool u, bool d, bool l, bool r, bool ul, bool ur, bool dl, bool dr, Color32 body, Color32 rim, int ox, int oy)
         {
-            var dark = Mix(body, Color(Ink), .6); var tooth = Color(Tooth);
+            var tooth = Color(Tooth);
             for (int py = 0; py < 8; py++) for (int px = 0; px < 8; px++)
             {
                 if (!SpikeKeep(px, py, u, d, l, r, ul, ur, dl, dr)) continue;
                 int k = TileEdge(px, py, u, d, l, r, true, true, true, true);
-                Rect(X + px, Y + py, 1, 1, k < 2 ? tooth : ((X - ox + px + Y - oy + py) & 7) < 4 ? rim : dark, 1);
+                Rect(X + px, Y + py, 1, 1, k < 2 ? tooth : rim, 1);
             }
         }
         // An inactive spiked cell: the same toothed silhouette as an outline. Tooth edges are solid, the flat edge between teeth is dashed like a plain platform, the inside is a faint wash.
