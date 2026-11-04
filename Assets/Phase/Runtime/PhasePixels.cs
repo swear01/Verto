@@ -210,7 +210,9 @@ namespace Phase
                 bool Neighbor(int dx, int dy) => isPlatform ? X + dx * 8 >= b.x && X + dx * 8 < b.x + b.w && Y + dy * 8 >= b.y && Y + dy * 8 < b.y + b.h
                     : cells.TryGetValue((X + dx * 8, Y + dy * 8), out var kind) && kind == b.Mask;
                 bool u = Neighbor(0,-1), d = Neighbor(0,1), l = Neighbor(-1,0), r = Neighbor(1,0);
-                if (b.spiked && active) { Spiked(X, Y, u, d, l, r, body, cap, rim, 1, ox, oy); continue; }
+                bool ul = Neighbor(-1,-1), ur = Neighbor(1,-1), dl = Neighbor(-1,1), dr = Neighbor(1,1);
+                if (b.spiked && active) { Spiked(X, Y, u, d, l, r, ul, ur, dl, dr, body, rim, ox, oy); continue; }
+                if (b.spiked) { SpikedOff(X, Y, u, d, l, r, ul, ur, dl, dr, body, cap, rim, deferred, ox, oy); continue; }
                 if (!active)
                 {
                     Rect(X, Y, 8, 8, body, deferred ? .3 : .12);
@@ -223,11 +225,9 @@ namespace Phase
                         if (!l && dy) Rect(X, Y + n, 1, 1, rim, alpha);
                         if (!r && dy) Rect(X + 7, Y + n, 1, 1, rim, alpha);
                     }
-                    if (b.spiked) Spiked(X, Y, u, d, l, r, body, cap, rim, .35, ox, oy);
                     continue;
                 }
                 // One tile for every colour, white included: outer frame, darker inner frame, darker centre.
-                bool ul = Neighbor(-1,-1), ur = Neighbor(1,-1), dl = Neighbor(-1,1), dr = Neighbor(1,1);
                 for (int py = 0; py < 8; py++) for (int px = 0; px < 8; px++)
                 {
                     int edge = TileEdge(px, py, u, d, l, r, ul, ur, dl, dr);
@@ -245,16 +245,40 @@ namespace Phase
             if (d && r && !dr) edge = Math.Min(edge, Math.Max(7 - px, 7 - py));
             return edge;
         }
-        // A spiked cell: hazard-striped body in the phase colour, a triangular tooth on every exposed side.
-        void Spiked(int X, int Y, bool u, bool d, bool l, bool r, Color32 body, Color32 cap, Color32 rim, double a, int ox, int oy)
+        // A spiked cell silhouette: a two-deep triangular tooth centred on every exposed side, and a half tooth on each side of a seam
+        // between two neighbouring spiked cells whose edges are both exposed, so a run reads as one evenly toothed strip.
+        public static bool SpikeKeep(int px, int py, bool u, bool d, bool l, bool r, bool ul, bool ur, bool dl, bool dr)
+        {
+            bool Cut(bool side, bool before, bool after, int depth, int pos) => !side && depth < 2 && Math.Abs(2 * pos - 7) >= 2 * depth + 2
+                && !(after && pos >= 7 - depth) && !(before && pos <= depth);
+            return !(Cut(u, l && !ul, r && !ur, py, px) || Cut(d, l && !dl, r && !dr, 7 - py, px)
+                || Cut(l, u && !ul, d && !dl, px, py) || Cut(r, u && !ur, d && !dr, 7 - px, py));
+        }
+        // Hazard-striped body in the phase colour with cream teeth.
+        void Spiked(int X, int Y, bool u, bool d, bool l, bool r, bool ul, bool ur, bool dl, bool dr, Color32 body, Color32 rim, int ox, int oy)
         {
             var dark = Mix(body, Color(Ink), .6); var tooth = Color(Tooth);
-            bool Gap(bool side, int depth, int pos) => !side && depth < 3 && Math.Abs(2 * pos - 7) >= 2 * depth + 2;
             for (int py = 0; py < 8; py++) for (int px = 0; px < 8; px++)
             {
-                if (Gap(u, py, px) || Gap(d, 7 - py, px) || Gap(l, px, py) || Gap(r, 7 - px, py)) continue;
+                if (!SpikeKeep(px, py, u, d, l, r, ul, ur, dl, dr)) continue;
                 int k = TileEdge(px, py, u, d, l, r, true, true, true, true);
-                Rect(X + px, Y + py, 1, 1, k < 2 ? tooth : ((X - ox + px + Y - oy + py) & 7) < 4 ? rim : dark, a);
+                Rect(X + px, Y + py, 1, 1, k < 2 ? tooth : ((X - ox + px + Y - oy + py) & 7) < 4 ? rim : dark, 1);
+            }
+        }
+        // An inactive spiked cell: the same toothed silhouette as an outline. Tooth edges are solid, the flat edge between teeth is dashed like a plain platform, the inside is a faint wash.
+        void SpikedOff(int X, int Y, bool u, bool d, bool l, bool r, bool ul, bool ur, bool dl, bool dr, Color32 body, Color32 cap, Color32 rim, bool deferred, int ox, int oy)
+        {
+            bool Keep(int px, int py) => px >= 0 && px < 8 && py >= 0 && py < 8 && SpikeKeep(px, py, u, d, l, r, ul, ur, dl, dr);
+            bool Out(int px, int py) => (px < 0 && !l || px > 7 && !r || py < 0 && !u || py > 7 && !d) || (px >= 0 && px < 8 && py >= 0 && py < 8 && !Keep(px, py));
+            for (int py = 0; py < 8; py++) for (int px = 0; px < 8; px++)
+            {
+                if (!Keep(px, py)) continue;
+                bool edge = Out(px - 1, py) || Out(px + 1, py) || Out(px, py - 1) || Out(px, py + 1);
+                int k = TileEdge(px, py, u, d, l, r, true, true, true, true);
+                if (!edge) { Rect(X + px, Y + py, 1, 1, body, deferred ? .3 : .12); continue; }
+                bool toothPixel = k < 2;
+                bool on = deferred || toothPixel || ((X - ox + px + (Y - oy + py)) & 3) < 2;
+                Rect(X + px, Y + py, 1, 1, toothPixel ? cap : rim, on ? (deferred ? .95 : .7) : (deferred ? .3 : .12));
             }
         }
         static bool Mixed(int mask) => mask == 3 || mask == 5 || mask == 6;
