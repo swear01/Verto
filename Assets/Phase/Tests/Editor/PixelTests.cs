@@ -6,6 +6,20 @@ using UnityEngine;
 
 public class PixelTests
 {
+    [Test]
+    public void InnerCornersLightTheirOwnCornerAndStraightEdgesAreUnchanged()
+    {
+        // Cell inside a concave corner (floor to its left, wall above): its outer corner joins the cap and the wall face.
+        Assert.That(PhasePixels.TileEdge(0, 0, true, true, true, true, false, true, true, true), Is.EqualTo(0));
+        Assert.That(PhasePixels.TileEdge(1, 1, true, true, true, true, false, true, true, true), Is.EqualTo(1));
+        Assert.That(PhasePixels.TileEdge(3, 3, true, true, true, true, false, true, true, true), Is.EqualTo(3));
+        Assert.That(PhasePixels.TileEdge(7, 7, true, true, true, true, true, true, false, true), Is.EqualTo(7));
+        Assert.That(PhasePixels.TileEdge(7, 0, true, true, true, true, true, false, true, true), Is.EqualTo(0));
+        Assert.That(PhasePixels.TileEdge(7, 7, true, true, true, true, true, true, true, false), Is.EqualTo(0));
+        Assert.That(PhasePixels.TileEdge(0, 0, true, true, true, true, true, true, true, true), Is.EqualTo(8));
+        Assert.That(PhasePixels.TileEdge(2, 0, false, true, true, true, false, false, true, true), Is.EqualTo(0));
+    }
+
     // One failure check per pixel is far cheaper than a constraint assertion per pixel.
     // Color32 has no fast equality, so NUnit's collection compare falls back to reflection per pixel.
     static bool Eq(Color32 a, Color32 b) => a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;
