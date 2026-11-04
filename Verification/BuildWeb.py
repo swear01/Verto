@@ -7,7 +7,7 @@ import time
 
 PROJECT = Path(__file__).resolve().parent.parent
 REPORTS = PROJECT / "TestResults/Web"
-SCENES = ["Assets/Scenes/PhaseTitle.unity", "Assets/Scenes/PhaseDemo1.unity", "Assets/Scenes/PhaseDemo1.1.unity", "Assets/Scenes/PhaseDemo13.unity", "Assets/Scenes/PhaseDemo14.unity", "Assets/Scenes/PhaseDemo15.unity", "Assets/Scenes/PhaseUmbrella.unity", "Assets/Scenes/PhaseTurnaround.unity", "Assets/Scenes/PhaseGear.unity", "Assets/Scenes/PhaseEditor.unity"]
+SCENES = ["Assets/Scenes/PhaseTitle.unity", "Assets/Scenes/PhaseDemo1.unity", "Assets/Scenes/PhaseDemo1.1.unity", "Assets/Scenes/PhaseDemo13.unity", "Assets/Scenes/PhaseDemo14.unity", "Assets/Scenes/PhaseDemo15.unity", "Assets/Scenes/PhaseUmbrella.unity", "Assets/Scenes/PhaseLadder.unity", "Assets/Scenes/PhaseTurnaround.unity", "Assets/Scenes/PhaseGear.unity", "Assets/Scenes/PhaseEditor.unity"]
 
 
 def command(name, *args):
@@ -82,7 +82,7 @@ def main():
     for name, mode, extra, expected in [
         ("editor", "editor", [], {
             "ControllerTests": 18, "LaserTests": 7, "CrystalTests": 8, "PixelTests": 17, "GridGeometryTests": 4,
-            "CustomMapTests": 10, "PlatformTests": 12, "KeyBindingTests": 4, "ScrollRoomTests": 6, "WorldTests": 17, "LevelRouteTests": 3}),
+            "CustomMapTests": 10, "PlatformTests": 12, "KeyBindingTests": 4, "ScrollRoomTests": 6, "WorldTests": 17, "LevelRouteTests": 5}),
         ("slow", "editor", ["--filter", "Slow", "--filter_type", "category", "--include_explicit"], {"CustomMapTests": 1, "ToleranceTests": 1}),
         ("playmode", "playmode", [], {"SandboxTests": 12, "MapBridgeTests": 1, "MenuTests": 18, "AudioTests": 1}),
     ]:
