@@ -30,12 +30,14 @@ color in between sits on the seam, so the extra jump lands on it. Nothing hangs 
 
 Level 3 (level-a) keeps the classmates' premise: a white laser's reach depends on the player's color, because
 colored terrain stops it only in its own color. It keeps the original look, rows of floating red, blue and green
-bars, without the red steps later added for run and jump. The rows are now four cells apart, so no row can be
-reached from the one below, and the route runs right, left, then right, climbing at each end by a two-cell step.
-Each upper row has a white laser along it, fired from the left, the right, then the left. A big jump crosses the
-laser of the row above; only a bar of the player's color between the gun and the player stops it, so on each
-row one color's jumps must stay low until its bar is passed, and the side doing the shielding flips with the
-direction of travel. The top row holds only the shields and the white exit ledge.
+bars, now laid as three bands that run right, left, then right, each a lower row of landing bars and an upper row
+of bars, guns and spiked shields three cells above it. The bands are four cells apart, so the route turns at each
+end on a two-cell step by the wall and finishes on a white shelf at the top right. In each band the route goes
+up onto an upper bar, then over a gap and down onto the next lower bar, two jumps a bar. A gun at the far end of
+each upper bar fires back along the row, so in that bar's color the gap ahead is lit: walking off kills. The jump
+off turns the player the color of the spiked bar past the gap, which blocks the beam while the player drops
+through. Every bar's color lights the gap after it and the next one blocks it; walked along, each row runs the
+colors backward. The guns face the direction of travel, so they flip with it at each turn.
 `Verification/Routes/PhaseDemo13.json` is its recorded route.
 
 Level 4 (level-b) keeps the classmates' premise: you climb between a red pillar and a green pillar past
