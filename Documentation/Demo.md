@@ -20,12 +20,14 @@ tutorial messages.
 `PhaseSandbox.Levels` defines this order, the level select and both horizontal links.
 `PhaseSandboxBuilder.CreateImportedLevels()` rebuilds levels 2–9 through the connected Editor.
 
-Level 2 (stairs) keeps the classmates' color-room premise: a jump turns red→blue→green, so going back one color
-takes two jumps. It used to stack five bars three cells apart and climb them by jumping up through the bar overhead;
-that move now has its own level (7). The bars are now one staircase of three-cell steps rising from the bottom left
-to a white pillar at the top right, each step one jump in color order, short hops along and big hops up. Where the
-next step is the color before the current one (green to blue, red to green, blue to red), a two-cell bump of the
-color in between sits on the seam, so the extra jump lands on it. Nothing hangs over a landing.
+Level 2 (stairs) builds on level 1: a jump changes the color at takeoff, and walking keeps it, so the level asks
+when to jump and when to walk. Five floors four cells apart span the room, each made of red, blue and green
+stretches, and the route climbs them as a switchback: run along a floor, hop onto a small step at its end, turn
+around and jump up onto the floor above, which runs the other way. Each floor has two kinds of spikes. Spikes in
+your own color sit where the floor changes to the next color, so you jump them and land on that color. Spikes in
+the next color lie on your floor: walk across, because jumping on them turns you into their color. The top floor
+is one long walk over spikes in the next color to the white exit ledge. A full jump reaches the spikes on the floor
+above when that floor is not your color, so the spikes above each jump are never the color that jump turns you into.
 `Verification/Routes/PhaseDemo1.1.json` is its recorded route.
 
 Level 3 (level-a) keeps the classmates' premise: a white laser's reach depends on the player's color, because
