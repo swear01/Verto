@@ -8,8 +8,10 @@ using UnityEngine.SceneManagement;
 public class LevelRouteTests
 {
     // Replays a level's recorded keyboard route on the controller its saved scene builds.
+    [TestCase("PhaseDemo1.1")]
     [TestCase("PhaseDemo13")]
     [TestCase("PhaseDemo14")]
+    [TestCase("PhaseLadder")]
     [TestCase("PhaseTurnaround")]
     public void RecordedRouteLeavesThroughTheRightEdgeWithoutDying(string level)
     {

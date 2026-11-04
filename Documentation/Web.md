@@ -18,7 +18,7 @@ python3 -m http.server 8765 --bind 127.0.0.1 --directory Builds/Web
 
 Open <http://127.0.0.1:8765/>. Click the canvas for keyboard focus: ←/→ or A/D
 move and Space/Z jumps. Cross each room’s right
-edge to continue through the eight levels. Each arrival resets the phase to red
+edge to continue through the nine levels. Each arrival resets the phase to red
 while preserving run statistics. Room changes use a
 0.18-second horizontal pixel slide; input/physics pause until it finishes.
 The Unity splash screen and logo are disabled in PlayerSettings.
@@ -72,7 +72,7 @@ Geometry occupies non-overlapping cells inside the room, 320×176 unless `width`
 including any red laser beam not stopped by red-active terrain.
 Masks are 1 red, 2 blue, 4 green, 3 magenta, 5 yellow, 6 cyan and 7 permanent white.
 Dash platforms (`platforms`), gears (`gears`), dash crystals (`kind` 1) and JSON over 2,000,000 characters are rejected.
-`PHASE.SelectDemoRoom("1".."8")` and `PHASE.LoadCustomMap(json)` remain Unity bridge
+`PHASE.SelectDemoRoom("1".."9")` and `PHASE.LoadCustomMap(json)` remain Unity bridge
 methods, but the page no longer sends them; `phase-map-result` still reports each
 completed load and the browser smoke test waits for it.
 The in-game editor's import/export icons raise `phase-map-import` / `phase-map-export`
@@ -125,6 +125,6 @@ including the in-game editor's wider view.
 
 ## Level order
 
-The level select lists **1** `PhaseDemo1`, **2** the classmate color room `PhaseDemo1.1`, **3** and **4** the laser rooms `PhaseDemo13` and `PhaseDemo14`, **5** the chaos level `PhaseDemo15`, **6** the four-screen [Umbrella](Umbrella.md) level `PhaseUmbrella`, **7** the [turnaround](Turnaround.md) shaft `PhaseTurnaround`, then **8** the moving-platform room `PhaseGear`.
+The level select lists **1** `PhaseDemo1`, **2** the stairs `PhaseDemo1.1`, **3** and **4** the laser rooms `PhaseDemo13` and `PhaseDemo14`, **5** the chaos level `PhaseDemo15`, **6** the four-screen [Umbrella](Umbrella.md) level `PhaseUmbrella`, **7** the ladder `PhaseLadder`, **8** the [turnaround](Turnaround.md) shaft `PhaseTurnaround`, then **9** the moving-platform room `PhaseGear`.
 
 Built-in levels run in order 1–7. Walking through the left edge returns to the previous level; level 1’s left edge stays closed. Leaving level 7 to the right shows “你贏了”, with replay-level1 and level-select icons.

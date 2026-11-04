@@ -34,7 +34,7 @@ namespace Phase
         public bool InTransition => transitioning || departingFrame != null;
         public bool Won { get; private set; }
         public static readonly string[] Levels = {
-            "PhaseDemo1", "PhaseDemo1.1", "PhaseDemo13", "PhaseDemo14", "PhaseDemo15", "PhaseUmbrella", "PhaseTurnaround", "PhaseGear"
+            "PhaseDemo1", "PhaseDemo1.1", "PhaseDemo13", "PhaseDemo14", "PhaseDemo15", "PhaseUmbrella", "PhaseLadder", "PhaseTurnaround", "PhaseGear"
         };
         int level = -1;
         bool custom;
