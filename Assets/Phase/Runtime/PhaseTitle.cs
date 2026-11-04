@@ -45,6 +45,7 @@ namespace Phase
         }
         protected override void Tick(Keyboard k, Mouse m)
         {
+            PhaseAudio.Title();
             if (Keys != null)
             {
                 if (Keys.Tick(k)) Keys = null;

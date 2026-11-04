@@ -84,7 +84,7 @@ def main():
             "ControllerTests": 19, "LaserTests": 7, "CrystalTests": 8, "PixelTests": 17, "GridGeometryTests": 4,
             "CustomMapTests": 10, "PlatformTests": 12, "KeyBindingTests": 4, "ScrollRoomTests": 6, "WorldTests": 17, "LevelRouteTests": 5}),
         ("slow", "editor", ["--filter", "Slow", "--filter_type", "category", "--include_explicit"], {"CustomMapTests": 1, "ToleranceTests": 1}),
-        ("playmode", "playmode", [], {"SandboxTests": 12, "MapBridgeTests": 1, "MenuTests": 18, "AudioTests": 1}),
+        ("playmode", "playmode", [], {"SandboxTests": 12, "MapBridgeTests": 1, "MenuTests": 18, "AudioTests": 2}),
     ]:
         wait("editor_status", lambda r: r.get("status") == "ready" and r.get("playMode") == "stopped", 120)
         command("run_tests", "--", "--mode", mode, *extra, "--async_tests")

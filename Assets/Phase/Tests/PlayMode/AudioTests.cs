@@ -2,6 +2,7 @@ using System.Collections;
 using NUnit.Framework;
 using Phase;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 
 public class AudioTests
@@ -28,5 +29,25 @@ public class AudioTests
         Assert.AreEqual(.1f, music[1].volume, 1e-4f);
         Assert.AreEqual(0f, music[0].volume, 1e-4f);
         yield return null;
+    }
+
+    [UnityTest]
+    public IEnumerator TitlePlaysMusicAndLevelOneKeepsIt()
+    {
+        yield return SceneManager.LoadSceneAsync(PhaseTitle.Scene);
+        for (int i = 0; i < 40; i++) yield return null;
+        var music = System.Array.FindAll(Object.FindObjectsByType<AudioSource>(), s => s.loop);
+        Assert.AreEqual(3, music.Length);
+        foreach (var m in music) Assert.IsTrue(m.isPlaying);
+        var red = System.Array.Find(music, m => m.clip.name == "bgm0");
+        Assert.Greater(red.volume, 0f);
+        var started = red.time;
+        Object.FindAnyObjectByType<PhaseTitle>().SelectDemoRoom("1");
+        double deadline = Time.realtimeSinceStartupAsDouble + 5;
+        while (SceneManager.GetActiveScene().name == PhaseTitle.Scene && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
+        for (int i = 0; i < 10; i++) yield return null;
+        Assert.IsTrue(red.isPlaying);
+        Assert.AreNotEqual(PhaseTitle.Scene, SceneManager.GetActiveScene().name);
+        Assert.AreNotEqual(started, red.time);
     }
 }
