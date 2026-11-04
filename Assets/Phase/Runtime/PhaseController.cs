@@ -195,7 +195,10 @@ namespace Phase
         public static bool Overlap(Block a, Block b, double x = 0, double y = 0) =>
             a.x + x < b.x + b.w && a.x + a.w + x > b.x && a.y + y < b.y + b.h && a.y + a.h + y > b.y;
         public List<Block> Solid() => Solid(phase);
-        List<Block> Solid(int ph)
+        // What the player collides with: a spike-covered block is only a hazard and never solid.
+        List<Block> Solid(int ph) => BeamStops(ph).Where(b => !b.spiked).ToList();
+        // What stops a laser beam: every active block, spike-covered ones included.
+        List<Block> BeamStops(int ph)
         {
             var list = new List<Block>(blocks.Count);
             for (int i = 0; i < blocks.Count; i++) if (blocks[i].ActiveInPhase(ph) && (ph != phase || !blocked.Contains(i))) list.Add(blocks[i]);
@@ -241,13 +244,8 @@ namespace Phase
                 if (Lethal(i) && Teeth(blocks[i]).Any(t => HitsSweep(t, from))) { Kill(); return true; }
             return false;
         }
-        // A spike-covered block hurts only through its teeth: a one pixel strip on each face, with the corners left safe to graze.
-        public const double TeethInset = 2;
-        public static Block[] Teeth(Block b) => new[]
-        {
-            new Block(b.x + TeethInset, b.y - .5, b.w - 2 * TeethInset, 1), new Block(b.x + TeethInset, b.y + b.h - .5, b.w - 2 * TeethInset, 1),
-            new Block(b.x - .5, b.y + TeethInset, 1, b.h - 2 * TeethInset), new Block(b.x + b.w - .5, b.y + TeethInset, 1, b.h - 2 * TeethInset)
-        };
+        // A spike-covered block has no solid body: any overlap with its cell, or touching a face, hurts.
+        public static Block[] Teeth(Block b) => new[] { new Block(b.x - .5, b.y - .5, b.w + 1, b.h + 1) };
         bool Lethal(int i) => blocks[i].ActiveInPhase(phase) && !blocked.Contains(i);
         // The block index of the n-th platform; platforms follow the terrain.
         public int PlatformIndex(int n) => blocks.Count - platforms.Count + n;
@@ -279,7 +277,7 @@ namespace Phase
         {
             if (beams.TryGetValue(laser, out var fixedBeam)) return fixedBeam;
             int next = phase; while (!laser.ActiveInPhase(next)) next = (next + 1) % 3;
-            return laser.Beam(next == phase ? Solid() : blocks.Where(b => b.ActiveInPhase(next)).ToList(), Width, Height);
+            return laser.Beam(next == phase ? BeamStops(phase) : blocks.Where(b => b.ActiveInPhase(next)).ToList(), Width, Height);
         }
         // Every laser's beam, building each phase's solids once.
         public Block[] LaserBeams()
@@ -289,7 +287,7 @@ namespace Phase
             {
                 if (beams.TryGetValue(lasers[i], out var fixedBeam)) { result[i] = fixedBeam; continue; }
                 int next = phase; while (!lasers[i].ActiveInPhase(next)) next = (next + 1) % 3;
-                result[i] = lasers[i].Beam(sets[next] ?? (sets[next] = Solid(next)), Width, Height);
+                result[i] = lasers[i].Beam(sets[next] ?? (sets[next] = BeamStops(next)), Width, Height);
             }
             return result;
         }
@@ -297,7 +295,7 @@ namespace Phase
         {
             if (CheckSpikes(from)) return true;
             if (lasers.Count == 0) return false;
-            var solids = Solid();
+            var solids = BeamStops(phase);
             foreach (var laser in lasers)
                 if (laser.ActiveInPhase(phase) && HitsSweep(laser.Beam(solids, Width, Height), from ?? player))
                 { Kill(); return true; }
@@ -319,7 +317,7 @@ namespace Phase
         bool HazardLaser(Block at)
         {
             if (lasers.Count == 0) return false;
-            var solids = Solid();
+            var solids = BeamStops(phase);
             foreach (var l in lasers) if (l.ActiveInPhase(phase) && Overlap(at, l.Beam(solids, Width, Height))) return true;
             return false;
         }
@@ -378,7 +376,7 @@ namespace Phase
         bool Nudge(Platform platform, int index, int sx, int sy)
         {
             var p = player;
-            bool solid = platform.ActiveInPhase(phase) && !blocked.Contains(index);
+            bool solid = platform.ActiveInPhase(phase) && !blocked.Contains(index) && !platform.spiked;
             bool rides = solid && p.vy >= 0 && Overlap(p, platform, 0, 1) && p.y + p.h <= platform.y;
             platform.Move(sx, sy);
             if (solid && (rides || Overlap(p, platform)))
