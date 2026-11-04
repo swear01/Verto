@@ -81,7 +81,7 @@ def arc_clear_everywhere(x,p): return not any(hit(body(x+t,gy(x)-11,dx,dy),beams
 # Wall faces fire three segments into each zone; a stopper of colour m sits just past the arc of the zone's hop in m.
 def span(x,r):   # x range the hop's body covers in row r (a spiked stopper reaches half a pixel past its cell), with slack
     y=gy(x)-11; xs=[x+dx for dx,dy in ARC if y+dy<8*r+9 and y+dy+11>8*r-1]
-    return (min(xs)-TOL-2,max(xs)+8+TOL+2) if xs else None
+    return (min(xs)-TOL-4,max(xs)+8+TOL+4) if xs else None
 PERMS=[(R,B,G),(G,R,B),(B,G,R),(R,G,B),(B,R,G),(G,B,R),(R,B,G),(G,R,B)]
 bounds=[-3]+WALLS+[W]
 for z in range(len(bounds)-1):
@@ -97,13 +97,13 @@ for z in range(len(bounds)-1):
             sp=[span(x,r) for x,mm in zh if mm==m]; sp=[s for s in sp if s]
             if d=='right':
                 if sp:
-                    sc=min(s[0] for s in sp)//8-1
+                    sc=math.floor((min(s[0] for s in sp)-.5)/8)-1
                     if sc<=ec: continue      # no room for a stopper: leave this segment out
                     cell(sc,r,'ABCDEFG'[m-1])
                 laser(ec,r,'right',m)
             else:
                 if sp:
-                    sc=math.ceil(max(s[1] for s in sp)/8)
+                    sc=math.ceil((max(s[1] for s in sp)+.5)/8)
                     if sc>=ec: continue
                     cell(sc,r,'ABCDEFG'[m-1])
                 laser(ec,r,'left',m)

@@ -20,6 +20,37 @@ public class PixelTests
         Assert.That(PhasePixels.TileEdge(2, 0, false, true, true, true, false, false, true, true), Is.EqualTo(0));
     }
 
+    [Test]
+    public void SpikeRunsGetATeethOnEachSeamAndInactiveSpikesTraceTheSameSilhouette()
+    {
+        // Run of two (left | right): exposed top, bottom and outer sides. Seam tooth is a half tooth on each side of the seam; the outer corner is cut.
+        Assert.That(PhasePixels.SpikeKeep(7, 0, false, false, false, true, false, false, false, false), Is.True, "left cell keeps the seam half tooth");
+        Assert.That(PhasePixels.SpikeKeep(0, 0, false, false, true, false, false, false, false, false), Is.True, "right cell keeps the seam half tooth");
+        Assert.That(PhasePixels.SpikeKeep(5, 0, false, false, false, true, false, false, false, false), Is.False, "flat edge between teeth is cut");
+        Assert.That(PhasePixels.SpikeKeep(3, 0, false, false, false, true, false, false, false, false), Is.True, "cell-centre tooth stays");
+        Assert.That(PhasePixels.SpikeKeep(0, 0, false, false, false, false, false, false, false, false), Is.False, "isolated cell has no seam tooth");
+        // Seam with a solid cell above the neighbour: nothing to tooth against.
+        Assert.That(PhasePixels.SpikeKeep(7, 0, false, false, false, true, false, true, false, false), Is.False, "no seam tooth under a solid neighbour");
+
+        var pixels = new PhasePixels();
+        try
+        {
+            Color32 At(Color32[] frame, int x, int y) => frame[(179 - y) * 320 + x];
+            var empty = new PhaseController(Array.Empty<Block>(), 32, 40); empty.flash = 0; pixels.Draw(empty, false); var bg = pixels.Texture.GetPixels32();
+            var room = new PhaseController(new[] { new Block(80, 80, 8, 8, phaseMask: 3) { spiked = true }, new Block(88, 80, 8, 8, phaseMask: 3) { spiked = true } }, 32, 40); room.flash = 0;
+            foreach (int phase in new[] { 0, 2 })
+            {
+                room.phase = phase; pixels.Draw(room, false); var f = pixels.Texture.GetPixels32();
+                Assert.That(At(f, 87, 80), Is.Not.EqualTo(At(bg, 87, 80)), $"phase {phase}: seam tooth left half");
+                Assert.That(At(f, 88, 80), Is.Not.EqualTo(At(bg, 88, 80)), $"phase {phase}: seam tooth right half");
+                Assert.That(At(f, 83, 80), Is.Not.EqualTo(At(bg, 83, 80)), $"phase {phase}: cell-centre tooth");
+                Assert.That(At(f, 85, 80), Is.EqualTo(At(bg, 85, 80)), $"phase {phase}: gap between teeth");
+                Assert.That(At(f, 80, 80), Is.EqualTo(At(bg, 80, 80)), $"phase {phase}: run end corner is cut");
+            }
+        }
+        finally { UnityEngine.Object.DestroyImmediate(pixels.Texture); }
+    }
+
     // One failure check per pixel is far cheaper than a constraint assertion per pixel.
     // Color32 has no fast equality, so NUnit's collection compare falls back to reflection per pixel.
     static bool Eq(Color32 a, Color32 b) => a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;

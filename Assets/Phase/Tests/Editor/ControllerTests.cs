@@ -124,6 +124,20 @@ public class ControllerTests
     static void Ticks(PhaseController s, int count, Controls input = default)
     { for (int i = 0; i < count; i++) { var a = input; a.jump &= i == 0; s.Step(a); } }
     [Test]
+    public void ASpikeCoveredBlockIsOnlyAHazardEvenOnItsTopEdge()
+    {
+        // Drop a player onto the left 2 px of a covered cell (the old safe spot: x=94 clears the 2 px inset tooth), onto its centre, and slide into its side.
+        foreach (double x in new[] { 94d, 100d, 103d })
+        {
+            var s = new PhaseController(new[] { new Block(0, 120, 320, 8), new Block(100, 104, 8, 8) { spiked = true } }, x, 80);
+            for (int i = 0; i < 120 && s.deaths == 0; i++) s.Step(default);
+            Assert.That(s.deaths, Is.EqualTo(1), $"landing at x={x} touches the covered block and kills");
+        }
+        var side = new PhaseController(new[] { new Block(0, 112, 320, 8), new Block(100, 104, 8, 8) { spiked = true } }, 80, 104);
+        for (int i = 0; i < 60 && side.deaths == 0; i++) side.Step(new Controls { x = 1 });
+        Assert.That(side.deaths, Is.EqualTo(1), "walking into the side kills instead of stopping at a wall");
+    }
+    [Test]
     public void AdaptiveRoomExtendsFloorAndEdgesWithoutResettingState()
     {
         var s = new PhaseController(new[] { new Block(0,160,320,24), new Block(240,80,8,80) },32,149);
