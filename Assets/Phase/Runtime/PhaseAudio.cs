@@ -104,11 +104,23 @@ namespace Phase
                 music[i] = go.AddComponent<AudioSource>();
                 music[i].clip = Loop(i); music[i].loop = true; music[i].volume = 0;
             }
-            // Start together so the layers stay in step; Unity Web only reaches here after the first key press.
+            // Start together so the layers stay in step; Unity Web holds the audio context suspended and resumes it on the first key press or click.
             foreach (var m in music) m.Play();
         }
 
         static void Play(AudioClip clip) { if (clip != null) source.PlayOneShot(clip, SfxLevel / (float)MaxLevel); }
+
+        static void FadeTo(int layer, float dt)
+        {
+            const float MusicFadeSeconds = .5f;
+            activeMusicLayer = layer;
+            float musicVolume = MusicBase * MusicLevel / MaxLevel;
+            for (int i = 0; i < 3; i++)
+                music[i].volume = Mathf.MoveTowards(music[i].volume, i == layer ? musicVolume : 0, MusicBase / MusicFadeSeconds * dt);
+        }
+
+        // Screens without a phase (title, editor) play the red mix, which level 1 continues without a restart.
+        public static void Title(float dt) { Init(); FadeTo(0, dt); }
 
         // Compares controller state across one step and plays what changed.
         public static void Step(PhaseController c, (int jumps, int deaths, bool grounded, int airJump) was)
@@ -116,11 +128,7 @@ namespace Phase
             Init();
             var p = c.player;
             // Each jump moves the music to that phase's layer.
-            const float MusicFadeSeconds = .5f;
-            activeMusicLayer = Math.Max(0, c.phase) % 3;
-            float musicVolume = MusicBase * MusicLevel / MaxLevel;
-            for (int i = 0; i < 3; i++)
-                music[i].volume = Mathf.MoveTowards(music[i].volume, i == activeMusicLayer ? musicVolume : 0, MusicBase / MusicFadeSeconds * (float)PhaseController.Dt);
+            FadeTo(Math.Max(0, c.phase) % 3, (float)PhaseController.Dt);
             if (c.deaths > was.deaths) Play(death);
             else if (c.jumps > was.jumps) Play(jump[Math.Max(0, c.phase) % 3]);
             else if (p.grounded && !was.grounded && c.respawn <= 0) Play(land);

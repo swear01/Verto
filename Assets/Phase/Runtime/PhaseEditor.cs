@@ -800,6 +800,7 @@ namespace Phase
                 if (k != null && k.escapeKey.wasPressedThisFrame) StopPlaytest();
                 return;
             }
+            PhaseAudio.Title(Time.unscaledDeltaTime);
             bool changed = false, painting = false;
             if (flash > 0) { flash -= Time.unscaledDeltaTime; SpawnBlocked &= flash > 0; if (flash <= 0) missing.Clear(); changed = true; }
             bool ctrl = k != null && (k.leftCtrlKey.isPressed || k.rightCtrlKey.isPressed);
