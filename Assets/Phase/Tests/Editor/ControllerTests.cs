@@ -25,7 +25,7 @@ public class ControllerTests
             var blocks = new List<Block>();
             foreach (var b in c.solids ?? new[] { c.floor }) for (int phase = 0; phase < 3; phase++) blocks.Add(new Block(b.x, b.y, b.width, b.height, phase));
             var init = c.initial; var s = new PhaseController(blocks, init.pos.x - 4, init.pos.y - 11);
-            var p = s.player; p.vx = init.speed.x; p.vy = init.speed.y; p.grounded = init.on_ground;
+            s.holdTime = .2; var p = s.player; p.vx = init.speed.x; p.vy = init.speed.y; p.grounded = init.on_ground;
             p.coyote = p.grounded ? .1 : 0; p.facing = init.facing ? 1 : -1;
             var previous = new Input();
             for (int i = 0; i < c.inputs.Length; i++)
@@ -37,6 +37,21 @@ public class ControllerTests
                 Assert.That(p.vx, Is.EqualTo(e.vx).Within(.002), frame + " vx"); Assert.That(p.vy, Is.EqualTo(e.vy).Within(.002), frame + " vy");
             }
         }
+    }
+    [Test]
+    public void DefaultBigJumpHoldsThirteenFrames()
+    {
+        double Rise(int hold)
+        {
+            var room = new PhaseController(new[] { new Block(0, 160, 320, 24, phaseMask: 7) }, 32, 149);
+            for (int i = 0; i < 5; i++) room.Step(new Controls());
+            double start = room.player.y, top = start;
+            for (int i = 0; i < 150; i++) { room.Step(new Controls { jump = i == 0, jumpHeld = i < hold }); top = Math.Min(top, room.player.y); }
+            return start - top;
+        }
+        Assert.That(Rise(12), Is.EqualTo(26), "a 12-frame hold keeps the old height");
+        Assert.That(Rise(13), Is.EqualTo(28), "the 13th held frame counts");
+        Assert.That(Rise(60), Is.EqualTo(28), "holding longer adds nothing");
     }
     [Test]
     public void PhaseMasksKeepLegacyAndAllSevenCombinations()
