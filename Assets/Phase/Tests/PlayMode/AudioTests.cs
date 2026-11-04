@@ -7,8 +7,20 @@ using UnityEngine.TestTools;
 
 public class AudioTests
 {
+    // Editor PlayerPrefs are shared by every open Editor, so pin full volume and restore what the developer saved.
+    string savedVolume;
+    [SetUp]
+    public void FullVolume()
+    {
+        savedVolume = PlayerPrefs.GetString(PhaseAudio.VolumeKey, null);
+        PhaseAudio.SetLevel(true, PhaseAudio.MaxLevel); PhaseAudio.SetLevel(false, PhaseAudio.MaxLevel);
+    }
     [TearDown]
-    public void TearDown() { Object.DestroyImmediate(GameObject.Find("PHASE audio")); }
+    public void TearDown()
+    {
+        Object.DestroyImmediate(GameObject.Find("PHASE audio"));
+        if (savedVolume == null) PlayerPrefs.DeleteKey(PhaseAudio.VolumeKey); else PlayerPrefs.SetString(PhaseAudio.VolumeKey, savedVolume);
+    }
 
     [UnityTest]
     public IEnumerator MusicLoopsAndFollowsPhase()
@@ -41,14 +53,23 @@ public class AudioTests
         foreach (var m in music) Assert.IsTrue(m.isPlaying);
         var red = System.Array.Find(music, m => m.clip.name == "bgm0");
         Assert.IsNotNull(red, "bgm0 is the title's layer");
-        Assert.Greater(red.volume, 0f);
+        PhaseAudio.Title(1f);
+        Assert.AreEqual(.1f, red.volume, 1e-4f);
+        var title = Object.FindAnyObjectByType<PhaseTitle>();
+        Assert.IsNotNull(title);
         var started = red.time;
-        Object.FindAnyObjectByType<PhaseTitle>().SelectDemoRoom("1");
+        title.SelectDemoRoom("1");
         double deadline = Time.realtimeSinceStartupAsDouble + 5;
         while (SceneManager.GetActiveScene().name == PhaseTitle.Scene && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
         for (int i = 0; i < 10; i++) yield return null;
-        Assert.IsTrue(red.isPlaying);
         Assert.AreNotEqual(PhaseTitle.Scene, SceneManager.GetActiveScene().name);
+        Assert.IsTrue(red.isPlaying);
         Assert.AreNotEqual(started, red.time);
+        Assert.AreEqual(.1f, red.volume, 1e-4f);
+        foreach (var m in music) if (m != red) Assert.AreEqual(0f, m.volume, 1e-4f);
+        // Leave no ticking scene behind to recreate the audio object.
+        var gameplay = SceneManager.GetActiveScene();
+        SceneManager.SetActiveScene(SceneManager.CreateScene("AudioTestEmpty"));
+        yield return SceneManager.UnloadSceneAsync(gameplay);
     }
 }

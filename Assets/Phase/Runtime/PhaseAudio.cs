@@ -119,8 +119,8 @@ namespace Phase
                 music[i].volume = Mathf.MoveTowards(music[i].volume, i == layer ? musicVolume : 0, MusicBase / MusicFadeSeconds * dt);
         }
 
-        // The title has no phase: it plays the red mix, which level 1 continues without a restart.
-        public static void Title() { Init(); FadeTo(0, Time.unscaledDeltaTime); }
+        // Screens without a phase (title, editor) play the red mix, which level 1 continues without a restart.
+        public static void Title(float dt) { Init(); FadeTo(0, dt); }
 
         // Compares controller state across one step and plays what changed.
         public static void Step(PhaseController c, (int jumps, int deaths, bool grounded, int airJump) was)
