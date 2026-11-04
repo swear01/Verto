@@ -126,8 +126,8 @@ public class ControllerTests
     [Test]
     public void ASpikeCoveredBlockIsOnlyAHazardEvenOnItsTopEdge()
     {
-        // Drop a player onto the corner-most 2 px of a covered cell (the old safe spot), onto its centre, and slide into its side.
-        foreach (double x in new[] { 98d, 100d, 103d })
+        // Drop a player onto the left 2 px of a covered cell (the old safe spot: x=94 clears the 2 px inset tooth), onto its centre, and slide into its side.
+        foreach (double x in new[] { 94d, 100d, 103d })
         {
             var s = new PhaseController(new[] { new Block(0, 120, 320, 8), new Block(100, 104, 8, 8) { spiked = true } }, x, 80);
             for (int i = 0; i < 120 && s.deaths == 0; i++) s.Step(default);

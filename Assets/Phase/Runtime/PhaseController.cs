@@ -170,7 +170,7 @@ namespace Phase
             blocked.Clear(); particles.Clear();
             foreach (var crystal in crystals) crystal.collected = false;
             foreach (var platform in platforms) platform.Restart();
-            for (int i = 0; i < blocks.Count; i++) if (blocks[i].ActiveInPhase(phase) && Overlap(player, blocks[i])) blocked.Add(i);
+            for (int i = 0; i < blocks.Count; i++) if (!blocks[i].spiked && blocks[i].ActiveInPhase(phase) && Overlap(player, blocks[i])) blocked.Add(i);
             UpdateGrounded(Solid());
         }
         public void Reset()
@@ -196,12 +196,13 @@ namespace Phase
             a.x + x < b.x + b.w && a.x + a.w + x > b.x && a.y + y < b.y + b.h && a.y + a.h + y > b.y;
         public List<Block> Solid() => Solid(phase);
         // What the player collides with: a spike-covered block is only a hazard and never solid.
-        List<Block> Solid(int ph) => BeamStops(ph).Where(b => !b.spiked).ToList();
+        List<Block> Solid(int ph) => Stops(ph, false);
         // What stops a laser beam: every active block, spike-covered ones included.
-        List<Block> BeamStops(int ph)
+        List<Block> BeamStops(int ph) => Stops(ph, true);
+        List<Block> Stops(int ph, bool spiked)
         {
             var list = new List<Block>(blocks.Count);
-            for (int i = 0; i < blocks.Count; i++) if (blocks[i].ActiveInPhase(ph) && (ph != phase || !blocked.Contains(i))) list.Add(blocks[i]);
+            for (int i = 0; i < blocks.Count; i++) if ((spiked || !blocks[i].spiked) && blocks[i].ActiveInPhase(ph) && (ph != phase || !blocked.Contains(i))) list.Add(blocks[i]);
             return list;
         }
         static bool Collides(Player p, List<Block> solids, double x = 0, double y = 0) => solids.Any(b => Overlap(p, b, x, y));
@@ -340,7 +341,7 @@ namespace Phase
         void Shift()
         {
             int previous = phase; phase = (phase + 1) % 3; flash = .08;
-            for (int i = 0; i < blocks.Count; i++) if (!blocks[i].ActiveInPhase(previous) && blocks[i].ActiveInPhase(phase) && Overlap(player, blocks[i])) blocked.Add(i);
+            for (int i = 0; i < blocks.Count; i++) if (!blocks[i].spiked && !blocks[i].ActiveInPhase(previous) && blocks[i].ActiveInPhase(phase) && Overlap(player, blocks[i])) blocked.Add(i);
             Burst(player.x + 4, player.y + 5, phase);
             CheckInteractions();
         }

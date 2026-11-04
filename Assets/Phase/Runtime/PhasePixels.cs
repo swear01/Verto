@@ -211,7 +211,7 @@ namespace Phase
                     : cells.TryGetValue((X + dx * 8, Y + dy * 8), out var kind) && kind == b.Mask;
                 bool u = Neighbor(0,-1), d = Neighbor(0,1), l = Neighbor(-1,0), r = Neighbor(1,0);
                 bool ul = Neighbor(-1,-1), ur = Neighbor(1,-1), dl = Neighbor(-1,1), dr = Neighbor(1,1);
-                if (b.spiked && active) { Spiked(X, Y, u, d, l, r, ul, ur, dl, dr, body, rim, ox, oy); continue; }
+                if (b.spiked && active) { Spiked(X, Y, u, d, l, r, ul, ur, dl, dr, rim); continue; }
                 if (b.spiked) { SpikedOff(X, Y, u, d, l, r, ul, ur, dl, dr, body, cap, rim, deferred, ox, oy); continue; }
                 if (!active)
                 {
@@ -254,8 +254,8 @@ namespace Phase
             return !(Cut(u, l && !ul, r && !ur, py, px) || Cut(d, l && !dl, r && !dr, 7 - py, px)
                 || Cut(l, u && !ul, d && !dl, px, py) || Cut(r, u && !ur, d && !dr, 7 - px, py));
         }
-        // Hazard-striped body in the phase colour with cream teeth.
-        void Spiked(int X, int Y, bool u, bool d, bool l, bool r, bool ul, bool ur, bool dl, bool dr, Color32 body, Color32 rim, int ox, int oy)
+        // Flat phase-colour body with cream teeth.
+        void Spiked(int X, int Y, bool u, bool d, bool l, bool r, bool ul, bool ur, bool dl, bool dr, Color32 rim)
         {
             var tooth = Color(Tooth);
             for (int py = 0; py < 8; py++) for (int px = 0; px < 8; px++)

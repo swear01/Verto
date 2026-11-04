@@ -157,9 +157,9 @@ public class PlatformTests
         var near = new PhaseController(new[] { new Block(0, 160, 320, 24), covered }, 32, 149); near.phase = 1;
         near.player.x = 90; near.player.y = 149;
         Assert.That(near.CheckHazards(), Is.False, "not touching is safe");
-        // A block that turns solid around Wick does not kill him; it waits until he leaves.
+        // A spike cover that turns on around Wick kills at once: there is no safe spot inside it.
         var ghost = new PhaseController(new[] { new Block(0, 160, 320, 24), covered }, 100, 149); ghost.Step(Jump);
-        Assert.That((ghost.phase, ghost.deaths, ghost.blocked.Count), Is.EqualTo((1, 0, 1)));
+        Assert.That((ghost.phase, ghost.deaths, ghost.blocked.Count), Is.EqualTo((1, 1, 0)), "a spike turning on around him kills at once: no waiting inside it");
         // Lasers stop at it in blue and pass in red.
         var laser = new Laser(40, 144, LaserDirection.Right, 7);
         var beam = new PhaseController(new[] { covered }, 32, 40, lasers: new[] { laser });
@@ -169,6 +169,12 @@ public class PlatformTests
         var spiked = new Platform(false, 1, new[] { (6, 18), (14, 18) }, false, 7, true);
         var p = new PhaseController(new[] { new Block(0, 160, 320, 24) }, 40, 133, platforms: new[] { spiked });
         Run(p, 6); Assert.That(p.deaths, Is.EqualTo(1), "landing on it kills");
+        // A sweeping spiked platform is not solid: it kills the player where he stands instead of pushing him along.
+        var sweeper = new Platform(false, 1, new[] { (6, 19), (14, 19) }, false, 7, true);
+        var pushed = new PhaseController(new[] { new Block(0, 160, 320, 24) }, 100, 149, platforms: new[] { sweeper });
+        sweeper.queued = 1;
+        for (int i = 0; i < 80 && pushed.deaths == 0; i++) pushed.Step(default);
+        Assert.That((pushed.deaths, pushed.player.x), Is.EqualTo((1, 100d)), "killed in place, not carried or pushed");
     }
 
     [Test]
